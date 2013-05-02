@@ -26,9 +26,9 @@ it outside of the smaccmpilot repo...
 ## Sample Tower Application
 
 A sample tower application can be found at
-`ivory-tower/src/Ivory/Tower/Test/FooBarTest.hs`
+`ivory-tower/src/Ivory/Tower/Test/FooBarTest.hs` ([github][foobartest])
 and a sample for building `FooBarTest` for FreeRTOS is found at
-`ivory-tower-freertos`
+`ivory-tower-freertos/examples/Main.hs` ([github][foobarmain]).
 
 ## Using Tower
 
@@ -45,3 +45,6 @@ file.
 [tower]: http://github.com/GaloisInc/tower
 [freertos]: http://freertos.org
 [galois]: http://galois.com
+
+[foobartest]: https://github.com/GaloisInc/tower/blob/master/ivory-tower/src/Ivory/Tower/Test/FooBarTower.hs
+[foobarmain]: https://github.com/GaloisInc/tower/blob/master/ivory-tower-freertos/examples/Main.hs

@@ -5,11 +5,12 @@ module Ivory.Tower.Graphviz
   ) where
 
 import Ivory.Tower.Types
+import Ivory.Tower.Channel (channelNameForEndpoint)
 
 import System.IO
 import Text.PrettyPrint.Leijen
 
-import Data.List (nubBy)
+import Data.List (nubBy,find,(\\))
 import Data.Maybe (catMaybes)
 
 graphvizToFile :: FilePath -> Assembly -> IO ()
@@ -34,8 +35,9 @@ graphvizDoc a = vsep $
             <$> text "node [shape=record];"
   ts = asm_tasks a
   task_ns = map taskNode ts
-  dpNodes = map dataportNode (uniqueDataports ts)
-  chNodes = map channelNode (asm_channels a)
+  dataports = uniqueDataports ts
+  dpNodes = map dataportNode dataports
+  chNodes = map channelNode ((asm_channels a) \\ dataports)
   es      = concatMap (channelEdge (asm_channels a)) (pairedEdges ts)
 
 -- Assembly processing ---------------------------------------------------------
@@ -85,7 +87,8 @@ taskNode t =
   taggedch_field ch = angles (n ch) <+> (descr ch)
     where
     n (TagChannelEmitter  _ utr) = text (unUTChannelRef utr)
-    n (TagChannelReceiver _ utr) = text (unUTChannelRef utr)
+    n (TagChannelReceiver _ utr) = text (compiledChannelName
+                                          (channelNameForEndpoint utr (taskres_schedule t)))
     n (TagDataReader _ cc) = text (compiledChannelName (cch_name cc))
     n (TagDataWriter _ cc) = text (compiledChannelName (cch_name cc))
     descr (TagChannelEmitter  d _) = text d <+> text "emitter"
@@ -122,29 +125,37 @@ channelEdge cs (t,c) = map arrow edges
   where
   arrow (a,b) = a <+> text "->" <+> b <+> semi
   edges = case c of
-    TagChannelEmitter  _ utref -> map fanoutsrc (findcchs utref) -- XXX fan out!
-    TagChannelReceiver _ utref -> map frosink (findcchs utref)
-    TagDataWriter      _ cch   -> [tosrc   cch]
-    TagDataReader      _ cch   -> [frosink cch]
-  -- Simple fully qualified task port name to channel source
-  tosrc   cch = ( qual (taskres_name t) n, qual n "source" )
+    TagChannelEmitter  _ utref -> map chansrc (fanoutcchs utref) -- XXX fan out!
+    TagChannelReceiver _ utref -> [datasink (findcch utref t)]
+    TagDataWriter      _ cch   -> [datasrc cch]
+    TagDataReader      _ cch   -> [datasink cch]
+  -- data uses simple fully qualified names
+  datasrc cch = ( qual (taskres_name t) n, qual n "source" )
     where n = compiledChannelName (cch_name cch)
-  -- Simple channel sink to fully qualified task port name 
-  frosink cch = ( qual n "sink", qual (taskres_name t) n)
+  datasink cch = ( qual n "sink", qual (taskres_name t) n)
     where n = compiledChannelName (cch_name cch)
-  -- the task port name only uses the UTRef name, because source tasks don't
-  -- know all of the endpoints at creation time.
-  fanoutsrc cch = ( qual (taskres_name t) channelname, qual fullname "source" )
-    where
-    fullname = compiledChannelName (cch_name cch)
-    channelname =
-      case cch_name cch of
+
+  -- channels use the ref name at the task and the fully qualified name at the
+  -- connector, because source tasks don't know all of the endpoints at creation
+  -- time.
+  chansink cch = ( qual fullname "sink", qual (taskres_name t) (chanrefname cch))
+    where fullname = compiledChannelName (cch_name cch)
+  chansrc cch = ( qual (taskres_name t) (chanrefname cch), qual fullname "source" )
+    where fullname = compiledChannelName (cch_name cch)
+  chanrefname cch = case cch_name cch of
         ChannelName r _ -> unUTChannelRef r
         _ -> error ("impossible - dataport name should not be in " ++
-                    "graphviz channeledge fanoutsrc")
+                    "graphviz channel tagged edge")
+
+  -- Find the compiled channel
+  findcch :: UTChannelRef -> TaskResult -> CompiledChannel
+  findcch ref taskres = maybe (error "impossible") id $ find aux cs
+    where
+    aux cch = (cch_name cch) ==
+      (channelNameForEndpoint ref (taskres_schedule taskres))
   -- Find all compiled channels which are formed from this ref.
-  findcchs :: UTChannelRef -> [CompiledChannel]
-  findcchs ref = filter aux cs
+  fanoutcchs :: UTChannelRef -> [CompiledChannel]
+  fanoutcchs ref = filter aux cs
     where
     aux cch = case cch_name cch of
        (ChannelName r _) -> r == ref

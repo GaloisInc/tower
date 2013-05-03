@@ -38,8 +38,6 @@ data CompiledChannelName
      { ccn_dataportname :: Name }
   deriving (Eq, Show)
 
-
-
 compiledChannelName :: CompiledChannelName -> String
 compiledChannelName (ChannelName r e) = (unUTChannelRef r) ++ "_endpoint_" ++ e
 compiledChannelName (DataPortName n)  = n
@@ -109,6 +107,11 @@ data CompiledChannel =
     , cch_moddefs     :: ModuleDef
     , cch_type        :: String
     }
+
+instance Eq CompiledChannel where
+  -- Invariant: only compare valid compiled channels created under the same tower
+  -- base monad. (hope this works out?)
+  c1 == c2 = (cch_name c1) == (cch_name c2)
 
 instance Show CompiledChannel where
   show cc = "CompiledChannel " ++ (show (cch_name cc))

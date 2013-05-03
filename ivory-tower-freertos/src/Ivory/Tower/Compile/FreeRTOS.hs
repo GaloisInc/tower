@@ -186,6 +186,7 @@ eventLoopBody (T.EventLoopPeriod p c) = do
   return $ do
     now <- call Task.getTimeMillis
     last <- deref lastTime
+    assume (now >=? last) -- The abstract clock should be monotonic.
     ifte (now >=? (last + (fromInteger p)))
       (store lastTime now >> c now)
       (return ())

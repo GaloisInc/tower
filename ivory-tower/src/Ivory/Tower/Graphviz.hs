@@ -13,13 +13,14 @@ import Text.PrettyPrint.Leijen
 import Data.List (nubBy,find,(\\))
 import Data.Maybe (catMaybes)
 
+-- | Write a Tower 'Assembly' to a dot file
 graphvizToFile :: FilePath -> Assembly -> IO ()
 graphvizToFile f asm = withFile f WriteMode $ \h -> displayIO h rendered
   where
   w = 1000000 -- don't wrap lines - dot doesnt handle multiline strings
   rendered = renderPretty 1.0 w $ graphvizDoc asm
 
-
+-- | Render a Tower 'Assembly' as a 'Text.PrettyPrint.Leijen.Doc'
 graphvizDoc :: Assembly -> Doc
 graphvizDoc a = vsep $
   [ text "digraph {"

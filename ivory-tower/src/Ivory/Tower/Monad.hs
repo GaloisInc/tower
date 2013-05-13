@@ -13,6 +13,8 @@ import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Channel
 
+-- | Everything in this file is internal only
+
 -- Uncompiled Tower helper functions -----------------------------------------
 
 uModules :: [UncompiledTower] -> [Module]
@@ -152,11 +154,4 @@ freshChannelRef = do
 writeUncompiledComponent :: UncompiledTower -> Tower ()
 writeUncompiledComponent c = Tower $ put [c]
 
--- Operating System definitions ------------------------------------------------
-
-newtype OSGetTimeMillis =
-  OSGetTimeMillis { unOSGetTimeMillis :: forall eff . Ivory eff Uint32 }
-
-getTimeMillis :: OSGetTimeMillis -> Ivory eff Uint32
-getTimeMillis = unOSGetTimeMillis
 

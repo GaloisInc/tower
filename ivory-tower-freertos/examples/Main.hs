@@ -1,10 +1,7 @@
 module Main where
 
-import Ivory.Language
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
-
-import Ivory.Tower
 import Ivory.Tower.Graphviz
 import Ivory.Tower.Test.FooBarTower
 import qualified Ivory.Tower.Compile.FreeRTOS as FreeRTOS

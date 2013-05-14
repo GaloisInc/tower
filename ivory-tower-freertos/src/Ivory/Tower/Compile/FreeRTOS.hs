@@ -12,10 +12,8 @@ import Data.Maybe (catMaybes)
 
 import Ivory.Language
 import qualified Ivory.Language.Type as I
-
 import qualified Ivory.Tower.Types as T
 import qualified Ivory.Tower.Channel as T
-import qualified Ivory.Tower.Monad as T
 import qualified Ivory.Tower.Tower as T
 
 
@@ -184,10 +182,10 @@ eventLoopBody (T.EventLoopPeriod p c) = do
   initTime <- call Task.getTimeMillis
   lastTime <- local (ival initTime)
   return $ do
-    now <- call Task.getTimeMillis
-    last <- deref lastTime
-    assume (now >=? last) -- The abstract clock should be monotonic.
-    ifte (now >=? (last + (fromInteger p)))
+    now  <- call Task.getTimeMillis
+    prev <- deref lastTime
+    assume (now >=? prev) -- The abstract clock should be monotonic.
+    ifte (now >=? (prev + fromInteger p))
       (store lastTime now >> c now)
       (return ())
 

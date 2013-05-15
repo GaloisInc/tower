@@ -12,14 +12,14 @@ import Ivory.Tower.Monad
 
 -- Public Task Definitions -----------------------------------------------------
 
--- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskLoop' created in
+-- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created in
 --   the 'Ivory.Tower.Types.Scheduled' context.
 taskModuleDef :: ModuleDef -> Scheduled ()
 taskModuleDef md = do
   ctx <- getTaskResult
   setTaskResult (ctx { taskres_moddef = ((taskres_moddef ctx) >> md) })
 
--- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskLoop' created in
+-- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody' created in
 --   the 'Ivory.Tower.Types.Scheduled' context.
 withStackSize :: Integer -> Scheduled ()
 withStackSize s = do
@@ -29,7 +29,7 @@ withStackSize s = do
     Just _  -> fail ("Cannot use withStackSize more than once in task named "
                   ++ taskres_name ctx)
 
--- | Specify an OS priority level of the 'Ivory.Tower.Tower.taskLoop' created in
+-- | Specify an OS priority level of the 'Ivory.Tower.Tower.taskBody' created in
 --   the 'Ivory.Tower.Types.Scheduled' context. Implementation at the backend
 --   defined by the 'Ivory.Tower.Types.OS' implementation.
 withPriority :: Integer -> Scheduled ()

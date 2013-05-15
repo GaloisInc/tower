@@ -44,7 +44,7 @@ module Ivory.Tower
   , withDataReader
   , withDataWriter
 
-  , taskLoop
+  , taskBody
 
   -- Task exports:
   , withStackSize

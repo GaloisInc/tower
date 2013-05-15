@@ -134,7 +134,7 @@ newtype DataWriter area = DataWriter { unDataWritable :: (DataPort area) }
 -- EventLoop types -------------------------------------------------------------
 
 -- | Internal only. Wrapped up to make it easier to deal with the types.
-data TaskLoop = TaskLoop { unTaskLoop :: forall eff cs . (eff `AllocsIn` cs)
+data TaskBody = TaskBody { unTaskBody :: forall eff cs . (eff `AllocsIn` cs)
                                       => (Ivory eff (EventLoop eff))}
 
 -- | Internal only - a single event handler'Ivory.Tower.EventLoop.onChannel'
@@ -150,7 +150,7 @@ data EventLoopImpl eff
     Integer (Uint32 -> Ivory eff ())
 
 -- | Pairs of events and handlers. Event handling will be multiplexed into an
---   task loop, see 'Ivory.Tower.Tower.taskLoop'.
+--   task loop, see 'Ivory.Tower.Tower.taskBody'.
 --   Combine EventLoops to be scheduled as part of the same task loop using
 --   'Data.Monoid'
 newtype EventLoop eff = EventLoop { unEventLoop :: [EventLoopImpl eff] }
@@ -177,8 +177,8 @@ instance Show CompiledChannel where
   show cc = "CompiledChannel " ++ (show (cch_name cc))
 
 -- | internal only
-newtype CompiledTaskLoop =
-  CompiledTaskLoop { unCompiledTaskLoop :: Def('[]:->()) }
+newtype CompiledTaskBody =
+  CompiledTaskBody { unCompiledTaskBody :: Def('[]:->()) }
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
@@ -216,7 +216,7 @@ data TowerSchedule =
   TowerSchedule
     { scheduleEmitter :: forall area . (IvoryType area)
            => ChannelRef area -> ChannelEmitter area
-    , scheduleTaskLoop :: TaskSchedule -> TaskLoop -> CompiledTaskLoop
+    , scheduleTaskBody :: TaskSchedule -> TaskBody -> CompiledTaskBody
     , scheduleInitializer :: Def ('[]:->())
     , scheduleModuleDef :: ModuleDef
     }

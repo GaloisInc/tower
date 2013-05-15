@@ -93,7 +93,7 @@ createChannel ref channelname =
 schedule :: [T.UTChannelRef] -> [T.UncompiledTask] -> T.TowerSchedule
 schedule _utchannels utasks = T.TowerSchedule
     { T.scheduleEmitter     = scheduleEmitter
-    , T.scheduleTaskLoop    = scheduleTaskLoop
+    , T.scheduleTaskBody    = scheduleTaskBody
     , T.scheduleInitializer = initDef
     , T.scheduleModuleDef   = smd
     }
@@ -135,13 +135,13 @@ schedule _utchannels utasks = T.TowerSchedule
   endpointQueue cr t = eventQueue cr channelname
     where channelname  = T.channelNameForEndpoint (T.untypedChannel cr) (T.ut_taskSch t)
 
-  -- scheduleTaskLoop: create task def from a TaskLoop
-  scheduleTaskLoop :: T.TaskSchedule -> T.TaskLoop -> T.CompiledTaskLoop
-  scheduleTaskLoop tskschedule tskloop = T.CompiledTaskLoop $
+  -- scheduleTaskBody: create task def from a TaskBody
+  scheduleTaskBody :: T.TaskSchedule -> T.TaskBody -> T.CompiledTaskBody
+  scheduleTaskBody tskschedule tb = T.CompiledTaskBody $
     proc ("taskbody_" ++ (T.tasksch_name tskschedule)) $ body $ do
       -- first run the user's initializer of the task. The computation
       -- returned is the EventLoop
-      evtloop <- T.unTaskLoop tskloop
+      evtloop <- T.unTaskBody tb
       -- then we need to compile the event loop into a guard and loop bodies
       let (guard, loopConstructors) = scheduleEventLoop evtloop
       loopBodies <- sequence loopConstructors

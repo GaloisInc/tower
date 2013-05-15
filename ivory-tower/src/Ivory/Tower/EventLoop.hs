@@ -16,7 +16,7 @@ singEventLoop eli = EventLoop [eli]
 
 -- Public EventLoop interface
 
--- | Handy syntax to make construction of a 'Ivory.Tower.Tower.taskLoop'
+-- | Handy syntax to make construction of a 'Ivory.Tower.Tower.taskBody'
 --   argument from an Ivory program which returns an 'EventLoop'
 handlers :: EventLoop eff -> Ivory eff (EventLoop eff)
 handlers = return

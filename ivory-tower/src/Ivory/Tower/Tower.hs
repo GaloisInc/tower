@@ -131,17 +131,16 @@ withDataWriter ds label = do
   addTaggedChannel (TagDataWriter label (data_cch dp))
   return (DataWriter dp)
 
--- | Declare a task loop in the context of a 'Scheduled' task. The task loop
---   is an 'Ivory' computation which initializes the task, and gives an
---   'EventLoop' as its result. The 'EventLoop' computation is compiled
---   inside the 'Scheduled' context to create the implementation of the task
---   loop.
---   Only one 'taskLoop' may be given per 'Scheduled' context.
-taskLoop :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff (EventLoop eff))
+-- | Declare a task body for a 'Scheduled' task. The task body is an 'Ivory'
+--   computation which initializes the task, and gives an 'EventLoop' as its
+--   result. The 'EventLoop' computation is compiled inside the 'Scheduled'
+--   context to create the implementation of the task loop.
+--   Only one 'taskBody' may be given per 'Scheduled' context.
+taskBody :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff (EventLoop eff))
          -> Scheduled ()
-taskLoop tloop = do
+taskBody tb = do
   res <- getTaskResult
   sch <- withTowerSchedule
-  let ctl = scheduleTaskLoop sch (taskres_schedule res) (TaskLoop tloop)
-  setTaskResult $ res { taskres_tldef = Just (unCompiledTaskLoop ctl) }
+  let ctl = scheduleTaskBody sch (taskres_schedule res) (TaskBody tb)
+  setTaskResult $ res { taskres_tldef = Just (unCompiledTaskBody ctl) }
 

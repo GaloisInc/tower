@@ -43,7 +43,7 @@ fooSourceTask fooSource = withContext $ do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
     taskModuleDef $ depend fooBarTypes
-    taskLoop $ do
+    taskBody $ do
       state <- local (istruct [])
       handlers $ onTimer p $ \_now -> do
         v <- deref (state ~> foo_member)
@@ -55,7 +55,7 @@ barSourceTask barSource = withContext $ do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
     taskModuleDef $ depend fooBarTypes
-    taskLoop $ do
+    taskBody $ do
       state <- local (istruct [])
       handlers $ onTimer p $ \_now -> do
         v <- deref (state ~> bar_member)
@@ -70,7 +70,7 @@ fooBarSinkTask fooSink barSink = do
   withContext $ do
     fooReader   <- withDataReader    fooSink "fooSink"
     taskModuleDef $ depend fooBarTypes
-    taskLoop $ do
+    taskBody $ do
       latestFoo <- local (istruct [])
       latestSum <- local (ival 0)
       handlers $ onChannel barReceiver $ \latestBar -> do

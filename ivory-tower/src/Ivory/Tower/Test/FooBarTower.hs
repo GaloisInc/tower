@@ -22,10 +22,21 @@ struct bar_state
   }
 |]
 
+[ivory|
+struct some_other_type
+  { some_other_member :: Stored Uint8
+  }
+|]
+
 fooBarTypes :: Module
 fooBarTypes = package "fooBarTypes" $ do
   defStruct (Proxy :: Proxy "foo_state")
   defStruct (Proxy :: Proxy "bar_state")
+
+someOtherModule :: Module
+someOtherModule= package "someOtherModule" $ do
+  defStruct (Proxy :: Proxy "some_other_type")
+
 
 fooSourceTask :: DataSource (Struct "foo_state") -> TaskConstructor
 fooSourceTask fooSource = withContext $ do
@@ -78,3 +89,4 @@ fooBarTower = do
   task "fooBarSinkTask" $ fooBarSinkTask sink_f sink_b
 
   addModule fooBarTypes
+  addModule someOtherModule

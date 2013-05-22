@@ -21,6 +21,7 @@ type Name = String
 
 -- | 'Labeled' is used internally to pair a value with a String.
 data Labeled a = Labeled a String deriving (Show)
+
 instance Functor Labeled where
   fmap f (Labeled a s) = Labeled (f a) s
 
@@ -52,35 +53,17 @@ data ChannelRef (area :: Area) = ChannelRef { unChannelRef :: UTChannelRef
 --   'Ivory.Tower.Tower.withChannelEmitter'
 newtype ChannelSource area = ChannelSource { unChannelSource :: ChannelRef area}
 
+newtype ChannelEmitter area = ChannelEmitter { unChannelEmitter :: ChannelRef area}
+
 -- | A wrapper on 'ChannelRef' used designating a Sink, the end of a Channel
 --   which is read from. The only valid operation on a 'ChannelSink' is
 --   'Ivory.Tower.Tower.withChannelReceiver' 
 newtype ChannelSink area   = ChannelSink   { unChannelSink   :: ChannelRef area}
 
--- | An implementation of an emitter to a channel.
---   The only operation valid operation on a 'ChannelEmitter' is 'Channel.emit',
---   which unpacks the implementation into the correct 'Ivory.Language.Ivory'
---   effect scope.
-newtype ChannelEmitter area =
-  ChannelEmitter
-    { unChannelEmitter :: forall s eff cs . (eff `AllocsIn` cs)
-                 => ConstRef s area -> Ivory eff ()
-    }
-
--- | An implementation of a receiver on a channel. The only valid operation on
---   a 'ScheduledReceiver' is 'Ivory.Tower.EventLoop.onChannel', which creates a
---   'EventLoop' given the 'ScheduledReceiver' and a handler in the
---   'Ivory.Language.Ivory' monad.
-data ScheduledReceiver area =
-  ScheduledReceiver
-    { sr_receiver :: forall eff cs s . (eff `AllocsIn` cs)
-                => Ref s area -> Ivory eff IBool
-    , sr_utref :: UTChannelRef
-    , sr_compiledchannel :: CompiledChannel
-    }
+newtype ChannelReceiver area = ChannelReceiver { unChannelReceiver :: ChannelRef area}
 
 -- Compiled Connectors --------------------------------------------------------
-
+-- XXX this is a fucking mess, fix it
 -- | Internal to Tower and 'Ivory.Tower.Compile' implementations
 data CompiledChannelName
   = ChannelName
@@ -142,7 +125,7 @@ data TaskBody = TaskBody { unTaskBody :: forall eff cs . (eff `AllocsIn` cs)
 data EventLoopImpl eff
  =  forall area cs . (eff `AllocsIn` cs, IvoryType area, IvoryZero area) =>
     EventLoopChannel
-      (ScheduledReceiver area)
+      (ChannelReceiver area)
       (ConstRef (Stack cs) area -> Ivory eff ())
 
  | forall cs . (eff `AllocsIn` cs) =>
@@ -191,24 +174,58 @@ newtype Period = Period { unPeriod :: Integer }
 newtype OSGetTimeMillis =
   OSGetTimeMillis { unOSGetTimeMillis :: forall eff . Ivory eff Uint32 }
 
--- Schedule --------------------------------------------------------------------
+-- Task State-------------------------------------------------------------------
 
 -- | Internal only: this is the result of a complete 'Ivory.Tower.Monad.Task'
 --   context. The 'OS' implementation will use this to create a 'TowerSchedule'
-data TaskSchedule =
-  TaskSchedule
-    { tasksch_name      :: Name
-    , tasksch_receivers :: [Labeled UTChannelRef]
-    , tasksch_channels  :: [CompiledChannel]
-    } deriving (Show)
+data TaskSt =
+  TaskSt
+    { taskst_name        :: Name
+    , taskst_emitters    :: [Labeled UTChannelRef]
+    , taskst_receivers   :: [Labeled UTChannelRef]
+    , taskst_datareaders :: [Labeled CompiledChannel] -- xxx fix these CompiledChannels
+    , taskst_datawriters :: [Labeled CompiledChannel]
+    , taskst_periods     :: [Integer]
+    , taskst_stacksize   :: Maybe Integer
+    , taskst_priority    :: Maybe Integer
+    , taskst_moddef      :: ModuleDef
+    , taskst_extern_mods :: [Module]
+    }
 
 -- | Internal only: basis for 'Ivory.Tower.Monad.Task' runner
-emptyTaskSchedule :: Name -> TaskSchedule
-emptyTaskSchedule n = TaskSchedule
-  { tasksch_name = n
-  , tasksch_receivers = []
-  , tasksch_channels = []
+emptyTaskSt :: Name -> TaskSt
+emptyTaskSt n = TaskSt
+  { taskst_name        = n
+  , taskst_emitters    = []
+  , taskst_receivers   = []
+  , taskst_datareaders = []
+  , taskst_datawriters = []
+  , taskst_periods     = []
+  , taskst_stacksize   = Nothing
+  , taskst_priority    = Nothing
+  , taskst_moddef      = return ()
+  , taskst_extern_mods = []
   }
+
+-- Tower State -----------------------------------------------------------------
+
+data TowerSt =
+  TowerSt
+    { towerst_modules   :: [Module]
+    , towerst_dataports :: [CompiledChannel] -- XXX fix these
+    , towerst_channels  :: [UTChannelRef]
+    , towerst_tasksts   :: [TaskSt]
+    }
+
+emptyTowerSt :: TowerSt
+emptyTowerSt = TowerSt
+  { towerst_modules = []
+  , towerst_dataports = []
+  , towerst_channels = []
+  , towerst_tasksts = []
+  }
+
+-- Compiled Schedule -----------------------------------------------------------
 
 -- | Internal only: produced by the 'OS', used for evaluating each 'Scheduled'
 --   context
@@ -216,7 +233,7 @@ data TowerSchedule =
   TowerSchedule
     { scheduleEmitter :: forall area . (IvoryType area)
            => ChannelRef area -> ChannelEmitter area
-    , scheduleTaskBody :: TaskSchedule -> TaskBody -> CompiledTaskBody
+    , scheduleTaskBody :: TaskSt -> TaskBody -> CompiledTaskBody
     , scheduleInitializer :: Def ('[]:->())
     , scheduleModuleDef :: ModuleDef
     }
@@ -231,11 +248,11 @@ data OS =
                       => Name -- Unique dataport name
                       -> DataPort area
     , osGetTimeMillis :: forall eff  . Ivory eff Uint32
-    , osSchedule      :: [UTChannelRef] -> [UncompiledTask] -> TowerSchedule
+    , osSchedule      :: [UTChannelRef] -> [TaskSt] -> TowerSchedule
     , osCreateChannel :: forall area . (IvoryType area)
                       => ChannelRef area
                       -> CompiledChannelName
-                      -> (ScheduledReceiver area)
+                      -> (ChannelReceiver area)
     }
 
 -- Monad Types -----------------------------------------------------------------
@@ -243,23 +260,13 @@ data OS =
 -- | Tower monad: context for instantiating connections (channels & dataports)
 --   and tasks.
 newtype Tower a = Tower
-  { unTower :: WriterT [UncompiledTower] Base a
+  { unTower :: StateT TowerSt Base a
   } deriving (Functor, Monad)
 
 -- | Task monad: context for scheduling channel receivers.
 newtype Task a = Task
-  { unTask :: StateT TaskSchedule Base a
+  { unTask :: StateT TaskSt Tower a
   } deriving (Functor, Monad)
-
--- | Scheduled monad: context for scheduling emitters and unwrapping
---   dataports. Created in the context of a Task using
---   'Ivory.Tower.Monad.withContext'
-newtype Scheduled a = Scheduled
-  { unScheduled :: ReaderT TowerSchedule (StateT TaskResult Base) a
-  } deriving (Functor, Monad)
-
--- | TaskConstructor: shorthand. Required by 'Ivory.Tower.Tower.task'
-type TaskConstructor = Task (Scheduled ())
 
 -- | Base monad: internal only. State on fresh names, Reader on OS
 newtype Base a = Base
@@ -291,90 +298,17 @@ instance BaseUtils Task where
   fresh = Task $ lift fresh
   getOS = Task $ lift getOS
 
-instance BaseUtils Scheduled where
-  fresh = Scheduled $ lift $ lift fresh
-  getOS = Scheduled $ lift $ lift getOS
-
--- | internal only
-data UncompiledTask =
-  UncompiledTask
-    { ut_taskSch        :: TaskSchedule
-    , ut_scheduledMonad :: (Scheduled ())
-    }
-
-ut_name :: UncompiledTask -> Name
-ut_name = tasksch_name . ut_taskSch
-
--- | internal only
-data UncompiledTower = UModule     Module
-                     | UCompiledData CompiledChannel
-                     | UChannelRef (Labeled UTChannelRef)
-                     | UTask       UncompiledTask
 -- Assembly --------------------------------------------------------------------
 
 -- | Rich result of a Tower compilation. Use this to implement various metadata
 --   backends such as 'Ivory.Tower.Graphviz'
+
+-- XXX need to figure out what to do with this mess
 data Assembly =
   Assembly
     { asm_channels   :: [CompiledChannel]
-    , asm_tasks      :: [TaskResult]
+    , asm_tasks      :: [TaskSt]
     , asm_deps       :: [Module]
     , asm_schedule   :: TowerSchedule
     }
-
-instance Show Assembly where
-  show asm = "Assembly " ++ (show (asm_channels asm)) ++ (show (asm_tasks asm))
-
--- Task Types ------------------------------------------------------------------
-
--- | Internal only. Used under the hood in 'Scheduled'
-data TaskResult =
-  TaskResult
-    { taskres_tldef       :: Maybe (Def('[]:->()))
-    , taskres_moddef      :: ModuleDef
-    , taskres_priority    :: Maybe Integer
-    , taskres_stacksize   :: Maybe Integer
-    , taskres_extern_mods :: [Module]
-    , taskres_taggedchs   :: [TaggedChannel]
-    , taskres_periodic    :: [Integer]
-    , taskres_schedule    :: TaskSchedule
-    }
-
-instance Show TaskResult where
-  show tr = "TaskResult { priority = "  ++ (show (taskres_priority tr))
-                   ++ " , stacksize = " ++ (show (taskres_stacksize tr))
-                   ++ " , taggedchs = " ++ (show (taskres_taggedchs tr))
-                   ++ " , periodic = "  ++ (show (taskres_periodic tr))
-                   ++ " , schedule = ("  ++ (show (taskres_schedule tr))
-                   ++ ") }"
-
-taskres_name :: TaskResult -> Name
-taskres_name = tasksch_name . taskres_schedule
-
-emptyTaskResult :: TaskSchedule -> TaskResult
-emptyTaskResult sch = TaskResult
-  { taskres_tldef       = Nothing
-  , taskres_moddef      = return ()
-  , taskres_priority    = Nothing
-  , taskres_stacksize   = Nothing
-  , taskres_extern_mods = []
-  , taskres_taggedchs   = scheduleTaggedChannels sch
-  , taskres_periodic    = []
-  , taskres_schedule    = sch
-  }
-  where
-  scheduleTaggedChannels :: TaskSchedule -> [TaggedChannel]
-  scheduleTaggedChannels s = map tcr (tasksch_receivers s)
-    where
-    tcr (Labeled utref lbl) = TagChannelReceiver lbl utref
-
--- Connector -------------------------------------------------------------------
-
--- | Internal only
-data TaggedChannel
-  = TagChannelEmitter  String UTChannelRef
-  | TagChannelReceiver String UTChannelRef
-  | TagDataReader      String CompiledChannel
-  | TagDataWriter      String CompiledChannel
-  deriving (Show)
 

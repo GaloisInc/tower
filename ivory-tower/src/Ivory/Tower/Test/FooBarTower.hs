@@ -38,8 +38,8 @@ someOtherModule= package "someOtherModule" $ do
   defStruct (Proxy :: Proxy "some_other_type")
 
 
-fooSourceTask :: DataSource (Struct "foo_state") -> TaskConstructor
-fooSourceTask fooSource = withContext $ do
+fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
+fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
     taskModuleDef $ depend fooBarTypes
@@ -50,8 +50,8 @@ fooSourceTask fooSource = withContext $ do
         store (state ~> foo_member) (v + 1)
         writeData fooWriter (constRef state)
 
-barSourceTask :: ChannelSource (Struct "bar_state") -> TaskConstructor
-barSourceTask barSource = withContext $ do
+barSourceTask :: ChannelSource (Struct "bar_state") -> Task ()
+barSourceTask barSource = do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
     taskModuleDef $ depend fooBarTypes
@@ -64,20 +64,19 @@ barSourceTask barSource = withContext $ do
 
 fooBarSinkTask :: DataSink (Struct "foo_state")
                -> ChannelSink (Struct "bar_state")
-               -> TaskConstructor
+               -> Task ()
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
-  withContext $ do
-    fooReader   <- withDataReader    fooSink "fooSink"
-    taskModuleDef $ depend fooBarTypes
-    taskBody $ do
-      latestFoo <- local (istruct [])
-      latestSum <- local (ival 0)
-      handlers $ onChannel barReceiver $ \latestBar -> do
-        readData fooReader latestFoo
-        bmember <- deref (latestBar ~> bar_member)
-        fmember <- deref (latestFoo ~> foo_member)
-        store latestSum (bmember + fmember)
+  fooReader   <- withDataReader    fooSink "fooSink"
+  taskModuleDef $ depend fooBarTypes
+  taskBody $ do
+    latestFoo <- local (istruct [])
+    latestSum <- local (ival 0)
+    handlers $ onChannel barReceiver $ \latestBar -> do
+      readData fooReader latestFoo
+      bmember <- deref (latestBar ~> bar_member)
+      fmember <- deref (latestFoo ~> foo_member)
+      store latestSum (bmember + fmember)
 
 fooBarTower :: Tower ()
 fooBarTower = do

@@ -6,36 +6,10 @@ module Ivory.Tower.Monad where
 
 import MonadLib
 
-import Data.Maybe (mapMaybe)
-
 import Ivory.Language
 
 import Ivory.Tower.Types
 import Ivory.Tower.Channel
-
--- | Everything in this file is internal only
-
--- Uncompiled Tower helper functions -----------------------------------------
-
-uModules :: [UncompiledTower] -> [Module]
-uModules as = mapMaybe aux as
-  where aux (UModule m) = Just m
-        aux _ = Nothing
-
-uCompiledDatas :: [UncompiledTower] -> [CompiledChannel]
-uCompiledDatas as = mapMaybe aux as
-  where aux (UCompiledData c) = Just c
-        aux _ = Nothing
-
-uLbldChannelRefs :: [UncompiledTower] -> [Labeled UTChannelRef]
-uLbldChannelRefs as = mapMaybe aux as
-  where aux (UChannelRef c) = Just c
-        aux _ = Nothing
-
-uTasks :: [UncompiledTower] -> [UncompiledTask]
-uTasks as = mapMaybe aux as
-  where aux (UTask t) = Just t
-        aux _ = Nothing
 
 -- Monad Runners ---------------------------------------------------------------
 
@@ -44,114 +18,76 @@ runBase b os = fst (runM (unBase b) os 0)
 
 runTower :: Tower () -> Base Assembly
 runTower t = do
-  (_, uctowers) <- runWriterT (unTower t)
-  let cdata  = uCompiledDatas uctowers
-      utasks = uTasks uctowers
-      mods   = uModules uctowers
-      chrefs = uLbldChannelRefs uctowers
-      cchannels = concatMap (tasksch_channels . ut_taskSch) utasks
-      allccs = cdata ++ cchannels
-  sch <- schedule (map unLabeled chrefs) utasks
-  assemble sch utasks mods allccs
+  (_, towerst) <- runStateT emptyTowerSt (unTower t)
+  let channels = towerst_channels towerst
+      tasks    = towerst_tasksts  towerst
+  _sch <- schedule channels tasks
+  -- XXX generate code here, but we dont know how yet
+  return undefined -- XXX assembly is unknown right now
+  where
+  schedule :: [UTChannelRef] -> [TaskSt] -> Base TowerSchedule
+  schedule crs tsts = do
+    os <- getOS
+    return $ osSchedule os crs tsts
 
-runUnscheduledTask :: Name -> TaskConstructor -> Base UncompiledTask
-runUnscheduledTask name t = do
-  -- Guarantee uniqueness of names in TaskSchedule and UncompiledTask
+runTask :: Name -> Task () -> Tower TaskSt
+runTask name t = do
   n <- freshname
   let uniquename = name ++ n
-  (scheduledRunner, taskSchedule) <- runStateT (emptyTaskSchedule uniquename) (unTask t)
-  return $ UncompiledTask taskSchedule scheduledRunner
+  (_, taskSt) <- runStateT (emptyTaskSt uniquename) (unTask t)
+  return $ taskSt
 
-runTaskConstructor :: Name -> TaskConstructor -> Tower UncompiledTask
-runTaskConstructor n tc = Tower $ lift $ runUnscheduledTask n tc
-
-runScheduled :: TaskSchedule -> TowerSchedule -> Scheduled () -> Base TaskResult
-runScheduled tskSch twrSch ctask = do
-  (_, a) <- runStateT (emptyTaskResult tskSch)
-                      (runReaderT twrSch (unScheduled ctask))
-  return a
-
--- Assembler -------------------------------------------------------------------
-
-schedule :: [UTChannelRef] -> [UncompiledTask] -> Base TowerSchedule
-schedule crs uts = do
-  os <- getOS
-  return $ osSchedule os crs uts 
-
-assemble :: TowerSchedule -> [UncompiledTask] -> [Module] -> [CompiledChannel]
-         -> Base Assembly
-assemble ts uts ms ccs = do
-  trs <- mapM (assembleTask ts) uts
-  return $ Assembly { asm_channels = ccs
-                    , asm_tasks = trs
-                    , asm_deps = ms
-                    , asm_schedule = ts
-                    }
-
-assembleTask  :: TowerSchedule -> UncompiledTask -> Base TaskResult
-assembleTask towerSchedule (UncompiledTask taskSchedule stsk) =
-  runScheduled taskSchedule towerSchedule stsk
-
--- Transformer -----------------------------------------------------------------
-
--- Convenience function to make code more readable - TaskConstructor is just
--- a type alias to hide the unsightly signature
-withContext :: Scheduled () -> TaskConstructor
-withContext = return
 
 -- Task Getters/Setters --------------------------------------------------------
 
-getTaskSchedule :: Task TaskSchedule
-getTaskSchedule  = Task get
+getTaskSt :: Task TaskSt
+getTaskSt  = Task get
 
-setTaskSchedule :: TaskSchedule -> Task ()
-setTaskSchedule s = Task $ set s
+setTaskSt :: TaskSt -> Task ()
+setTaskSt s = Task $ set s
 
 getTaskName :: Task Name
 getTaskName = do
-  s <- getTaskSchedule
-  return (tasksch_name s) 
+  s <- getTaskSt
+  return (taskst_name s) 
 
 -- Form a name for a channel with an endpoint in this task.
+-- XXX this is stupid, fix it with a reasonable codegen story
 makeChannelName :: ChannelRef area -> Task CompiledChannelName
 makeChannelName typedchannel = do
-  s <- getTaskSchedule
+  s <- getTaskSt
   return (channelNameForEndpoint (untypedChannel typedchannel) s)
 
-taskScheduleAddReceiver :: Labeled UTChannelRef -> Task ()
-taskScheduleAddReceiver r = do
-  s <- getTaskSchedule
-  setTaskSchedule $ s { tasksch_receivers = r : (tasksch_receivers s)}
+taskStAddReceiver :: UTChannelRef -> String -> Task ()
+taskStAddReceiver r lbl = do
+  s <- getTaskSt
+  setTaskSt $ s { taskst_receivers = (Labeled r lbl) : (taskst_receivers s)}
 
-taskScheduleAddCompiledChannel :: CompiledChannel -> Task ()
-taskScheduleAddCompiledChannel c = do
-  s <- getTaskSchedule
-  setTaskSchedule $ s { tasksch_channels = c : (tasksch_channels s)}
+taskStAddEmitter :: UTChannelRef -> String -> Task ()
+taskStAddEmitter r lbl = do
+  s <- getTaskSt
+  setTaskSt $ s { taskst_emitters = (Labeled r lbl) : (taskst_emitters s)}
 
--- Scheduled Getters/Setters ---------------------------------------------------
+taskStAddDataReader :: CompiledChannel -> String -> Task ()
+taskStAddDataReader cc lbl = do
+  s <- getTaskSt
+  setTaskSt $ s { taskst_datareaders = (Labeled cc lbl) : (taskst_datareaders s)}
 
-withTowerSchedule :: Scheduled TowerSchedule
-withTowerSchedule  = Scheduled ask
+taskStAddDataWriter :: CompiledChannel -> String -> Task ()
+taskStAddDataWriter cc lbl = do
+  s <- getTaskSt
+  setTaskSt $ s { taskst_datawriters = (Labeled cc lbl) : (taskst_datawriters s)}
 
-getTaskResult :: Scheduled TaskResult
-getTaskResult  = Scheduled get
-
-setTaskResult :: TaskResult -> Scheduled ()
-setTaskResult r = Scheduled $ set r
-
-addTaggedChannel :: TaggedChannel -> Scheduled ()
-addTaggedChannel tc = do
-  r <- getTaskResult
-  setTaskResult (r { taskres_taggedchs = tc : (taskres_taggedchs r) })
+taskStAddModuleDef :: ModuleDef -> Task ()
+taskStAddModuleDef md = do
+  s <- getTaskSt
+  setTaskSt $ s { taskst_moddef = (taskst_moddef s) >> md }
 
 -- Tower Getters/Setters -------------------------------------------------------
 
-freshChannelRef :: (IvoryType area) => Tower (ChannelRef area)
-freshChannelRef = do
-  n <- freshname
-  return (ChannelRef (UTChannelRef ("channel" ++ n)))
+getTowerSt :: Tower TowerSt
+getTowerSt = Tower get
 
-writeUncompiledComponent :: UncompiledTower -> Tower ()
-writeUncompiledComponent c = Tower $ put [c]
-
+setTowerSt :: TowerSt -> Tower ()
+setTowerSt s = Tower $ set s
 

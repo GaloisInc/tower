@@ -12,13 +12,13 @@ import Ivory.Tower.Types
 untypedChannel :: ChannelRef area -> UTChannelRef
 untypedChannel = unChannelRef
 
--- | Nonblocking emit. Fails silently. Uses the implementation found in
---   'ChannelEmitter'
+-- | Nonblocking emit. Fails silently.
 emit :: (IvoryType area, eff `AllocsIn` cs)
      => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-emit chEmitter r = unChannelEmitter chEmitter r
+emit _chEmitter _ref = undefined -- XXX fix once we have codegen story
 
 -- | Internal use
-channelNameForEndpoint :: UTChannelRef -> TaskSchedule -> CompiledChannelName
-channelNameForEndpoint utchref sch = ChannelName utchref (tasksch_name sch)
+-- XXX get rid of this noise
+channelNameForEndpoint :: UTChannelRef -> TaskSt -> CompiledChannelName
+channelNameForEndpoint utchref sch = ChannelName utchref (taskst_name sch)
 

@@ -4,7 +4,7 @@ module Ivory.Tower
   ( ChannelSource()
   , ChannelSink()
   , ChannelEmitter()
-  , ScheduledReceiver()
+  , ChannelReceiver()
 
   , emit
 
@@ -22,8 +22,6 @@ module Ivory.Tower
   , getTimeMillis
   , Tower()
   , Task()
-  , Scheduled()
-  , TaskConstructor
 
   , OSGetTimeMillis()
 
@@ -34,7 +32,6 @@ module Ivory.Tower
   , channel
   , addModule
 
-  , withContext
   , withPeriod
   , withGetTimeMillis
 

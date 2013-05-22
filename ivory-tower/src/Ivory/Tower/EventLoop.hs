@@ -21,11 +21,11 @@ singEventLoop eli = EventLoop [eli]
 handlers :: EventLoop eff -> Ivory eff (EventLoop eff)
 handlers = return
 
--- | Construct an 'EventLoop' from a 'ScheduledReceiver' and a handler function
+-- | Construct an 'EventLoop' from a 'ChannelReceiver' and a handler function
 --   which takes a ConstRef to the received event and performs an Ivory
 --   computation
 onChannel :: (eff `AllocsIn` cs, IvoryType area, IvoryZero area)
-    => ScheduledReceiver area -> (ConstRef (Stack cs) area -> Ivory eff ())
+    => ChannelReceiver area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
 onChannel ur c = singEventLoop $ EventLoopChannel ur c
 

@@ -22,10 +22,11 @@ tower t os = runBase (runTower t) os
 
 -- | Instantiate a 'TaskConstructor' into a task. Provide a name as a
 --   human-readable debugging aid.
-task :: Name -> TaskConstructor -> Tower ()
-task name tc = do
-  ut <- runTaskConstructor name tc
-  writeUncompiledComponent (UTask ut)
+task :: Name -> Task () -> Tower ()
+task name t = do
+  taskSt <- runTask name t
+  towerSt <- getTowerSt
+  setTowerSt $ towerSt { towerst_tasksts = taskSt : (towerst_tasksts towerSt) }
 
 -- | Instantiate a data port. Result is a matching pair of 'DataSource' and
 --   'DataSink'.
@@ -33,63 +34,88 @@ dataport :: (IvoryType area) => Tower (DataSource area, DataSink area)
 dataport = do
   os <- getOS
   n <- freshname
-  let dp = osDataPort os n
-  writeUncompiledComponent (UCompiledData (data_cch dp))
+  let dp = osDataPort os n -- XXX fix eventaully.
+  s <- getTowerSt
+  setTowerSt $ s { towerst_dataports = (data_cch dp) : (towerst_dataports s) }
   return (DataSource dp, DataSink dp)
 
 -- | Instantiate a channel. Result is a matching pair of 'ChannelSource' and
 --   'ChannelSink'.
 channel :: (IvoryType area) => Tower (ChannelSource area, ChannelSink area)
 channel = do
-  chref <- freshChannelRef
-  let lbld = Labeled (untypedChannel chref) "construction"
-  writeUncompiledComponent (UChannelRef lbld)
+  chref <- freshChannelRef -- XXX kill this fucker
+  st <- getTowerSt
+  setTowerSt $ st { towerst_channels = (untypedChannel chref) : towerst_channels st }
   return (ChannelSource chref, ChannelSink chref)
+  where
+  freshChannelRef :: (IvoryType area) => Tower (ChannelRef area)
+  freshChannelRef = do
+    n <- freshname
+    return (ChannelRef (UTChannelRef ("channel" ++ n))) -- XXX code smell
 
 -- | Add an arbitrary Ivory 'Module' to Tower. The module will be present in the
 --   compiled 'Assembly'. This is provided as a convenience so users do not have
 --   to append to an 'Assembly' at a later stage.
 addModule :: Module -> Tower ()
-addModule m = writeUncompiledComponent (UModule m)
+addModule m = do
+  s <- getTowerSt
+  setTowerSt $ s { towerst_modules = m : (towerst_modules s) }
 
 -- Task functions --------------------------------------------------------------
 
--- | Transform a 'ChannelSink' into a 'ScheduledReceiver' in the context of a
---   'Task'. Receivers must be unwrapped in the 'Task' context so that fan-out
---   of a Channel (the list of its destination 'Task's) is known when
---   'ChannelSource's are unwrapped in the resulting 'Scheduled' context.
+-- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
+--   'Task'.
 --   A human-readable name is provided to aid in debugging.
 withChannelReceiver :: (IvoryType area)
-      => ChannelSink area -> String -> Task (ScheduledReceiver area)
-withChannelReceiver esink label = do
-  let chref = unChannelSink esink
-      utref = untypedChannel chref
-  -- Label receiver ref. Receiver ref used for creating schedule,
-  -- label is only for human-readable display of schedule.
-  taskScheduleAddReceiver (Labeled utref label)
-  os <- getOS
-  chname <- makeChannelName chref
-  -- Compile a channel using this task context to define the endpoint::
-  let rxer = osCreateChannel os chref chname
-      -- Store the compiled channel for build
-  taskScheduleAddCompiledChannel (sr_compiledchannel rxer)
-      -- and use the compiled receiver
+      => ChannelSink area -> String -> Task (ChannelReceiver area)
+withChannelReceiver chsink label = do
+  let chref = unChannelSink chsink
+      rxer  = ChannelReceiver chref
+  taskStAddReceiver (untypedChannel chref) label
   return rxer
 
--- Scheduled Task functions ----------------------------------------------------
+-- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
+--   'Task'.
+--   Provide a human-readable name as a debugging aid.
+withChannelEmitter :: (IvoryType area)
+      => ChannelSource area -> String -> Task (ChannelEmitter area)
+withChannelEmitter chsrc label = do
+  let chref = unChannelSource chsrc
+      emitter = ChannelEmitter chref
+  taskStAddEmitter (untypedChannel chref) label
+  return emitter
 
--- | Create a 'Period' in the context of a 'Scheduled' task. Integer argument
+-- | Transform a 'DataSink' into a 'DataReader' in the context of a
+--   'Task'. Provide a human-readable name as a debugging aid.
+withDataReader :: (IvoryType area)
+               => DataSink area -> String -> Task (DataReader area)
+withDataReader ds label = do
+  let dp = unDataSink ds
+  taskStAddDataReader (data_cch dp) label
+  return (DataReader dp)
+
+-- | Transform a 'DataSource' into a 'DataWriter' in the context of a
+--   'Task '. Provide a human-readable name as a debugging aid.
+withDataWriter :: (IvoryType area)
+               => DataSource area -> String -> Task (DataWriter area)
+withDataWriter ds label = do
+  let dp = unDataSource ds
+  taskStAddDataWriter (data_cch dp) label
+  return (DataWriter dp)
+
+
+-- | Create a 'Period' in the context of a 'Task'. Integer argument
 --   declares period in milliseconds.
-withPeriod :: Integer -> Scheduled Period
+withPeriod :: Integer -> Task Period
 withPeriod per = do
-  res <- getTaskResult
-  setTaskResult (res { taskres_periodic = per : (taskres_periodic res)})
+  st <- getTaskSt
+  setTaskSt $ st { taskst_periods = per : (taskst_periods st)}
   return (Period per)
 
 -- | Create an 'Ivory.Tower.Types.OSGetTimeMillis' in the context of a 'Scheduled'
 --   task. We need to use monadic form because the 'OS' which implements this
 --   function is not available until 'Tower' compilation time.
-withGetTimeMillis :: Scheduled OSGetTimeMillis
+withGetTimeMillis :: Task OSGetTimeMillis
 withGetTimeMillis = do
   os <- getOS
   return (OSGetTimeMillis (osGetTimeMillis os))
@@ -100,47 +126,15 @@ withGetTimeMillis = do
 getTimeMillis :: OSGetTimeMillis -> Ivory eff Uint32
 getTimeMillis = unOSGetTimeMillis
 
--- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
---   'Scheduled' task. Emitters must be unwrapped in the 'Scheduled' context
---   because they use the underlying 'TowerSchedule' created by the 'OS'
---   using the fan-out of Channels described in the 'Task' context.
---   Provide a human-readable name as a debugging aid.
-withChannelEmitter :: (IvoryType area)
-      => ChannelSource area -> String -> Scheduled (ChannelEmitter area)
-withChannelEmitter e label = do
-  let ch = (unChannelSource e)
-  addTaggedChannel (TagChannelEmitter label (untypedChannel ch))
-  sch <- withTowerSchedule
-  return $ scheduleEmitter sch ch
-
--- | Transform a 'DataSink' into a 'DataReader' in the context of a
---   'Scheduled' task. Provide a human-readable name as a debugging aid.
-withDataReader :: (IvoryType area)
-               => DataSink area -> String -> Scheduled (DataReader area)
-withDataReader ds label = do
-  let dp = unDataSink ds
-  addTaggedChannel (TagDataReader label (data_cch dp))
-  return (DataReader dp)
-
--- | Transform a 'DataSource' into a 'DataWriter' in the context of a
---   'Scheduled' task. Provide a human-readable name as a debugging aid.
-withDataWriter :: (IvoryType area)
-               => DataSource area -> String -> Scheduled (DataWriter area)
-withDataWriter ds label = do
-  let dp = unDataSource ds
-  addTaggedChannel (TagDataWriter label (data_cch dp))
-  return (DataWriter dp)
-
--- | Declare a task body for a 'Scheduled' task. The task body is an 'Ivory'
+-- | Declare a task body for a 'Task'. The task body is an 'Ivory'
 --   computation which initializes the task, and gives an 'EventLoop' as its
---   result. The 'EventLoop' computation is compiled inside the 'Scheduled'
---   context to create the implementation of the task loop.
---   Only one 'taskBody' may be given per 'Scheduled' context.
+--   result.
 taskBody :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff (EventLoop eff))
-         -> Scheduled ()
-taskBody tb = do
-  res <- getTaskResult
-  sch <- withTowerSchedule
-  let ctl = scheduleTaskBody sch (taskres_schedule res) (TaskBody tb)
-  setTaskResult $ res { taskres_tldef = Just (unCompiledTaskBody ctl) }
+         -> Task ()
+taskBody tb = do undefined
+                 -- XXX need to work on this...
+ -- res <- getTaskResult
+ -- sch <- withTowerSchedule
+ -- let ctl = scheduleTaskBody sch (taskres_schedule res) (TaskBody tb)
+ -- setTaskResult $ res { taskres_tldef = Just (unCompiledTaskBody ctl) }
 

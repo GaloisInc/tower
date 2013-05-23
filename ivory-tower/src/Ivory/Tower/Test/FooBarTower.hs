@@ -43,9 +43,9 @@ fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
     taskModuleDef $ depend fooBarTypes
-    taskBody $ do
+    taskBody $ \sch -> do
       state <- local (istruct [])
-      handlers $ onTimer p $ \_now -> do
+      eventLoop sch $ onTimer p $ \_now -> do
         v <- deref (state ~> foo_member)
         store (state ~> foo_member) (v + 1)
         writeData fooWriter (constRef state)
@@ -55,12 +55,12 @@ barSourceTask barSource = do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
     taskModuleDef $ depend fooBarTypes
-    taskBody $ do
+    taskBody $ \sch -> do
       state <- local (istruct [])
-      handlers $ onTimer p $ \_now -> do
+      eventLoop sch $ onTimer p $ \_now -> do
         v <- deref (state ~> bar_member)
         store (state ~> bar_member) (v + 1)
-        emit barEmitter (constRef state)
+        emit sch barEmitter (constRef state)
 
 fooBarSinkTask :: DataSink (Struct "foo_state")
                -> ChannelSink (Struct "bar_state")
@@ -69,10 +69,10 @@ fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
   taskModuleDef $ depend fooBarTypes
-  taskBody $ do
+  taskBody $ \sch -> do
     latestFoo <- local (istruct [])
     latestSum <- local (ival 0)
-    handlers $ onChannel barReceiver $ \latestBar -> do
+    eventLoop sch $ onChannel barReceiver $ \latestBar -> do
       readData fooReader latestFoo
       bmember <- deref (latestBar ~> bar_member)
       fmember <- deref (latestFoo ~> foo_member)

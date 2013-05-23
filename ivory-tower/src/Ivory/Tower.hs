@@ -53,7 +53,7 @@ module Ivory.Tower
   -- EventLoop exports:
   , onChannel
   , onTimer
-  , handlers
+  , eventLoop
 
   -- Types
   , Name

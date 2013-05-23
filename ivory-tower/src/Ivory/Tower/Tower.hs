@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Ivory.Tower.Tower where
 
@@ -43,15 +43,12 @@ dataport = do
 --   'ChannelSink'.
 channel :: (IvoryType area) => Tower (ChannelSource area, ChannelSink area)
 channel = do
-  chref <- freshChannelRef -- XXX kill this fucker
+  cid <- freshChannelId
   st <- getTowerSt
-  setTowerSt $ st { towerst_channels = (untypedChannel chref) : towerst_channels st }
-  return (ChannelSource chref, ChannelSink chref)
+  setTowerSt $ st { towerst_channels = cid : towerst_channels st }
+  return (ChannelSource cid, ChannelSink cid)
   where
-  freshChannelRef :: (IvoryType area) => Tower (ChannelRef area)
-  freshChannelRef = do
-    n <- freshname
-    return (ChannelRef (UTChannelRef ("channel" ++ n))) -- XXX code smell
+  freshChannelId = fresh >>= \n -> return (ChannelId n)
 
 -- | Add an arbitrary Ivory 'Module' to Tower. The module will be present in the
 --   compiled 'Assembly'. This is provided as a convenience so users do not have
@@ -69,9 +66,9 @@ addModule m = do
 withChannelReceiver :: (IvoryType area)
       => ChannelSink area -> String -> Task (ChannelReceiver area)
 withChannelReceiver chsink label = do
-  let chref = unChannelSink chsink
-      rxer  = ChannelReceiver chref
-  taskStAddReceiver (untypedChannel chref) label
+  let cid  = unChannelSink chsink
+      rxer = ChannelReceiver cid
+  taskStAddReceiver cid label
   return rxer
 
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
@@ -80,9 +77,9 @@ withChannelReceiver chsink label = do
 withChannelEmitter :: (IvoryType area)
       => ChannelSource area -> String -> Task (ChannelEmitter area)
 withChannelEmitter chsrc label = do
-  let chref = unChannelSource chsrc
-      emitter = ChannelEmitter chref
-  taskStAddEmitter (untypedChannel chref) label
+  let cid     = unChannelSource chsrc
+      emitter = ChannelEmitter cid
+  taskStAddEmitter cid label
   return emitter
 
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
@@ -129,12 +126,13 @@ getTimeMillis = unOSGetTimeMillis
 -- | Declare a task body for a 'Task'. The task body is an 'Ivory'
 --   computation which initializes the task, and gives an 'EventLoop' as its
 --   result.
-taskBody :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff (EventLoop eff))
+taskBody :: (Schedule -> (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ()))
          -> Task ()
-taskBody tb = do undefined
-                 -- XXX need to work on this...
- -- res <- getTaskResult
- -- sch <- withTowerSchedule
- -- let ctl = scheduleTaskBody sch (taskres_schedule res) (TaskBody tb)
- -- setTaskResult $ res { taskres_tldef = Just (unCompiledTaskBody ctl) }
+taskBody k = do
+  s <- getTaskSt
+  case taskst_taskbody s of
+    Nothing -> setTaskSt $ s { taskst_taskbody = Just taskbody }
+    Just _ -> error "terrible thing occured"
+ where
+ taskbody sch = sch_mkTaskBody sch (k sch)
 

@@ -4,7 +4,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Ivory.Tower.Types where
 
@@ -38,36 +38,36 @@ unLabeled (Labeled a _) = a
 -- | The basic reference type underlying all Channels. UT stands for untyped,
 --   this reference type is used when an 'Ivory.Language.Area' type parameter
 --   is not needed.
-data UTChannelRef = UTChannelRef { unUTChannelRef :: Name } deriving (Eq)
+data ChannelId = ChannelId { unChannelId :: Int } deriving (Eq)
 
-instance Show UTChannelRef where
-  show utr = "UTChannelRef " ++ (show (unUTChannelRef utr))
+instance Show ChannelId where
+  show cid = "ChannelId " ++ (show (unChannelId cid))
 
--- | The typed Channel reference type, paramaterized by a type of kind
---   'Ivory.Language.Area'. A simple wrapper on 'UTChannelRef'
-data ChannelRef (area :: Area) = ChannelRef { unChannelRef :: UTChannelRef
-      } deriving (Eq)
-
--- | A wrapper on 'ChannelRef' used designating a Source, the end of a Channel
---   which is written to. The only valid operation on a 'ChannelSource' is
+-- | Designates a Source, the end of a Channel which is written to. The only
+--   valid operation on a 'ChannelSource' is
 --   'Ivory.Tower.Tower.withChannelEmitter'
-newtype ChannelSource area = ChannelSource { unChannelSource :: ChannelRef area}
+newtype ChannelSource (area :: Area) = ChannelSource { unChannelSource :: ChannelId }
 
-newtype ChannelEmitter area = ChannelEmitter { unChannelEmitter :: ChannelRef area}
+-- | Designates a Sink, the end of a Channel which is read from. The only
+--   valid operation on a 'ChannelSink' is
+--   'Ivory.Tower.Tower.withChannelReceiver'
+newtype ChannelSink (area :: Area) = ChannelSink { unChannelSink :: ChannelId }
 
--- | A wrapper on 'ChannelRef' used designating a Sink, the end of a Channel
---   which is read from. The only valid operation on a 'ChannelSink' is
---   'Ivory.Tower.Tower.withChannelReceiver' 
-newtype ChannelSink area   = ChannelSink   { unChannelSink   :: ChannelRef area}
+-- | a 'ChannelSource' which has been registered in the context of a 'Task'
+--   can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
+newtype ChannelEmitter (area :: Area) = ChannelEmitter { unChannelEmitter :: ChannelId }
 
-newtype ChannelReceiver area = ChannelReceiver { unChannelReceiver :: ChannelRef area}
+-- | a 'ChannelSink' which has been registered in the context of a 'Task'
+--   can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
+--   event handler.
+newtype ChannelReceiver (area :: Area) = ChannelReceiver { unChannelReceiver :: ChannelId }
 
 -- Compiled Connectors --------------------------------------------------------
 -- XXX this is a fucking mess, fix it
 -- | Internal to Tower and 'Ivory.Tower.Compile' implementations
 data CompiledChannelName
   = ChannelName
-      { ccn_utchref :: UTChannelRef
+      { ccn_id :: ChannelId
       , ccn_endpoint :: Name
       }
   | DataPortName
@@ -76,7 +76,8 @@ data CompiledChannelName
 
 -- | Internal to Tower and 'Ivory.Tower.Compile' implementations
 compiledChannelName :: CompiledChannelName -> String
-compiledChannelName (ChannelName r e) = (unUTChannelRef r) ++ "_endpoint_" ++ e
+compiledChannelName (ChannelName r e) =
+  "channel_ " ++ (show (unChannelId r)) ++ "_endpoint_" ++ e
 compiledChannelName (DataPortName n)  = n
 
 -- Dataport Types --------------------------------------------------------------
@@ -116,31 +117,17 @@ newtype DataWriter area = DataWriter { unDataWritable :: (DataPort area) }
 
 -- EventLoop types -------------------------------------------------------------
 
--- | Internal only. Wrapped up to make it easier to deal with the types.
-data TaskBody = TaskBody { unTaskBody :: forall eff cs . (eff `AllocsIn` cs)
-                                      => (Ivory eff (EventLoop eff))}
-
--- | Internal only - a single event handler'Ivory.Tower.EventLoop.onChannel'
---   and 'Ivory.Tower.EventLoop.onTimer' wrapped into data.
-data EventLoopImpl eff
- =  forall area cs . (eff `AllocsIn` cs, IvoryType area, IvoryZero area) =>
-    EventLoopChannel
-      (ChannelReceiver area)
-      (ConstRef (Stack cs) area -> Ivory eff ())
-
- | forall cs . (eff `AllocsIn` cs) =>
-   EventLoopPeriod
-    Integer (Uint32 -> Ivory eff ())
-
 -- | Pairs of events and handlers. Event handling will be multiplexed into an
 --   task loop, see 'Ivory.Tower.Tower.taskBody'.
 --   Combine EventLoops to be scheduled as part of the same task loop using
 --   'Data.Monoid'
-newtype EventLoop eff = EventLoop { unEventLoop :: [EventLoopImpl eff] }
+newtype EventLoop eff = EventLoop { unEventLoop :: [(Schedule -> Ivory eff ())] }
 
 instance Monoid (EventLoop eff) where
   mempty = EventLoop []
   mappend el1 el2 = EventLoop ((unEventLoop el1) ++ (unEventLoop el2))
+
+-- Compiled Channel-------------------------------------------------------------
 
 -- | internal only
 data CompiledChannel =
@@ -158,10 +145,6 @@ instance Eq CompiledChannel where
 
 instance Show CompiledChannel where
   show cc = "CompiledChannel " ++ (show (cch_name cc))
-
--- | internal only
-newtype CompiledTaskBody =
-  CompiledTaskBody { unCompiledTaskBody :: Def('[]:->()) }
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
@@ -181,8 +164,8 @@ newtype OSGetTimeMillis =
 data TaskSt =
   TaskSt
     { taskst_name        :: Name
-    , taskst_emitters    :: [Labeled UTChannelRef]
-    , taskst_receivers   :: [Labeled UTChannelRef]
+    , taskst_emitters    :: [Labeled ChannelId]
+    , taskst_receivers   :: [Labeled ChannelId]
     , taskst_datareaders :: [Labeled CompiledChannel] -- xxx fix these CompiledChannels
     , taskst_datawriters :: [Labeled CompiledChannel]
     , taskst_periods     :: [Integer]
@@ -190,6 +173,7 @@ data TaskSt =
     , taskst_priority    :: Maybe Integer
     , taskst_moddef      :: ModuleDef
     , taskst_extern_mods :: [Module]
+    , taskst_taskbody    :: Maybe (Schedule -> Def('[]:->()))
     }
 
 -- | Internal only: basis for 'Ivory.Tower.Monad.Task' runner
@@ -205,6 +189,7 @@ emptyTaskSt n = TaskSt
   , taskst_priority    = Nothing
   , taskst_moddef      = return ()
   , taskst_extern_mods = []
+  , taskst_taskbody    = Nothing
   }
 
 -- Tower State -----------------------------------------------------------------
@@ -213,7 +198,7 @@ data TowerSt =
   TowerSt
     { towerst_modules   :: [Module]
     , towerst_dataports :: [CompiledChannel] -- XXX fix these
-    , towerst_channels  :: [UTChannelRef]
+    , towerst_channels  :: [ChannelId]
     , towerst_tasksts   :: [TaskSt]
     }
 
@@ -227,16 +212,23 @@ emptyTowerSt = TowerSt
 
 -- Compiled Schedule -----------------------------------------------------------
 
--- | Internal only: produced by the 'OS', used for evaluating each 'Scheduled'
---   context
-data TowerSchedule =
-  TowerSchedule
-    { scheduleEmitter :: forall area . (IvoryType area)
-           => ChannelRef area -> ChannelEmitter area
-    , scheduleTaskBody :: TaskSt -> TaskBody -> CompiledTaskBody
-    , scheduleInitializer :: Def ('[]:->())
-    , scheduleModuleDef :: ModuleDef
+data Schedule =
+  Schedule
+    { sch_mkEmitter :: forall area s eff. (IvoryType area)
+           => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+    , sch_mkReceiver :: forall area eff cs . (IvoryType area, eff `AllocsIn` cs)
+           => ChannelReceiver area
+           -> (ConstRef (Stack cs) area -> Ivory eff ())
+           -> Ivory eff ()
+    , sch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
+           => Period
+           -> (Uint32 -> Ivory eff ())
+           -> Ivory eff ()
+    , sch_mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
+           => [Ivory eff ()] -> Ivory eff ()
+    , sch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
     }
+
 
 -- Operating System ------------------------------------------------------------
 
@@ -244,15 +236,11 @@ data TowerSchedule =
 --   implemented by a module in 'Ivory.Tower.Compile'.
 data OS =
   OS
-    { osDataPort      :: forall area . (IvoryType area)
+    { osDataPort      :: forall area . (IvoryType area) -- XXX fix this later.
                       => Name -- Unique dataport name
                       -> DataPort area
+    , osSchedule      :: [ChannelId] -> [TaskSt] -> Schedule
     , osGetTimeMillis :: forall eff  . Ivory eff Uint32
-    , osSchedule      :: [UTChannelRef] -> [TaskSt] -> TowerSchedule
-    , osCreateChannel :: forall area . (IvoryType area)
-                      => ChannelRef area
-                      -> CompiledChannelName
-                      -> (ChannelReceiver area)
     }
 
 -- Monad Types -----------------------------------------------------------------
@@ -300,15 +288,9 @@ instance BaseUtils Task where
 
 -- Assembly --------------------------------------------------------------------
 
--- | Rich result of a Tower compilation. Use this to implement various metadata
---   backends such as 'Ivory.Tower.Graphviz'
-
--- XXX need to figure out what to do with this mess
 data Assembly =
   Assembly
-    { asm_channels   :: [CompiledChannel]
-    , asm_tasks      :: [TaskSt]
-    , asm_deps       :: [Module]
-    , asm_schedule   :: TowerSchedule
+    { asm_towerst :: TowerSt
+    , asm_modules :: [Module]
     }
 

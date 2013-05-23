@@ -19,16 +19,14 @@ runBase b os = fst (runM (unBase b) os 0)
 runTower :: Tower () -> Base Assembly
 runTower t = do
   (_, towerst) <- runStateT emptyTowerSt (unTower t)
+  os <- getOS 
   let channels = towerst_channels towerst
       tasks    = towerst_tasksts  towerst
-  _sch <- schedule channels tasks
+      _sch     = osSchedule os channels tasks -- Does osSchedule need fixing?
   -- XXX generate code here, but we dont know how yet
-  return undefined -- XXX assembly is unknown right now
-  where
-  schedule :: [UTChannelRef] -> [TaskSt] -> Base TowerSchedule
-  schedule crs tsts = do
-    os <- getOS
-    return $ osSchedule os crs tsts
+  return $ Assembly { asm_towerst = towerst
+                    , asm_modules = [] -- XXX codegen goes here
+                    }
 
 runTask :: Name -> Task () -> Tower TaskSt
 runTask name t = do
@@ -51,19 +49,12 @@ getTaskName = do
   s <- getTaskSt
   return (taskst_name s) 
 
--- Form a name for a channel with an endpoint in this task.
--- XXX this is stupid, fix it with a reasonable codegen story
-makeChannelName :: ChannelRef area -> Task CompiledChannelName
-makeChannelName typedchannel = do
-  s <- getTaskSt
-  return (channelNameForEndpoint (untypedChannel typedchannel) s)
-
-taskStAddReceiver :: UTChannelRef -> String -> Task ()
+taskStAddReceiver :: ChannelId -> String -> Task ()
 taskStAddReceiver r lbl = do
   s <- getTaskSt
   setTaskSt $ s { taskst_receivers = (Labeled r lbl) : (taskst_receivers s)}
 
-taskStAddEmitter :: UTChannelRef -> String -> Task ()
+taskStAddEmitter :: ChannelId -> String -> Task ()
 taskStAddEmitter r lbl = do
   s <- getTaskSt
   setTaskSt $ s { taskst_emitters = (Labeled r lbl) : (taskst_emitters s)}

@@ -48,7 +48,7 @@ fooSourceTask fooSource = do
       eventLoop sch $ onTimer p $ \_now -> do
         v <- deref (state ~> foo_member)
         store (state ~> foo_member) (v + 1)
-        writeData fooWriter (constRef state)
+        writeData sch fooWriter (constRef state)
 
 barSourceTask :: ChannelSource (Struct "bar_state") -> Task ()
 barSourceTask barSource = do
@@ -73,7 +73,7 @@ fooBarSinkTask fooSink barSink = do
     latestFoo <- local (istruct [])
     latestSum <- local (ival 0)
     eventLoop sch $ onChannel barReceiver $ \latestBar -> do
-      readData fooReader latestFoo
+      readData sch fooReader latestFoo
       bmember <- deref (latestBar ~> bar_member)
       fmember <- deref (latestFoo ~> foo_member)
       store latestSum (bmember + fmember)

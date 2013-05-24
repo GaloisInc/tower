@@ -35,10 +35,8 @@ unLabeled (Labeled a _) = a
 --   best-effort asynchronous communication. We'll be working on better
 --   guarantees on scheduling soon...
 
--- | The basic reference type underlying all Channels. UT stands for untyped,
---   this reference type is used when an 'Ivory.Language.Area' type parameter
---   is not needed.
-data ChannelId = ChannelId { unChannelId :: Int } deriving (Eq)
+-- | The basic reference type underlying all Channels. Internal only.
+newtype ChannelId = ChannelId { unChannelId :: Int } deriving (Eq)
 
 instance Show ChannelId where
   show cid = "ChannelId " ++ (show (unChannelId cid))
@@ -62,58 +60,33 @@ newtype ChannelEmitter (area :: Area) = ChannelEmitter { unChannelEmitter :: Cha
 --   event handler.
 newtype ChannelReceiver (area :: Area) = ChannelReceiver { unChannelReceiver :: ChannelId }
 
--- Compiled Connectors --------------------------------------------------------
--- XXX this is a fucking mess, fix it
--- | Internal to Tower and 'Ivory.Tower.Compile' implementations
-data CompiledChannelName
-  = ChannelName
-      { ccn_id :: ChannelId
-      , ccn_endpoint :: Name
-      }
-  | DataPortName
-     { ccn_dataportname :: Name }
-  deriving (Eq, Show)
-
--- | Internal to Tower and 'Ivory.Tower.Compile' implementations
-compiledChannelName :: CompiledChannelName -> String
-compiledChannelName (ChannelName r e) =
-  "channel_ " ++ (show (unChannelId r)) ++ "_endpoint_" ++ e
-compiledChannelName (DataPortName n)  = n
-
 -- Dataport Types --------------------------------------------------------------
 
--- | Underlying type of all Tower Data. DataPorts are communication primitives
---   in Tower which have no impact on the schedule - they are essentially just
---   shared state.
-data DataPort area =
-  DataPort
-    { data_name  :: Name
-    , data_read  :: forall s eff cs . (eff `AllocsIn` cs)
-                 => Ref s area -> Ivory eff ()
-    , data_write :: forall s eff cs . (eff `AllocsIn` cs)
-                 => ConstRef s area -> Ivory eff ()
-    , data_cch   :: CompiledChannel
-    }
+-- | The basic reference type underlying all Dataports. Internal only.
+newtype DataportId = DataportId { unDataportId :: Int } deriving (Eq)
 
--- | A wrapper on 'DataPort' used designating a Source, the end of a 'DataPort'
+instance Show DataportId where
+  show dpid = "DataportId " ++ (show (unDataportId dpid))
+
+-- | Designates a Dataport Source, the end of a Dataport
 --   which is written to. The only valid operation on 'DataSource' is
 --   'Ivory.Tower.Tower.withDataWriter'
-newtype DataSource area = DataSource { unDataSource :: (DataPort area) }
+newtype DataSource (area :: Area) = DataSource { unDataSource :: DataportId  }
 
--- | A wrapper on 'DataPort' used designating a Sink, the end of a 'DataPort'
+-- | Designates a Dataport sink, the end of a Dataport
 --   which is read from. The only valid operation on 'DataSink' is
 --   'Ivory.Tower.Tower.withDataReader'
-newtype DataSink area   = DataSink   { unDataSink   :: (DataPort area) }
+newtype DataSink (area :: Area) = DataSink { unDataSink   :: DataportId }
 
 -- | An implementation of a reader on a channel. The only valid operation on
 --   a 'DataReader' is 'Ivory.Tower.DataPort.readData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-newtype DataReader area = DataReader { unDataReadable :: (DataPort area) }
+newtype DataReader (area :: Area) = DataReader { unDataReadable :: DataportId }
 
 -- | An implementation of a writer on a channel. The only valid operation on
 --   a 'DataWriter' is 'Ivory.Tower.DataPort.writeData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-newtype DataWriter area = DataWriter { unDataWritable :: (DataPort area) }
+newtype DataWriter (area :: Area) = DataWriter { unDataWritable :: DataportId }
 
 -- EventLoop types -------------------------------------------------------------
 
@@ -126,25 +99,6 @@ newtype EventLoop eff = EventLoop { unEventLoop :: [(Schedule -> Ivory eff (Ivor
 instance Monoid (EventLoop eff) where
   mempty = EventLoop []
   mappend el1 el2 = EventLoop ((unEventLoop el1) ++ (unEventLoop el2))
-
--- Compiled Channel-------------------------------------------------------------
-
--- | internal only
-data CompiledChannel =
-  CompiledChannel
-    { cch_name        :: CompiledChannelName
-    , cch_initializer :: Def('[]:->())
-    , cch_moddefs     :: ModuleDef
-    , cch_type        :: String
-    }
-
-instance Eq CompiledChannel where
-  -- Invariant: only compare valid compiled channels created under the same tower
-  -- base monad. (hope this works out?)
-  c1 == c2 = (cch_name c1) == (cch_name c2)
-
-instance Show CompiledChannel where
-  show cc = "CompiledChannel " ++ (show (cch_name cc))
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
@@ -166,8 +120,8 @@ data TaskSt =
     { taskst_name        :: Name
     , taskst_emitters    :: [Labeled ChannelId]
     , taskst_receivers   :: [Labeled ChannelId]
-    , taskst_datareaders :: [Labeled CompiledChannel] -- xxx fix these CompiledChannels
-    , taskst_datawriters :: [Labeled CompiledChannel]
+    , taskst_datareaders :: [Labeled DataportId]
+    , taskst_datawriters :: [Labeled DataportId]
     , taskst_periods     :: [Integer]
     , taskst_stacksize   :: Maybe Integer
     , taskst_priority    :: Maybe Integer
@@ -198,10 +152,12 @@ emptyTaskSt n = TaskSt
 
 data TowerSt =
   TowerSt
-    { towerst_modules   :: [Module]
-    , towerst_dataports :: [CompiledChannel] -- XXX fix these
-    , towerst_channels  :: [ChannelId]
-    , towerst_tasksts   :: [TaskSt]
+    { towerst_modules      :: [Module]
+    , towerst_dataports    :: [DataportId]
+    , towerst_channels     :: [ChannelId]
+    , towerst_tasksts      :: [TaskSt]
+    , towerst_dataportinit :: [Def('[]:->())]
+    , towerst_moddef       :: ModuleDef
     }
 
 emptyTowerSt :: TowerSt
@@ -210,13 +166,19 @@ emptyTowerSt = TowerSt
   , towerst_dataports = []
   , towerst_channels = []
   , towerst_tasksts = []
+  , towerst_dataportinit = []
+  , towerst_moddef = return ()
   }
 
 -- Compiled Schedule -----------------------------------------------------------
 
 data Schedule =
   Schedule
-    { sch_mkEmitter :: forall area s eff cs. (IvoryType area, eff `AllocsIn` cs)
+    { sch_mkDataReader :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
+                       => DataReader area -> Ref s area -> Ivory eff ()
+    , sch_mkDataWriter :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
+                       => DataWriter area -> ConstRef s area -> Ivory eff () 
+    , sch_mkEmitter :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
            => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
     , sch_mkReceiver :: forall area eff cs . (IvoryType area, IvoryZero area, eff `AllocsIn` cs)
            => ChannelReceiver area
@@ -238,9 +200,9 @@ data Schedule =
 --   implemented by a module in 'Ivory.Tower.Compile'.
 data OS =
   OS
-    { os_mkDataPort    :: forall area . (IvoryType area) -- XXX fix this later.
-                       => Name -- Unique dataport name
-                       -> DataPort area
+    { os_mkDataPort    :: forall area . (IvoryType area) 
+                       => DataSource area
+                       -> (Def ('[]:->()), ModuleDef)
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt
     -- (really just for the name) and a ChannelReceiver.

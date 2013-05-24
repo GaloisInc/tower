@@ -9,7 +9,6 @@ module Ivory.Tower
   , emit
 
   -- DataPort exports:
-  , DataPort()
   , DataSource()
   , DataSink()
   , DataReader()

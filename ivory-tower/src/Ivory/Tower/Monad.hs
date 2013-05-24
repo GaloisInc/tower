@@ -67,12 +67,12 @@ taskStAddEmitter r lbl = do
   s <- getTaskSt
   setTaskSt $ s { taskst_emitters = (Labeled r lbl) : (taskst_emitters s)}
 
-taskStAddDataReader :: CompiledChannel -> String -> Task ()
+taskStAddDataReader :: DataportId -> String -> Task ()
 taskStAddDataReader cc lbl = do
   s <- getTaskSt
   setTaskSt $ s { taskst_datareaders = (Labeled cc lbl) : (taskst_datareaders s)}
 
-taskStAddDataWriter :: CompiledChannel -> String -> Task ()
+taskStAddDataWriter :: DataportId -> String -> Task ()
 taskStAddDataWriter cc lbl = do
   s <- getTaskSt
   setTaskSt $ s { taskst_datawriters = (Labeled cc lbl) : (taskst_datawriters s)}

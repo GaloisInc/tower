@@ -12,12 +12,12 @@ import Ivory.Tower.Types
 -- | Atomic read of shared data, copying to local reference. Always succeeds.
 --   Takes a 'DataReader'.
 readData :: (eff `AllocsIn` cs, IvoryType area)
-         => DataReader area -> Ref s area -> Ivory eff ()
-readData (DataReader dp) r = data_read dp r
+         => Schedule -> DataReader area -> Ref s area -> Ivory eff ()
+readData sch reader ref = sch_mkDataReader sch reader ref
 
 -- | Atomic write to shared data, copying from local reference. Always
 --   succeeds. Takes a 'DataWriter'.
 writeData :: (eff `AllocsIn` cs, IvoryType area)
-          => DataWriter area -> ConstRef s area -> Ivory eff ()
-writeData (DataWriter dp) r = data_write dp r
+          => Schedule -> DataWriter area -> ConstRef s area -> Ivory eff ()
+writeData sch writer ref = sch_mkDataWriter sch writer ref
 

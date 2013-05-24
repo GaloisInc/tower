@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE KindSignatures #-}
@@ -9,8 +10,6 @@ module Ivory.Tower.Tower where
 import Ivory.Language
 
 import Ivory.Tower.Types
-
-import Ivory.Tower.Channel
 import Ivory.Tower.Monad
 
 -- Public Tower functions ------------------------------------------------------
@@ -30,14 +29,28 @@ task name t = do
 
 -- | Instantiate a data port. Result is a matching pair of 'DataSource' and
 --   'DataSink'.
-dataport :: (IvoryType area) => Tower (DataSource area, DataSink area)
+dataport :: forall area . (IvoryType area) => Tower (DataSource area, DataSink area)
 dataport = do
-  os <- getOS
-  n <- freshname
-  let dp = os_mkDataPort os n -- XXX fix eventaully.
-  s <- getTowerSt
-  setTowerSt $ s { towerst_dataports = (data_cch dp) : (towerst_dataports s) }
-  return (DataSource dp, DataSink dp)
+  n <- fresh
+  let dpid = DataportId n
+      (source, sink) = (DataSource dpid, DataSink dpid)
+  describeDataport dpid
+  codegenDataport source
+  return (source, sink)
+  where
+  codegenDataport :: (IvoryType area) => DataSource area -> Tower ()
+  codegenDataport datasource = do
+    os <- getOS
+    let (initializer,mdef) = os_mkDataPort os datasource
+    s <- getTowerSt
+    setTowerSt $ s { towerst_dataportinit = initializer : (towerst_dataportinit s)
+                   , towerst_moddef       = mdef >> (towerst_moddef s) }
+
+  describeDataport :: DataportId -> Tower ()
+  describeDataport dpid = do
+    s <- getTowerSt
+    setTowerSt $ s { towerst_dataports = dpid : (towerst_dataports s) }
+
 
 -- | Instantiate a channel. Result is a matching pair of 'ChannelSource' and
 --   'ChannelSink'.
@@ -102,18 +115,18 @@ withChannelEmitter chsrc label = do
 withDataReader :: (IvoryType area)
                => DataSink area -> String -> Task (DataReader area)
 withDataReader ds label = do
-  let dp = unDataSink ds
-  taskStAddDataReader (data_cch dp) label
-  return (DataReader dp)
+  let dpid = unDataSink ds
+  taskStAddDataReader dpid label
+  return (DataReader dpid)
 
 -- | Transform a 'DataSource' into a 'DataWriter' in the context of a
 --   'Task '. Provide a human-readable name as a debugging aid.
 withDataWriter :: (IvoryType area)
                => DataSource area -> String -> Task (DataWriter area)
 withDataWriter ds label = do
-  let dp = unDataSource ds
-  taskStAddDataWriter (data_cch dp) label
-  return (DataWriter dp)
+  let dpid = unDataSource ds
+  taskStAddDataWriter dpid label
+  return (DataWriter dpid)
 
 
 -- | Create a 'Period' in the context of a 'Task'. Integer argument

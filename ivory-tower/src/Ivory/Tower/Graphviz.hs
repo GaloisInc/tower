@@ -5,13 +5,9 @@ module Ivory.Tower.Graphviz
   ) where
 
 import Ivory.Tower.Types
-import Ivory.Tower.Channel (channelNameForEndpoint)
 
 import System.IO
 import Text.PrettyPrint.Leijen
-
-import Data.List (nubBy,find,(\\))
-import Data.Maybe (catMaybes)
 
 -- | Write a Tower 'Assembly' to a dot file
 graphvizToFile :: FilePath -> Assembly -> IO ()
@@ -28,139 +24,127 @@ graphvizDoc a = vsep $
   , text "}"
   ]
   where
-  body = annotations <$> vsep task_ns
-                     <$> vsep dpNodes
-                     <$> vsep chNodes
-                     <$> vsep es
+  towerst = asm_towerst a
+  tasks = towerst_tasksts towerst
+  body =  annotations
+      <$> text "// task nodes"
+      <$> vsep (map taskNode     tasks)
+      <$> text "// dataport nodes"
+      <$> vsep (map dataportNode (towerst_dataports towerst))
+      <$> text "// channel nodes"
+      <$> vsep (map channelNode  (towerst_channels towerst))
+      <$> text ( "// emitter edges" ++ (show (concatMap taskst_emitters tasks)))
+      <$> vsep (withEach emitterEdge  taskst_emitters    tasks)
+      <$> text "// receiver edges"
+      <$> vsep (withEach receiverEdge taskst_receivers   tasks)
+      <$> text "// data reader edges"
+      <$> vsep (withEach readerEdge   taskst_datareaders tasks)
+      <$> text "// data writer edges"
+      <$> vsep (withEach writerEdge   taskst_datawriters tasks)
+      <$> text "// end"
+
+  withEach f accessor ts = -- please excuse this, need coffee:
+    concat $ map (\t -> map (\a -> f t a) (accessor t)) ts
+
   annotations = text "graph [rankdir=LR];"
             <$> text "node [shape=record];"
-  ts = asm_tasks a
-  task_ns = map taskNode ts
-  dataports = uniqueDataports ts
-  dpNodes = map dataportNode dataports
-  chNodes = map channelNode ((asm_channels a) \\ dataports)
-  es      = concatMap (channelEdge (asm_channels a)) (pairedEdges ts)
 
--- Assembly processing ---------------------------------------------------------
+-- Edge Naming Convention ------------------------------------------------------
 
-pairedEdges :: [TaskResult] -> [(TaskResult, TaggedChannel)]
-pairedEdges ts = [ (t, c) | t <- ts, c <- taskres_taggedchs t ]
+chanName :: ChannelId -> String
+chanName (ChannelId chid) = "channel" ++ (show chid)
 
--- list of dataport records, ignoring the impl field
--- invariant: dataports created with unique freshnames (enforced by monad)
-compiledChannelEq :: CompiledChannel -> CompiledChannel -> Bool
-compiledChannelEq a b = (cch_name a) == (cch_name b)
-
-uniqueDataports :: [TaskResult] -> [CompiledChannel]
-uniqueDataports ts = nubBy compiledChannelEq $ concatMap selectDataports ts
-  where
-  selectDataports :: TaskResult-> [CompiledChannel]
-  selectDataports tsk = catMaybes (map aux (taskres_taggedchs tsk))
-    where
-    aux (TagDataWriter _ cc) = Just cc
-    aux (TagDataReader _ cc) = Just cc
-    aux _ = Nothing
-
+dataportName :: DataportId -> String
+dataportName (DataportId dpid) = "dataport" ++ (show dpid)
 
 -- Task Node -------------------------------------------------------------------
-taskNode :: TaskResult -> Doc
+taskNode :: TaskSt -> Doc
 taskNode t =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
-  name = text $ taskres_name t
+  name = text $ taskst_name t
   contents = hcat $ punctuate (text "|") fields
   fields = [ name <+> text ":: task" ]
         ++ prior ++ ssize
-        ++ map periodic_field (taskres_periodic t)
-        ++ map taggedch_field (taskres_taggedchs t)
+        ++ map periodic_field (taskst_periods t)
+        ++ map emitter_field  (taskst_emitters t)
+        ++ map receiver_field (taskst_receivers t)
+        ++ map reader_field   (taskst_datareaders t)
+        ++ map writer_field   (taskst_datawriters t)
 
   periodic_field p = text ("periodic @ " ++ (show p) ++ "ms")
 
-  prior = case taskres_priority t of
+  prior = case taskst_priority t of
     Just p -> [ text ("priority " ++ (show p)) ]
     Nothing -> []
 
-  ssize = case taskres_stacksize t of
+  ssize = case taskst_stacksize t of
     Just s -> [ text ("stack size " ++ (show s)) ]
     Nothing -> []
 
-  taggedch_field :: TaggedChannel -> Doc
-  taggedch_field ch = angles (n ch) <+> (descr ch)
-    where
-    n (TagChannelEmitter  _ utr) = text (unUTChannelRef utr)
-    n (TagChannelReceiver _ utr) = text (compiledChannelName
-                                          (channelNameForEndpoint utr (taskres_schedule t)))
-    n (TagDataReader _ cc) = text (compiledChannelName (cch_name cc))
-    n (TagDataWriter _ cc) = text (compiledChannelName (cch_name cc))
-    descr (TagChannelEmitter  d _) = text d <+> text "emitter"
-    descr (TagChannelReceiver d _) = text d <+> text "receiver"
-    descr (TagDataReader      d _) = text d <+> text "reader"
-    descr (TagDataWriter      d _) = text d <+> text "writer"
+  edge_field :: String -> String -> String -> Doc
+  edge_field name d1 d2 =
+    angles (text name) <+> text d1 <+> text d2
+
+  emitter_field (Labeled chid descr) =
+    edge_field (chanName chid)  descr "emitter"
+  receiver_field (Labeled chid descr) =
+    edge_field (chanName chid) descr "receiver"
+  reader_field (Labeled dpid descr) =
+    edge_field (dataportName  dpid) descr "reader"
+  writer_field (Labeled dpid descr) =
+    edge_field (dataportName dpid) descr "writer"
 
 -- Dataport, Channel Nodes -----------------------------------------------------
 
--- DataPortRecord represents just the name and type of a dataport
-dataportNode :: CompiledChannel -> Doc
+dataportNode :: DataportId -> Doc
 dataportNode d =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
   contents = title <+> text ("|{<source>Source|<sink>Sink}")
-  name = text (compiledChannelName (cch_name d))
-  title = text "DataPort ::"
-             <+> escapeQuotes (drop 2 (cch_type d)) -- drop Ty prefix
+  name = text $ dataportName d
+  title = text "DataPort"
 
--- ChannelRecord represents just the name and type of a channel
-channelNode :: CompiledChannel -> Doc
+--  title = text "DataPort ::"
+--             <+> escapeQuotes (drop 2 (cch_type d)) -- drop Ty prefix
+
+channelNode :: ChannelId -> Doc
 channelNode c =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
   contents = title <+> text ("|{<source>Source|<sink>Sink}")
-  name = text (compiledChannelName (cch_name c))
-  title = text "Channel ::"
-             <+> escapeQuotes (drop 2 (cch_type c)) -- drop Ty prefix
+  name = text $ chanName c
+  title = text "Channel"
+
+--  title = text "Channel ::"
+--             <+> escapeQuotes (drop 2 (cch_type c)) -- drop Ty prefix
 
 -- Edges -----------------------------------------------------------------------
 
-channelEdge :: [CompiledChannel] -> (TaskResult, TaggedChannel) -> [Doc]
-channelEdge cs (t,c) = map arrow edges
+
+emitterEdge :: TaskSt -> Labeled ChannelId -> Doc
+emitterEdge task (Labeled chan _) = arrow tnode cnode
   where
-  arrow (a,b) = a <+> text "->" <+> b <+> semi
-  edges = case c of
-    TagChannelEmitter  _ utref -> map chansrc (fanoutcchs utref) -- XXX fan out!
-    TagChannelReceiver _ utref -> [datasink (findcch utref t)]
-    TagDataWriter      _ cch   -> [datasrc cch]
-    TagDataReader      _ cch   -> [datasink cch]
-  -- data uses simple fully qualified names
-  datasrc cch = ( qual (taskres_name t) n, qual n "source" )
-    where n = compiledChannelName (cch_name cch)
-  datasink cch = ( qual n "sink", qual (taskres_name t) n)
-    where n = compiledChannelName (cch_name cch)
+  tnode = qual (taskst_name task) (chanName chan)
+  cnode = qual (chanName chan) "source"
 
-  -- channels use the ref name at the task and the fully qualified name at the
-  -- connector, because source tasks don't know all of the endpoints at creation
-  -- time.
-  chansink cch = ( qual fullname "sink", qual (taskres_name t) (chanrefname cch))
-    where fullname = compiledChannelName (cch_name cch)
-  chansrc cch = ( qual (taskres_name t) (chanrefname cch), qual fullname "source" )
-    where fullname = compiledChannelName (cch_name cch)
-  chanrefname cch = case cch_name cch of
-        ChannelName r _ -> unUTChannelRef r
-        _ -> error ("impossible - dataport name should not be in " ++
-                    "graphviz channel tagged edge")
+receiverEdge :: TaskSt -> Labeled ChannelId -> Doc
+receiverEdge task (Labeled chan _) = arrow cnode tnode
+  where
+  cnode = qual (chanName chan) "sink"
+  tnode = qual (taskst_name task) (chanName chan)
 
-  -- Find the compiled channel
-  findcch :: UTChannelRef -> TaskResult -> CompiledChannel
-  findcch ref taskres = maybe (error "impossible") id $ find aux cs
-    where
-    aux cch = (cch_name cch) ==
-      (channelNameForEndpoint ref (taskres_schedule taskres))
-  -- Find all compiled channels which are formed from this ref.
-  fanoutcchs :: UTChannelRef -> [CompiledChannel]
-  fanoutcchs ref = filter aux cs
-    where
-    aux cch = case cch_name cch of
-       (ChannelName r _) -> r == ref
-       _ -> False
+writerEdge :: TaskSt -> Labeled DataportId -> Doc
+writerEdge task (Labeled dp _) = arrow tnode dnode
+  where
+  tnode = qual (taskst_name task) (dataportName dp)
+  dnode = qual (dataportName dp) "source"
+
+readerEdge :: TaskSt -> Labeled DataportId -> Doc
+readerEdge task (Labeled dp _) = arrow dnode tnode
+  where
+  dnode = qual (dataportName dp) "sink"
+  tnode = qual (taskst_name task) (dataportName dp)
 
 -- Utility functions -----------------------------------------------------------
 
@@ -173,3 +157,6 @@ escapeQuotes x = text $ aux x -- I know this is probably terrible (pch)
 
 qual :: String -> String -> Doc
 qual prefix name = text prefix <> colon <> text name
+
+arrow :: Doc -> Doc -> Doc
+arrow a b = a <+> text "->" <+> b <+> semi

@@ -17,7 +17,7 @@ library
                         Ivory.Tower.Monad,
                         Ivory.Tower.Types,
 
-                       -- Ivory.Tower.Graphviz,
+                        Ivory.Tower.Graphviz,
 
                         Ivory.Tower.Test.FooBarTower
 

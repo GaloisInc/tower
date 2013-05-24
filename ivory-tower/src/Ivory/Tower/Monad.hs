@@ -9,7 +9,6 @@ import MonadLib
 import Ivory.Language
 
 import Ivory.Tower.Types
-import Ivory.Tower.Channel
 
 -- Monad Runners ---------------------------------------------------------------
 
@@ -22,10 +21,9 @@ runTower t = do
   os <- getOS 
   let channels = towerst_channels towerst
       tasks    = towerst_tasksts  towerst
-      _sch     = osSchedule os channels tasks -- Does osSchedule need fixing?
-  -- XXX generate code here, but we dont know how yet
+  -- XXX generate code here
   return $ Assembly { asm_towerst = towerst
-                    , asm_modules = [] -- XXX codegen goes here
+                    , asm_modules = []
                     }
 
 runTask :: Name -> Task () -> Tower TaskSt
@@ -73,6 +71,11 @@ taskStAddModuleDef :: ModuleDef -> Task ()
 taskStAddModuleDef md = do
   s <- getTaskSt
   setTaskSt $ s { taskst_moddef = (taskst_moddef s) >> md }
+
+taskStAddChannelInit :: Def('[]:->()) -> Task ()
+taskStAddChannelInit ci = do
+  s <- getTaskSt
+  setTaskSt $ s { taskst_channelinit = ci : (taskst_channelinit s) }
 
 -- Tower Getters/Setters -------------------------------------------------------
 

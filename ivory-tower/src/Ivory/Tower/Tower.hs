@@ -34,7 +34,7 @@ dataport :: (IvoryType area) => Tower (DataSource area, DataSink area)
 dataport = do
   os <- getOS
   n <- freshname
-  let dp = osDataPort os n -- XXX fix eventaully.
+  let dp = os_mkDataPort os n -- XXX fix eventaully.
   s <- getTowerSt
   setTowerSt $ s { towerst_dataports = (data_cch dp) : (towerst_dataports s) }
   return (DataSource dp, DataSink dp)
@@ -63,12 +63,20 @@ addModule m = do
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
-withChannelReceiver :: (IvoryType area)
+withChannelReceiver :: (IvoryType area, IvoryZero area)
       => ChannelSink area -> String -> Task (ChannelReceiver area)
 withChannelReceiver chsink label = do
   let cid  = unChannelSink chsink
       rxer = ChannelReceiver cid
+  -- Register the receiver into the graph context
   taskStAddReceiver cid label
+  -- Generate code implementing the channel for this receiver.
+  os <- getOS
+  st <- getTaskSt
+  case os_mkChannel os st rxer of
+    (channelinit,mdef) -> do
+      taskStAddChannelInit channelinit
+      taskStAddModuleDef mdef
   return rxer
 
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
@@ -115,7 +123,7 @@ withPeriod per = do
 withGetTimeMillis :: Task OSGetTimeMillis
 withGetTimeMillis = do
   os <- getOS
-  return (OSGetTimeMillis (osGetTimeMillis os))
+  return (OSGetTimeMillis (os_getTimeMillis os))
 
 -- | Use an 'Ivory.Tower.Types.OSGetTimeMillis' implementation in an Ivory
 --   monad context. We unwrap so the implementation can bind to the

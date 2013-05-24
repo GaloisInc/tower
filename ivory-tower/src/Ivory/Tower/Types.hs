@@ -172,6 +172,7 @@ data TaskSt =
     , taskst_stacksize   :: Maybe Integer
     , taskst_priority    :: Maybe Integer
     , taskst_moddef      :: ModuleDef
+    , taskst_channelinit :: [Def('[]:->())]
     , taskst_extern_mods :: [Module]
     , taskst_taskbody    :: Maybe (Schedule -> Def('[]:->()))
     }
@@ -188,6 +189,7 @@ emptyTaskSt n = TaskSt
   , taskst_stacksize   = Nothing
   , taskst_priority    = Nothing
   , taskst_moddef      = return ()
+  , taskst_channelinit = []
   , taskst_extern_mods = []
   , taskst_taskbody    = Nothing
   }
@@ -236,11 +238,23 @@ data Schedule =
 --   implemented by a module in 'Ivory.Tower.Compile'.
 data OS =
   OS
-    { osDataPort      :: forall area . (IvoryType area) -- XXX fix this later.
-                      => Name -- Unique dataport name
-                      -> DataPort area
-    , osSchedule      :: [ChannelId] -> [TaskSt] -> Schedule
-    , osGetTimeMillis :: forall eff  . Ivory eff Uint32
+    { os_mkDataPort    :: forall area . (IvoryType area) -- XXX fix this later.
+                       => Name -- Unique dataport name
+                       -> DataPort area
+
+    -- Generate code needed to implement Channel, given the endpoint TaskSt
+    -- (really just for the name) and a ChannelReceiver.
+    , os_mkChannel     :: TaskSt
+                       -> (forall area . (IvoryType area, IvoryZero area)
+                           => ChannelReceiver area)
+                       -> (Def ('[]:->()), ModuleDef)
+
+    -- Generate a Schedule for a particular Task, given the set of all channels
+    -- and all tasks (a fully described graph of channels)
+    , os_mkSchedule    :: [ChannelId] -> [TaskSt] -> TaskSt -> Schedule
+
+    -- Utility function
+    , os_getTimeMillis :: forall eff . Ivory eff Uint32
     }
 
 -- Monad Types -----------------------------------------------------------------

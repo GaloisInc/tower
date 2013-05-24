@@ -9,17 +9,11 @@ module Ivory.Tower.Compile.FreeRTOS
   , os
   ) where
 
-import Data.Maybe (catMaybes)
-
 import Ivory.Language
-import qualified Ivory.Language.Type as I
 import Ivory.Tower.Types
-import Ivory.Tower.Channel
-import Ivory.Tower.Tower
-
+import Ivory.Tower.Tower (assembleTower)
 
 import qualified Ivory.OS.FreeRTOS.Task  as Task
-import qualified Ivory.OS.FreeRTOS.Queue as Q
 import qualified Ivory.OS.FreeRTOS       as FreeRTOS
 
 import Ivory.Tower.Compile.FreeRTOS.SharedState
@@ -27,15 +21,18 @@ import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
 import Ivory.Tower.Compile.FreeRTOS.Schedule
 
 
-compile :: Assembly -> [Module]
-compile asm = ms
+compile :: Tower () -> (Assembly, [Module])
+compile t = (asm, ms)
+  where
+  asm = assembleTower t os
+  ms = buildModules asm
+
+buildModules :: Assembly -> [Module]
+buildModules asm = ms
   where
   towerst = asm_towerst asm
   (tasks, taskentrys) = unzip $ asm_taskdefs asm
   (sys_mdef, sys_initdef) = asm_system asm
-
--- XXX fix channel moduledefs:
---  channels = asm_channels asm
 
   ms = [ twr_entry ]
     ++ FreeRTOS.modules
@@ -45,20 +42,17 @@ compile asm = ms
 
   twr_entry = package "tower" $ do
     mapM_ depend FreeRTOS.modules
--- XXX these are taken care of for channels, but not for data?
---    mapM_ T.cch_moddefs            channels
-
     mapM_ incl taskentrys
     mapM_ taskst_moddef tasks
-
+    -- XXX no treatment for compiled dataports
     sys_mdef
     incl towerentry
 
   towerentry :: Def ('[]:->())
   towerentry = proc "tower_entry" $ body $ do
     call_ sys_initdef
--- XXX
---    mapM_ (call_ . T.cch_initializer) channels
+    mapM_ call_ $ concatMap taskst_channelinit tasks
+    -- XXX no treatment for initialize dataports
     mapM_ taskCreate $ asm_taskdefs asm
     retVoid
 

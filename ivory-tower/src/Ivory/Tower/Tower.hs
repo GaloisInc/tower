@@ -17,8 +17,8 @@ import Ivory.Tower.Monad
 
 -- | Tower assembler. Given a complete 'Tower' monad, apply the operating system
 --   ('OS') and collect the generated components into an 'Assembly'
-tower :: Tower () -> OS -> Assembly
-tower t os = runBase (runTower t) os
+assembleTower :: Tower () -> OS -> Assembly
+assembleTower t os = runBase (runTower t) os
 
 -- | Instantiate a 'TaskConstructor' into a task. Provide a name as a
 --   human-readable debugging aid.
@@ -63,22 +63,27 @@ addModule m = do
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
-withChannelReceiver :: forall (area :: Area) .(IvoryType area, IvoryZero area)
+
+codegenChannelReceiver :: (IvoryType area, IvoryZero area) => ChannelReceiver area -> Task ()
+codegenChannelReceiver rxer = do
+  os <- getOS
+  thistask <- getTaskSt
+  let (channelinit, mdef) = os_mkChannel os rxer thistask
+  taskStAddChannelInit channelinit
+  taskStAddModuleDef mdef
+
+toReceiver :: ChannelSink area -> ChannelReceiver area
+toReceiver sink = ChannelReceiver $ unChannelSink sink
+
+withChannelReceiver :: (IvoryType area, IvoryZero area)
       => ChannelSink area -> String -> Task (ChannelReceiver area)
 withChannelReceiver chsink label = do
   let cid  = unChannelSink chsink
-      rxer :: ChannelReceiver area
-      rxer = ChannelReceiver cid
+      rxer = toReceiver chsink
   -- Register the receiver into the graph context
   taskStAddReceiver cid label
   -- Generate code implementing the channel for this receiver.
-  os <- getOS
-  thistask <- getTaskSt
-  let mkChannel :: ChannelReceiver area -> TaskSt -> (Def('[]:->()),ModuleDef)
-      mkChannel = os_mkChannel os
-      (channelinit, mdef) = mkChannel rxer thistask
-  taskStAddChannelInit channelinit
-  taskStAddModuleDef mdef
+  codegenChannelReceiver rxer
   return rxer
 
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a

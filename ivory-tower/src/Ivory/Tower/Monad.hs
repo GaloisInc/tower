@@ -21,10 +21,19 @@ runTower t = do
   os <- getOS 
   let channels = towerst_channels towerst
       tasks    = towerst_tasksts  towerst
-  -- XXX generate code here
+
+      generate :: TaskSt -> Def('[]:->())
+      generate aTask = scheduleTaskBody sch
+        where sch = os_mkSchedule os channels tasks aTask
+              scheduleTaskBody = case taskst_taskbody aTask of
+                Just b -> b
+                Nothing -> error ("runTower input Error: Missing task body in " 
+                                  ++ (taskst_name aTask))
+
   return $ Assembly { asm_towerst = towerst
-                    , asm_modules = []
+                    , asm_taskdefs = map generate tasks
                     }
+
 
 runTask :: Name -> Task () -> Tower TaskSt
 runTask name t = do

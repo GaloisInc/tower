@@ -305,6 +305,6 @@ instance BaseUtils Task where
 data Assembly =
   Assembly
     { asm_towerst :: TowerSt
-    , asm_modules :: [Module]
+    , asm_taskdefs :: [Def('[]:->())]
     }
 

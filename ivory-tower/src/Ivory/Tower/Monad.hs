@@ -24,14 +24,15 @@ runTower t = do
 
       generate :: TaskSt -> Def('[]:->())
       generate aTask = scheduleTaskBody sch
-        where sch = os_mkSchedule os channels tasks aTask
+        where sch = os_mkTaskSchedule os channels tasks aTask
               scheduleTaskBody = case taskst_taskbody aTask of
                 Just b -> b
                 Nothing -> error ("runTower input Error: Missing task body in " 
                                   ++ (taskst_name aTask))
 
   return $ Assembly { asm_towerst = towerst
-                    , asm_taskdefs = map generate tasks
+                    , asm_taskdefs = map (\t -> (t, generate t)) tasks
+                    , asm_system  = os_mkSysSchedule os channels tasks
                     }
 
 

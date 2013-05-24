@@ -63,20 +63,22 @@ addModule m = do
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
-withChannelReceiver :: (IvoryType area, IvoryZero area)
+withChannelReceiver :: forall (area :: Area) .(IvoryType area, IvoryZero area)
       => ChannelSink area -> String -> Task (ChannelReceiver area)
 withChannelReceiver chsink label = do
   let cid  = unChannelSink chsink
+      rxer :: ChannelReceiver area
       rxer = ChannelReceiver cid
   -- Register the receiver into the graph context
   taskStAddReceiver cid label
   -- Generate code implementing the channel for this receiver.
   os <- getOS
-  st <- getTaskSt
-  case os_mkChannel os st rxer of
-    (channelinit,mdef) -> do
-      taskStAddChannelInit channelinit
-      taskStAddModuleDef mdef
+  thistask <- getTaskSt
+  let mkChannel :: ChannelReceiver area -> TaskSt -> (Def('[]:->()),ModuleDef)
+      mkChannel = os_mkChannel os
+      (channelinit, mdef) = mkChannel rxer thistask
+  taskStAddChannelInit channelinit
+  taskStAddModuleDef mdef
   return rxer
 
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a

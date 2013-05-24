@@ -121,7 +121,7 @@ newtype DataWriter area = DataWriter { unDataWritable :: (DataPort area) }
 --   task loop, see 'Ivory.Tower.Tower.taskBody'.
 --   Combine EventLoops to be scheduled as part of the same task loop using
 --   'Data.Monoid'
-newtype EventLoop eff = EventLoop { unEventLoop :: [(Schedule -> Ivory eff ())] }
+newtype EventLoop eff = EventLoop { unEventLoop :: [(Schedule -> Ivory eff (Ivory eff ()))] }
 
 instance Monoid (EventLoop eff) where
   mempty = EventLoop []
@@ -216,18 +216,18 @@ emptyTowerSt = TowerSt
 
 data Schedule =
   Schedule
-    { sch_mkEmitter :: forall area s eff. (IvoryType area)
+    { sch_mkEmitter :: forall area s eff cs. (IvoryType area, eff `AllocsIn` cs)
            => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-    , sch_mkReceiver :: forall area eff cs . (IvoryType area, eff `AllocsIn` cs)
+    , sch_mkReceiver :: forall area eff cs . (IvoryType area, IvoryZero area, eff `AllocsIn` cs)
            => ChannelReceiver area
            -> (ConstRef (Stack cs) area -> Ivory eff ())
-           -> Ivory eff ()
+           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner part of the loop
     , sch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
            => Period
            -> (Uint32 -> Ivory eff ())
-           -> Ivory eff ()
+           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner part of the loop
     , sch_mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
-           => [Ivory eff ()] -> Ivory eff ()
+           => [Ivory eff (Ivory eff ())] -> Ivory eff ()
     , sch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
     }
 
@@ -244,14 +244,17 @@ data OS =
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt
     -- (really just for the name) and a ChannelReceiver.
-    , os_mkChannel     :: TaskSt
-                       -> (forall area . (IvoryType area, IvoryZero area)
-                           => ChannelReceiver area)
+    , os_mkChannel     :: forall area . (IvoryType area, IvoryZero area)
+                       => ChannelReceiver area
+                       -> TaskSt
                        -> (Def ('[]:->()), ModuleDef)
 
     -- Generate a Schedule for a particular Task, given the set of all channels
     -- and all tasks (a fully described graph of channels)
-    , os_mkSchedule    :: [ChannelId] -> [TaskSt] -> TaskSt -> Schedule
+    , os_mkTaskSchedule    :: [ChannelId] -> [TaskSt] -> TaskSt -> Schedule
+
+    -- Generate any code needed for the system as a whole
+    , os_mkSysSchedule     :: [ChannelId] -> [TaskSt] -> (ModuleDef, Def('[]:->()))
 
     -- Utility function
     , os_getTimeMillis :: forall eff . Ivory eff Uint32
@@ -305,6 +308,7 @@ instance BaseUtils Task where
 data Assembly =
   Assembly
     { asm_towerst :: TowerSt
-    , asm_taskdefs :: [Def('[]:->())]
+    , asm_taskdefs :: [(TaskSt,Def('[]:->()))]
+    , asm_system   :: (ModuleDef, Def('[]:->()))
     }
 

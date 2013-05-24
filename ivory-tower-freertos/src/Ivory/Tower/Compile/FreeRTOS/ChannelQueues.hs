@@ -7,6 +7,8 @@
 
 module Ivory.Tower.Compile.FreeRTOS.ChannelQueues where
 
+import Text.Printf
+
 import Ivory.Language
 import qualified Ivory.OS.FreeRTOS.Queue as Q
 import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
@@ -25,7 +27,7 @@ data FreeRTOSChannel area =
                   => Ref s area -> Ivory eff IBool
     , fch_initDef :: Def('[]:->())
     , fch_moduleDef :: ModuleDef
-    , fch_channelref :: ChannelRef area
+    , fch_channelid :: ChannelId
     }
 
 data FreeRTOSGuard =
@@ -36,15 +38,15 @@ data FreeRTOSGuard =
     , guard_moduleDef :: ModuleDef
     }
 
-eventGuard :: String -> FreeRTOSGuard
-eventGuard uniquename = FreeRTOSGuard
+eventGuard :: TaskSt -> FreeRTOSGuard
+eventGuard taskst = FreeRTOSGuard
   { guard_block = block
   , guard_notify = notify
   , guard_initDef = initDef
   , guard_moduleDef = moduleDef
   }
   where
-  unique s = s ++ uniquename 
+  unique s = s ++ (taskst_name taskst)
 
   block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
   block time = do
@@ -73,21 +75,22 @@ eventGuard uniquename = FreeRTOSGuard
     incl initDef
     private $ defMemArea guardQueueArea
 
-eventQueue :: forall area . (IvoryType area)
-           => ChannelRef area
-           -> CompiledChannelName -- Unique name of channel
+eventQueue :: forall (area :: Area). (IvoryType area)
+           => ChannelId
+           -> TaskSt -- Destination Task
            -> FreeRTOSChannel area
-eventQueue channelref channelname = FreeRTOSChannel
+eventQueue channelid dest = FreeRTOSChannel
   { fch_name = unique "freertos_eventQueue"
   , fch_emit = emit
   , fch_receive = receive
   , fch_initDef = initDef
   , fch_moduleDef = mdef
-  , fch_channelref = channelref
+  , fch_channelid = channelid
   }
   where
+  name = printf "channel%d_%s" (unChannelId channelid) (taskst_name dest)
   unique :: String -> String
-  unique n = n ++ (compiledChannelName channelname)
+  unique n = n ++ name
   eventHeapArea :: MemArea (Array EventQueueLen area)
   eventHeapArea = area (unique "eventHeap") Nothing
   pendingQueueArea, freeQueueArea :: MemArea Q.Queue

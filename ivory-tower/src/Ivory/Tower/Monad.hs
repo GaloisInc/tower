@@ -16,15 +16,14 @@ runBase :: Base a -> OS -> a
 runBase b os = fst (runM (unBase b) os 0)
 
 runTower :: Tower () -> Base Assembly
-runTower t = do
-  (_, towerst) <- runStateT emptyTowerSt (unTower t)
+runTower twr = do
+  (_, towerst) <- runStateT emptyTowerSt (unTower twr)
   os <- getOS 
-  let channels = towerst_channels towerst
-      tasks    = towerst_tasksts  towerst
+  let tasks    = towerst_tasksts  towerst
 
       generate :: TaskSt -> Def('[]:->())
       generate aTask = scheduleTaskBody sch
-        where sch = os_mkTaskSchedule os channels tasks aTask
+        where sch = os_mkTaskSchedule os tasks aTask
               scheduleTaskBody = case taskst_taskbody aTask of
                 Just b -> b
                 Nothing -> error ("runTower input Error: Missing task body in " 
@@ -32,7 +31,7 @@ runTower t = do
 
   return $ Assembly { asm_towerst = towerst
                     , asm_taskdefs = map (\t -> (t, generate t)) tasks
-                    , asm_system  = os_mkSysSchedule os channels tasks
+                    , asm_system  = os_mkSysSchedule os tasks
                     }
 
 

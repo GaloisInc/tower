@@ -81,12 +81,12 @@ newtype DataSink (area :: Area) = DataSink { unDataSink   :: DataportId }
 -- | An implementation of a reader on a channel. The only valid operation on
 --   a 'DataReader' is 'Ivory.Tower.DataPort.readData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-newtype DataReader (area :: Area) = DataReader { unDataReadable :: DataportId }
+newtype DataReader (area :: Area) = DataReader { unDataReader :: DataportId }
 
 -- | An implementation of a writer on a channel. The only valid operation on
 --   a 'DataWriter' is 'Ivory.Tower.DataPort.writeData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-newtype DataWriter (area :: Area) = DataWriter { unDataWritable :: DataportId }
+newtype DataWriter (area :: Area) = DataWriter { unDataWriter :: DataportId }
 
 -- EventLoop types -------------------------------------------------------------
 
@@ -211,12 +211,12 @@ data OS =
                        -> TaskSt
                        -> (Def ('[]:->()), ModuleDef)
 
-    -- Generate a Schedule for a particular Task, given the set of all channels
-    -- and all tasks (a fully described graph of channels)
-    , os_mkTaskSchedule    :: [ChannelId] -> [TaskSt] -> TaskSt -> Schedule
+    -- Generate a Schedule for a particular Task, given the set of
+    -- all tasks (sufficient for a fully described graph of channels)
+    , os_mkTaskSchedule    :: [TaskSt] -> TaskSt -> Schedule
 
     -- Generate any code needed for the system as a whole
-    , os_mkSysSchedule     :: [ChannelId] -> [TaskSt] -> (ModuleDef, Def('[]:->()))
+    , os_mkSysSchedule     :: [TaskSt] -> (ModuleDef, Def('[]:->()))
 
     -- Utility function
     , os_getTimeMillis :: forall eff . Ivory eff Uint32

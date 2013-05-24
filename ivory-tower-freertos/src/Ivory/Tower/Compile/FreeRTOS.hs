@@ -44,7 +44,7 @@ buildModules asm = ms
     mapM_ depend FreeRTOS.modules
     mapM_ incl taskentrys
     mapM_ taskst_moddef tasks
-    -- XXX no treatment for compiled dataports
+    towerst_moddef towerst
     sys_mdef
     incl towerentry
 
@@ -52,7 +52,7 @@ buildModules asm = ms
   towerentry = proc "tower_entry" $ body $ do
     call_ sys_initdef
     mapM_ call_ $ concatMap taskst_channelinit tasks
-    -- XXX no treatment for initialize dataports
+    mapM_ call_ $ towerst_dataportinit towerst
     mapM_ taskCreate $ asm_taskdefs asm
     retVoid
 
@@ -65,12 +65,19 @@ taskCreate (taskst, entry) = call_ Task.create pointer stacksize priority
 
 os :: OS
 os = OS
-  { os_mkDataPort     = sharedState
-  , os_mkTaskSchedule = scheduleTask
-  , os_mkSysSchedule  = scheduleSystem
+  { os_mkDataPort     = mkDataPort
+  , os_mkTaskSchedule = mkTaskSchedule
+  , os_mkSysSchedule  = mkSystemSchedule
   , os_mkChannel      = mkChannel
   , os_getTimeMillis  = call Task.getTimeMillis
   }
+
+mkDataPort :: forall (area :: Area) . (IvoryType area)
+           => DataSource area -> (Def ('[]:->()), ModuleDef)
+mkDataPort source = (fdp_initDef fdp, fdp_moduleDef fdp)
+  where
+  fdp :: FreeRTOSDataport area
+  fdp = sharedState (unDataSource source)
 
 mkChannel :: forall (area :: Area) . (IvoryType area, IvoryZero area)
               => ChannelReceiver area

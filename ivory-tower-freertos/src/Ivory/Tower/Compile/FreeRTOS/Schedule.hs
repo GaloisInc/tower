@@ -13,9 +13,10 @@ import qualified Ivory.OS.FreeRTOS.Task  as Task
 import qualified Ivory.OS.FreeRTOS.Queue as Q
 
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
+import Ivory.Tower.Compile.FreeRTOS.SharedState
 
-scheduleSystem :: [ChannelId] -> [TaskSt] -> (ModuleDef, Def('[]:->()))
-scheduleSystem _channels tasks = (md, initDef)
+mkSystemSchedule :: [TaskSt] -> (ModuleDef, Def('[]:->()))
+mkSystemSchedule tasks = (md, initDef)
   where
   allguards = map eventGuard tasks
   initDef = proc "freertos_towerschedule_init" $ body $ do
@@ -28,9 +29,11 @@ scheduleSystem _channels tasks = (md, initDef)
     -- own all task guards
     mapM_ guard_moduleDef allguards
 
-scheduleTask :: [ChannelId] -> [TaskSt] -> TaskSt -> Schedule
-scheduleTask _channels tasks task = Schedule
-    { sch_mkEmitter  = mkEmitter
+mkTaskSchedule :: [TaskSt] -> TaskSt -> Schedule
+mkTaskSchedule tasks task = Schedule
+    { sch_mkDataReader = mkDataReader
+    , sch_mkDataWriter = mkDataWriter
+    , sch_mkEmitter  = mkEmitter
     , sch_mkReceiver = mkReceiver
     , sch_mkPeriodic  = mkPeriodic
     , sch_mkEventLoop = mkEventLoop
@@ -107,4 +110,13 @@ mkPeriodic (Period p) k = do
     ifte (now >=? (prev + fromInteger p))
       (store lastTime now >> k now)
       (return ())
+
+mkDataReader :: (IvoryType area) => DataReader area -> Ref s area -> Ivory eff ()
+mkDataReader reader = fdp_read fdp
+  where fdp = sharedState (unDataReader reader)
+
+mkDataWriter :: (IvoryType area) => DataWriter area -> ConstRef s area -> Ivory eff ()
+mkDataWriter writer = fdp_write fdp
+  where fdp = sharedState (unDataWriter writer)
+
 

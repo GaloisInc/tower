@@ -97,12 +97,13 @@ eventQueue channelid dest = FreeRTOSChannel
   pendingQueueArea = area (unique "pendingQueue") Nothing
   freeQueueArea    = area (unique "freeQueue") Nothing
 
-  getIx :: (eff `AllocsIn` cs) =>  QueueHandle -> Uint32 -> Ivory eff (IBool, EventQueueIx)
+  getIx :: (eff `AllocsIn` cs)
+        => QueueHandle -> Uint32 -> Ivory eff (IBool, EventQueueIx)
   getIx q waittime = do
     vlocal <- local (ival 0)
     s <- call Q.receive q vlocal waittime
     v <- deref vlocal
-    i <- assign (toIx (signCast v))
+    i <- assign (toIx v)
     return (s, i)
 
   putIx :: QueueHandle -> EventQueueIx -> Ivory eff ()
@@ -138,7 +139,7 @@ eventQueue channelid dest = FreeRTOSChannel
     freeQueue    <- addrOf freeQueueArea
     call_ Q.create pendingQueue (arrayLen eventHeap)
     call_ Q.create freeQueue    (arrayLen eventHeap)
-    for (toIx (arrayLen eventHeap) :: EventQueueIx) $ \i -> do
+    for (toIx (arrayLen eventHeap :: Sint32) :: EventQueueIx) $ \i ->
       call_ Q.send freeQueue (safeCast i) 0 -- should not bock
 
   mdef = do

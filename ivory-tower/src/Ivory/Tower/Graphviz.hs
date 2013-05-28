@@ -97,30 +97,23 @@ taskNode t =
 
 -- Dataport, Channel Nodes -----------------------------------------------------
 
-dataportNode :: DataportId -> Doc
-dataportNode d =
+dataportNode :: Labeled DataportId -> Doc
+dataportNode (Labeled d tyname) =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
   contents = title <+> text ("|{<source>Source|<sink>Sink}")
   name = text $ dataportName d
-  title = text "DataPort"
+  title = text "DataPort ::" <+> escapeQuotes (drop 2 tyname) -- drop Ty prefix
 
---  title = text "DataPort ::"
---             <+> escapeQuotes (drop 2 (cch_type d)) -- drop Ty prefix
-
-channelNode :: ChannelId -> Doc
-channelNode c =
+channelNode :: Labeled ChannelId -> Doc
+channelNode (Labeled c tyname) =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
   contents = title <+> text ("|{<source>Source|<sink>Sink}")
   name = text $ chanName c
-  title = text "Channel"
-
---  title = text "Channel ::"
---             <+> escapeQuotes (drop 2 (cch_type c)) -- drop Ty prefix
+  title = text "Channel ::" <+> escapeQuotes (drop 2 tyname) -- drop Ty prefix
 
 -- Edges -----------------------------------------------------------------------
-
 
 emitterEdge :: TaskSt -> Labeled ChannelId -> Doc
 emitterEdge task (Labeled chan _) = arrow tnode cnode

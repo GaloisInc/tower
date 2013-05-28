@@ -153,8 +153,8 @@ emptyTaskSt n = TaskSt
 data TowerSt =
   TowerSt
     { towerst_modules      :: [Module]
-    , towerst_dataports    :: [DataportId]
-    , towerst_channels     :: [ChannelId]
+    , towerst_dataports    :: [Labeled DataportId]
+    , towerst_channels     :: [Labeled ChannelId]
     , towerst_tasksts      :: [TaskSt]
     , towerst_dataportinit :: [Def('[]:->())]
     , towerst_moddef       :: ModuleDef

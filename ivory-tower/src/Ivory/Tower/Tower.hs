@@ -8,6 +8,7 @@
 module Ivory.Tower.Tower where
 
 import Ivory.Language
+import qualified Ivory.Language.Type as IType
 
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
@@ -49,19 +50,22 @@ dataport = do
   describeDataport :: DataportId -> Tower ()
   describeDataport dpid = do
     s <- getTowerSt
-    setTowerSt $ s { towerst_dataports = dpid : (towerst_dataports s) }
+    setTowerSt $ s { towerst_dataports = (Labeled dpid tyname) : (towerst_dataports s) }
+    where
+    tyname = show $ IType.ivoryType (Proxy :: Proxy area)
 
 
 -- | Instantiate a channel. Result is a matching pair of 'ChannelSource' and
 --   'ChannelSink'.
-channel :: (IvoryType area) => Tower (ChannelSource area, ChannelSink area)
+channel :: forall area . (IvoryType area) => Tower (ChannelSource area, ChannelSink area)
 channel = do
   cid <- freshChannelId
   st <- getTowerSt
-  setTowerSt $ st { towerst_channels = cid : towerst_channels st }
+  setTowerSt $ st { towerst_channels = (Labeled cid tyname) : towerst_channels st }
   return (ChannelSource cid, ChannelSink cid)
   where
   freshChannelId = fresh >>= \n -> return (ChannelId n)
+  tyname = show $ IType.ivoryType (Proxy :: Proxy area)
 
 -- | Add an arbitrary Ivory 'Module' to Tower. The module will be present in the
 --   compiled 'Assembly'. This is provided as a convenience so users do not have

@@ -146,3 +146,11 @@ qual prefix name = text prefix <> colon <> text name
 
 arrow :: Doc -> Doc -> Doc
 arrow a b = a <+> text "->" <+> b <+> semi
+
+escapeQuotes :: String -> Doc
+escapeQuotes x = text $ aux x -- I know this is probably terrible (pch)
+  where
+  aux ('"':ss) = '\\' : '"' : (aux ss)
+  aux  (s:ss)  = s : (aux ss)
+  aux [] = []
+

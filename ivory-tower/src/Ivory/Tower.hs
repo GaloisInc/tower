@@ -62,7 +62,6 @@ module Ivory.Tower
 import Ivory.Tower.Channel
 import Ivory.Tower.DataPort
 import Ivory.Tower.EventLoop
-import Ivory.Tower.Monad
 import Ivory.Tower.Tower
 import Ivory.Tower.Task
 import Ivory.Tower.Types

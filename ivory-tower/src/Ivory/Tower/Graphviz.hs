@@ -44,7 +44,7 @@ graphvizDoc a = vsep $
       <$> text "// end"
 
   withEach f accessor ts = -- please excuse this, need coffee:
-    concat $ map (\t -> map (\a -> f t a) (accessor t)) ts
+    concat $ map (\t -> map (\a' -> f t a') (accessor t)) ts
 
   annotations = text "graph [rankdir=LR];"
             <$> text "node [shape=record];"
@@ -83,8 +83,8 @@ taskNode t =
     Nothing -> []
 
   edge_field :: String -> String -> String -> Doc
-  edge_field name d1 d2 =
-    angles (text name) <+> text d1 <+> text d2
+  edge_field nm d1 d2 =
+    angles (text nm) <+> text d1 <+> text d2
 
   emitter_field (Labeled chid descr) =
     edge_field (chanName chid)  descr "emitter"
@@ -140,13 +140,6 @@ readerEdge task (Labeled dp _) = arrow dnode tnode
   tnode = qual (taskst_name task) (dataportName dp)
 
 -- Utility functions -----------------------------------------------------------
-
-escapeQuotes :: String -> Doc
-escapeQuotes x = text $ aux x -- I know this is probably terrible (pch)
-  where
-  aux ('"':ss) = '\\' : '"' : (aux ss)
-  aux  (s:ss)  = s : (aux ss)
-  aux [] = []
 
 qual :: String -> String -> Doc
 qual prefix name = text prefix <> colon <> text name

@@ -9,7 +9,6 @@ module Ivory.Tower.Compile.FreeRTOS.SharedState where
 import Prelude hiding (read)
 
 import Ivory.Language
-import qualified Ivory.Language.Type as I
 
 import qualified Ivory.OS.FreeRTOS.Semaphore as S
 

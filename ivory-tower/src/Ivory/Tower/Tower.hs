@@ -167,4 +167,3 @@ taskBody k = do
     Just _ -> error "terrible thing occured"
  where
  taskbody sch = sch_mkTaskBody sch (k sch)
-

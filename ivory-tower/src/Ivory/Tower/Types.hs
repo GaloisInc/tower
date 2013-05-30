@@ -32,8 +32,8 @@ unLabeled (Labeled a _) = a
 -- Channel Types ---------------------------------------------------------------
 
 -- | Channels are communication primitives in Tower which are scheduled for
---   best-effort asynchronous communication. We'll be working on better
---   guarantees on scheduling soon...
+-- best-effort asynchronous communication. We'll be working on better
+-- guarantees on scheduling soon...
 
 -- | The basic reference type underlying all Channels. Internal only.
 newtype ChannelId = ChannelId { unChannelId :: Int } deriving (Eq)
@@ -42,23 +42,27 @@ instance Show ChannelId where
   show cid = "ChannelId " ++ (show (unChannelId cid))
 
 -- | Designates a Source, the end of a Channel which is written to. The only
---   valid operation on a 'ChannelSource' is
---   'Ivory.Tower.Tower.withChannelEmitter'
-newtype ChannelSource (area :: Area) = ChannelSource { unChannelSource :: ChannelId }
+-- valid operation on a 'ChannelSource' is
+-- 'Ivory.Tower.Tower.withChannelEmitter'
+newtype ChannelSource (area :: Area) =
+  ChannelSource { unChannelSource :: ChannelId }
 
 -- | Designates a Sink, the end of a Channel which is read from. The only
---   valid operation on a 'ChannelSink' is
---   'Ivory.Tower.Tower.withChannelReceiver'
-newtype ChannelSink (area :: Area) = ChannelSink { unChannelSink :: ChannelId }
+-- valid operation on a 'ChannelSink' is
+-- 'Ivory.Tower.Tower.withChannelReceiver'
+newtype ChannelSink (area :: Area) =
+  ChannelSink { unChannelSink :: ChannelId }
 
 -- | a 'ChannelSource' which has been registered in the context of a 'Task'
---   can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
-newtype ChannelEmitter (area :: Area) = ChannelEmitter { unChannelEmitter :: ChannelId }
+-- can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
+newtype ChannelEmitter (area :: Area) =
+  ChannelEmitter { unChannelEmitter :: ChannelId }
 
 -- | a 'ChannelSink' which has been registered in the context of a 'Task'
---   can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
---   event handler.
-newtype ChannelReceiver (area :: Area) = ChannelReceiver { unChannelReceiver :: ChannelId }
+-- can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
+-- event handler.
+newtype ChannelReceiver (area :: Area) =
+  ChannelReceiver { unChannelReceiver :: ChannelId }
 
 -- Dataport Types --------------------------------------------------------------
 
@@ -94,7 +98,8 @@ newtype DataWriter (area :: Area) = DataWriter { unDataWriter :: DataportId }
 --   task loop, see 'Ivory.Tower.Tower.taskBody'.
 --   Combine EventLoops to be scheduled as part of the same task loop using
 --   'Data.Monoid'
-newtype EventLoop eff = EventLoop { unEventLoop :: [(Schedule -> Ivory eff (Ivory eff ()))] }
+newtype EventLoop eff =
+  EventLoop { unEventLoop :: [(Schedule -> Ivory eff (Ivory eff ()))] }
 
 instance Monoid (EventLoop eff) where
   mempty = EventLoop []
@@ -177,22 +182,25 @@ data Schedule =
     { sch_mkDataReader :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
                        => DataReader area -> Ref s area -> Ivory eff ()
     , sch_mkDataWriter :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
-                       => DataWriter area -> ConstRef s area -> Ivory eff () 
+                       => DataWriter area -> ConstRef s area -> Ivory eff ()
     , sch_mkEmitter :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
            => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-    , sch_mkReceiver :: forall area eff cs . (IvoryType area, IvoryZero area, eff `AllocsIn` cs)
+    , sch_mkReceiver :: forall area eff cs .
+                          (IvoryType area, IvoryZero area, eff `AllocsIn` cs)
            => ChannelReceiver area
            -> (ConstRef (Stack cs) area -> Ivory eff ())
-           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner part of the loop
+           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
+                                       -- part of the loop
     , sch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
            => Period
            -> (Uint32 -> Ivory eff ())
-           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner part of the loop
+           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
+                                       -- part of the loop
     , sch_mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
            => [Ivory eff (Ivory eff ())] -> Ivory eff ()
-    , sch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
+    , sch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs )
+                     => Ivory eff ()) -> Def('[]:->())
     }
-
 
 -- Operating System ------------------------------------------------------------
 
@@ -200,7 +208,7 @@ data Schedule =
 --   implemented by a module in 'Ivory.Tower.Compile'.
 data OS =
   OS
-    { os_mkDataPort    :: forall area . (IvoryType area) 
+    { os_mkDataPort    :: forall area . (IvoryType area)
                        => DataSource area
                        -> (Def ('[]:->()), ModuleDef)
 

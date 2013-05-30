@@ -54,7 +54,7 @@ setTaskSt s = Task $ set s
 getTaskName :: Task Name
 getTaskName = do
   s <- getTaskSt
-  return (taskst_name s) 
+  return (taskst_name s)
 
 taskStAddReceiver :: ChannelId -> String -> Task ()
 taskStAddReceiver r lbl = do

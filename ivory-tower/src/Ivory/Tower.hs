@@ -57,6 +57,7 @@ module Ivory.Tower
   -- Types
   , Name
   , Assembly()
+  , Schedule
   ) where
 
 import Ivory.Tower.Channel

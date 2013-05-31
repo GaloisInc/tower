@@ -11,13 +11,13 @@ import Ivory.Tower.Monad
 
 -- Public Task Definitions -----------------------------------------------------
 
--- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created in
---   the 'Ivory.Tower.Types.Task' context.
-taskModuleDef :: ModuleDef -> Task ()
-taskModuleDef md = taskStAddModuleDef md
+-- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
+--   in the 'Ivory.Tower.Types.Task' context.
+taskModuleDef :: (Schedule -> ModuleDef) -> Task ()
+taskModuleDef = taskStAddModuleDef
 
--- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody' created in
---   the 'Ivory.Tower.Types.Task' context.
+-- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody'
+--   created in the 'Ivory.Tower.Types.Task' context.
 withStackSize :: Integer -> Task ()
 withStackSize stacksize = do
   s <- getTaskSt

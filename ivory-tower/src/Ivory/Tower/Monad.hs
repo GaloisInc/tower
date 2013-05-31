@@ -18,11 +18,11 @@ runBase b os = fst (runM (unBase b) os 0)
 runTower :: Tower () -> Base Assembly
 runTower twr = do
   (_, towerst) <- runStateT emptyTowerSt (unTower twr)
-  os <- getOS 
-  let tasks    = towerst_tasksts  towerst
+  os <- getOS
+  let tasks = towerst_tasksts towerst
 
-      generate :: TaskSt -> Def('[]:->())
-      generate aTask = scheduleTaskBody sch
+      generate :: TaskSt -> (Def('[]:->()), ModuleDef)
+      generate aTask = (scheduleTaskBody sch, (taskst_moddef aTask) sch)
         where sch = os_mkTaskSchedule os tasks aTask
               scheduleTaskBody = case taskst_taskbody aTask of
                 Just b -> b
@@ -30,7 +30,9 @@ runTower twr = do
                                   ++ (taskst_name aTask))
 
   return $ Assembly { asm_towerst = towerst
-                    , asm_taskdefs = map (\t -> (t, generate t)) tasks
+                    , asm_taskdefs = let res = map generate tasks in
+                                     let (defs, mods) = unzip res in
+                                     zip3 tasks defs mods
                     , asm_system  = os_mkSysSchedule os tasks
                     }
 
@@ -76,10 +78,10 @@ taskStAddDataWriter cc lbl = do
   s <- getTaskSt
   setTaskSt $ s { taskst_datawriters = (Labeled cc lbl) : (taskst_datawriters s)}
 
-taskStAddModuleDef :: ModuleDef -> Task ()
+taskStAddModuleDef :: (Schedule -> ModuleDef) -> Task ()
 taskStAddModuleDef md = do
   s <- getTaskSt
-  setTaskSt $ s { taskst_moddef = (taskst_moddef s) >> md }
+  setTaskSt s { taskst_moddef = \sch -> taskst_moddef s sch >> md sch }
 
 taskStAddChannelInit :: Def('[]:->()) -> Task ()
 taskStAddChannelInit ci = do

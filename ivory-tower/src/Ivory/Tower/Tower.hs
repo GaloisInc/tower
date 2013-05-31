@@ -81,13 +81,14 @@ addModule m = do
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
 
-codegenChannelReceiver :: (IvoryType area, IvoryZero area) => ChannelReceiver area -> Task ()
+codegenChannelReceiver :: (IvoryType area, IvoryZero area)
+                       => ChannelReceiver area -> Task ()
 codegenChannelReceiver rxer = do
   os <- getOS
   thistask <- getTaskSt
   let (channelinit, mdef) = os_mkChannel os rxer thistask
   taskStAddChannelInit channelinit
-  taskStAddModuleDef mdef
+  taskStAddModuleDef (\_ -> mdef)
 
 toReceiver :: ChannelSink area -> ChannelReceiver area
 toReceiver sink = ChannelReceiver $ unChannelSink sink

@@ -42,7 +42,7 @@ fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
-    taskModuleDef $ depend fooBarTypes
+    taskModuleDef $ \_sch -> depend fooBarTypes
     taskBody $ \sch -> do
       state <- local (istruct [])
       eventLoop sch $ onTimer p $ \_now -> do
@@ -54,7 +54,7 @@ barSourceTask :: ChannelSource (Struct "bar_state") -> Task ()
 barSourceTask barSource = do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
-    taskModuleDef $ depend fooBarTypes
+    taskModuleDef $ \_sch -> depend fooBarTypes
     taskBody $ \sch -> do
       state <- local (istruct [])
       eventLoop sch $ onTimer p $ \_now -> do
@@ -68,7 +68,7 @@ fooBarSinkTask :: DataSink (Struct "foo_state")
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
-  taskModuleDef $ depend fooBarTypes
+  taskModuleDef $ \_sch -> depend fooBarTypes
   taskBody $ \sch -> do
     latestFoo <- local (istruct [])
     latestSum <- local (ival 0)

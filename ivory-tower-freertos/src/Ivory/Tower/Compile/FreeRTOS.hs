@@ -31,7 +31,7 @@ buildModules :: Assembly -> [Module]
 buildModules asm = ms
   where
   towerst = asm_towerst asm
-  (tasks, taskentrys) = unzip $ asm_taskdefs asm
+  (tasks, taskentrys, taskMods) = unzip3 $ asm_taskdefs asm
   (sys_mdef, sys_initdef) = asm_system asm
 
   ms = [ twr_entry ]
@@ -39,11 +39,10 @@ buildModules asm = ms
     ++ towerst_modules towerst
     ++ concatMap taskst_extern_mods tasks
 
-
   twr_entry = package "tower" $ do
     mapM_ depend FreeRTOS.modules
     mapM_ incl taskentrys
-    mapM_ taskst_moddef tasks
+    sequence_ taskMods
     towerst_moddef towerst
     sys_mdef
     incl towerentry
@@ -53,7 +52,7 @@ buildModules asm = ms
     call_ sys_initdef
     mapM_ call_ $ concatMap taskst_channelinit tasks
     mapM_ call_ $ towerst_dataportinit towerst
-    mapM_ taskCreate $ asm_taskdefs asm
+    mapM_ taskCreate (zip tasks taskentrys)
     retVoid
 
 taskCreate :: (TaskSt, Def('[]:->())) -> Ivory eff ()

@@ -130,7 +130,7 @@ data TaskSt =
     , taskst_periods     :: [Integer]
     , taskst_stacksize   :: Maybe Integer
     , taskst_priority    :: Maybe Integer
-    , taskst_moddef      :: ModuleDef
+    , taskst_moddef      :: Schedule -> ModuleDef
     , taskst_channelinit :: [Def('[]:->())]
     , taskst_extern_mods :: [Module]
     , taskst_taskbody    :: Maybe (Schedule -> Def('[]:->()))
@@ -147,7 +147,7 @@ emptyTaskSt n = TaskSt
   , taskst_periods     = []
   , taskst_stacksize   = Nothing
   , taskst_priority    = Nothing
-  , taskst_moddef      = return ()
+  , taskst_moddef      = const (return ())
   , taskst_channelinit = []
   , taskst_extern_mods = []
   , taskst_taskbody    = Nothing
@@ -277,8 +277,7 @@ instance BaseUtils Task where
 
 data Assembly =
   Assembly
-    { asm_towerst :: TowerSt
-    , asm_taskdefs :: [(TaskSt,Def('[]:->()))]
+    { asm_towerst  :: TowerSt
+    , asm_taskdefs :: [(TaskSt,Def('[]:->()),ModuleDef)]
     , asm_system   :: (ModuleDef, Def('[]:->()))
     }
-

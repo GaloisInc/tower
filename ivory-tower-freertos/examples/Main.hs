@@ -9,6 +9,6 @@ import qualified Ivory.Tower.Compile.FreeRTOS as FreeRTOS
 main :: IO ()
 main = do
   let (asm, objs) = FreeRTOS.compile fooBarTower
-  C.compile objs
+  C.compileWith Nothing (Just [FreeRTOS.searchDir]) objs
   graphvizToFile "out.dot" asm
 

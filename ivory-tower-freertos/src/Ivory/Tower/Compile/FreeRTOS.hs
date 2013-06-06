@@ -7,6 +7,7 @@
 module Ivory.Tower.Compile.FreeRTOS
   ( compile
   , os
+  , searchDir
   ) where
 
 import Ivory.Language
@@ -20,6 +21,7 @@ import Ivory.Tower.Compile.FreeRTOS.SharedState
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
 import Ivory.Tower.Compile.FreeRTOS.Schedule
 
+import Ivory.Tower.Compile.FreeRTOS.SearchDir
 
 compile :: Tower () -> (Assembly, [Module])
 compile t = (asm, ms)
@@ -40,6 +42,7 @@ buildModules asm = ms
     ++ concatMap taskst_extern_mods tasks
 
   twr_entry = package "tower" $ do
+    mapM_ sourceDep sourcedeps
     mapM_ depend FreeRTOS.modules
     mapM_ incl taskentrys
     sequence_ taskMods
@@ -94,4 +97,17 @@ defaultstacksize = 256
 -- bodies, better make sure that every eventloop task has the default priority
 defaulttaskpriority :: Uint8
 defaulttaskpriority = 1
+
+-- ivory-freertos-wrapper
+
+sourcedeps :: [FilePath]
+sourcedeps =
+  [ "freertos_queue_wrapper.c"
+  , "freertos_semaphore_wrapper.c"
+  , "freertos_task_wrapper.c"
+  , "freertos_queue_wrapper.h"
+  , "freertos_semaphore_wrapper.h"
+  , "freertos_task_wrapper.h"
+  ]
+
 

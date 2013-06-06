@@ -7,6 +7,13 @@ build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
+data-files: ivory-freertos-wrapper/freertos_queue_wrapper.c,
+            ivory-freertos-wrapper/freertos_queue_wrapper.h,
+            ivory-freertos-wrapper/freertos_semaphore_wrapper.c,
+            ivory-freertos-wrapper/freertos_semaphore_wrapper.h,
+            ivory-freertos-wrapper/freertos_task_wrapper.c,
+            ivory-freertos-wrapper/freertos_task_wrapper.h
+
 library
   exposed-modules:      Ivory.OS.FreeRTOS,
                         Ivory.OS.FreeRTOS.Task,
@@ -15,10 +22,12 @@ library
                         Ivory.Tower.Compile.FreeRTOS,
                         Ivory.Tower.Compile.FreeRTOS.ChannelQueues,
                         Ivory.Tower.Compile.FreeRTOS.Schedule,
-                        Ivory.Tower.Compile.FreeRTOS.SharedState
-
+                        Ivory.Tower.Compile.FreeRTOS.SharedState,
+                        Ivory.Tower.Compile.FreeRTOS.SearchDir
+  other-modules:        Paths_ivory_tower_freertos
   build-depends:        base >= 4.6,
                         template-haskell >= 2.8,
+                        filepath,
                         ivory,
                         ivory-tower >= 0.3
 

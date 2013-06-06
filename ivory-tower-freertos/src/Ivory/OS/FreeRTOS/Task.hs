@@ -7,22 +7,17 @@ module Ivory.OS.FreeRTOS.Task where
 
 import Ivory.Language
 
-taskModule :: Module
-taskModule = package "ivory_os_freertos_task" $ do
-  inclHeader "freertos_task_wrapper.h"
-  incl create
-  incl delay
-  incl delayUntil
-  incl getTimeMillis
+taskWrapperHeader :: String
+taskWrapperHeader = "freertos_task_wrapper.h"
 
 create :: Def ('[ ProcPtr ('[]:->()), Uint32, Uint8 ] :->())
-create = externProc "ivory_freertos_task_create"
+create = importProc "ivory_freertos_task_create" taskWrapperHeader
 
 delay :: Def ('[ Uint32 ] :->())
-delay = externProc "ivory_freertos_task_delay"
+delay = importProc "ivory_freertos_task_delay" taskWrapperHeader
 
 delayUntil :: Def ('[ Ref s (Stored Uint32), Uint32 ] :->())
-delayUntil = externProc "ivory_freertos_task_delayuntil"
+delayUntil = importProc "ivory_freertos_task_delayuntil" taskWrapperHeader
 
 getTimeMillis :: Def ('[] :-> Uint32 )
-getTimeMillis = externProc "ivory_freertos_task_gettickcount"
+getTimeMillis = importProc "ivory_freertos_task_gettickcount" taskWrapperHeader

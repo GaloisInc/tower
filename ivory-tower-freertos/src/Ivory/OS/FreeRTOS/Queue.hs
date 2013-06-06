@@ -24,13 +24,8 @@ import Ivory.Language
 type Queue = Stored (Ptr Global (Stored Uint16))
 type QueueHandle = Ref Global Queue
 
-queueModule :: Module
-queueModule = package "ivory_os_freertos_queue" $ do
-  inclHeader "freertos_queue_wrapper.h"
-  incl create
-  incl send
-  incl receive
-  incl messagesWaiting
+queueWrapperHeader :: String
+queueWrapperHeader = "freertos_queue_wrapper.h"
 
 -- XXX this is a little sloppy?
 maxWaitInt :: Integer
@@ -44,20 +39,20 @@ maxWait = maxBound
 create :: Def ('[ QueueHandle
                 , Uint32 -- Queue Size
                 ] :-> ())
-create = externProc "ivory_freertos_queue_create"
+create = importProc "ivory_freertos_queue_create" queueWrapperHeader
 
 send :: Def ('[ QueueHandle
               , Uint32 -- Value
               , Uint32 -- Wait time
               ] :-> IBool) -- True if send is successful
-send = externProc "ivory_freertos_queue_send"
+send = importProc "ivory_freertos_queue_send" queueWrapperHeader
 
 receive :: Def ('[ QueueHandle
                  , Ref s1 (Stored Uint32) -- Value
                  , Uint32 -- Wait time
                  ] :-> IBool) -- true if receive is successful
-receive = externProc "ivory_freertos_queue_receive"
+receive = importProc "ivory_freertos_queue_receive" queueWrapperHeader
 
 messagesWaiting :: Def ('[ QueueHandle ] :-> Uint32)
-messagesWaiting = externProc "ivory_freertos_queue_messages_waiting"
+messagesWaiting = importProc "ivory_freertos_queue_messages_waiting" queueWrapperHeader
 

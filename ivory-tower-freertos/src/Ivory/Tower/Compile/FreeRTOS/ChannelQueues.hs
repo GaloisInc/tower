@@ -71,7 +71,6 @@ eventGuard taskst = FreeRTOSGuard
     retVoid
 
   moduleDef = do
-    depend Q.queueModule
     incl initDef
     private $ defMemArea guardQueueArea
 
@@ -143,7 +142,6 @@ eventQueue channelid dest = FreeRTOSChannel
       call_ Q.send freeQueue (safeCast i) 0 -- should not bock
 
   mdef = do
-    depend Q.queueModule
     incl initDef
     private $ do
       defMemArea eventHeapArea

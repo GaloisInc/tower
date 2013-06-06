@@ -20,27 +20,22 @@ import Ivory.Language
 type Semaphore = Stored (Ptr Global (Stored Uint8))
 type SemaphoreHandle = Ref Global Semaphore
 
-semaphoreModule :: Module
-semaphoreModule = package "ivory_os_freertos_semaphore" $ do
-  inclHeader "freertos_semaphore_wrapper.h"
-  incl create
-  incl take
-  incl takeNonblocking
-  incl give
+semaphoreWrapperHeader :: String
+semaphoreWrapperHeader = "freertos_semaphore_wrapper.h"
 
 create :: Def ('[ SemaphoreHandle ] :-> ())
-create = externProc "ivory_freertos_semaphore_create"
+create = importProc "ivory_freertos_semaphore_create" semaphoreWrapperHeader
 
 take :: Def ('[ SemaphoreHandle, Uint32 ] :-> IBool)
-take = externProc "ivory_freertos_semaphore_take"
+take = importProc "ivory_freertos_semaphore_take" semaphoreWrapperHeader
 
 takeBlocking :: Def ('[ SemaphoreHandle ] :-> ())
-takeBlocking = externProc "ivory_freertos_semaphore_takeblocking"
+takeBlocking = importProc "ivory_freertos_semaphore_takeblocking" semaphoreWrapperHeader
 
 takeNonblocking  :: Def ('[ SemaphoreHandle ] :-> IBool)
-takeNonblocking = externProc "ivory_freertos_semaphore_takenonblocking"
+takeNonblocking = importProc "ivory_freertos_semaphore_takenonblocking" semaphoreWrapperHeader
 
 give :: Def('[ SemaphoreHandle ] :-> ())
-give = externProc "ivory_freertos_semaphore_give"
+give = importProc "ivory_freertos_semaphore_give" semaphoreWrapperHeader
 
 

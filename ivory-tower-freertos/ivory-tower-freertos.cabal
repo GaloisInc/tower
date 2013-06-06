@@ -15,8 +15,7 @@ data-files: ivory-freertos-wrapper/freertos_queue_wrapper.c,
             ivory-freertos-wrapper/freertos_task_wrapper.h
 
 library
-  exposed-modules:      Ivory.OS.FreeRTOS,
-                        Ivory.OS.FreeRTOS.Task,
+  exposed-modules:      Ivory.OS.FreeRTOS.Task,
                         Ivory.OS.FreeRTOS.Semaphore,
                         Ivory.OS.FreeRTOS.Queue,
                         Ivory.Tower.Compile.FreeRTOS,

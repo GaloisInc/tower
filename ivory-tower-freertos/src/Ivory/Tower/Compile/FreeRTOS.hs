@@ -15,7 +15,6 @@ import Ivory.Tower.Types
 import Ivory.Tower.Tower (assembleTower)
 
 import qualified Ivory.OS.FreeRTOS.Task  as Task
-import qualified Ivory.OS.FreeRTOS       as FreeRTOS
 
 import Ivory.Tower.Compile.FreeRTOS.SharedState
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
@@ -37,13 +36,11 @@ buildModules asm = ms
   (sys_mdef, sys_initdef) = asm_system asm
 
   ms = [ twr_entry ]
-    ++ FreeRTOS.modules
     ++ towerst_modules towerst
     ++ concatMap taskst_extern_mods tasks
 
   twr_entry = package "tower" $ do
     mapM_ sourceDep sourcedeps
-    mapM_ depend FreeRTOS.modules
     mapM_ incl taskentrys
     sequence_ taskMods
     towerst_moddef towerst

@@ -69,7 +69,6 @@ sharedState dataportid = FreeRTOSDataport
     call_ S.create sem
 
   m = do
-    depend S.semaphoreModule
     incl initDef
     private $ do
       defMemArea localState

@@ -40,7 +40,9 @@ buildModules asm = ms
     ++ concatMap taskst_extern_mods tasks
 
   twr_entry = package "tower" $ do
-    mapM_ sourceDep sourcedeps
+    mapM_ inclHeader headerdeps
+    mapM_ sourceDep  headerdeps
+    mapM_ sourceDep  sourcedeps
     mapM_ incl taskentrys
     sequence_ taskMods
     towerst_moddef towerst
@@ -97,14 +99,18 @@ defaulttaskpriority = 1
 
 -- ivory-freertos-wrapper
 
+headerdeps :: [FilePath]
+headerdeps =
+  [ "freertos_queue_wrapper.h"
+  , "freertos_semaphore_wrapper.h"
+  , "freertos_task_wrapper.h"
+  ]
+
 sourcedeps :: [FilePath]
 sourcedeps =
   [ "freertos_queue_wrapper.c"
   , "freertos_semaphore_wrapper.c"
   , "freertos_task_wrapper.c"
-  , "freertos_queue_wrapper.h"
-  , "freertos_semaphore_wrapper.h"
-  , "freertos_task_wrapper.h"
   ]
 
 

@@ -28,6 +28,7 @@ library
                         template-haskell >= 2.8,
                         filepath,
                         ivory,
+                        ivory-stdlib,
                         ivory-tower >= 0.3
 
   hs-source-dirs:       src
@@ -41,6 +42,7 @@ executable ivory-tower-freertos-example
   build-depends:       base >= 4.6,
                        ivory-bitdata,
                        ivory,
+                       ivory-stdlib,
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos

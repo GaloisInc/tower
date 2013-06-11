@@ -7,6 +7,7 @@
 module Ivory.Tower.Compile.FreeRTOS.Schedule where
 
 import Ivory.Language
+import Ivory.Stdlib (when)
 import Ivory.Tower.Types
 
 import qualified Ivory.OS.FreeRTOS.Task  as Task
@@ -92,9 +93,7 @@ mkTaskSchedule tasks task = Schedule
   mkReceiver rxer k = return $ do
     v <- local izero
     s <- fch_receive fch v
-    ifte s
-      (k (constRef v))
-      (return ())
+    when s (k (constRef v))
     where
     fch = eventQueue (unChannelReceiver rxer) task
 
@@ -107,9 +106,9 @@ mkPeriodic (Period p) k = do
     now  <- call Task.getTimeMillis
     prev <- deref lastTime
     assume (now >=? prev) -- The abstract clock should be monotonic.
-    ifte (now >=? (prev + fromInteger p))
-      (store lastTime now >> k now)
-      (return ())
+    when (now >=? (prev + fromInteger p)) $ do
+      store lastTime now
+      k now
 
 mkDataReader :: (IvoryType area) => DataReader area -> Ref s area -> Ivory eff ()
 mkDataReader reader = fdp_read fdp

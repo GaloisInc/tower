@@ -10,6 +10,7 @@ module Ivory.Tower.Compile.FreeRTOS.ChannelQueues where
 import Text.Printf
 
 import Ivory.Language
+import Ivory.Stdlib
 import qualified Ivory.OS.FreeRTOS.Queue as Q
 import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
 
@@ -114,7 +115,7 @@ eventQueue channelid dest = FreeRTOSChannel
     pendingQueue <- addrOf pendingQueueArea
     freeQueue    <- addrOf freeQueueArea
     (got, i) <- getIx freeQueue 0
-    ifte (iNot got) (return ()) $ do
+    when got $ do
       refCopy (eventHeap ! i) v
       putIx pendingQueue i
     return got
@@ -125,7 +126,7 @@ eventQueue channelid dest = FreeRTOSChannel
     pendingQueue <- addrOf pendingQueueArea
     freeQueue    <- addrOf freeQueueArea
     (got, i) <- getIx pendingQueue 0
-    ifte (iNot got) (return ()) $ do
+    when got $ do
       refCopy v (constRef (eventHeap ! i))
       putIx freeQueue i
     return got

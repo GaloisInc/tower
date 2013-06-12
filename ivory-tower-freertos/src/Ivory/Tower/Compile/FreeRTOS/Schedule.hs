@@ -16,10 +16,10 @@ import qualified Ivory.OS.FreeRTOS.Queue as Q
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
 import Ivory.Tower.Compile.FreeRTOS.SharedState
 
-mkSystemSchedule :: [TaskSt] -> (ModuleDef, Def('[]:->()))
-mkSystemSchedule tasks = (md, initDef)
+mkSystemSchedule :: [TaskNode] -> (ModuleDef, Def('[]:->()))
+mkSystemSchedule tnodes = (md, initDef)
   where
-  allguards = map eventGuard tasks
+  allguards = map eventGuard tnodes
   initDef = proc "freertos_towerschedule_init" $ body $ do
     -- Initialize all task guards
     mapM_ (call_ . guard_initDef) allguards
@@ -30,8 +30,8 @@ mkSystemSchedule tasks = (md, initDef)
     -- own all task guards
     mapM_ guard_moduleDef allguards
 
-mkTaskSchedule :: [TaskSt] -> TaskSt -> Schedule
-mkTaskSchedule tasks task = Schedule
+mkTaskSchedule :: [TaskNode] -> TaskNode -> Schedule
+mkTaskSchedule tnodes tnode = Schedule
     { sch_mkDataReader = mkDataReader
     , sch_mkDataWriter = mkDataWriter
     , sch_mkEmitter  = mkEmitter
@@ -41,6 +41,8 @@ mkTaskSchedule tasks task = Schedule
     , sch_mkTaskBody  = mkTaskBody
     }
   where
+  tasks = map nodest_impl tnodes
+  task  =     nodest_impl tnode
   -- Schedule emitter: create the emitter macro for the channels.
   mkEmitter :: forall area eff cs s . (IvoryArea area, eff `AllocsIn` cs)
                   => ChannelEmitter area -> ConstRef s area -> Ivory eff () 
@@ -60,11 +62,11 @@ mkTaskSchedule tasks task = Schedule
     endpointEmitters = map (eventQueue channel) endpoints
 
   -- endpointTasks: find all of the uncompiled tasks which use channel
-  endpointTasks :: ChannelId -> [TaskSt]
-  endpointTasks ch = filter hasref tasks
+  endpointTasks :: ChannelId -> [TaskNode]
+  endpointTasks ch = filter hasref tnodes
     where
-    hasref t = elem ch (inboundChannels t)
-    inboundChannels t = map unLabeled (taskst_receivers t)
+    hasref n = elem ch (inboundChannels n)
+    inboundChannels n = map unLabeled (nodest_receivers n)
 
   mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
                => [Ivory eff (Ivory eff ())] -> Ivory eff ()
@@ -77,14 +79,14 @@ mkTaskSchedule tasks task = Schedule
         guard
         sequence_ loopBodies
     where
-    guard = guard_block (eventGuard task) period_gcd >> return ()
+    guard = guard_block (eventGuard tnode) period_gcd >> return ()
     period_gcd = case taskst_periods task of
                     [] -> Q.maxWait
                     ps -> fromInteger $ foldl1 gcd ps
 
   -- scheduleTaskBody: create task def from a TaskBody
   mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
-  mkTaskBody tb = proc ("taskbody_" ++ (taskst_name task)) $ body tb
+  mkTaskBody tb = proc ("taskbody_" ++ (nodest_name tnode)) $ body tb
 
   mkReceiver :: forall eff cs area . (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
              => ChannelReceiver area
@@ -95,7 +97,7 @@ mkTaskSchedule tasks task = Schedule
     s <- fch_receive fch v
     when s (k (constRef v))
     where
-    fch = eventQueue (unChannelReceiver rxer) task
+    fch = eventQueue (unChannelReceiver rxer) tnode
 
 mkPeriodic :: (eff `AllocsIn` cs)
               => Period -> (Uint32 -> Ivory eff ()) -> Ivory eff (Ivory eff ())

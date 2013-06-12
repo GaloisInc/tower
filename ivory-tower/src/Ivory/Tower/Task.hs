@@ -23,8 +23,9 @@ withStackSize stacksize = do
   s <- getTaskSt
   case taskst_stacksize s of
     Nothing -> setTaskSt $ s { taskst_stacksize = Just stacksize }
-    Just _  -> fail ("Cannot use withStackSize more than once in task named "
-                  ++ taskst_name s)
+    Just _  -> getTaskName >>= \name ->
+               fail ("Cannot use withStackSize more than once in task named "
+                  ++  name)
 
 -- | Specify an OS priority level of the 'Ivory.Tower.Tower.taskBody' created in
 --   the 'Ivory.Tower.Types.Task' context. Implementation at the backend
@@ -34,8 +35,9 @@ withPriority p = do
   s <- getTaskSt
   case taskst_priority s of
     Nothing -> setTaskSt $ s { taskst_priority = Just p }
-    Just _  -> fail ("Cannot use withPriority more than once in task named "
-                     ++ taskst_name s)
+    Just _  -> getTaskName >>= \name ->
+               fail ("Cannot use withPriority more than once in task named "
+                     ++ name)
 
 -- | Add an Ivory Module to the result of this Tower compilation, from the
 --   Task context.

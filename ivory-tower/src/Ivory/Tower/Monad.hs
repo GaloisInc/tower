@@ -19,64 +19,69 @@ runTower :: Tower () -> Base Assembly
 runTower twr = do
   (_, towerst) <- runStateT emptyTowerSt (unTower twr)
   os <- getOS
-  let tasks = towerst_tasksts towerst
+  let tnodes = towerst_tasknodes towerst
 
-      generate :: TaskSt -> (Def('[]:->()), ModuleDef)
-      generate aTask = (scheduleTaskBody sch, (taskst_moddef aTask) sch)
-        where sch = os_mkTaskSchedule os tasks aTask
-              scheduleTaskBody = case taskst_taskbody aTask of
-                Just b -> b
-                Nothing -> error ("runTower input Error: Missing task body in " 
-                                  ++ (taskst_name aTask))
+      generate :: TaskNode -> (Def('[]:->()), ModuleDef)
+      generate tnode = (scheduleTaskBody sch, (taskst_moddef aTask) sch)
+        where
+        aTask = nodest_impl tnode
+        sch = os_mkTaskSchedule os tnodes tnode
+        scheduleTaskBody = case taskst_taskbody aTask of
+          Just b -> b
+          Nothing -> error ("runTower input Error: Missing task body in " 
+                            ++ (nodest_name tnode))
 
   return $ Assembly { asm_towerst = towerst
-                    , asm_taskdefs = let res = map generate tasks in
+                    , asm_taskdefs = let res = map generate tnodes in
                                      let (defs, mods) = unzip res in
-                                     zip3 tasks defs mods
-                    , asm_system  = os_mkSysSchedule os tasks
+                                     zip3 tnodes defs mods
+                    , asm_system  = os_mkSysSchedule os tnodes
                     }
 
-
-runTask :: Name -> Task () -> Tower TaskSt
+runTask :: Name -> Task () -> Tower TaskNode
 runTask name t = do
   n <- freshname
   let uniquename = name ++ n
-  (_, taskSt) <- runStateT (emptyTaskSt uniquename) (unTask t)
-  return $ taskSt
+  (_, tnode) <- runStateT (emptyNodeSt uniquename emptyTaskSt) (unTask t)
+  return $ tnode
 
+
+-- Node Transformers----------------------------------------------------------
+
+nodeStAddReceiver :: ChannelId -> String -> NodeSt a -> NodeSt a
+nodeStAddReceiver r lbl s =
+  s { nodest_receivers = (Labeled r lbl) : (nodest_receivers s)}
+
+nodeStAddEmitter :: ChannelId -> String -> NodeSt a -> NodeSt a
+nodeStAddEmitter r lbl s =
+  s { nodest_emitters = (Labeled r lbl) : (nodest_emitters s)}
+
+nodeStAddDataReader :: DataportId -> String -> NodeSt a -> NodeSt a
+nodeStAddDataReader cc lbl s =
+  s { nodest_datareaders = (Labeled cc lbl) : (nodest_datareaders s)}
+
+nodeStAddDataWriter :: DataportId -> String -> NodeSt a -> NodeSt a
+nodeStAddDataWriter cc lbl s =
+  s { nodest_datawriters = (Labeled cc lbl) : (nodest_datawriters s)}
 
 -- Task Getters/Setters --------------------------------------------------------
 
+getTaskNode :: Task TaskNode
+getTaskNode = Task get
+
 getTaskSt :: Task TaskSt
-getTaskSt  = Task get
+getTaskSt = getTaskNode >>= \n -> return (nodest_impl n)
+
+setTaskNode :: TaskNode -> Task ()
+setTaskNode s = Task $ set s
 
 setTaskSt :: TaskSt -> Task ()
-setTaskSt s = Task $ set s
+setTaskSt s = getTaskNode >>= \n -> setTaskNode (n { nodest_impl = s })
 
 getTaskName :: Task Name
 getTaskName = do
-  s <- getTaskSt
-  return (taskst_name s)
-
-taskStAddReceiver :: ChannelId -> String -> Task ()
-taskStAddReceiver r lbl = do
-  s <- getTaskSt
-  setTaskSt $ s { taskst_receivers = (Labeled r lbl) : (taskst_receivers s)}
-
-taskStAddEmitter :: ChannelId -> String -> Task ()
-taskStAddEmitter r lbl = do
-  s <- getTaskSt
-  setTaskSt $ s { taskst_emitters = (Labeled r lbl) : (taskst_emitters s)}
-
-taskStAddDataReader :: DataportId -> String -> Task ()
-taskStAddDataReader cc lbl = do
-  s <- getTaskSt
-  setTaskSt $ s { taskst_datareaders = (Labeled cc lbl) : (taskst_datareaders s)}
-
-taskStAddDataWriter :: DataportId -> String -> Task ()
-taskStAddDataWriter cc lbl = do
-  s <- getTaskSt
-  setTaskSt $ s { taskst_datawriters = (Labeled cc lbl) : (taskst_datawriters s)}
+  s <- getTaskNode
+  return (nodest_name s)
 
 taskStAddModuleDef :: (Schedule -> ModuleDef) -> Task ()
 taskStAddModuleDef md = do

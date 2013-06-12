@@ -5,6 +5,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Ivory.Tower.Types where
 
@@ -116,18 +117,35 @@ newtype Period = Period { unPeriod :: Integer }
 newtype OSGetTimeMillis =
   OSGetTimeMillis { unOSGetTimeMillis :: forall eff . Ivory eff Uint32 }
 
+-- Node State-------------------------------------------------------------------
+
+data NodeSt a =
+  NodeSt
+    { nodest_name        :: Name
+    , nodest_emitters    :: [Labeled ChannelId]
+    , nodest_receivers   :: [Labeled ChannelId]
+    , nodest_datareaders :: [Labeled DataportId]
+    , nodest_datawriters :: [Labeled DataportId]
+    , nodest_impl        :: a
+    } deriving (Functor)
+
+emptyNodeSt :: Name -> a -> NodeSt a
+emptyNodeSt n impl = NodeSt
+  { nodest_name        = n
+  , nodest_emitters    = []
+  , nodest_receivers   = []
+  , nodest_datareaders = []
+  , nodest_datawriters = []
+  , nodest_impl        = impl
+  }
+
 -- Task State-------------------------------------------------------------------
 
 -- | Internal only: this is the result of a complete 'Ivory.Tower.Monad.Task'
 --   context. The 'OS' implementation will use this to create a 'TowerSchedule'
 data TaskSt =
   TaskSt
-    { taskst_name        :: Name
-    , taskst_emitters    :: [Labeled ChannelId]
-    , taskst_receivers   :: [Labeled ChannelId]
-    , taskst_datareaders :: [Labeled DataportId]
-    , taskst_datawriters :: [Labeled DataportId]
-    , taskst_periods     :: [Integer]
+    { taskst_periods     :: [Integer]
     , taskst_stacksize   :: Maybe Integer
     , taskst_priority    :: Maybe Integer
     , taskst_moddef      :: Schedule -> ModuleDef
@@ -137,14 +155,9 @@ data TaskSt =
     }
 
 -- | Internal only: basis for 'Ivory.Tower.Monad.Task' runner
-emptyTaskSt :: Name -> TaskSt
-emptyTaskSt n = TaskSt
-  { taskst_name        = n
-  , taskst_emitters    = []
-  , taskst_receivers   = []
-  , taskst_datareaders = []
-  , taskst_datawriters = []
-  , taskst_periods     = []
+emptyTaskSt :: TaskSt
+emptyTaskSt = TaskSt
+  { taskst_periods     = []
   , taskst_stacksize   = Nothing
   , taskst_priority    = Nothing
   , taskst_moddef      = const (return ())
@@ -153,6 +166,8 @@ emptyTaskSt n = TaskSt
   , taskst_taskbody    = Nothing
   }
 
+type TaskNode = NodeSt TaskSt
+
 -- Tower State -----------------------------------------------------------------
 
 data TowerSt =
@@ -160,7 +175,7 @@ data TowerSt =
     { towerst_modules      :: [Module]
     , towerst_dataports    :: [Labeled DataportId]
     , towerst_channels     :: [Labeled ChannelId]
-    , towerst_tasksts      :: [TaskSt]
+    , towerst_tasknodes    :: [TaskNode]
     , towerst_dataportinit :: [Def('[]:->())]
     , towerst_moddef       :: ModuleDef
     }
@@ -170,7 +185,7 @@ emptyTowerSt = TowerSt
   { towerst_modules = []
   , towerst_dataports = []
   , towerst_channels = []
-  , towerst_tasksts = []
+  , towerst_tasknodes = []
   , towerst_dataportinit = []
   , towerst_moddef = return ()
   }
@@ -216,15 +231,15 @@ data OS =
     -- (really just for the name) and a ChannelReceiver.
     , os_mkChannel     :: forall area . (IvoryArea area, IvoryZero area)
                        => ChannelReceiver area
-                       -> TaskSt
+                       -> TaskNode
                        -> (Def ('[]:->()), ModuleDef)
 
     -- Generate a Schedule for a particular Task, given the set of
     -- all tasks (sufficient for a fully described graph of channels)
-    , os_mkTaskSchedule    :: [TaskSt] -> TaskSt -> Schedule
+    , os_mkTaskSchedule    :: [TaskNode] -> TaskNode -> Schedule
 
     -- Generate any code needed for the system as a whole
-    , os_mkSysSchedule     :: [TaskSt] -> (ModuleDef, Def('[]:->()))
+    , os_mkSysSchedule     :: [TaskNode] -> (ModuleDef, Def('[]:->()))
 
     -- Utility function
     , os_getTimeMillis :: forall eff . Ivory eff Uint32
@@ -238,9 +253,9 @@ newtype Tower a = Tower
   { unTower :: StateT TowerSt Base a
   } deriving (Functor, Monad)
 
--- | Task monad: context for scheduling channel receivers.
+-- | Task monad: context for task-specific code generation
 newtype Task a = Task
-  { unTask :: StateT TaskSt Tower a
+  { unTask :: StateT TaskNode Tower a
   } deriving (Functor, Monad)
 
 -- | Base monad: internal only. State on fresh names, Reader on OS
@@ -278,6 +293,14 @@ instance BaseUtils Task where
 data Assembly =
   Assembly
     { asm_towerst  :: TowerSt
-    , asm_taskdefs :: [(TaskSt,Def('[]:->()),ModuleDef)]
+    , asm_taskdefs :: [(TaskNode,Def('[]:->()),ModuleDef)] -- XXX todo replace this.
     , asm_system   :: (ModuleDef, Def('[]:->()))
     }
+
+data AssembledNode a =
+  AssembledNode 
+    { asmnode_nodest :: NodeSt a
+    , asmnode_tldef  :: Def('[]:->())
+    , asmnode_moddef :: ModuleDef
+    }
+

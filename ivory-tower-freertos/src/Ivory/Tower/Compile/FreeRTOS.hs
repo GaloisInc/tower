@@ -32,8 +32,9 @@ buildModules :: Assembly -> [Module]
 buildModules asm = ms
   where
   towerst = asm_towerst asm
-  (tasks, taskentrys, taskMods) = unzip3 $ asm_taskdefs asm
+  (tnodes, taskentrys, taskMods) = unzip3 $ asm_taskdefs asm
   (sys_mdef, sys_initdef) = asm_system asm
+  tasks = map nodest_impl tnodes
 
   ms = [ twr_entry ]
     ++ towerst_modules towerst
@@ -82,12 +83,12 @@ mkDataPort source = (fdp_initDef fdp, fdp_moduleDef fdp)
 
 mkChannel :: forall (area :: Area) . (IvoryArea area, IvoryZero area)
               => ChannelReceiver area
-              -> TaskSt
+              -> TaskNode
               -> (Def('[]:->()), ModuleDef)
-mkChannel rxer desttask = (fch_initDef fch, fch_moduleDef fch)
+mkChannel rxer destTNode = (fch_initDef fch, fch_moduleDef fch)
   where
   fch :: FreeRTOSChannel area
-  fch = eventQueue (unChannelReceiver rxer) desttask
+  fch = eventQueue (unChannelReceiver rxer) destTNode
 
 defaultstacksize :: Uint32
 defaultstacksize = 256

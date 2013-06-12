@@ -24,9 +24,9 @@ assembleTower t os = runBase (runTower t) os
 --   human-readable debugging aid.
 task :: Name -> Task () -> Tower ()
 task name t = do
-  taskSt <- runTask name t
+  taskNode <- runTask name t
   towerSt <- getTowerSt
-  setTowerSt $ towerSt { towerst_tasksts = taskSt : (towerst_tasksts towerSt) }
+  setTowerSt $ towerSt { towerst_tasknodes = taskNode : (towerst_tasknodes towerSt) }
 
 -- | Instantiate a data port. Result is a matching pair of 'DataSource' and
 --   'DataSink'.
@@ -85,8 +85,8 @@ codegenChannelReceiver :: (IvoryArea area, IvoryZero area)
                        => ChannelReceiver area -> Task ()
 codegenChannelReceiver rxer = do
   os <- getOS
-  thistask <- getTaskSt
-  let (channelinit, mdef) = os_mkChannel os rxer thistask
+  thisnode <- getTaskNode
+  let (channelinit, mdef) = os_mkChannel os rxer thisnode
   taskStAddChannelInit channelinit
   taskStAddModuleDef (\_ -> mdef)
 
@@ -99,7 +99,8 @@ withChannelReceiver chsink label = do
   let cid  = unChannelSink chsink
       rxer = toReceiver chsink
   -- Register the receiver into the graph context
-  taskStAddReceiver cid label
+  tnode <- getTaskNode
+  setTaskNode $ nodeStAddReceiver cid label tnode
   -- Generate code implementing the channel for this receiver.
   codegenChannelReceiver rxer
   return rxer
@@ -112,7 +113,8 @@ withChannelEmitter :: (IvoryArea area)
 withChannelEmitter chsrc label = do
   let cid     = unChannelSource chsrc
       emitter = ChannelEmitter cid
-  taskStAddEmitter cid label
+  tnode <- getTaskNode
+  setTaskNode $ nodeStAddEmitter cid label tnode
   return emitter
 
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
@@ -121,7 +123,8 @@ withDataReader :: (IvoryArea area)
                => DataSink area -> String -> Task (DataReader area)
 withDataReader ds label = do
   let dpid = unDataSink ds
-  taskStAddDataReader dpid label
+  tnode <- getTaskNode
+  setTaskNode $ nodeStAddDataReader dpid label tnode
   return (DataReader dpid)
 
 -- | Transform a 'DataSource' into a 'DataWriter' in the context of a
@@ -130,7 +133,8 @@ withDataWriter :: (IvoryArea area)
                => DataSource area -> String -> Task (DataWriter area)
 withDataWriter ds label = do
   let dpid = unDataSource ds
-  taskStAddDataWriter dpid label
+  tnode <- getTaskNode
+  setTaskNode $ nodeStAddDataWriter dpid label tnode
   return (DataWriter dpid)
 
 

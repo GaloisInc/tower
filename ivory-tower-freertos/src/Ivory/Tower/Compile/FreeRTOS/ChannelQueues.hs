@@ -39,15 +39,15 @@ data FreeRTOSGuard =
     , guard_moduleDef :: ModuleDef
     }
 
-eventGuard :: TaskSt -> FreeRTOSGuard
-eventGuard taskst = FreeRTOSGuard
+eventGuard :: TaskNode -> FreeRTOSGuard
+eventGuard node = FreeRTOSGuard
   { guard_block = block
   , guard_notify = notify
   , guard_initDef = initDef
   , guard_moduleDef = moduleDef
   }
   where
-  unique s = s ++ (taskst_name taskst)
+  unique s = s ++ (nodest_name node)
 
   block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
   block time = do
@@ -77,7 +77,7 @@ eventGuard taskst = FreeRTOSGuard
 
 eventQueue :: forall (area :: Area). (IvoryArea area)
            => ChannelId
-           -> TaskSt -- Destination Task
+           -> TaskNode -- Destination Task
            -> FreeRTOSChannel area
 eventQueue channelid dest = FreeRTOSChannel
   { fch_name = unique "freertos_eventQueue"
@@ -88,7 +88,7 @@ eventQueue channelid dest = FreeRTOSChannel
   , fch_channelid = channelid
   }
   where
-  name = printf "channel%d_%s" (unChannelId channelid) (taskst_name dest)
+  name = printf "channel%d_%s" (unChannelId channelid) (nodest_name dest)
   unique :: String -> String
   unique n = n ++ name
   eventHeapArea :: MemArea (Array EventQueueLen area)

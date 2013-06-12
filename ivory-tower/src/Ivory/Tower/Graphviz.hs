@@ -25,22 +25,23 @@ graphvizDoc a = vsep $
   ]
   where
   towerst = asm_towerst a
-  tasks = towerst_tasksts towerst
+  tasknodes = towerst_tasknodes towerst
+  nodes =  tasknodes ++ [] -- XXX add more here
   body =  annotations
       <$> text "// task nodes"
-      <$> vsep (map taskNode     tasks)
+      <$> vsep (map taskNode     tasknodes)
       <$> text "// dataport nodes"
       <$> vsep (map dataportNode (towerst_dataports towerst))
       <$> text "// channel nodes"
       <$> vsep (map channelNode  (towerst_channels towerst))
-      <$> text ( "// emitter edges" ++ (show (concatMap taskst_emitters tasks)))
-      <$> vsep (withEach emitterEdge  taskst_emitters    tasks)
+      <$> text ( "// emitter edges" ++ (show (concatMap nodest_emitters nodes)))
+      <$> vsep (withEach emitterEdge  nodest_emitters    nodes)
       <$> text "// receiver edges"
-      <$> vsep (withEach receiverEdge taskst_receivers   tasks)
+      <$> vsep (withEach receiverEdge nodest_receivers   nodes)
       <$> text "// data reader edges"
-      <$> vsep (withEach readerEdge   taskst_datareaders tasks)
+      <$> vsep (withEach readerEdge   nodest_datareaders nodes)
       <$> text "// data writer edges"
-      <$> vsep (withEach writerEdge   taskst_datawriters tasks)
+      <$> vsep (withEach writerEdge   nodest_datawriters nodes)
       <$> text "// end"
 
   withEach f accessor ts = -- please excuse this, need coffee:
@@ -58,19 +59,21 @@ dataportName :: DataportId -> String
 dataportName (DataportId dpid) = "dataport" ++ (show dpid)
 
 -- Task Node -------------------------------------------------------------------
-taskNode :: TaskSt -> Doc
-taskNode t =
+
+taskNode :: TaskNode -> Doc
+taskNode n =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
-  name = text $ taskst_name t
+  t = nodest_impl n
+  name = text $ nodest_name n
   contents = hcat $ punctuate (text "|") fields
-  fields = [ name <+> text ":: task" ]
+  fields = [ name <+> text ":: task" ] -- XXX probably generalize this...
         ++ prior ++ ssize
         ++ map periodic_field (taskst_periods t)
-        ++ map emitter_field  (taskst_emitters t)
-        ++ map receiver_field (taskst_receivers t)
-        ++ map reader_field   (taskst_datareaders t)
-        ++ map writer_field   (taskst_datawriters t)
+        ++ map emitter_field  (nodest_emitters n)
+        ++ map receiver_field (nodest_receivers n)
+        ++ map reader_field   (nodest_datareaders n)
+        ++ map writer_field   (nodest_datawriters n)
 
   periodic_field p = text ("periodic @ " ++ (show p) ++ "ms")
 
@@ -115,29 +118,29 @@ channelNode (Labeled c tyname) =
 
 -- Edges -----------------------------------------------------------------------
 
-emitterEdge :: TaskSt -> Labeled ChannelId -> Doc
-emitterEdge task (Labeled chan _) = arrow tnode cnode
+emitterEdge :: NodeSt a -> Labeled ChannelId -> Doc
+emitterEdge node (Labeled chan _) = arrow tnode cnode
   where
-  tnode = qual (taskst_name task) (chanName chan)
+  tnode = qual (nodest_name node) (chanName chan)
   cnode = qual (chanName chan) "source"
 
-receiverEdge :: TaskSt -> Labeled ChannelId -> Doc
-receiverEdge task (Labeled chan _) = arrow cnode tnode
+receiverEdge :: NodeSt a -> Labeled ChannelId -> Doc
+receiverEdge node (Labeled chan _) = arrow cnode tnode
   where
   cnode = qual (chanName chan) "sink"
-  tnode = qual (taskst_name task) (chanName chan)
+  tnode = qual (nodest_name node) (chanName chan)
 
-writerEdge :: TaskSt -> Labeled DataportId -> Doc
-writerEdge task (Labeled dp _) = arrow tnode dnode
+writerEdge :: NodeSt a -> Labeled DataportId -> Doc
+writerEdge node (Labeled dp _) = arrow tnode dnode
   where
-  tnode = qual (taskst_name task) (dataportName dp)
+  tnode = qual (nodest_name node) (dataportName dp)
   dnode = qual (dataportName dp) "source"
 
-readerEdge :: TaskSt -> Labeled DataportId -> Doc
-readerEdge task (Labeled dp _) = arrow dnode tnode
+readerEdge :: NodeSt a -> Labeled DataportId -> Doc
+readerEdge node (Labeled dp _) = arrow dnode tnode
   where
   dnode = qual (dataportName dp) "sink"
-  tnode = qual (taskst_name task) (dataportName dp)
+  tnode = qual (nodest_name node) (dataportName dp)
 
 -- Utility functions -----------------------------------------------------------
 

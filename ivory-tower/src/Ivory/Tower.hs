@@ -72,7 +72,7 @@ import Ivory.Tower.Types
 
 import Ivory.Language
 
-stateProxy :: (IvoryType area, IvoryZero area)
+stateProxy :: (IvoryArea area, IvoryZero area)
            => ChannelSink area -> Tower (DataSink area)
 stateProxy chsink = do
   (src_data, snk_data) <- dataport

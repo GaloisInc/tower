@@ -75,7 +75,7 @@ eventGuard taskst = FreeRTOSGuard
     incl initDef
     private $ defMemArea guardQueueArea
 
-eventQueue :: forall (area :: Area). (IvoryType area)
+eventQueue :: forall (area :: Area). (IvoryArea area)
            => ChannelId
            -> TaskSt -- Destination Task
            -> FreeRTOSChannel area

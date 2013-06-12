@@ -24,7 +24,7 @@ data FreeRTOSDataport area =
     , fdp_dataportid :: DataportId
     }
 
-sharedState :: forall area . (IvoryType area)
+sharedState :: forall area . (IvoryArea area)
             => DataportId
             -> FreeRTOSDataport area
 sharedState dataportid = FreeRTOSDataport

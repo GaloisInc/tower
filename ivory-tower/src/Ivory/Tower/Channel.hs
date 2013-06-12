@@ -10,7 +10,7 @@ import Ivory.Language
 import Ivory.Tower.Types
 
 -- | Nonblocking emit. Fails silently.
-emit :: (IvoryType area, eff `AllocsIn` cs)
+emit :: (IvoryArea area, eff `AllocsIn` cs)
      => Schedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
 emit schedule emitter ref = sch_mkEmitter schedule emitter ref
 

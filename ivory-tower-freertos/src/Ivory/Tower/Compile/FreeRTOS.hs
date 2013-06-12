@@ -73,14 +73,14 @@ os = OS
   , os_getTimeMillis  = call Task.getTimeMillis
   }
 
-mkDataPort :: forall (area :: Area) . (IvoryType area)
+mkDataPort :: forall (area :: Area) . (IvoryArea area)
            => DataSource area -> (Def ('[]:->()), ModuleDef)
 mkDataPort source = (fdp_initDef fdp, fdp_moduleDef fdp)
   where
   fdp :: FreeRTOSDataport area
   fdp = sharedState (unDataSource source)
 
-mkChannel :: forall (area :: Area) . (IvoryType area, IvoryZero area)
+mkChannel :: forall (area :: Area) . (IvoryArea area, IvoryZero area)
               => ChannelReceiver area
               -> TaskSt
               -> (Def('[]:->()), ModuleDef)

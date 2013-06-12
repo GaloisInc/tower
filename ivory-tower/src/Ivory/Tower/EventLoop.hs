@@ -14,7 +14,7 @@ import Ivory.Tower.Types
 -- | Construct an 'EventLoop' from a 'ChannelReceiver' and a handler function
 --   which takes a ConstRef to the received event and performs an Ivory
 --   computation
-onChannel :: (eff `AllocsIn` cs, IvoryType area, IvoryZero area)
+onChannel :: (eff `AllocsIn` cs, IvoryArea area, IvoryZero area)
     => ChannelReceiver area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
 onChannel rxer k = EventLoop [ \sch -> sch_mkReceiver sch rxer k ]

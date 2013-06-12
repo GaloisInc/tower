@@ -42,7 +42,7 @@ mkTaskSchedule tasks task = Schedule
     }
   where
   -- Schedule emitter: create the emitter macro for the channels.
-  mkEmitter :: forall area eff cs s . (IvoryType area, eff `AllocsIn` cs)
+  mkEmitter :: forall area eff cs s . (IvoryArea area, eff `AllocsIn` cs)
                   => ChannelEmitter area -> ConstRef s area -> Ivory eff () 
   mkEmitter emitter ref = do 
       -- with all of the endpoints for chref, create an ivory
@@ -86,7 +86,7 @@ mkTaskSchedule tasks task = Schedule
   mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
   mkTaskBody tb = proc ("taskbody_" ++ (taskst_name task)) $ body tb
 
-  mkReceiver :: forall eff cs area . (IvoryType area, IvoryZero area, eff `AllocsIn` cs)
+  mkReceiver :: forall eff cs area . (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
              => ChannelReceiver area
              -> (ConstRef (Stack cs) area -> Ivory eff ())
              -> Ivory eff (Ivory eff ())
@@ -110,11 +110,11 @@ mkPeriodic (Period p) k = do
       store lastTime now
       k now
 
-mkDataReader :: (IvoryType area) => DataReader area -> Ref s area -> Ivory eff ()
+mkDataReader :: (IvoryArea area) => DataReader area -> Ref s area -> Ivory eff ()
 mkDataReader reader = fdp_read fdp
   where fdp = sharedState (unDataReader reader)
 
-mkDataWriter :: (IvoryType area) => DataWriter area -> ConstRef s area -> Ivory eff ()
+mkDataWriter :: (IvoryArea area) => DataWriter area -> ConstRef s area -> Ivory eff ()
 mkDataWriter writer = fdp_write fdp
   where fdp = sharedState (unDataWriter writer)
 

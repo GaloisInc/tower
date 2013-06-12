@@ -8,7 +8,7 @@
 module Ivory.Tower.Tower where
 
 import Ivory.Language
-import qualified Ivory.Language.Type as IType
+import qualified Ivory.Language.Area as IArea
 
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
@@ -30,7 +30,7 @@ task name t = do
 
 -- | Instantiate a data port. Result is a matching pair of 'DataSource' and
 --   'DataSink'.
-dataport :: forall area . (IvoryType area) => Tower (DataSource area, DataSink area)
+dataport :: forall area . (IvoryArea area) => Tower (DataSource area, DataSink area)
 dataport = do
   n <- fresh
   let dpid = DataportId n
@@ -39,7 +39,7 @@ dataport = do
   codegenDataport source
   return (source, sink)
   where
-  codegenDataport :: (IvoryType area) => DataSource area -> Tower ()
+  codegenDataport :: (IvoryArea area) => DataSource area -> Tower ()
   codegenDataport datasource = do
     os <- getOS
     let (initializer,mdef) = os_mkDataPort os datasource
@@ -52,12 +52,12 @@ dataport = do
     s <- getTowerSt
     setTowerSt $ s { towerst_dataports = (Labeled dpid tyname) : (towerst_dataports s) }
     where
-    tyname = show $ IType.ivoryType (Proxy :: Proxy area)
+    tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
 
 
 -- | Instantiate a channel. Result is a matching pair of 'ChannelSource' and
 --   'ChannelSink'.
-channel :: forall area . (IvoryType area) => Tower (ChannelSource area, ChannelSink area)
+channel :: forall area . (IvoryArea area) => Tower (ChannelSource area, ChannelSink area)
 channel = do
   cid <- freshChannelId
   st <- getTowerSt
@@ -65,7 +65,7 @@ channel = do
   return (ChannelSource cid, ChannelSink cid)
   where
   freshChannelId = fresh >>= \n -> return (ChannelId n)
-  tyname = show $ IType.ivoryType (Proxy :: Proxy area)
+  tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
 
 -- | Add an arbitrary Ivory 'Module' to Tower. The module will be present in the
 --   compiled 'Assembly'. This is provided as a convenience so users do not have
@@ -81,7 +81,7 @@ addModule m = do
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
 
-codegenChannelReceiver :: (IvoryType area, IvoryZero area)
+codegenChannelReceiver :: (IvoryArea area, IvoryZero area)
                        => ChannelReceiver area -> Task ()
 codegenChannelReceiver rxer = do
   os <- getOS
@@ -93,7 +93,7 @@ codegenChannelReceiver rxer = do
 toReceiver :: ChannelSink area -> ChannelReceiver area
 toReceiver sink = ChannelReceiver $ unChannelSink sink
 
-withChannelReceiver :: (IvoryType area, IvoryZero area)
+withChannelReceiver :: (IvoryArea area, IvoryZero area)
       => ChannelSink area -> String -> Task (ChannelReceiver area)
 withChannelReceiver chsink label = do
   let cid  = unChannelSink chsink
@@ -107,7 +107,7 @@ withChannelReceiver chsink label = do
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
 --   'Task'.
 --   Provide a human-readable name as a debugging aid.
-withChannelEmitter :: (IvoryType area)
+withChannelEmitter :: (IvoryArea area)
       => ChannelSource area -> String -> Task (ChannelEmitter area)
 withChannelEmitter chsrc label = do
   let cid     = unChannelSource chsrc
@@ -117,7 +117,7 @@ withChannelEmitter chsrc label = do
 
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
 --   'Task'. Provide a human-readable name as a debugging aid.
-withDataReader :: (IvoryType area)
+withDataReader :: (IvoryArea area)
                => DataSink area -> String -> Task (DataReader area)
 withDataReader ds label = do
   let dpid = unDataSink ds
@@ -126,7 +126,7 @@ withDataReader ds label = do
 
 -- | Transform a 'DataSource' into a 'DataWriter' in the context of a
 --   'Task '. Provide a human-readable name as a debugging aid.
-withDataWriter :: (IvoryType area)
+withDataWriter :: (IvoryArea area)
                => DataSource area -> String -> Task (DataWriter area)
 withDataWriter ds label = do
   let dpid = unDataSource ds

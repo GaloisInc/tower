@@ -179,14 +179,14 @@ emptyTowerSt = TowerSt
 
 data Schedule =
   Schedule
-    { sch_mkDataReader :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
+    { sch_mkDataReader :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
                        => DataReader area -> Ref s area -> Ivory eff ()
-    , sch_mkDataWriter :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
+    , sch_mkDataWriter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
                        => DataWriter area -> ConstRef s area -> Ivory eff ()
-    , sch_mkEmitter :: forall area s eff cs . (IvoryType area, eff `AllocsIn` cs)
+    , sch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
            => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
     , sch_mkReceiver :: forall area eff cs .
-                          (IvoryType area, IvoryZero area, eff `AllocsIn` cs)
+                          (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
            => ChannelReceiver area
            -> (ConstRef (Stack cs) area -> Ivory eff ())
            -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
@@ -208,13 +208,13 @@ data Schedule =
 --   implemented by a module in 'Ivory.Tower.Compile'.
 data OS =
   OS
-    { os_mkDataPort    :: forall area . (IvoryType area)
+    { os_mkDataPort    :: forall area . (IvoryArea area)
                        => DataSource area
                        -> (Def ('[]:->()), ModuleDef)
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt
     -- (really just for the name) and a ChannelReceiver.
-    , os_mkChannel     :: forall area . (IvoryType area, IvoryZero area)
+    , os_mkChannel     :: forall area . (IvoryArea area, IvoryZero area)
                        => ChannelReceiver area
                        -> TaskSt
                        -> (Def ('[]:->()), ModuleDef)

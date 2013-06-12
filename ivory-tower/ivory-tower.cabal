@@ -9,9 +9,7 @@ license:             BSD3
 
 library
   exposed-modules:      Ivory.Tower,
-                        Ivory.Tower.Channel,
-                        Ivory.Tower.DataPort,
-                        Ivory.Tower.EventLoop,
+                        Ivory.Tower.Ivory,
                         Ivory.Tower.Task,
                         Ivory.Tower.Tower,
                         Ivory.Tower.Monad,

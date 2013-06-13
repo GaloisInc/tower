@@ -70,6 +70,7 @@ os = OS
   { os_mkDataPort     = mkDataPort
   , os_mkTaskSchedule = mkTaskSchedule
   , os_mkSysSchedule  = mkSystemSchedule
+  , os_mkSigSchedule  = undefined -- XXX
   , os_mkChannel      = mkChannel
   , os_getTimeMillis  = call Task.getTimeMillis
   }

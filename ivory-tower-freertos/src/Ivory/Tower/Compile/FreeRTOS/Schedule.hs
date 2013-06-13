@@ -16,8 +16,8 @@ import qualified Ivory.OS.FreeRTOS.Queue as Q
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
 import Ivory.Tower.Compile.FreeRTOS.SharedState
 
-mkSystemSchedule :: [TaskNode] -> (ModuleDef, Def('[]:->()))
-mkSystemSchedule tnodes = (md, initDef)
+mkSystemSchedule :: [TaskNode] -> [SigNode] -> (ModuleDef, Def('[]:->()))
+mkSystemSchedule tnodes _signodes = (md, initDef)
   where
   allguards = map eventGuard tnodes
   initDef = proc "freertos_towerschedule_init" $ body $ do
@@ -30,18 +30,18 @@ mkSystemSchedule tnodes = (md, initDef)
     -- own all task guards
     mapM_ guard_moduleDef allguards
 
-mkTaskSchedule :: [TaskNode] -> TaskNode -> Schedule
-mkTaskSchedule tnodes tnode = Schedule
-    { sch_mkDataReader = mkDataReader
-    , sch_mkDataWriter = mkDataWriter
-    , sch_mkEmitter  = mkEmitter
-    , sch_mkReceiver = mkReceiver
-    , sch_mkPeriodic  = mkPeriodic
-    , sch_mkEventLoop = mkEventLoop
-    , sch_mkTaskBody  = mkTaskBody
+mkTaskSchedule :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
+mkTaskSchedule tnodes _signodes tnode = TaskSchedule
+    { tsch_mkDataReader = mkDataReader
+    , tsch_mkDataWriter = mkDataWriter
+    , tsch_mkEmitter  = mkEmitter
+    , tsch_mkReceiver = mkReceiver
+    , tsch_mkPeriodic  = mkPeriodic
+    , tsch_mkEventLoop = mkEventLoop
+    , tsch_mkTaskBody  = mkTaskBody
     }
   where
-  tasks = map nodest_impl tnodes
+  _tasks = map nodest_impl tnodes
   task  =     nodest_impl tnode
   -- Schedule emitter: create the emitter macro for the channels.
   mkEmitter :: forall area eff cs s . (IvoryArea area, eff `AllocsIn` cs)

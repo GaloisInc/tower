@@ -10,7 +10,9 @@ license:             BSD3
 library
   exposed-modules:      Ivory.Tower,
                         Ivory.Tower.Ivory,
+                        Ivory.Tower.Node,
                         Ivory.Tower.Task,
+                        Ivory.Tower.Signal,
                         Ivory.Tower.Tower,
                         Ivory.Tower.Monad,
                         Ivory.Tower.Types,

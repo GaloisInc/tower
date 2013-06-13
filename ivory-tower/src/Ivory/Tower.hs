@@ -34,13 +34,12 @@ module Ivory.Tower
   , withPeriod
   , withGetTimeMillis
 
+  -- Node exports:
+  , Node()
   , withChannelEmitter
   , withChannelReceiver
-
   , withDataReader
   , withDataWriter
-
-  , taskBody
 
   -- Task exports:
   , withStackSize
@@ -48,6 +47,9 @@ module Ivory.Tower
   , withModule
 
   , taskModuleDef
+  , taskBody
+
+  -- Signal exports:
 
   -- EventLoop exports:
   , onChannel
@@ -57,7 +59,8 @@ module Ivory.Tower
   -- Types
   , Name
   , Assembly()
-  , Schedule
+  , TaskSchedule()
+  , SigSchedule()
 
   -- Built in helpers
   , stateProxy
@@ -66,5 +69,6 @@ module Ivory.Tower
 import Ivory.Tower.Ivory
 import Ivory.Tower.Tower
 import Ivory.Tower.Task
+import Ivory.Tower.Node
 import Ivory.Tower.Types
 

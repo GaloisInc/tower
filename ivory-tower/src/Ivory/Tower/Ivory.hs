@@ -11,20 +11,21 @@ import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Tower
 import Ivory.Tower.Task
+import Ivory.Tower.Node
 
 -- DataPort Interface ----------------------------------------------------------
 
 -- | Atomic read of shared data, copying to local reference. Always succeeds.
 --   Takes a 'DataReader'.
 readData :: (eff `AllocsIn` cs, IvoryArea area)
-         => Schedule -> DataReader area -> Ref s area -> Ivory eff ()
-readData sch reader ref = sch_mkDataReader sch reader ref
+         => TaskSchedule -> DataReader area -> Ref s area -> Ivory eff ()
+readData sch reader ref = tsch_mkDataReader sch reader ref
 
 -- | Atomic write to shared data, copying from local reference. Always
 --   succeeds. Takes a 'DataWriter'.
 writeData :: (eff `AllocsIn` cs, IvoryArea area)
-          => Schedule -> DataWriter area -> ConstRef s area -> Ivory eff ()
-writeData sch writer ref = sch_mkDataWriter sch writer ref
+          => TaskSchedule -> DataWriter area -> ConstRef s area -> Ivory eff ()
+writeData sch writer ref = tsch_mkDataWriter sch writer ref
 
 -- Event Loop Interface --------------------------------------------------------
 
@@ -34,18 +35,18 @@ writeData sch writer ref = sch_mkDataWriter sch writer ref
 onChannel :: (eff `AllocsIn` cs, IvoryArea area, IvoryZero area)
     => ChannelReceiver area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
-onChannel rxer k = EventLoop [ \sch -> sch_mkReceiver sch rxer k ]
+onChannel rxer k = EventLoop [ \sch -> tsch_mkReceiver sch rxer k ]
 
 -- | Construct an 'EventLoop' from a 'Period' and a handler function which
 --   takes the current time (in milliseconds) and performs an Ivory computation
 onTimer :: (eff `AllocsIn` cs)
     => Period -> (Uint32 -> Ivory eff ())
     -> EventLoop eff
-onTimer per k = EventLoop [ \sch -> sch_mkPeriodic sch per k ]
+onTimer per k = EventLoop [ \sch -> tsch_mkPeriodic sch per k ]
 
--- | Generate Ivory code given a 'Schedule' and 'EventLoop'.
-eventLoop :: (eff `AllocsIn` cs ) => Schedule -> EventLoop eff -> Ivory eff ()
-eventLoop sch el = sch_mkEventLoop sch [ event sch | event <- unEventLoop el ]
+-- | Generate Ivory code given a 'TaskSchedule' and 'EventLoop'.
+eventLoop :: (eff `AllocsIn` cs ) => TaskSchedule -> EventLoop eff -> Ivory eff ()
+eventLoop sch el = tsch_mkEventLoop sch [ event sch | event <- unEventLoop el ]
 
 -- Special OS function interface -----------------------------------------------
 
@@ -59,9 +60,8 @@ getTimeMillis = unOSGetTimeMillis
 
 -- | Nonblocking emit. Fails silently.
 emit :: (IvoryArea area, eff `AllocsIn` cs)
-     => Schedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-emit schedule emitter ref = sch_mkEmitter schedule emitter ref
-
+     => TaskSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+emit schedule emitter ref = tsch_mkEmitter schedule emitter ref
 
 -- StateProxy ------------------------------------------------------------------
 

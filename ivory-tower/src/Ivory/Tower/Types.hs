@@ -100,7 +100,7 @@ newtype DataWriter (area :: Area) = DataWriter { unDataWriter :: DataportId }
 --   Combine EventLoops to be scheduled as part of the same task loop using
 --   'Data.Monoid'
 newtype EventLoop eff =
-  EventLoop { unEventLoop :: [(Schedule -> Ivory eff (Ivory eff ()))] }
+  EventLoop { unEventLoop :: [(TaskSchedule -> Ivory eff (Ivory eff ()))] }
 
 instance Monoid (EventLoop eff) where
   mempty = EventLoop []
@@ -141,20 +141,19 @@ emptyNodeSt n impl = NodeSt
 
 -- Task State-------------------------------------------------------------------
 
--- | Internal only: this is the result of a complete 'Ivory.Tower.Monad.Task'
---   context. The 'OS' implementation will use this to create a 'TowerSchedule'
+-- | Internal only: this is the result of a complete 'Task' context.
 data TaskSt =
   TaskSt
     { taskst_periods     :: [Integer]
     , taskst_stacksize   :: Maybe Integer
     , taskst_priority    :: Maybe Integer
-    , taskst_moddef      :: Schedule -> ModuleDef
+    , taskst_moddef      :: TaskSchedule -> ModuleDef
     , taskst_channelinit :: [Def('[]:->())]
     , taskst_extern_mods :: [Module]
-    , taskst_taskbody    :: Maybe (Schedule -> Def('[]:->()))
+    , taskst_taskbody    :: Maybe (TaskSchedule -> Def('[]:->()))
     }
 
--- | Internal only: basis for 'Ivory.Tower.Monad.Task' runner
+-- | Internal only
 emptyTaskSt :: TaskSt
 emptyTaskSt = TaskSt
   { taskst_periods     = []
@@ -168,6 +167,23 @@ emptyTaskSt = TaskSt
 
 type TaskNode = NodeSt TaskSt
 
+-- Signal State-----------------------------------------------------------------
+
+-- | Internal only: this is the result of a complete 'Signal' context.
+data SignalSt =
+  SignalSt
+    { signalst_moddef :: SigSchedule -> ModuleDef
+    , signalst_body   :: Maybe (SigSchedule -> Def('[]:->()))
+    }
+
+emptySignalSt :: SignalSt
+emptySignalSt = SignalSt
+  { signalst_moddef = const (return ())
+  , signalst_body   = Nothing
+  }
+
+type SigNode = NodeSt SignalSt
+
 -- Tower State -----------------------------------------------------------------
 
 data TowerSt =
@@ -176,6 +192,7 @@ data TowerSt =
     , towerst_dataports    :: [Labeled DataportId]
     , towerst_channels     :: [Labeled ChannelId]
     , towerst_tasknodes    :: [TaskNode]
+    , towerst_signodes     :: [SigNode]
     , towerst_dataportinit :: [Def('[]:->())]
     , towerst_moddef       :: ModuleDef
     }
@@ -186,35 +203,47 @@ emptyTowerSt = TowerSt
   , towerst_dataports = []
   , towerst_channels = []
   , towerst_tasknodes = []
+  , towerst_signodes = []
   , towerst_dataportinit = []
   , towerst_moddef = return ()
   }
 
 -- Compiled Schedule -----------------------------------------------------------
 
-data Schedule =
-  Schedule
-    { sch_mkDataReader :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
+data TaskSchedule =
+  TaskSchedule
+    { tsch_mkDataReader :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
                        => DataReader area -> Ref s area -> Ivory eff ()
-    , sch_mkDataWriter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
+    , tsch_mkDataWriter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
                        => DataWriter area -> ConstRef s area -> Ivory eff ()
-    , sch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
+    , tsch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
            => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-    , sch_mkReceiver :: forall area eff cs .
+    , tsch_mkReceiver :: forall area eff cs .
                           (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
            => ChannelReceiver area
            -> (ConstRef (Stack cs) area -> Ivory eff ())
            -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
                                        -- part of the loop
-    , sch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
+    , tsch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
            => Period
            -> (Uint32 -> Ivory eff ())
            -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
                                        -- part of the loop
-    , sch_mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
+    , tsch_mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
            => [Ivory eff (Ivory eff ())] -> Ivory eff ()
-    , sch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs )
+    , tsch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs )
                      => Ivory eff ()) -> Def('[]:->())
+    }
+
+data SigSchedule =
+  SigSchedule
+    { ssch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
+           => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+    , ssch_mkReceiver :: forall area eff cs s .
+                          (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
+           => ChannelReceiver area
+           -> Ref s area
+           -> Ivory eff IBool
     }
 
 -- Operating System ------------------------------------------------------------
@@ -236,10 +265,12 @@ data OS =
 
     -- Generate a Schedule for a particular Task, given the set of
     -- all tasks (sufficient for a fully described graph of channels)
-    , os_mkTaskSchedule    :: [TaskNode] -> TaskNode -> Schedule
+    , os_mkTaskSchedule    :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
+
+    , os_mkSigSchedule     :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 
     -- Generate any code needed for the system as a whole
-    , os_mkSysSchedule     :: [TaskNode] -> (ModuleDef, Def('[]:->()))
+    , os_mkSysSchedule     :: [TaskNode] -> [SigNode] -> (ModuleDef, Def('[]:->()))
 
     -- Utility function
     , os_getTimeMillis :: forall eff . Ivory eff Uint32
@@ -253,10 +284,13 @@ newtype Tower a = Tower
   { unTower :: StateT TowerSt Base a
   } deriving (Functor, Monad)
 
--- | Task monad: context for task-specific code generation
-newtype Task a = Task
-  { unTask :: StateT TaskNode Tower a
+-- | Node monad: context for task-specific code generation
+newtype Node i a = Node
+  { unNode :: StateT (NodeSt i) Tower a
   } deriving (Functor, Monad)
+
+type Task a = Node TaskSt a
+type Signal a = Node SignalSt a
 
 -- | Base monad: internal only. State on fresh names, Reader on OS
 newtype Base a = Base
@@ -284,9 +318,9 @@ instance BaseUtils Tower where
   fresh = Tower $ lift fresh
   getOS = Tower $ lift getOS
 
-instance BaseUtils Task where
-  fresh = Task $ lift fresh
-  getOS = Task $ lift getOS
+instance BaseUtils (Node i) where
+  fresh = Node $ lift fresh
+  getOS = Node $ lift getOS
 
 -- Assembly --------------------------------------------------------------------
 

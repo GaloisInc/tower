@@ -46,6 +46,8 @@ buildModules asm = ms
     mapM_ sourceDep  sourcedeps
     mapM_ incl taskentrys
     sequence_ taskMods
+    mapM_ ncg_mdef $ concatMap nodest_codegen tnodes
+    -- mapM_ ncg_mdef $ concatMap nodest_codegen tsnodes -- XXX signals
     towerst_moddef towerst
     sys_mdef
     incl towerentry
@@ -53,7 +55,8 @@ buildModules asm = ms
   towerentry :: Def ('[]:->())
   towerentry = proc "tower_entry" $ body $ do
     call_ sys_initdef
-    mapM_ call_ $ concatMap taskst_channelinit tasks
+    mapM_ (call_ . ncg_init) $ concatMap nodest_codegen tnodes
+--    mapM_ call_ $ concatMap (ncg_init . nodest_codegen) snodes -- XXX  implement signals
     mapM_ call_ $ towerst_dataportinit towerst
     mapM_ taskCreate (zip tasks taskentrys)
     retVoid
@@ -82,14 +85,14 @@ mkDataPort source = (fdp_initDef fdp, fdp_moduleDef fdp)
   fdp :: FreeRTOSDataport area
   fdp = sharedState (unDataSource source)
 
-mkChannel :: forall (area :: Area) . (IvoryArea area, IvoryZero area)
+mkChannel :: forall (area :: Area) i . (IvoryArea area, IvoryZero area)
               => ChannelReceiver area
-              -> TaskNode
+              -> NodeSt i
               -> (Def('[]:->()), ModuleDef)
-mkChannel rxer destTNode = (fch_initDef fch, fch_moduleDef fch)
+mkChannel rxer destNode = (fch_initDef fch, fch_moduleDef fch)
   where
   fch :: FreeRTOSChannel area
-  fch = eventQueue (unChannelReceiver rxer) destTNode
+  fch = eventQueue (unChannelReceiver rxer) destNode
 
 defaultstacksize :: Uint32
 defaultstacksize = 256

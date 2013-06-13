@@ -75,9 +75,9 @@ eventGuard node = FreeRTOSGuard
     incl initDef
     private $ defMemArea guardQueueArea
 
-eventQueue :: forall (area :: Area). (IvoryArea area)
+eventQueue :: forall (area :: Area) i. (IvoryArea area)
            => ChannelId
-           -> TaskNode -- Destination Task
+           -> NodeSt i -- Destination Node
            -> FreeRTOSChannel area
 eventQueue channelid dest = FreeRTOSChannel
   { fch_name = unique "freertos_eventQueue"

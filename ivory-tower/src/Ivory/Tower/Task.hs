@@ -47,16 +47,6 @@ withModule m = do
   s <- getTaskSt
   setTaskSt $ s { taskst_extern_mods = m:(taskst_extern_mods s)}
 
--- XXX move this code into Node
-taskCodegenChannelReceiver :: (IvoryArea area, IvoryZero area)
-                       => ChannelReceiver area -> Task ()
-taskCodegenChannelReceiver rxer = do
-  os <- getOS
-  thisnode <- getNode
-  let (channelinit, mdef) = os_mkChannel os rxer thisnode
-  taskStAddChannelInit channelinit
-  taskStAddModuleDef (\_ -> mdef)
-
 -- | Create a 'Period' in the context of a 'Task'. Integer argument
 --   declares period in milliseconds.
 withPeriod :: Integer -> Task Period

@@ -119,6 +119,12 @@ newtype OSGetTimeMillis =
 
 -- Node State-------------------------------------------------------------------
 
+data NodeCodegen =
+  NodeCodegen
+    { ncg_init  :: Def('[]:->())
+    , ncg_mdef  :: ModuleDef
+    }
+
 data NodeSt a =
   NodeSt
     { nodest_name        :: Name
@@ -126,6 +132,7 @@ data NodeSt a =
     , nodest_receivers   :: [Labeled ChannelId]
     , nodest_datareaders :: [Labeled DataportId]
     , nodest_datawriters :: [Labeled DataportId]
+    , nodest_codegen     :: [NodeCodegen]
     , nodest_impl        :: a
     } deriving (Functor)
 
@@ -136,6 +143,7 @@ emptyNodeSt n impl = NodeSt
   , nodest_receivers   = []
   , nodest_datareaders = []
   , nodest_datawriters = []
+  , nodest_codegen     = []
   , nodest_impl        = impl
   }
 
@@ -148,7 +156,6 @@ data TaskSt =
     , taskst_stacksize   :: Maybe Integer
     , taskst_priority    :: Maybe Integer
     , taskst_moddef      :: TaskSchedule -> ModuleDef
-    , taskst_channelinit :: [Def('[]:->())]
     , taskst_extern_mods :: [Module]
     , taskst_taskbody    :: Maybe (TaskSchedule -> Def('[]:->()))
     }
@@ -160,7 +167,6 @@ emptyTaskSt = TaskSt
   , taskst_stacksize   = Nothing
   , taskst_priority    = Nothing
   , taskst_moddef      = const (return ())
-  , taskst_channelinit = []
   , taskst_extern_mods = []
   , taskst_taskbody    = Nothing
   }
@@ -258,9 +264,9 @@ data OS =
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt
     -- (really just for the name) and a ChannelReceiver.
-    , os_mkChannel     :: forall area . (IvoryArea area, IvoryZero area)
+    , os_mkChannel     :: forall area i . (IvoryArea area, IvoryZero area)
                        => ChannelReceiver area
-                       -> TaskNode
+                       -> NodeSt i
                        -> (Def ('[]:->()), ModuleDef)
 
     -- Generate a Schedule for a particular Task, given the set of

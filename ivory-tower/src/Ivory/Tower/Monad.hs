@@ -55,22 +55,30 @@ runSignal name s = do
 
 -- Node Transformers----------------------------------------------------------
 
--- XXX put these back in Node i monad
-nodeStAddReceiver :: ChannelId -> String -> NodeSt a -> NodeSt a
-nodeStAddReceiver r lbl s =
-  s { nodest_receivers = (Labeled r lbl) : (nodest_receivers s)}
+nodeStAddReceiver :: ChannelId -> String -> Node i ()
+nodeStAddReceiver r lbl = do
+  n <- getNode
+  setNode $ n { nodest_receivers = (Labeled r lbl) : (nodest_receivers n)}
 
-nodeStAddEmitter :: ChannelId -> String -> NodeSt a -> NodeSt a
-nodeStAddEmitter r lbl s =
-  s { nodest_emitters = (Labeled r lbl) : (nodest_emitters s)}
+nodeStAddEmitter :: ChannelId -> String -> Node i ()
+nodeStAddEmitter r lbl = do
+  n <- getNode
+  setNode $ n { nodest_emitters = (Labeled r lbl) : (nodest_emitters n)}
 
-nodeStAddDataReader :: DataportId -> String -> NodeSt a -> NodeSt a
-nodeStAddDataReader cc lbl s =
-  s { nodest_datareaders = (Labeled cc lbl) : (nodest_datareaders s)}
+nodeStAddDataReader :: DataportId -> String -> Node i ()
+nodeStAddDataReader cc lbl = do
+  n <- getNode
+  setNode $ n { nodest_datareaders = (Labeled cc lbl) : (nodest_datareaders n)}
 
-nodeStAddDataWriter :: DataportId -> String -> NodeSt a -> NodeSt a
-nodeStAddDataWriter cc lbl s =
-  s { nodest_datawriters = (Labeled cc lbl) : (nodest_datawriters s)}
+nodeStAddDataWriter :: DataportId -> String -> Node i ()
+nodeStAddDataWriter cc lbl = do
+  n <- getNode
+  setNode $ n { nodest_datawriters = (Labeled cc lbl) : (nodest_datawriters n)}
+
+nodeStAddCodegen :: Def('[]:->()) -> ModuleDef -> Node i ()
+nodeStAddCodegen i m = do
+  n <- getNode
+  setNode $ n { nodest_codegen = (NodeCodegen i m):(nodest_codegen n) }
 
 getNode :: Node i (NodeSt i)
 getNode = Node get
@@ -96,11 +104,6 @@ taskStAddModuleDef :: (TaskSchedule -> ModuleDef) -> Task ()
 taskStAddModuleDef md = do
   s <- getTaskSt
   setTaskSt s { taskst_moddef = \sch -> taskst_moddef s sch >> md sch }
-
-taskStAddChannelInit :: Def('[]:->()) -> Task ()
-taskStAddChannelInit ci = do
-  s <- getTaskSt
-  setTaskSt $ s { taskst_channelinit = ci : (taskst_channelinit s) }
 
 -- Signal Getters/Setters --------------------------------------------------------
 

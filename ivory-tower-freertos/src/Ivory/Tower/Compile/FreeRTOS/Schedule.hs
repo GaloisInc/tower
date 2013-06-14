@@ -30,15 +30,41 @@ mkSystemSchedule tnodes _signodes = (md, initDef)
     -- own all task guards
     mapM_ guard_moduleDef allguards
 
+mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
+mkSigSchedule tnodes _signodes tnode = SigSchedule
+    { ssch_mkEmitter    = mkSigEmitter
+    , ssch_mkReceiver   = mkSigReceiver
+    , ssch_mkSigBody    = mkSigBody
+    }
+  where
+  mkSigEmitter :: (IvoryArea area, eff `AllocsIn` cs)
+               => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+  mkSigEmitter emitter ref = error "mkSigEmitter still undefined"
+  -- XXX emitter implementation is just like task, but with a fromISR primitive.
+  -- We need to factor out the endpoint / guard definitions from mkTaskSchedule
+  -- and make new guard_notify_isr and fch_emit_isr primitives.
+  mkSigReceiver :: (IvoryArea area, eff `AllocsIn` cs)
+                => ChannelReceiver area -> Ref s area -> Ivory eff IBool
+  mkSigReceiver rxer ref = error "mkSigReceiver still undefined"
+  -- XXX receiver implementation is similar but does not depend on a guard. We
+  -- need to add fch_receive_isr as a primitive under the hood.
+  mkSigBody :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ())
+            -> Def('[]:->())
+  mkSigBody b = error "mkSigBody still undefined"
+  -- XXX sig body is pretty simple: we just wrap up the code into a Def with the
+  -- name appropriate for the system interrupt. that information is not attached
+  -- to the SigNode at this time. Do we defer dispatch and uniqueness guarantees
+  -- elsewhere insted?
+
 mkTaskSchedule :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
 mkTaskSchedule tnodes _signodes tnode = TaskSchedule
     { tsch_mkDataReader = mkDataReader
     , tsch_mkDataWriter = mkDataWriter
-    , tsch_mkEmitter  = mkEmitter
-    , tsch_mkReceiver = mkReceiver
-    , tsch_mkPeriodic  = mkPeriodic
-    , tsch_mkEventLoop = mkEventLoop
-    , tsch_mkTaskBody  = mkTaskBody
+    , tsch_mkEmitter    = mkEmitter
+    , tsch_mkReceiver   = mkReceiver
+    , tsch_mkPeriodic   = mkPeriodic
+    , tsch_mkEventLoop  = mkEventLoop
+    , tsch_mkTaskBody   = mkTaskBody
     }
   where
   _tasks = map nodest_impl tnodes

@@ -16,6 +16,9 @@ import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
 
 import Ivory.Tower.Types
 
+-- Convenience
+data Ctx = User | ISR
+
 type EventQueueLen = 16
 type EventQueueIx  = Ix EventQueueLen
 
@@ -24,7 +27,11 @@ data FreeRTOSChannel area =
     { fch_name :: String
     , fch_emit :: forall eff s cs . (eff `AllocsIn` cs)
                => ConstRef s area -> Ivory eff IBool
+    , fch_emit_isr :: forall eff s cs . (eff `AllocsIn` cs)
+               => ConstRef s area -> Ivory eff IBool
     , fch_receive :: forall eff s cs . (eff `AllocsIn` cs)
+                  => Ref s area -> Ivory eff IBool
+    , fch_receive_isr :: forall eff s cs . (eff `AllocsIn` cs)
                   => Ref s area -> Ivory eff IBool
     , fch_initDef :: Def('[]:->())
     , fch_moduleDef :: ModuleDef
@@ -80,12 +87,14 @@ eventQueue :: forall (area :: Area) i. (IvoryArea area)
            -> NodeSt i -- Destination Node
            -> FreeRTOSChannel area
 eventQueue channelid dest = FreeRTOSChannel
-  { fch_name = unique "freertos_eventQueue"
-  , fch_emit = emit
-  , fch_receive = receive
-  , fch_initDef = initDef
-  , fch_moduleDef = mdef
-  , fch_channelid = channelid
+  { fch_name        = unique "freertos_eventQueue"
+  , fch_emit        = emit User
+  , fch_emit_isr    = emit ISR
+  , fch_receive     = receive User
+  , fch_receive_isr = receive ISR
+  , fch_initDef     = initDef
+  , fch_moduleDef   = mdef
+  , fch_channelid   = channelid
   }
   where
   name = printf "channel%d_%s" (unChannelId channelid) (nodest_name dest)
@@ -98,37 +107,41 @@ eventQueue channelid dest = FreeRTOSChannel
   freeQueueArea    = area (unique "freeQueue") Nothing
 
   getIx :: (eff `AllocsIn` cs)
-        => QueueHandle -> Uint32 -> Ivory eff (IBool, EventQueueIx)
-  getIx q waittime = do
+        => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, EventQueueIx)
+  getIx ctx q waittime = do
     vlocal <- local (ival 0)
-    s <- call Q.receive q vlocal waittime
+    s <- case ctx of
+           User -> call Q.receive     q vlocal waittime
+           ISR  -> call Q.receive_isr q vlocal
     v <- deref vlocal
     i <- assign (toIx v)
     return (s, i)
 
-  putIx :: QueueHandle -> EventQueueIx -> Ivory eff ()
-  putIx q i = call_ Q.send q (safeCast i) 0 -- should never block
+  putIx :: Ctx -> QueueHandle -> EventQueueIx -> Ivory eff ()
+  putIx ctx q i = case ctx of
+    User -> call_ Q.send     q (safeCast i) 0 -- should never block
+    ISR  -> call_ Q.send_isr q (safeCast i)
 
-  emit :: (eff `AllocsIn` cs) => ConstRef s area -> Ivory eff IBool
-  emit v = do
+  emit :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff IBool
+  emit ctx v = do
     eventHeap    <- addrOf eventHeapArea
     pendingQueue <- addrOf pendingQueueArea
     freeQueue    <- addrOf freeQueueArea
-    (got, i) <- getIx freeQueue 0
+    (got, i) <- getIx ctx freeQueue 0
     when got $ do
       refCopy (eventHeap ! i) v
-      putIx pendingQueue i
+      putIx ctx pendingQueue i
     return got
 
-  receive :: (eff `AllocsIn` cs) => Ref s area -> Ivory eff IBool
-  receive v = do
+  receive :: (eff `AllocsIn` cs) => Ctx -> Ref s area -> Ivory eff IBool
+  receive ctx v = do
     eventHeap    <- addrOf eventHeapArea
     pendingQueue <- addrOf pendingQueueArea
     freeQueue    <- addrOf freeQueueArea
-    (got, i) <- getIx pendingQueue 0
+    (got, i) <- getIx ctx pendingQueue 0
     when got $ do
       refCopy v (constRef (eventHeap ! i))
-      putIx freeQueue i
+      putIx ctx freeQueue i
     return got
 
   initName = unique "freertos_eventQueue_init"

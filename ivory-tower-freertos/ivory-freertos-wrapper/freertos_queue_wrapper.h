@@ -17,6 +17,12 @@ bool ivory_freertos_queue_send(uint16_t** queuehandle,
 bool ivory_freertos_queue_receive(uint16_t** queuehandle,
         uint32_t* value, uint32_t max_delay);
 
+bool ivory_freertos_queue_send_isr(uint16_t** queuehandle,
+        uint32_t value);
+
+bool ivory_freertos_queue_receive_isr(uint16_t** queuehandle,
+        uint32_t* value);
+
 uint32_t ivory_freertos_queue_messages_waiting(uint16_t** queuehandle);
 
 #endif // __IVORY_FREERTOS_QUEUE_WRAPPER_H__

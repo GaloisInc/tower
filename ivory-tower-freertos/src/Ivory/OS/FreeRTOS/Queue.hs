@@ -53,6 +53,16 @@ receive :: Def ('[ QueueHandle
                  ] :-> IBool) -- true if receive is successful
 receive = importProc "ivory_freertos_queue_receive" queueWrapperHeader
 
+send_isr :: Def ('[ QueueHandle
+              , Uint32 -- Value
+              ] :-> IBool) -- True if send is successful
+send_isr = importProc "ivory_freertos_queue_send_isr" queueWrapperHeader
+
+receive_isr :: Def ('[ QueueHandle
+                 , Ref s1 (Stored Uint32) -- Value
+                 ] :-> IBool) -- true if receive is successful
+receive_isr = importProc "ivory_freertos_queue_receive_isr" queueWrapperHeader
+
 messagesWaiting :: Def ('[ QueueHandle ] :-> Uint32)
 messagesWaiting = importProc "ivory_freertos_queue_messages_waiting" queueWrapperHeader
 

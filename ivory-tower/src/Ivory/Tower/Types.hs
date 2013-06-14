@@ -250,6 +250,8 @@ data SigSchedule =
            => ChannelReceiver area
            -> Ref s area
            -> Ivory eff IBool
+    , ssch_mkSigBody :: (forall eff cs . (eff `AllocsIn` cs)
+                     => Ivory eff ()) -> Def('[]:->())
     }
 
 -- Operating System ------------------------------------------------------------

@@ -62,14 +62,16 @@ withGetTimeMillis = do
   return (OSGetTimeMillis (os_getTimeMillis os))
 
 -- | Declare a task body for a 'Task'. The task body is an 'Ivory'
---   computation which initializes the task, and gives an 'EventLoop' as its
---   result.
+--   computation which initializes the task and runs an `eventLoop`.
+--   The Ivory computation Should Not terminate.
 taskBody :: (TaskSchedule -> (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ()))
          -> Task ()
 taskBody k = do
   s <- getTaskSt
   case taskst_taskbody s of
     Nothing -> setTaskSt $ s { taskst_taskbody = Just taskbody }
-    Just _ -> error "terrible thing occured"
+    Just _ -> getNodeName >>= \name ->
+              error ("multiple taskBody definitions in task named " ++ name)
  where
  taskbody sch = tsch_mkTaskBody sch (k sch)
+

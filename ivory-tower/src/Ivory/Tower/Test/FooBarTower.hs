@@ -60,7 +60,7 @@ barSourceTask barSource = do
       eventLoop sch $ onTimer p $ \_now -> do
         v <- deref (state ~> bar_member)
         store (state ~> bar_member) (v + 1)
-        emit sch barEmitter (constRef state)
+        emit_ sch barEmitter (constRef state)
 
 fooBarSinkTask :: DataSink (Struct "foo_state")
                -> ChannelSink (Struct "bar_state")

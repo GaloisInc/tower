@@ -7,6 +7,7 @@
 module Ivory.Tower.Ivory where
 
 import Ivory.Language
+import Ivory.Stdlib
 
 import Ivory.Tower.Types
 import Ivory.Tower.Tower
@@ -35,7 +36,12 @@ writeData sch writer ref = tsch_mkDataWriter sch writer ref
 onChannel :: (eff `AllocsIn` cs, IvoryArea area, IvoryZero area)
     => ChannelReceiver area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
-onChannel rxer k = EventLoop [ \sch -> tsch_mkReceiver sch rxer k ]
+onChannel rxer k = EventLoop [ rx ]
+  where
+  rx sch = return $ do -- No initialization, pure loop handler
+    ref <- local (izero)
+    success <- tsch_mkReceiver sch rxer ref
+    when success (k (constRef ref))
 
 -- | Construct an 'EventLoop' from a 'Period' and a handler function which
 --   takes the current time (in milliseconds) and performs an Ivory computation
@@ -56,18 +62,36 @@ eventLoop sch el = tsch_mkEventLoop sch [ event sch | event <- unEventLoop el ]
 getTimeMillis :: OSGetTimeMillis -> Ivory eff Uint32
 getTimeMillis = unOSGetTimeMillis
 
--- Event Emitter Interface -----------------------------------------------------
+-- Event Interface--------------------------------------------------------------
 
--- | Nonblocking emit. Fails silently.
+-- | Nonblocking emit for Tasks. Indicates success in return value.
 emit :: (IvoryArea area, eff `AllocsIn` cs)
-     => TaskSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+     => TaskSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
 emit schedule emitter ref = tsch_mkEmitter schedule emitter ref
+
+-- | Nonblocking emit for Tasks, with silent failure. Implemented in terms of
+--   'emit'.
+emit_ :: (IvoryArea area, eff `AllocsIn` cs)
+     => TaskSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+emit_ s c r = emit s c r >> return ()
+
+-- | Nonblocking emit for Signals. Indicates success in return value
+sigEmit :: (IvoryArea area, eff `AllocsIn` cs)
+     => SigSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
+sigEmit schedule emitter ref = ssch_mkEmitter schedule emitter ref
+
+-- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
+--   Indicates success in return value.
+sigReceive :: (IvoryArea area, eff `AllocsIn` cs)
+     => SigSchedule -> ChannelReceiver area -> Ref s area -> Ivory eff IBool
+sigReceive schedule emitter ref = ssch_mkReceiver schedule emitter ref
 
 -- StateProxy ------------------------------------------------------------------
 
 -- | A convenient way to transform a 'ChannelSink' to a 'DataSink' for places
 --   where you only want to read the most recent value posted to a Channel,
 --   rather than receive each one individually.
+--   Written entirely with public API.
 
 stateProxy :: (IvoryArea area, IvoryZero area)
            => ChannelSink area -> Tower (DataSink area)

@@ -223,13 +223,12 @@ data TaskSchedule =
     , tsch_mkDataWriter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
                        => DataWriter area -> ConstRef s area -> Ivory eff ()
     , tsch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
-           => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-    , tsch_mkReceiver :: forall area eff cs .
-                          (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
+           => ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
+    , tsch_mkReceiver :: forall area s eff cs .
+                          (IvoryArea area, eff `AllocsIn` cs)
            => ChannelReceiver area
-           -> (ConstRef (Stack cs) area -> Ivory eff ())
-           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
-                                       -- part of the loop
+           -> Ref s area
+           -> Ivory eff IBool
     , tsch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
            => Period
            -> (Uint32 -> Ivory eff ())
@@ -244,9 +243,9 @@ data TaskSchedule =
 data SigSchedule =
   SigSchedule
     { ssch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
-           => ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-    , ssch_mkReceiver :: forall area eff cs s .
-                          (IvoryArea area, IvoryZero area, eff `AllocsIn` cs)
+           => ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
+    , ssch_mkReceiver :: forall area s eff cs .
+                          (IvoryArea area, eff `AllocsIn` cs)
            => ChannelReceiver area
            -> Ref s area
            -> Ivory eff IBool

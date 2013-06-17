@@ -31,7 +31,8 @@ library
                         containers,
                         wl-pprint,
                         monadLib,
-                        ivory
+                        ivory,
+                        ivory-stdlib
 
   hs-source-dirs:       src
   default-language:     Haskell2010

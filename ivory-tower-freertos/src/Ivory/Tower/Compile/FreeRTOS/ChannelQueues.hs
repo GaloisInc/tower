@@ -15,9 +15,7 @@ import qualified Ivory.OS.FreeRTOS.Queue as Q
 import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
 
 import Ivory.Tower.Types
-
--- Convenience
-data Ctx = User | ISR
+import Ivory.Tower.Compile.FreeRTOS.Types
 
 type EventQueueLen = 16
 type EventQueueIx  = Ix EventQueueLen
@@ -26,13 +24,9 @@ data FreeRTOSChannel area =
   FreeRTOSChannel
     { fch_name :: String
     , fch_emit :: forall eff s cs . (eff `AllocsIn` cs)
-               => ConstRef s area -> Ivory eff IBool
-    , fch_emit_isr :: forall eff s cs . (eff `AllocsIn` cs)
-               => ConstRef s area -> Ivory eff IBool
+               => Ctx -> ConstRef s area -> Ivory eff IBool
     , fch_receive :: forall eff s cs . (eff `AllocsIn` cs)
-                  => Ref s area -> Ivory eff IBool
-    , fch_receive_isr :: forall eff s cs . (eff `AllocsIn` cs)
-                  => Ref s area -> Ivory eff IBool
+                  => Ctx -> Ref s area -> Ivory eff IBool
     , fch_initDef :: Def('[]:->())
     , fch_moduleDef :: ModuleDef
     , fch_channelid :: ChannelId
@@ -41,7 +35,7 @@ data FreeRTOSChannel area =
 data FreeRTOSGuard =
   FreeRTOSGuard
     { guard_block     :: forall eff cs . (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
-    , guard_notify    :: forall eff . Ivory eff ()
+    , guard_notify    :: forall eff . Ctx -> Ivory eff ()
     , guard_initDef   :: Def('[]:->())
     , guard_moduleDef :: ModuleDef
     }
@@ -63,12 +57,14 @@ eventGuard node = FreeRTOSGuard
     got <- call Q.receive guardQueue vlocal time
     return got
 
-  notify :: Ivory eff ()
-  notify = do
+  notify :: Ctx -> Ivory eff ()
+  notify ctx = do
     guardQueue <- addrOf guardQueueArea
     let sentvalue = 0 -- we don't care what the value in the queue is, just its presence
         blocktime = 0 -- we don't ever want to block, and if the queue is full thats OK
-    call_ Q.send guardQueue sentvalue blocktime
+    case ctx of
+      User -> call_ Q.send     guardQueue sentvalue blocktime
+      ISR  -> call_ Q.send_isr guardQueue sentvalue
 
   guardQueueArea :: MemArea Q.Queue
   guardQueueArea = area (unique "guardQueue") Nothing
@@ -88,10 +84,8 @@ eventQueue :: forall (area :: Area) i. (IvoryArea area)
            -> FreeRTOSChannel area
 eventQueue channelid dest = FreeRTOSChannel
   { fch_name        = unique "freertos_eventQueue"
-  , fch_emit        = emit User
-  , fch_emit_isr    = emit ISR
-  , fch_receive     = receive User
-  , fch_receive_isr = receive ISR
+  , fch_emit        = emit
+  , fch_receive     = receive
   , fch_initDef     = initDef
   , fch_moduleDef   = mdef
   , fch_channelid   = channelid

@@ -19,6 +19,7 @@ library
                         Ivory.OS.FreeRTOS.Semaphore,
                         Ivory.OS.FreeRTOS.Queue,
                         Ivory.Tower.Compile.FreeRTOS,
+                        Ivory.Tower.Compile.FreeRTOS.Types,
                         Ivory.Tower.Compile.FreeRTOS.ChannelQueues,
                         Ivory.Tower.Compile.FreeRTOS.Schedule,
                         Ivory.Tower.Compile.FreeRTOS.SharedState,

@@ -7,6 +7,10 @@ module Ivory.Tower
   , ChannelReceiver()
 
   , emit
+  , emit_
+  , onChannel
+  , sigEmit
+  , sigReceive
 
   -- DataPort exports:
   , DataSource()
@@ -49,10 +53,6 @@ module Ivory.Tower
   , taskModuleDef
   , taskBody
 
-  -- Signal exports:
-
-  -- EventLoop exports:
-  , onChannel
   , onTimer
   , eventLoop
 

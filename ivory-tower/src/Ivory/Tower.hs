@@ -60,6 +60,7 @@ module Ivory.Tower
 
   -- Signal exports:
   , signalBody
+  , signalName
 
   -- Types
   , Name

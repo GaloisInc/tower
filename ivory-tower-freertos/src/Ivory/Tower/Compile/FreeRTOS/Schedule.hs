@@ -97,7 +97,11 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
 
   mkSigBody :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ())
             -> Def('[]:->())
-  mkSigBody b = proc (nodest_name tnode) (body b)
+  mkSigBody b = proc name (body b)
+    where
+    name = case signalst_cname (nodest_impl tnode)  of
+      Just n  -> n
+      Nothing -> nodest_name tnode
 
 mkTaskSchedule :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
 mkTaskSchedule tnodes signodes tnode = TaskSchedule

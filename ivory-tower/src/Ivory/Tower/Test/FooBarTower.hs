@@ -60,6 +60,7 @@ someSignal :: ChannelSource (Stored Uint8)
 someSignal ch1 bar = do
   chEmitter  <- withChannelEmitter ch1 "someChan"
   chReceiver <- withChannelReceiver bar "barToISR"
+  signalName "isr_123"
   signalBody $ \sch -> do
     v <- local izero
     success <- sigReceive sch chReceiver v

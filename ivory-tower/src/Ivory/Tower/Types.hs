@@ -180,12 +180,14 @@ data SignalSt =
   SignalSt
     { signalst_moddef :: SigSchedule -> ModuleDef
     , signalst_body   :: Maybe (SigSchedule -> Def('[]:->()))
+    , signalst_cname  :: Maybe String
     }
 
 emptySignalSt :: SignalSt
 emptySignalSt = SignalSt
   { signalst_moddef = const (return ())
   , signalst_body   = Nothing
+  , signalst_cname  = Nothing
   }
 
 type SigNode = NodeSt SignalSt

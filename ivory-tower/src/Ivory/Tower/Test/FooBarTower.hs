@@ -6,9 +6,13 @@
 
 module Ivory.Tower.Test.FooBarTower where
 
+import Data.Monoid
+
 import Ivory.Language
+import Ivory.Stdlib
 
 import Ivory.Tower
+
 
 [ivory|
 struct foo_state
@@ -50,17 +54,39 @@ fooSourceTask fooSource = do
         store (state ~> foo_member) (v + 1)
         writeData sch fooWriter (constRef state)
 
-barSourceTask :: ChannelSource (Struct "bar_state") -> Task ()
-barSourceTask barSource = do
+someSignal :: ChannelSource (Stored Uint8)
+           -> ChannelSink (Struct "bar_state")
+           -> Signal ()
+someSignal ch1 bar = do
+  chEmitter  <- withChannelEmitter ch1 "someChan"
+  chReceiver <- withChannelReceiver bar "barToISR"
+  signalBody $ \sch -> do
+    v <- local izero
+    success <- sigReceive sch chReceiver v
+    output <- local (ival (success ? (1,0)))
+    emit_ sch chEmitter (constRef output)
+
+barSourceTask :: ChannelSource (Struct "bar_state") 
+              -> ChannelSink (Stored Uint8)
+              -> Task ()
+barSourceTask barSource chSink = do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
+    c <- withChannelReceiver chSink "signalCh"
     taskModuleDef $ \_sch -> depend fooBarTypes
     taskBody $ \sch -> do
       state <- local (istruct [])
-      eventLoop sch $ onTimer p $ \_now -> do
-        v <- deref (state ~> bar_member)
-        store (state ~> bar_member) (v + 1)
-        emit_ sch barEmitter (constRef state)
+      let thandler = onTimer p $ \_now -> incrementEmit
+          chandler = onChannel c $ \iref -> do
+            i <- deref iref
+            when (i >? 0) $ incrementEmit
+
+          incrementEmit = do
+            v <- deref (state ~> bar_member)
+            store (state ~> bar_member) (v + 1)
+            emit_ sch barEmitter (constRef state)
+
+      eventLoop sch $ thandler <> chandler
 
 fooBarSinkTask :: DataSink (Struct "foo_state")
                -> ChannelSink (Struct "bar_state")
@@ -82,9 +108,12 @@ fooBarTower :: Tower ()
 fooBarTower = do
   (source_f, sink_f) <- dataport
   (source_b, sink_b) <- channel
+  (source_i, sink_i) <- channel
 
   task "fooSourceTask"  $ fooSourceTask source_f
-  task "barSourceTask"  $ barSourceTask source_b
+
+  signal "someSignal"   $ someSignal source_i sink_b
+  task "barSourceTask"  $ barSourceTask source_b sink_i
   task "fooBarSinkTask" $ fooBarSinkTask sink_f sink_b
 
   addModule fooBarTypes

@@ -19,25 +19,45 @@ runTower :: Tower () -> Base Assembly
 runTower twr = do
   (_, towerst) <- runStateT emptyTowerSt (unTower twr)
   os <- getOS
-  let tnodes = towerst_tasknodes towerst
-      snodes = towerst_signodes towerst
-
-      genTask :: TaskNode -> (Def('[]:->()), ModuleDef)
-      genTask tnode = (scheduleTaskBody tsch, (taskst_moddef aTask) tsch)
-        where
-        aTask = nodest_impl tnode
-        tsch = os_mkTaskSchedule os tnodes snodes tnode
-        scheduleTaskBody = case taskst_taskbody aTask of
-          Just b -> b
-          Nothing -> error ("runTower input Error: Missing task body in " 
-                            ++ (nodest_name tnode))
-
+  let tnodes  = towerst_tasknodes towerst
+      snodes  = towerst_signodes towerst
+      genTask = assembleTask os tnodes snodes
+      genSig  = assembleSig  os tnodes snodes
   return $ Assembly { asm_towerst = towerst
-                    , asm_taskdefs = let res = map genTask tnodes in
-                                     let (defs, mods) = unzip res in
-                                     zip3 tnodes defs mods
+                    , asm_tasks   = map genTask tnodes
+                    , asm_sigs    = map genSig  snodes
                     , asm_system  = os_mkSysSchedule os tnodes snodes
                     }
+
+assembleTask :: OS -> [TaskNode] -> [SigNode]
+        -> TaskNode -> AssembledNode TaskSt
+assembleTask os tnodes snodes tnode = AssembledNode
+  { asmnode_nodest = tnode
+  , asmnode_tldef  = mkbody sched
+  , asmnode_moddef = taskst_moddef taskst sched
+  }
+  where
+  sched  = os_mkTaskSchedule os tnodes snodes tnode
+  taskst = nodest_impl tnode
+  mkbody = case taskst_taskbody taskst of
+    Just b -> b
+    Nothing -> error ("tower input error: Missing task body in " 
+                        ++ (nodest_name tnode))
+
+assembleSig :: OS -> [TaskNode] -> [SigNode]
+        -> SigNode -> AssembledNode SignalSt
+assembleSig os tnodes snodes snode = AssembledNode
+  { asmnode_nodest = snode
+  , asmnode_tldef  = mkbody sched
+  , asmnode_moddef = signalst_moddef sigst sched
+  }
+  where
+  sched  = os_mkSigSchedule os tnodes snodes snode
+  sigst  = nodest_impl snode
+  mkbody = case signalst_body sigst of
+    Just b -> b
+    Nothing -> error ("tower input error: Missing signal body in "
+                        ++ (nodest_name snode))
 
 runTask :: Name -> Task () -> Tower TaskNode
 runTask name t = do
@@ -120,4 +140,14 @@ getTowerSt = Tower get
 
 setTowerSt :: TowerSt -> Tower ()
 setTowerSt s = Tower $ set s
+
+addTaskNode :: TaskNode -> Tower ()
+addTaskNode n = do
+  s <- getTowerSt
+  setTowerSt $ s { towerst_tasknodes = n : (towerst_tasknodes s) }
+
+addSigNode :: SigNode -> Tower ()
+addSigNode n = do
+  s <- getTowerSt
+  setTowerSt $ s { towerst_signodes = n : (towerst_signodes s) }
 

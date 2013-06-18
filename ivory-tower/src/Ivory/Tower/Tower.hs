@@ -19,13 +19,17 @@ import Ivory.Tower.Monad
 assembleTower :: Tower () -> OS -> Assembly
 assembleTower t os = runBase (runTower t) os
 
--- | Instantiate a 'TaskConstructor' into a task. Provide a name as a
+-- | Instantiate a 'Task' into a task. Provide a name as a
 --   human-readable debugging aid.
 task :: Name -> Task () -> Tower ()
 task name t = do
   taskNode <- runTask name t
-  towerSt <- getTowerSt
-  setTowerSt $ towerSt { towerst_tasknodes = taskNode : (towerst_tasknodes towerSt) }
+  addTaskNode taskNode
+
+signal :: Name -> Signal () -> Tower ()
+signal name s = do
+  sigNode <- runSignal name s
+  addSigNode sigNode
 
 -- | Instantiate a data port. Result is a matching pair of 'DataSource' and
 --   'DataSink'.

@@ -6,10 +6,10 @@ module Ivory.Tower
   , ChannelEmitter()
   , ChannelReceiver()
 
+  , EmitSchedulable()
   , emit
   , emit_
   , onChannel
-  , sigEmit
   , sigReceive
 
   -- DataPort exports:
@@ -25,12 +25,14 @@ module Ivory.Tower
   , getTimeMillis
   , Tower()
   , Task()
+  , Signal()
 
   , OSGetTimeMillis()
 
   , freshname
   -- Tower exports:
   , task
+  , signal
   , dataport
   , channel
   , addModule
@@ -56,6 +58,9 @@ module Ivory.Tower
   , onTimer
   , eventLoop
 
+  -- Signal exports:
+  , signalBody
+
   -- Types
   , Name
   , Assembly()
@@ -69,6 +74,7 @@ module Ivory.Tower
 import Ivory.Tower.Ivory
 import Ivory.Tower.Tower
 import Ivory.Tower.Task
+import Ivory.Tower.Signal
 import Ivory.Tower.Node
 import Ivory.Tower.Types
 

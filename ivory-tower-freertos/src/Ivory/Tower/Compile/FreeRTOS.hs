@@ -32,41 +32,53 @@ buildModules :: Assembly -> [Module]
 buildModules asm = ms
   where
   towerst = asm_towerst asm
-  (tnodes, taskentrys, taskMods) = unzip3 $ asm_taskdefs asm
+  tasks   = asm_tasks   asm
+  signals = asm_sigs    asm
   (sys_mdef, sys_initdef) = asm_system asm
-  tasks = map nodest_impl tnodes
+
+  gencode = getgeneratedcode tasks ++ getgeneratedcode signals
 
   ms = [ twr_entry ]
     ++ towerst_modules towerst
-    ++ concatMap taskst_extern_mods tasks
+    ++ concatMap (taskst_extern_mods . nodest_impl . asmnode_nodest) tasks
 
   twr_entry = package "tower" $ do
+    -- External C code dependencies
     mapM_ inclHeader headerdeps
     mapM_ sourceDep  headerdeps
     mapM_ sourceDep  sourcedeps
-    mapM_ incl taskentrys
-    sequence_ taskMods
-    mapM_ ncg_mdef $ concatMap nodest_codegen tnodes
-    -- mapM_ ncg_mdef $ concatMap nodest_codegen tsnodes -- XXX signals
+    -- Assembled code
+    mapM_ (incl . asmnode_tldef) tasks
+    mapM_ (incl . asmnode_tldef) signals
+    mapM_ asmnode_moddef tasks
+    mapM_ asmnode_moddef signals
+    -- Generated code
+    mapM_ ncg_mdef gencode
+    -- User specified code
     towerst_moddef towerst
+    -- System-wide code
     sys_mdef
     incl towerentry
 
   towerentry :: Def ('[]:->())
   towerentry = proc "tower_entry" $ body $ do
     call_ sys_initdef
-    mapM_ (call_ . ncg_init) $ concatMap nodest_codegen tnodes
---    mapM_ call_ $ concatMap (ncg_init . nodest_codegen) snodes -- XXX  implement signals
+    mapM_ (call_ . ncg_init) gencode
     mapM_ call_ $ towerst_dataportinit towerst
-    mapM_ taskCreate (zip tasks taskentrys)
+    mapM_ taskCreate tasks
     retVoid
 
-taskCreate :: (TaskSt, Def('[]:->())) -> Ivory eff ()
-taskCreate (taskst, entry) = call_ Task.create pointer stacksize priority
+
+getgeneratedcode :: [AssembledNode a] -> [NodeCodegen]
+getgeneratedcode as = concatMap (nodest_codegen . asmnode_nodest) as
+
+taskCreate :: AssembledNode TaskSt -> Ivory eff ()
+taskCreate a = call_ Task.create pointer stacksize priority
   where
-  pointer = procPtr entry
+  taskst    = nodest_impl (asmnode_nodest a)
+  pointer   = procPtr (asmnode_tldef a)
   stacksize = maybe defaultstacksize fromIntegral (taskst_stacksize taskst)
-  priority = defaulttaskpriority + (maybe 0 fromIntegral (taskst_priority taskst))
+  priority  = defaulttaskpriority + (maybe 0 fromIntegral (taskst_priority taskst))
 
 os :: OS
 os = OS

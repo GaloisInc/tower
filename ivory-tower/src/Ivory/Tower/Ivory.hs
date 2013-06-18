@@ -64,21 +64,20 @@ getTimeMillis = unOSGetTimeMillis
 
 -- Event Interface--------------------------------------------------------------
 
--- | Nonblocking emit for Tasks. Indicates success in return value.
-emit :: (IvoryArea area, eff `AllocsIn` cs)
-     => TaskSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
-emit schedule emitter ref = tsch_mkEmitter schedule emitter ref
+class EmitSchedulable a where
+  -- | Nonblocking emit. Indicates success in return value.
+  emit :: (IvoryArea area, eff `AllocsIn` cs)
+     => a -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
+  -- | Nonblocking emit. Fails silently.
+  emit_ :: (IvoryArea area, eff `AllocsIn` cs)
+     => a -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+  emit_ s c r = emit s c r >> return () 
 
--- | Nonblocking emit for Tasks, with silent failure. Implemented in terms of
---   'emit'.
-emit_ :: (IvoryArea area, eff `AllocsIn` cs)
-     => TaskSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
-emit_ s c r = emit s c r >> return ()
+instance EmitSchedulable TaskSchedule where
+  emit schedule emitter ref = tsch_mkEmitter schedule emitter ref
 
--- | Nonblocking emit for Signals. Indicates success in return value
-sigEmit :: (IvoryArea area, eff `AllocsIn` cs)
-     => SigSchedule -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
-sigEmit schedule emitter ref = ssch_mkEmitter schedule emitter ref
+instance EmitSchedulable SigSchedule where
+  emit schedule emitter ref = ssch_mkEmitter schedule emitter ref
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.

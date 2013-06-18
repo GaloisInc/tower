@@ -334,7 +334,8 @@ instance BaseUtils (Node i) where
 data Assembly =
   Assembly
     { asm_towerst  :: TowerSt
-    , asm_taskdefs :: [(TaskNode,Def('[]:->()),ModuleDef)] -- XXX todo replace this.
+    , asm_tasks    :: [AssembledNode TaskSt]
+    , asm_sigs     :: [AssembledNode SignalSt]
     , asm_system   :: (ModuleDef, Def('[]:->()))
     }
 

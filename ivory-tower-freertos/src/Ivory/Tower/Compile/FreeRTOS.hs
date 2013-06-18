@@ -109,8 +109,6 @@ mkChannel rxer destNode = (fch_initDef fch, fch_moduleDef fch)
 defaultstacksize :: Uint32
 defaultstacksize = 256
 
--- XXX since our scheduler now depends on round robin to schedule the loop
--- bodies, better make sure that every eventloop task has the default priority
 defaulttaskpriority :: Uint8
 defaulttaskpriority = 1
 

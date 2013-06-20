@@ -37,10 +37,10 @@ bool ivory_freertos_queue_send_isr(uint16_t **queuehandle,
     portBASE_TYPE higherPriorityTaskWoken;
     portBASE_TYPE res = xQueueSendFromISR(q, (void*)&value, &higherPriorityTaskWoken);
 
-    // On the ARM_CM3/CM4F port, yield from ISRuses PENDSV, which our ISR
-    // is higher priority than. So, we will not switch context until the ISR is
-    // complete.
-    // Break this invariant and you will surely have to redesign thesystem.
+    // On the ARM_CM3/CM4F port, yield from ISR uses PENDSV, which our ISR is
+    // higher priority than. So, we will not switch context until the ISR is
+    // complete.  Break this invariant and you will surely have to redesign the
+    // system.
 
     if (higherPriorityTaskWoken == pdTRUE)
         vPortYieldFromISR();

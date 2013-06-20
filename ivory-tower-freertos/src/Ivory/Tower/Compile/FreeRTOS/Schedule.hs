@@ -140,7 +140,6 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
   mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
   mkTaskBody tb = proc ("taskbody_" ++ (nodest_name tnode)) $ body tb
 
-
 mkPeriodic :: (eff `AllocsIn` cs)
               => Period -> (Uint32 -> Ivory eff ()) -> Ivory eff (Ivory eff ())
 mkPeriodic (Period p) k = do

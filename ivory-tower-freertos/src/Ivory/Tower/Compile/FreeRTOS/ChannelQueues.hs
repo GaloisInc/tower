@@ -19,9 +19,6 @@ import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
 import Ivory.Tower.Types
 import Ivory.Tower.Compile.FreeRTOS.Types
 
-type EventQueueLen = 16
-type EventQueueIx  = Ix EventQueueLen
-
 data FreeRTOSChannel area =
   FreeRTOSChannel
     { fch_name :: String
@@ -42,6 +39,11 @@ data FreeRTOSGuard =
     , guard_moduleDef :: ModuleDef
     }
 
+
+incomingEvents :: NodeSt i -> Integer
+incomingEvents n = foldl aux 0 $ map unLabeled $ nodest_receivers n
+  where aux acc chid = acc +(chan_size chid)
+
 eventGuard :: TaskNode -> FreeRTOSGuard
 eventGuard node = FreeRTOSGuard
   { guard_block = block
@@ -50,7 +52,8 @@ eventGuard node = FreeRTOSGuard
   , guard_moduleDef = moduleDef
   }
   where
-  size = (16 :: Int) -- XXX fixme: calculate from tasknode contents
+  -- At least 1 to be a valid freertos primitive.
+  size = max 1 $ incomingEvents node
   unique s = s ++ (nodest_name node)
 
   block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
@@ -78,13 +81,13 @@ eventGuard node = FreeRTOSGuard
     incl initDef
     private $ defMemArea guardSemArea
 
-eventQueue :: forall (n :: Nat) (area :: Area) i
-            . (IvoryArea area)
+eventQueue :: forall (area :: Area) (n :: Nat) i
+            . (SingI n, IvoryArea area)
            => ChannelId
            -> Sing n
            -> NodeSt i -- Destination Node
            -> FreeRTOSChannel area
-eventQueue channelid sizeSing dest = FreeRTOSChannel -- XXX fish size types through!!
+eventQueue channelid _sizeSing dest = FreeRTOSChannel
   { fch_name        = unique "freertos_eventQueue"
   , fch_emit        = emit
   , fch_receive     = receive
@@ -96,14 +99,14 @@ eventQueue channelid sizeSing dest = FreeRTOSChannel -- XXX fish size types thro
   name = printf "channel%d_%s" (chan_id channelid) (nodest_name dest)
   unique :: String -> String
   unique n = n ++ name
-  eventHeapArea :: MemArea (Array EventQueueLen area)
+  eventHeapArea :: MemArea (Array n area)
   eventHeapArea = area (unique "eventHeap") Nothing
   pendingQueueArea, freeQueueArea :: MemArea Q.Queue
   pendingQueueArea = area (unique "pendingQueue") Nothing
   freeQueueArea    = area (unique "freeQueue") Nothing
 
   getIx :: (eff `AllocsIn` cs)
-        => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, EventQueueIx)
+        => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, Ix n)
   getIx ctx q waittime = do
     vlocal <- local (ival 0)
     s <- case ctx of
@@ -113,7 +116,7 @@ eventQueue channelid sizeSing dest = FreeRTOSChannel -- XXX fish size types thro
     i <- assign (toIx v)
     return (s, i)
 
-  putIx :: Ctx -> QueueHandle -> EventQueueIx -> Ivory eff ()
+  putIx :: Ctx -> QueueHandle -> Ix n -> Ivory eff ()
   putIx ctx q i = case ctx of
     User -> call_ Q.send     q (safeCast i) 0 -- should never block
     ISR  -> call_ Q.send_isr q (safeCast i)
@@ -148,7 +151,7 @@ eventQueue channelid sizeSing dest = FreeRTOSChannel -- XXX fish size types thro
     freeQueue    <- addrOf freeQueueArea
     call_ Q.create pendingQueue (arrayLen eventHeap)
     call_ Q.create freeQueue    (arrayLen eventHeap)
-    for (toIx (arrayLen eventHeap :: Sint32) :: EventQueueIx) $ \i ->
+    for (toIx (arrayLen eventHeap :: Sint32) :: Ix n) $ \i ->
       call_ Q.send freeQueue (safeCast i) 0 -- should not bock
 
   mdef = do

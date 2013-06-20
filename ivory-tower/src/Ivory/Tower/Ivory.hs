@@ -33,8 +33,8 @@ writeData sch writer ref = tsch_mkDataWriter sch writer ref
 -- | Construct an 'EventLoop' from a 'ChannelReceiver' and a handler function
 --   which takes a ConstRef to the received event and performs an Ivory
 --   computation
-onChannel :: (eff `AllocsIn` cs, IvoryArea area, IvoryZero area)
-    => ChannelReceiver area -> (ConstRef (Stack cs) area -> Ivory eff ())
+onChannel :: (SingI n, eff `AllocsIn` cs, IvoryArea area, IvoryZero area)
+    => ChannelReceiver n area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
 onChannel rxer k = EventLoop [ rx ]
   where
@@ -66,11 +66,11 @@ getTimeMillis = unOSGetTimeMillis
 
 class EmitSchedulable a where
   -- | Nonblocking emit. Indicates success in return value.
-  emit :: (IvoryArea area, eff `AllocsIn` cs)
-     => a -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
+  emit :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+     => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
   -- | Nonblocking emit. Fails silently.
-  emit_ :: (IvoryArea area, eff `AllocsIn` cs)
-     => a -> ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+  emit_ :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+     => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
   emit_ s c r = emit s c r >> return () 
 
 instance EmitSchedulable TaskSchedule where
@@ -81,8 +81,8 @@ instance EmitSchedulable SigSchedule where
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.
-sigReceive :: (IvoryArea area, eff `AllocsIn` cs)
-     => SigSchedule -> ChannelReceiver area -> Ref s area -> Ivory eff IBool
+sigReceive :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+     => SigSchedule -> ChannelReceiver n area -> Ref s area -> Ivory eff IBool
 sigReceive schedule emitter ref = ssch_mkReceiver schedule emitter ref
 
 -- StateProxy ------------------------------------------------------------------
@@ -92,8 +92,8 @@ sigReceive schedule emitter ref = ssch_mkReceiver schedule emitter ref
 --   rather than receive each one individually.
 --   Written entirely with public API.
 
-stateProxy :: (IvoryArea area, IvoryZero area)
-           => ChannelSink area -> Tower (DataSink area)
+stateProxy :: (SingI n, IvoryArea area, IvoryZero area)
+           => ChannelSink n area -> Tower (DataSink area)
 stateProxy chsink = do
   (src_data, snk_data) <- dataport
   task "stateProxy" $ do

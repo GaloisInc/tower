@@ -7,12 +7,10 @@ module Ivory.Tower.Node where
 import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
-import Ivory.Tower.Task
-import Ivory.Tower.Signal
 
 -- | private
-codegenChannelReceiver :: (IvoryArea area, IvoryZero area)
-                       => ChannelReceiver area -> Node i ()
+codegenChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area)
+                       => ChannelReceiver n area -> Node i ()
 codegenChannelReceiver rxer = do
   os <- getOS
   thisnode <- getNode
@@ -22,8 +20,8 @@ codegenChannelReceiver rxer = do
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
 --   'Task'.
 --   Provide a human-readable name as a debugging aid.
-withChannelEmitter :: (IvoryArea area)
-      => ChannelSource area -> String -> Node i (ChannelEmitter area)
+withChannelEmitter :: (SingI n, IvoryArea area)
+      => ChannelSource n area -> String -> Node i (ChannelEmitter n area)
 withChannelEmitter chsrc label = do
   let cid     = unChannelSource chsrc
       emitter = ChannelEmitter cid
@@ -51,8 +49,8 @@ withDataWriter ds label = do
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
-withChannelReceiver :: (IvoryArea area, IvoryZero area)
-      => ChannelSink area -> String -> Node i (ChannelReceiver area)
+withChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area)
+      => ChannelSink n area -> String -> Node i (ChannelReceiver n area)
 withChannelReceiver chsink label = do
   let cid  = unChannelSink chsink
       rxer = toReceiver chsink
@@ -62,6 +60,6 @@ withChannelReceiver chsink label = do
   codegenChannelReceiver rxer
   return rxer
   where
-  toReceiver :: ChannelSink area -> ChannelReceiver area
+  toReceiver :: ChannelSink n area -> ChannelReceiver n area
   toReceiver sink = ChannelReceiver $ unChannelSink sink
 

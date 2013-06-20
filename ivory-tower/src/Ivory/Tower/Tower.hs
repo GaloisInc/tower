@@ -6,6 +6,9 @@
 
 module Ivory.Tower.Tower where
 
+import GHC.TypeLits
+import Control.Monad (when)
+
 import Ivory.Language
 import qualified Ivory.Language.Area as IArea
 
@@ -35,40 +38,37 @@ signal name s = do
 --   'DataSink'.
 dataport :: forall area . (IvoryArea area) => Tower (DataSource area, DataSink area)
 dataport = do
-  n <- fresh
-  let dpid = DataportId n
-      (source, sink) = (DataSource dpid, DataSink dpid)
-  describeDataport dpid
+  dpid <- mkDataport tyname
+  let (source, sink) = (DataSource dpid, DataSink dpid)
   codegenDataport source
   return (source, sink)
   where
+  tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
+  -- Need this broken out separately to give it a type signature,
+  -- for some reason GHC won't infer the type properly:
   codegenDataport :: (IvoryArea area) => DataSource area -> Tower ()
   codegenDataport datasource = do
     os <- getOS
     let (initializer,mdef) = os_mkDataPort os datasource
-    s <- getTowerSt
-    setTowerSt $ s { towerst_dataportinit = initializer : (towerst_dataportinit s)
-                   , towerst_moddef       = mdef >> (towerst_moddef s) }
-
-  describeDataport :: DataportId -> Tower ()
-  describeDataport dpid = do
-    s <- getTowerSt
-    setTowerSt $ s { towerst_dataports = (Labeled dpid tyname) : (towerst_dataports s) }
-    where
-    tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
+    addDataportCodegen initializer mdef
 
 
--- | Instantiate a channel. Result is a matching pair of 'ChannelSource' and
---   'ChannelSink'.
-channel :: forall area . (IvoryArea area) => Tower (ChannelSource area, ChannelSink area)
-channel = do
-  cid <- freshChannelId
-  st <- getTowerSt
-  setTowerSt $ st { towerst_channels = (Labeled cid tyname) : towerst_channels st }
-  return (ChannelSource cid, ChannelSink cid)
+-- | Instantiate a channel with the default FIFO buffer depth.
+--   Result is a matching pair of 'ChannelSource' and 'ChannelSink'.
+channel :: forall area . (IvoryArea area) => Tower (ChannelSource 16 area, ChannelSink 16 area)
+channel = channelWithSize
+
+-- | Instantiate a channel with a given FIFO buffer depth.
+--   Result is a matching pair of 'ChannelSource' and 'ChannelSink'.
+channelWithSize :: forall area n . (SingI n, IvoryArea area)
+                => Tower (ChannelSource n area, ChannelSink n area)
+channelWithSize = do
+  when (size < 1) $ error "channelWithSize: size must be at least 1"
+  chid <- mkChannel size tyname
+  return (ChannelSource chid, ChannelSink chid)
   where
-  freshChannelId = fresh >>= \n -> return (ChannelId n)
   tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
+  size = fromSing (sing :: Sing n)
 
 -- | Add an arbitrary Ivory 'Module' to Tower. The module will be present in the
 --   compiled 'Assembly'. This is provided as a convenience so users do not have
@@ -77,6 +77,4 @@ addModule :: Module -> Tower ()
 addModule m = do
   s <- getTowerSt
   setTowerSt $ s { towerst_modules = m : (towerst_modules s) }
-
-
 

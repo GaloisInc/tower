@@ -54,8 +54,9 @@ fooSourceTask fooSource = do
         store (state ~> foo_member) (v + 1)
         writeData sch fooWriter (constRef state)
 
-someSignal :: ChannelSource (Stored Uint8)
-           -> ChannelSink (Struct "bar_state")
+someSignal :: (SingI n, SingI m)
+           => ChannelSource n (Stored Uint8)
+           -> ChannelSink m (Struct "bar_state")
            -> Signal ()
 someSignal ch1 bar = do
   chEmitter  <- withChannelEmitter ch1 "someChan"
@@ -67,8 +68,9 @@ someSignal ch1 bar = do
     output <- local (ival (success ? (1,0)))
     emit_ sch chEmitter (constRef output)
 
-barSourceTask :: ChannelSource (Struct "bar_state") 
-              -> ChannelSink (Stored Uint8)
+barSourceTask :: (SingI n, SingI m)
+              => ChannelSource n (Struct "bar_state") 
+              -> ChannelSink m (Stored Uint8)
               -> Task ()
 barSourceTask barSource chSink = do
     barEmitter <- withChannelEmitter barSource "barSource"
@@ -89,8 +91,9 @@ barSourceTask barSource chSink = do
 
       eventLoop sch $ thandler <> chandler
 
-fooBarSinkTask :: DataSink (Struct "foo_state")
-               -> ChannelSink (Struct "bar_state")
+fooBarSinkTask :: (SingI n)
+               => DataSink (Struct "foo_state")
+               -> ChannelSink n (Struct "bar_state")
                -> Task ()
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"

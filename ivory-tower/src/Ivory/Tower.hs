@@ -35,6 +35,7 @@ module Ivory.Tower
   , signal
   , dataport
   , channel
+  , channelWithSize
   , addModule
 
   , withPeriod

@@ -151,3 +151,27 @@ addSigNode n = do
   s <- getTowerSt
   setTowerSt $ s { towerst_signodes = n : (towerst_signodes s) }
 
+mkChannel :: Integer -> String -> Tower ChannelId
+mkChannel size label = do
+  n <- fresh
+  let cid = ChannelId { chan_id = (toInteger n), chan_size = size }
+  st <- getTowerSt
+  setTowerSt $ st { towerst_channels = (Labeled cid label) : towerst_channels st }
+  return cid
+
+mkDataport :: String -> Tower DataportId
+mkDataport label = do
+  n <- fresh
+  let dpid = DataportId n
+  st <- getTowerSt
+  setTowerSt $ st { towerst_dataports = (Labeled dpid label) : towerst_dataports st }
+  return dpid
+
+addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower ()
+addDataportCodegen initializer mdef = do
+    s <- getTowerSt
+    setTowerSt $ s { towerst_dataportinit = initializer : (towerst_dataportinit s)
+                   , towerst_moddef       = mdef >> (towerst_moddef s) }
+
+
+

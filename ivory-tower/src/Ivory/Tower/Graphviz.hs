@@ -59,7 +59,7 @@ graphvizDoc a = vsep $
 -- Edge Naming Convention ------------------------------------------------------
 
 chanName :: ChannelId -> String
-chanName (ChannelId chid) = "channel" ++ (show chid)
+chanName (ChannelId chid _) = "channel" ++ (show chid)
 
 dataportName :: DataportId -> String
 dataportName (DataportId dpid) = "dataport" ++ (show dpid)
@@ -126,8 +126,9 @@ channelNode :: Labeled ChannelId -> Doc
 channelNode (Labeled c tyname) =
   name <+> brackets (text "label=" <> dquotes contents) <> semi
   where
-  contents = title <+> text ("|{<source>Source|<sink>Sink}")
+  contents = title <+> size <+> text ("|{<source>Source|<sink>Sink}")
   name = text $ chanName c
+  size = text "|Size" <+> text (show (chan_size c))
   title = text "Channel ::" <+> escapeQuotes (drop 2 tyname) -- drop Ty prefix
 
 -- Edges -----------------------------------------------------------------------

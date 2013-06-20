@@ -9,6 +9,7 @@
 
 module Ivory.Tower.Types where
 
+import GHC.TypeLits
 import MonadLib
 import Data.Monoid
 
@@ -37,32 +38,33 @@ unLabeled (Labeled a _) = a
 -- guarantees on scheduling soon...
 
 -- | The basic reference type underlying all Channels. Internal only.
-newtype ChannelId = ChannelId { unChannelId :: Int } deriving (Eq)
-
-instance Show ChannelId where
-  show cid = "ChannelId " ++ (show (unChannelId cid))
+data ChannelId =
+  ChannelId
+    { chan_id :: Integer
+    , chan_size :: Integer
+    } deriving (Eq, Show)
 
 -- | Designates a Source, the end of a Channel which is written to. The only
 -- valid operation on a 'ChannelSource' is
 -- 'Ivory.Tower.Tower.withChannelEmitter'
-newtype ChannelSource (area :: Area) =
+newtype ChannelSource (n :: Nat) (area :: Area) =
   ChannelSource { unChannelSource :: ChannelId }
 
 -- | Designates a Sink, the end of a Channel which is read from. The only
 -- valid operation on a 'ChannelSink' is
 -- 'Ivory.Tower.Tower.withChannelReceiver'
-newtype ChannelSink (area :: Area) =
+newtype ChannelSink (n :: Nat) (area :: Area) =
   ChannelSink { unChannelSink :: ChannelId }
 
 -- | a 'ChannelSource' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
-newtype ChannelEmitter (area :: Area) =
+newtype ChannelEmitter (n :: Nat) (area :: Area) =
   ChannelEmitter { unChannelEmitter :: ChannelId }
 
 -- | a 'ChannelSink' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
 -- event handler.
-newtype ChannelReceiver (area :: Area) =
+newtype ChannelReceiver (n :: Nat) (area :: Area) =
   ChannelReceiver { unChannelReceiver :: ChannelId }
 
 -- Dataport Types --------------------------------------------------------------
@@ -220,15 +222,18 @@ emptyTowerSt = TowerSt
 
 data TaskSchedule =
   TaskSchedule
-    { tsch_mkDataReader :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
-                       => DataReader area -> Ref s area -> Ivory eff ()
-    , tsch_mkDataWriter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
-                       => DataWriter area -> ConstRef s area -> Ivory eff ()
-    , tsch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
-           => ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
-    , tsch_mkReceiver :: forall area s eff cs .
-                          (IvoryArea area, eff `AllocsIn` cs)
-           => ChannelReceiver area
+    { tsch_mkDataReader :: forall area s eff cs
+                         . (IvoryArea area, eff `AllocsIn` cs)
+                        => DataReader area -> Ref s area -> Ivory eff ()
+    , tsch_mkDataWriter :: forall area s eff cs
+                         . (IvoryArea area, eff `AllocsIn` cs)
+                        => DataWriter area -> ConstRef s area -> Ivory eff ()
+    , tsch_mkEmitter :: forall n area s eff cs
+                      . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+                     => ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
+    , tsch_mkReceiver :: forall n area s eff cs
+            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+           => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
     , tsch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
@@ -244,11 +249,12 @@ data TaskSchedule =
 
 data SigSchedule =
   SigSchedule
-    { ssch_mkEmitter :: forall area s eff cs . (IvoryArea area, eff `AllocsIn` cs)
-           => ChannelEmitter area -> ConstRef s area -> Ivory eff IBool
-    , ssch_mkReceiver :: forall area s eff cs .
-                          (IvoryArea area, eff `AllocsIn` cs)
-           => ChannelReceiver area
+    { ssch_mkEmitter :: forall n area s eff cs
+            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+           => ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
+    , ssch_mkReceiver :: forall n area s eff cs
+            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+           => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
     , ssch_mkSigBody :: (forall eff cs . (eff `AllocsIn` cs)
@@ -267,8 +273,9 @@ data OS =
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt
     -- (really just for the name) and a ChannelReceiver.
-    , os_mkChannel     :: forall area i . (IvoryArea area, IvoryZero area)
-                       => ChannelReceiver area
+    , os_mkChannel     :: forall area i n 
+                        . (SingI n, IvoryArea area, IvoryZero area)
+                       => ChannelReceiver n area
                        -> NodeSt i
                        -> (Def ('[]:->()), ModuleDef)
 

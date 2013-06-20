@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -112,7 +113,7 @@ fooBarTower :: Tower ()
 fooBarTower = do
   (source_f, sink_f) <- dataport
   (source_b, sink_b) <- channel
-  (source_i, sink_i) <- channel
+  (source_i, (sink_i :: ChannelSink 2 (Stored Uint8))) <- channelWithSize
 
   task "fooSourceTask"  $ fooSourceTask source_f
 

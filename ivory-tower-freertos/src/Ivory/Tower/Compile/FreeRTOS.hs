@@ -10,6 +10,8 @@ module Ivory.Tower.Compile.FreeRTOS
   , searchDir
   ) where
 
+import GHC.TypeLits
+
 import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Tower (assembleTower)
@@ -97,14 +99,16 @@ mkDataPort source = (fdp_initDef fdp, fdp_moduleDef fdp)
   fdp :: FreeRTOSDataport area
   fdp = sharedState (unDataSource source)
 
-mkChannel :: forall (area :: Area) i . (IvoryArea area, IvoryZero area)
-              => ChannelReceiver area
-              -> NodeSt i
-              -> (Def('[]:->()), ModuleDef)
+mkChannel :: forall (n :: Nat) (area :: Area) i
+           . (SingI n, IvoryArea area, IvoryZero area)
+           => ChannelReceiver n area
+           -> NodeSt i
+           -> (Def('[]:->()), ModuleDef)
 mkChannel rxer destNode = (fch_initDef fch, fch_moduleDef fch)
   where
+  chid = unChannelReceiver rxer
   fch :: FreeRTOSChannel area
-  fch = eventQueue (unChannelReceiver rxer) destNode
+  fch = eventQueue chid (sing :: Sing n) destNode
 
 defaultstacksize :: Uint32
 defaultstacksize = 256

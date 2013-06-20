@@ -5,6 +5,7 @@
 
 module Ivory.Tower.Compile.FreeRTOS.Schedule where
 
+import GHC.TypeLits
 import Control.Monad (forM_)
 
 import Ivory.Language
@@ -38,9 +39,10 @@ endpointNodes nodes ch = filter hasref nodes
         inboundChannels n = map unLabeled (nodest_receivers n)
 
 -- Schedule emitter: create the emitter macro for the channels.
-mkEmitter :: forall area eff cs s . (IvoryArea area, eff `AllocsIn` cs)
-                => [TaskNode] -> [SigNode] -> Ctx -- System
-                -> ChannelEmitter area -> ConstRef s area -> Ivory eff IBool  -- Codegen
+mkEmitter :: forall n area eff cs s
+           . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+          => [TaskNode] -> [SigNode] -> Ctx -- System
+          -> ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool  -- Codegen
 mkEmitter tnodes snodes ctx emitter ref = do 
     -- with all of the endpoints for chref, create an ivory
     --   monad that calls emit on each one, noting failure if it occurs
@@ -60,21 +62,22 @@ mkEmitter tnodes snodes ctx emitter ref = do
   endGuards :: [FreeRTOSGuard]
   endGuards = map eventGuard ets
   endEmitters :: [FreeRTOSChannel area]
-  endEmitters = (map (eventQueue channel) ets) ++ (map (eventQueue channel) ess)
+  endEmitters = (map (eventQueue channel (sing :: Sing n)) ets)
+             ++ (map (eventQueue channel (sing :: Sing n)) ess)
 
-mkReceiver :: forall s eff cs area i
-            . (IvoryArea area, eff `AllocsIn` cs)
+mkReceiver :: forall n s eff cs area i
+            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
            => [TaskNode]  -- All system tasknodes
            -> [SigNode]   -- All system signodes
            -> Ctx         -- receiver execution ctx
            -> NodeSt i    -- receiving node
-           -> ChannelReceiver area  -- receiving channel
+           -> ChannelReceiver n area  -- receiving channel
            -> Ref s area
            -> Ivory eff IBool
 mkReceiver _tnodes _snodes ctx noderx chrx ref =
   fch_receive fch ctx ref
   where
-  fch = eventQueue (unChannelReceiver chrx) noderx
+  fch = eventQueue (unChannelReceiver chrx) (sing :: Sing n) noderx
 
 mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 mkSigSchedule tnodes signodes tnode = SigSchedule
@@ -83,14 +86,14 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
     , ssch_mkSigBody    = mkSigBody
     }
   where
-  mkSigEmitter :: (IvoryArea area, eff `AllocsIn` cs)
-               => ChannelEmitter area
+  mkSigEmitter :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+               => ChannelEmitter n area
                -> ConstRef s area
                -> Ivory eff IBool
   mkSigEmitter emitter ref = mkEmitter tnodes signodes ISR emitter ref
 
-  mkSigReceiver :: (IvoryArea area, eff `AllocsIn` cs)
-                => ChannelReceiver area
+  mkSigReceiver :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+                => ChannelReceiver n area
                 -> Ref s area
                 -> Ivory eff IBool
   mkSigReceiver chrxer k = mkReceiver tnodes signodes ISR tnode chrxer k

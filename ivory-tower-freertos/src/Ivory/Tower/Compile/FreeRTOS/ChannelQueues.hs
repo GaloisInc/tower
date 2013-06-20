@@ -7,11 +7,13 @@
 
 module Ivory.Tower.Compile.FreeRTOS.ChannelQueues where
 
+import GHC.TypeLits
 import Text.Printf
 
 import Ivory.Language
 import Ivory.Stdlib
 import qualified Ivory.OS.FreeRTOS.Queue as Q
+import qualified Ivory.OS.FreeRTOS.Semaphore as S
 import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
 
 import Ivory.Tower.Types
@@ -48,41 +50,41 @@ eventGuard node = FreeRTOSGuard
   , guard_moduleDef = moduleDef
   }
   where
+  size = (16 :: Int) -- XXX fixme: calculate from tasknode contents
   unique s = s ++ (nodest_name node)
 
   block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
   block time = do
-    vlocal <- local (ival 0) -- Don't care about value rxed
-    guardQueue <- addrOf guardQueueArea
-    got <- call Q.receive guardQueue vlocal time
+    guardSem <- addrOf guardSemArea
+    got <- call S.take guardSem time
     return got
 
   notify :: Ctx -> Ivory eff ()
   notify ctx = do
-    guardQueue <- addrOf guardQueueArea
-    let sentvalue = 0 -- we don't care what the value in the queue is, just its presence
-        blocktime = 0 -- we don't ever want to block, and if the queue is full thats OK
+    guardSem <- addrOf guardSemArea
     case ctx of
-      User -> call_ Q.send     guardQueue sentvalue blocktime
-      ISR  -> call_ Q.send_isr guardQueue sentvalue
+      User -> call_ S.give     guardSem
+      ISR  -> call_ S.give_isr guardSem
 
-  guardQueueArea :: MemArea Q.Queue
-  guardQueueArea = area (unique "guardQueue") Nothing
+  guardSemArea :: MemArea S.Semaphore
+  guardSemArea = area (unique "guardSem") Nothing
 
   initDef = proc (unique "freertos_guard_init_") $ body $ do
-    guardQueue <- addrOf guardQueueArea
-    call_ Q.create guardQueue 1 -- create queue with single element
+    guardSem <- addrOf guardSemArea
+    call_ S.create_counting guardSem (fromIntegral size) 0
     retVoid
 
   moduleDef = do
     incl initDef
-    private $ defMemArea guardQueueArea
+    private $ defMemArea guardSemArea
 
-eventQueue :: forall (area :: Area) i. (IvoryArea area)
+eventQueue :: forall (n :: Nat) (area :: Area) i
+            . (IvoryArea area)
            => ChannelId
+           -> Sing n
            -> NodeSt i -- Destination Node
            -> FreeRTOSChannel area
-eventQueue channelid dest = FreeRTOSChannel
+eventQueue channelid sizeSing dest = FreeRTOSChannel -- XXX fish size types through!!
   { fch_name        = unique "freertos_eventQueue"
   , fch_emit        = emit
   , fch_receive     = receive
@@ -91,7 +93,7 @@ eventQueue channelid dest = FreeRTOSChannel
   , fch_channelid   = channelid
   }
   where
-  name = printf "channel%d_%s" (unChannelId channelid) (nodest_name dest)
+  name = printf "channel%d_%s" (chan_id channelid) (nodest_name dest)
   unique :: String -> String
   unique n = n ++ name
   eventHeapArea :: MemArea (Array EventQueueLen area)

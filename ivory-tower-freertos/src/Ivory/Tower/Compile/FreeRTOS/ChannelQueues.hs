@@ -4,7 +4,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
 
-
 module Ivory.Tower.Compile.FreeRTOS.ChannelQueues where
 
 import GHC.TypeLits
@@ -21,12 +20,12 @@ import Ivory.Tower.Compile.FreeRTOS.Types
 
 data FreeRTOSChannel area =
   FreeRTOSChannel
-    { fch_name :: String
-    , fch_emit :: forall eff s cs . (eff `AllocsIn` cs)
-               => Ctx -> ConstRef s area -> Ivory eff IBool
-    , fch_receive :: forall eff s cs . (eff `AllocsIn` cs)
-                  => Ctx -> Ref s area -> Ivory eff IBool
-    , fch_initDef :: Def('[]:->())
+    { fch_name      :: String
+    , fch_emit      :: forall eff s cs . (eff `AllocsIn` cs)
+                    => Ctx -> ConstRef s area -> Ivory eff IBool
+    , fch_receive   :: forall eff s cs . (eff `AllocsIn` cs)
+                    => Ctx -> Ref s area -> Ivory eff IBool
+    , fch_initDef   :: Def('[]:->())
     , fch_moduleDef :: ModuleDef
     , fch_channelid :: ChannelId
     }
@@ -46,9 +45,9 @@ incomingEvents n = foldl aux 0 $ map unLabeled $ nodest_receivers n
 
 eventGuard :: TaskNode -> FreeRTOSGuard
 eventGuard node = FreeRTOSGuard
-  { guard_block = block
-  , guard_notify = notify
-  , guard_initDef = initDef
+  { guard_block     = block
+  , guard_notify    = notify
+  , guard_initDef   = initDef
   , guard_moduleDef = moduleDef
   }
   where
@@ -96,10 +95,13 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
   }
   where
   name = printf "channel%d_%s" (chan_id channelid) (nodest_name dest)
+
   unique :: String -> String
   unique n = n ++ name
+
   eventHeapArea :: MemArea (Array n area)
   eventHeapArea = area (unique "eventHeap") Nothing
+
   pendingQueueArea, freeQueueArea :: MemArea Q.Queue
   pendingQueueArea = area (unique "pendingQueue") Nothing
   freeQueueArea    = area (unique "freeQueue") Nothing
@@ -143,14 +145,16 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
     return got
 
   initName = unique "freertos_eventQueue_init"
+
   initDef :: Def ('[] :-> ())
   initDef = proc initName $ body $ do
-    eventHeap    <- addrOf eventHeapArea
     pendingQueue <- addrOf pendingQueueArea
     freeQueue    <- addrOf freeQueueArea
-    call_ Q.create pendingQueue (arrayLen eventHeap)
-    call_ Q.create freeQueue    (arrayLen eventHeap)
-    for (toIx (arrayLen eventHeap :: Sint32) :: Ix n) $ \i ->
+    let len :: Uint32
+        len = fromInteger (fromSing (sing :: Sing n))
+    call_ Q.create pendingQueue len
+    call_ Q.create freeQueue    len
+    for (toIx len :: Ix n) $ \i ->
       call_ Q.send freeQueue (safeCast i) 0 -- should not bock
 
   mdef = do

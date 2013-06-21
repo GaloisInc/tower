@@ -71,13 +71,20 @@ class EmitSchedulable a where
   -- | Nonblocking emit. Fails silently.
   emit_ :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
      => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
-  emit_ s c r = emit s c r >> return () 
+
+retResult :: (a -> b -> c -> IBoolRef eff cs)
+          ->  a -> b -> c -> Ivory eff IBool
+retResult f s c r = do ref <- f s c r
+                       failed <- deref ref
+                       return (iNot failed)
 
 instance EmitSchedulable TaskSchedule where
-  emit schedule emitter ref = tsch_mkEmitter schedule emitter ref
+  emit = retResult tsch_mkEmitter
+  emit_ s c r = tsch_mkEmitter s c r >> return ()
 
 instance EmitSchedulable SigSchedule where
-  emit schedule emitter ref = ssch_mkEmitter schedule emitter ref
+  emit  = retResult ssch_mkEmitter
+  emit_ s c r = ssch_mkEmitter s c r >> return ()
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.

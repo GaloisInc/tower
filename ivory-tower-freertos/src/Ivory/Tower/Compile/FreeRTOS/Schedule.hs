@@ -41,9 +41,13 @@ endpointNodes nodes ch = filter hasref nodes
 -- Schedule emitter: create the emitter macro for the channels.
 mkEmitter :: forall n area eff cs s
            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
-          => [TaskNode] -> [SigNode] -> Ctx -- System
-          -> ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool  -- Codegen
-mkEmitter tnodes snodes ctx emitter ref = do 
+          => [TaskNode]
+          -> [SigNode]
+          -> Ctx -- System
+          -> ChannelEmitter n area -- Codegen
+          -> ConstRef s area
+          -> IBoolRef eff cs
+mkEmitter tnodes snodes ctx emitter ref = do
     -- with all of the endpoints for chref, create an ivory
     --   monad that calls emit on each one, noting failure if it occurs
     f <- local (ival false)
@@ -52,9 +56,7 @@ mkEmitter tnodes snodes ctx emitter ref = do
       unless s (store f true)
     --   then calls notify on each of the appropriate guards
     forM_ endGuards $ \g -> guard_notify g ctx
-    -- Return true if all successful
-    failed <- deref f
-    return (iNot failed)
+    return f
   where
   channel = unChannelEmitter emitter
   ets = endpointNodes tnodes channel
@@ -89,7 +91,7 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
   mkSigEmitter :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
                => ChannelEmitter n area
                -> ConstRef s area
-               -> Ivory eff IBool
+               -> IBoolRef eff cs
   mkSigEmitter emitter ref = mkEmitter tnodes signodes ISR emitter ref
 
   mkSigReceiver :: (SingI n, IvoryArea area, eff `AllocsIn` cs)

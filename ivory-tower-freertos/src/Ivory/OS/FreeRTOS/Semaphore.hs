@@ -27,16 +27,19 @@ create :: Def ('[ SemaphoreHandle ] :-> ())
 create = importProc "ivory_freertos_semaphore_create" semaphoreWrapperHeader
 
 create_counting :: Def ('[ SemaphoreHandle, Uint32, Uint32 ] :-> ())
-create_counting = importProc "ivory_freertos_semaphore_create_counting" semaphoreWrapperHeader
+create_counting =
+  importProc "ivory_freertos_semaphore_create_counting" semaphoreWrapperHeader
 
 take :: Def ('[ SemaphoreHandle, Uint32 ] :-> IBool)
 take = importProc "ivory_freertos_semaphore_take" semaphoreWrapperHeader
 
 takeBlocking :: Def ('[ SemaphoreHandle ] :-> ())
-takeBlocking = importProc "ivory_freertos_semaphore_takeblocking" semaphoreWrapperHeader
+takeBlocking =
+  importProc "ivory_freertos_semaphore_takeblocking" semaphoreWrapperHeader
 
 takeNonblocking  :: Def ('[ SemaphoreHandle ] :-> IBool)
-takeNonblocking = importProc "ivory_freertos_semaphore_takenonblocking" semaphoreWrapperHeader
+takeNonblocking =
+  importProc "ivory_freertos_semaphore_takenonblocking" semaphoreWrapperHeader
 
 give :: Def('[ SemaphoreHandle ] :-> ())
 give = importProc "ivory_freertos_semaphore_give" semaphoreWrapperHeader

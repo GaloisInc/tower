@@ -220,6 +220,8 @@ emptyTowerSt = TowerSt
 
 -- Compiled Schedule -----------------------------------------------------------
 
+type IBoolRef eff cs = Ivory eff (Ref (Stack cs) (Stored IBool))
+
 data TaskSchedule =
   TaskSchedule
     { tsch_mkDataReader :: forall area s eff cs
@@ -230,7 +232,9 @@ data TaskSchedule =
                         => DataWriter area -> ConstRef s area -> Ivory eff ()
     , tsch_mkEmitter :: forall n area s eff cs
                       . (SingI n, IvoryArea area, eff `AllocsIn` cs)
-                     => ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
+                     => ChannelEmitter n area
+                     -> ConstRef s area
+                     -> IBoolRef eff cs
     , tsch_mkReceiver :: forall n area s eff cs
             . (SingI n, IvoryArea area, eff `AllocsIn` cs)
            => ChannelReceiver n area
@@ -251,7 +255,9 @@ data SigSchedule =
   SigSchedule
     { ssch_mkEmitter :: forall n area s eff cs
             . (SingI n, IvoryArea area, eff `AllocsIn` cs)
-           => ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
+           => ChannelEmitter n area
+           -> ConstRef s area
+           -> IBoolRef eff cs
     , ssch_mkReceiver :: forall n area s eff cs
             . (SingI n, IvoryArea area, eff `AllocsIn` cs)
            => ChannelReceiver n area

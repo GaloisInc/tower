@@ -45,7 +45,7 @@ void ivory_freertos_semaphore_give_isr(uint8_t **semhandle)
 {
     xSemaphoreHandle sem = *((xSemaphoreHandle*)semhandle);
     portBASE_TYPE higherPriorityTaskWoken;
-    xSemaphoreGive(sem, &higherPriorityTaskWoken);
+    xSemaphoreGiveFromISR(sem, &higherPriorityTaskWoken);
 
     // On the ARM_CM3/CM4F port, yield from ISR uses PENDSV, which our ISR is
     // higher priority than. So, we will not switch context until the ISR is

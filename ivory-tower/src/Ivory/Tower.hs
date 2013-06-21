@@ -1,7 +1,12 @@
 
 module Ivory.Tower
+  -- Types and convenience accessors:
+  ( Channel
+  , DataPort
+  , src
+  , snk
   -- Channel exports:
-  ( ChannelSource()
+  , ChannelSource()
   , ChannelSink()
   , ChannelEmitter()
   , ChannelReceiver()
@@ -71,7 +76,12 @@ module Ivory.Tower
 
   -- Built in helpers
   , stateProxy
+  -- GHC TypeLits: user needs these for constraints
+  , Nat()
+  , SingI()
   ) where
+
+import GHC.TypeLits
 
 import Ivory.Tower.Ivory
 import Ivory.Tower.Tower
@@ -79,4 +89,21 @@ import Ivory.Tower.Task
 import Ivory.Tower.Signal
 import Ivory.Tower.Node
 import Ivory.Tower.Types
+
+-- | Type synonym for the return value of 'channel'
+type Channel n area = (ChannelSource n area, ChannelSink n area)
+
+-- | Type synonym for the return value of 'dataport'
+type DataPort area  = (DataSource area,      DataSink area)
+
+-- | Convenience function for taking a pair of (source, sink) like returned by
+--   'dataport' or 'channel' and getting just the source.
+src :: (a,b) -> a
+src = fst
+
+-- | Convenience function for taking a pair of (source, sink) like returned by
+--   'dataport' or 'channel' and getting just the sink.
+snk :: (a,b) -> b
+snk = snd
+
 

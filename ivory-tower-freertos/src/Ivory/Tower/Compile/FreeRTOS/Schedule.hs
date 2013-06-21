@@ -126,12 +126,8 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
                => [Ivory eff (Ivory eff ())] -> Ivory eff ()
   mkEventLoop loopConstructors = do
     loopBodies <- sequence loopConstructors
-    -- Double nested forever: hack to ensure loop never terminates
-    -- even if user code improperly uses `break`
-    forever $ do
-      forever $ do
-        guard
-        sequence_ loopBodies
+    forever (guard >> sequence_ loopBodies)
+
     where
     guard = guard_block (eventGuard tnode) period_gcd
     period_gcd = case taskst_periods task of

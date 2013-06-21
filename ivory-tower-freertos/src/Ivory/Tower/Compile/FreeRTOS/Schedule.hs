@@ -131,7 +131,7 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
         guard
         sequence_ loopBodies
     where
-    guard = guard_block (eventGuard tnode) period_gcd >> return ()
+    guard = guard_block (eventGuard tnode) period_gcd
     period_gcd = case taskst_periods task of
                     [] -> Q.maxWait
                     ps -> fromInteger $ foldl1 gcd ps

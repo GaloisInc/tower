@@ -33,7 +33,7 @@ data FreeRTOSChannel area =
 
 data FreeRTOSGuard =
   FreeRTOSGuard
-    { guard_block     :: forall eff cs . (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
+    { guard_block     :: forall eff cs . (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
     , guard_notify    :: forall eff . Ctx -> Ivory eff ()
     , guard_initDef   :: Def('[]:->())
     , guard_moduleDef :: ModuleDef
@@ -56,11 +56,10 @@ eventGuard node = FreeRTOSGuard
   size = max 1 $ incomingEvents node
   unique s = s ++ (nodest_name node)
 
-  block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff IBool
+  block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
   block time = do
     guardSem <- addrOf guardSemArea
-    got <- call S.take guardSem time
-    return got
+    call_ S.take guardSem time
 
   notify :: Ctx -> Ivory eff ()
   notify ctx = do

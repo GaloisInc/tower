@@ -133,6 +133,11 @@ getSignalSt = getNode >>= \n -> return (nodest_impl n)
 setSignalSt :: SignalSt -> Signal ()
 setSignalSt s = getNode >>= \n -> setNode (n { nodest_impl = s })
 
+sigStAddModuleDef :: (SigSchedule -> ModuleDef) -> Signal ()
+sigStAddModuleDef md = do
+  s <- getSignalSt
+  setSignalSt s { signalst_moddef = \sch -> signalst_moddef s sch >> md sch }
+
 -- Tower Getters/Setters -------------------------------------------------------
 
 getTowerSt :: Tower TowerSt

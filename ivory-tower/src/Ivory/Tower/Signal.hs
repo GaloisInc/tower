@@ -8,6 +8,11 @@ import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
 
+-- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.signalBody' created
+--   in the 'Ivory.Tower.Types.Signal' context.
+signalModuleDef :: (SigSchedule -> ModuleDef) ->  Signal ()
+signalModuleDef = sigStAddModuleDef
+
 -- | Declare a signal handler for a 'Signal'. The task body is an 'Ivory'
 --   computation which handles the signal and Always terminates.
 signalBody :: (SigSchedule -> (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ()))

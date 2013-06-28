@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Task where
@@ -64,7 +65,8 @@ withGetTimeMillis = do
 -- | Declare a task body for a 'Task'. The task body is an 'Ivory'
 --   computation which initializes the task and runs an `eventLoop`.
 --   The Ivory computation Should Not terminate.
-taskBody :: (TaskSchedule -> (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ()))
+taskBody :: (TaskSchedule -> (forall eff cs . (Allocs eff ~ Alloc cs)
+         => Ivory eff ()))
          -> Task ()
 taskBody k = do
   s <- getTaskSt

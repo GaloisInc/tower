@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
@@ -225,45 +226,45 @@ type IBoolRef eff cs = Ivory eff (Ref (Stack cs) (Stored IBool))
 data TaskSchedule =
   TaskSchedule
     { tsch_mkDataReader :: forall area s eff cs
-                         . (IvoryArea area, eff `AllocsIn` cs)
+                         . (IvoryArea area, Allocs eff ~ Alloc cs)
                         => DataReader area -> Ref s area -> Ivory eff ()
     , tsch_mkDataWriter :: forall area s eff cs
-                         . (IvoryArea area, eff `AllocsIn` cs)
+                         . (IvoryArea area, Allocs eff ~ Alloc cs)
                         => DataWriter area -> ConstRef s area -> Ivory eff ()
     , tsch_mkEmitter :: forall n area s eff cs
-                      . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+                      . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
                      => ChannelEmitter n area
                      -> ConstRef s area
                      -> IBoolRef eff cs
     , tsch_mkReceiver :: forall n area s eff cs
-            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , tsch_mkPeriodic :: forall eff cs . (eff `AllocsIn` cs)
+    , tsch_mkPeriodic :: forall eff cs . (Allocs eff ~ Alloc cs)
            => Period
            -> (Uint32 -> Ivory eff ())
            -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
                                        -- part of the loop
-    , tsch_mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
+    , tsch_mkEventLoop :: forall eff cs . (Allocs eff ~ Alloc cs)
            => [Ivory eff (Ivory eff ())] -> Ivory eff ()
-    , tsch_mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs )
+    , tsch_mkTaskBody :: (forall eff cs . (Allocs eff ~ Alloc cs )
                      => Ivory eff ()) -> Def('[]:->())
     }
 
 data SigSchedule =
   SigSchedule
     { ssch_mkEmitter :: forall n area s eff cs
-            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
            => ChannelEmitter n area
            -> ConstRef s area
            -> IBoolRef eff cs
     , ssch_mkReceiver :: forall n area s eff cs
-            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , ssch_mkSigBody :: (forall eff cs . (eff `AllocsIn` cs)
+    , ssch_mkSigBody :: (forall eff cs . (Allocs eff ~ Alloc cs)
                      => Ivory eff ()) -> Def('[]:->())
     }
 

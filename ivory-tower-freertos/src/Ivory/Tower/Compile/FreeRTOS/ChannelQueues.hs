@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.Compile.FreeRTOS.ChannelQueues where
 
@@ -21,9 +22,9 @@ import Ivory.Tower.Compile.FreeRTOS.Types
 data FreeRTOSChannel area =
   FreeRTOSChannel
     { fch_name      :: String
-    , fch_emit      :: forall eff s cs . (eff `AllocsIn` cs)
+    , fch_emit      :: forall eff s cs . (Allocs eff ~ Alloc cs)
                     => Ctx -> ConstRef s area -> Ivory eff IBool
-    , fch_receive   :: forall eff s cs . (eff `AllocsIn` cs)
+    , fch_receive   :: forall eff s cs . (Allocs eff ~ Alloc cs)
                     => Ctx -> Ref s area -> Ivory eff IBool
     , fch_initDef   :: Def('[]:->())
     , fch_moduleDef :: ModuleDef
@@ -32,7 +33,8 @@ data FreeRTOSChannel area =
 
 data FreeRTOSGuard =
   FreeRTOSGuard
-    { guard_block     :: forall eff cs . (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
+    { guard_block     :: forall eff cs . (Allocs eff ~ Alloc cs)
+                      => Uint32 -> Ivory eff ()
     , guard_notify    :: forall eff . Ctx -> Ivory eff ()
     , guard_initDef   :: Def('[]:->())
     , guard_moduleDef :: ModuleDef
@@ -55,7 +57,7 @@ eventGuard node = FreeRTOSGuard
   size = max 1 $ incomingEvents node
   unique s = s ++ (nodest_name node)
 
-  block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
+  block :: (Allocs eff ~ Alloc cs) => Uint32 -> Ivory eff ()
   block time = do
     guardSem <- addrOf guardSemArea
     call_ S.take guardSem time
@@ -106,7 +108,7 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
   pendingQueueArea = area (unique "pendingQueue") Nothing
   freeQueueArea    = area (unique "freeQueue") Nothing
 
-  getIx :: (eff `AllocsIn` cs)
+  getIx :: (Allocs eff ~ Alloc cs)
         => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, Ix n)
   getIx ctx q waittime = do
     vlocal <- local (ival 0)
@@ -122,7 +124,7 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
     User -> call_ Q.send     q (safeCast i) 0 -- should never block
     ISR  -> call_ Q.send_isr q (safeCast i)
 
-  emit :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff IBool
+  emit :: (Allocs eff ~ Alloc cs) => Ctx -> ConstRef s area -> Ivory eff IBool
   emit ctx v = do
     eventHeap    <- addrOf eventHeapArea
     pendingQueue <- addrOf pendingQueueArea
@@ -133,7 +135,7 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
       putIx ctx pendingQueue i
     return got
 
-  receive :: (eff `AllocsIn` cs) => Ctx -> Ref s area -> Ivory eff IBool
+  receive :: (Allocs eff ~ Alloc cs) => Ctx -> Ref s area -> Ivory eff IBool
   receive ctx v = do
     eventHeap    <- addrOf eventHeapArea
     pendingQueue <- addrOf pendingQueueArea

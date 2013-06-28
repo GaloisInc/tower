@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.Compile.FreeRTOS.Schedule where
 
@@ -40,7 +41,7 @@ endpointNodes nodes ch = filter hasref nodes
 
 -- Schedule emitter: create the emitter macro for the channels.
 mkEmitter :: forall n area eff cs s
-           . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+           . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
           => [TaskNode]
           -> [SigNode]
           -> Ctx -- System
@@ -68,7 +69,7 @@ mkEmitter tnodes snodes ctx emitter ref = do
              ++ (map (eventQueue channel (sing :: Sing n)) ess)
 
 mkReceiver :: forall n s eff cs area i
-            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
            => [TaskNode]  -- All system tasknodes
            -> [SigNode]   -- All system signodes
            -> Ctx         -- receiver execution ctx
@@ -88,19 +89,19 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
     , ssch_mkSigBody    = mkSigBody
     }
   where
-  mkSigEmitter :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+  mkSigEmitter :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
                => ChannelEmitter n area
                -> ConstRef s area
                -> IBoolRef eff cs
   mkSigEmitter emitter ref = mkEmitter tnodes signodes ISR emitter ref
 
-  mkSigReceiver :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+  mkSigReceiver :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
                 => ChannelReceiver n area
                 -> Ref s area
                 -> Ivory eff IBool
   mkSigReceiver chrxer k = mkReceiver tnodes signodes ISR tnode chrxer k
 
-  mkSigBody :: (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ())
+  mkSigBody :: (forall eff cs . (Allocs eff ~ Alloc cs) => Ivory eff ())
             -> Def('[]:->())
   mkSigBody b = proc name (body b)
     where
@@ -122,7 +123,7 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
   _tasks = map nodest_impl tnodes
   task  =     nodest_impl tnode
 
-  mkEventLoop :: forall eff cs . (eff `AllocsIn` cs)
+  mkEventLoop :: forall eff cs . (Allocs eff ~ Alloc cs)
                => [Ivory eff (Ivory eff ())] -> Ivory eff ()
   mkEventLoop loopConstructors = do
     loopBodies <- sequence loopConstructors
@@ -135,10 +136,11 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
                     ps -> fromInteger $ foldl1 gcd ps
 
   -- scheduleTaskBody: create task def from a TaskBody
-  mkTaskBody :: (forall eff cs . (eff `AllocsIn` cs ) => Ivory eff ()) -> Def('[]:->())
+  mkTaskBody :: (forall eff cs . (Allocs eff ~ Alloc cs )
+             => Ivory eff ()) -> Def('[]:->())
   mkTaskBody tb = proc ("taskbody_" ++ (nodest_name tnode)) $ body tb
 
-mkPeriodic :: (eff `AllocsIn` cs)
+mkPeriodic :: (Allocs eff ~ Alloc cs)
               => Period -> (Uint32 -> Ivory eff ()) -> Ivory eff (Ivory eff ())
 mkPeriodic (Period p) k = do
   initTime <- call Task.getTimeMillis

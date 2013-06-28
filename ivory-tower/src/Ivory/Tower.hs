@@ -14,7 +14,10 @@ module Ivory.Tower
   , EmitSchedulable()
   , emit
   , emit_
+  , emitV
+  , emitV_
   , onChannel
+  , onChannelV
   , sigReceive
 
   -- DataPort exports:

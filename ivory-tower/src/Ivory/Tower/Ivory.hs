@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -43,6 +44,21 @@ onChannel rxer k = EventLoop [ rx ]
     success <- tsch_mkReceiver sch rxer ref
     when success (k (constRef ref))
 
+-- | like 'onChannel', but for atomic values where we don't need to handle by
+--   reference.
+onChannelV :: (SingI n, eff `AllocsIn` cs
+              , IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
+    => ChannelReceiver n (Stored t) -> (t -> Ivory eff ())
+    -> EventLoop eff
+onChannelV rxer k = EventLoop [ rx ]
+  where
+  rx sch = return $ do -- No initialization, pure loop handler
+    ref <- local (izero)
+    success <- tsch_mkReceiver sch rxer ref
+    when success $ do
+      v <- deref ref
+      k v
+
 -- | Construct an 'EventLoop' from a 'Period' and a handler function which
 --   takes the current time (in milliseconds) and performs an Ivory computation
 onTimer :: (eff `AllocsIn` cs)
@@ -71,6 +87,17 @@ class EmitSchedulable a where
   -- | Nonblocking emit. Fails silently.
   emit_ :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
      => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
+  emit_ s c r = emit s c r >> return ()
+
+  -- | Emit by value - saves the user from having to give a constref
+  --   to an atomic value.
+  emitV :: (SingI n, IvoryInit t, IvoryArea (Stored t), eff `AllocsIn` cs)
+     => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff IBool
+  emitV s c v = local (ival v) >>= \r -> emit s c (constRef r)
+
+  emitV_ :: (SingI n, IvoryInit t, IvoryArea (Stored t), eff `AllocsIn` cs)
+     => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff ()
+  emitV_ s c v = emitV s c v >> return ()
 
 retResult :: (a -> b -> c -> IBoolRef eff cs)
           ->  a -> b -> c -> Ivory eff IBool

@@ -77,23 +77,23 @@ runSignal name s = do
 
 nodeStAddReceiver :: ChannelId -> String -> Node i ()
 nodeStAddReceiver r lbl = do
-  n <- getNode
-  setNode $ n { nodest_receivers = (Labeled r lbl) : (nodest_receivers n)}
+  n <- getNodeEdges
+  setNodeEdges $ n { nodees_receivers = (Labeled r lbl) : (nodees_receivers n)}
 
 nodeStAddEmitter :: ChannelId -> String -> Node i ()
 nodeStAddEmitter r lbl = do
-  n <- getNode
-  setNode $ n { nodest_emitters = (Labeled r lbl) : (nodest_emitters n)}
+  n <- getNodeEdges
+  setNodeEdges $ n { nodees_emitters = (Labeled r lbl) : (nodees_emitters n)}
 
 nodeStAddDataReader :: DataportId -> String -> Node i ()
 nodeStAddDataReader cc lbl = do
-  n <- getNode
-  setNode $ n { nodest_datareaders = (Labeled cc lbl) : (nodest_datareaders n)}
+  n <- getNodeEdges
+  setNodeEdges $ n { nodees_datareaders = (Labeled cc lbl) : (nodees_datareaders n)}
 
 nodeStAddDataWriter :: DataportId -> String -> Node i ()
 nodeStAddDataWriter cc lbl = do
-  n <- getNode
-  setNode $ n { nodest_datawriters = (Labeled cc lbl) : (nodest_datawriters n)}
+  n <- getNodeEdges
+  setNodeEdges $ n { nodees_datawriters = (Labeled cc lbl) : (nodees_datawriters n)}
 
 nodeStAddCodegen :: Def('[]:->()) -> ModuleDef -> Node i ()
 nodeStAddCodegen i m = do
@@ -103,13 +103,21 @@ nodeStAddCodegen i m = do
 getNode :: Node i (NodeSt i)
 getNode = Node get
 
+getNodeEdges :: Node i NodeEdges
+getNodeEdges = getNode >>= \n -> return (nodest_edges n)
+
 setNode :: NodeSt i -> Node i ()
 setNode n = Node $ set n
 
-getNodeName:: Node i Name
-getNodeName= do
+setNodeEdges :: NodeEdges -> Node i ()
+setNodeEdges e = do
   n <- getNode
-  return (nodest_name n)
+  setNode $ n { nodest_edges = e }
+
+getNodeName:: Node i Name
+getNodeName = do
+  n <- getNodeEdges
+  return (nodees_name n)
 
 
 -- Task Getters/Setters --------------------------------------------------------

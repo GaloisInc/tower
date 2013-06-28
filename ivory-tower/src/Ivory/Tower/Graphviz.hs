@@ -16,6 +16,22 @@ graphvizToFile f asm = withFile f WriteMode $ \h -> displayIO h rendered
   w = 1000000 -- don't wrap lines - dot doesnt handle multiline strings
   rendered = renderPretty 1.0 w $ graphvizDoc asm
 
+connectedChannels :: [NodeEdges]
+                  -> [Labeled ChannelId] -- Labeled with type name.
+                  -> [(NodeEdges, NodeEdges, Labeled ChannelId)]
+connectedChannels es chs =
+  [ (f,t,ch)
+  | f <- es
+  , t <- es
+  , ch <- chs
+  , (nodees_emitters f) `hasCh` ch
+  , (nodees_receivers t) `hasCh` ch
+  ]
+  where
+  -- the labeled channelids in an edge are labeled with per-node description
+  -- the labeled channelids in the towerst are labeled with shown ivory type
+  hasCh edgeChs lch = (unLabeled lch) `elem` (map unLabeled edgeChs)
+
 -- | Render a Tower 'Assembly' as a 'Text.PrettyPrint.Leijen.Doc'
 graphvizDoc :: Assembly -> Doc
 graphvizDoc a = vsep $
@@ -27,21 +43,16 @@ graphvizDoc a = vsep $
   towerst = asm_towerst a
   tasknodes = towerst_tasknodes towerst
   signodes  = towerst_signodes  towerst
+  nodeEdges = map nodest_edges tasknodes ++ map nodest_edges signodes
   body =  annotations
       <$> text "// task nodes"
       <$> vsep (map taskNode (towerst_tasknodes towerst))
       <$> text "// signal nodes"
       <$> vsep (map sigNode (towerst_signodes towerst))
+      <$> text "// channel edges"
+      <$> vsep (channelEdges (connectedChannels nodeEdges (towerst_channels towerst)))
       <$> text "// dataport nodes"
       <$> vsep (map dataportNode (towerst_dataports towerst))
-      <$> text "// channel nodes"
-      <$> vsep (map channelNode  (towerst_channels towerst))
-      <$> text "// emitter edges"
-      <$> vsep (withEach emitterEdge  nodest_emitters    tasknodes)
-      <$> vsep (withEach emitterEdge  nodest_emitters    signodes)
-      <$> text "// receiver edges"
-      <$> vsep (withEach receiverEdge nodest_receivers   tasknodes)
-      <$> vsep (withEach receiverEdge nodest_receivers   signodes)
       <$> text "// data reader edges"
       <$> vsep (withEach readerEdge   nodest_datareaders tasknodes)
       <$> vsep (withEach readerEdge   nodest_datareaders signodes)
@@ -49,12 +60,12 @@ graphvizDoc a = vsep $
       <$> vsep (withEach writerEdge   nodest_datawriters tasknodes)
       <$> vsep (withEach writerEdge   nodest_datawriters signodes)
       <$> text "// end"
-
+  channelEdges = map (\(f,t,l) -> channelEdge f t l)
   withEach f accessor ts = -- please excuse this, need coffee:
     concat $ map (\t -> map (\a' -> f t a') (accessor t)) ts
 
-  annotations = text "graph [rankdir=LR];"
-            <$> text "node [shape=record];"
+  annotations = text "graph [rankdir=LR concentrate=true];"
+
 
 -- Edge Naming Convention ------------------------------------------------------
 
@@ -87,9 +98,10 @@ sigNode :: SigNode -> Doc
 sigNode = mkNode (text "signal") []
 
 mkNode :: Doc -> [Doc] -> NodeSt a  -> Doc
-mkNode title auxfields n =
-  name <+> brackets (text "label=" <> dquotes contents) <> semi
+mkNode title auxfields n = name <+> brackets attrs <> semi
   where
+  attrs = text "label=" <> dquotes contents
+       <+> text "shape=record"
   name = text $ nodest_name n
   contents = hcat $ punctuate (text "|") fields
   fields = [ name <+> text "::" <+> title ]
@@ -115,12 +127,11 @@ mkNode title auxfields n =
 -- Dataport, Channel Nodes -----------------------------------------------------
 
 dataportNode :: Labeled DataportId -> Doc
-dataportNode (Labeled d tyname) =
-  name <+> brackets (text "label=" <> dquotes contents) <> semi
+dataportNode (Labeled d tyname) = name <+> brackets attrs <> semi
   where
-  contents = title <+> text ("|{<source>Source|<sink>Sink}")
+  attrs = text "label=" <> dquotes contents <+> text "shape=ellipse"
   name = text $ dataportName d
-  title = text "DataPort ::" <+> escapeQuotes (drop 2 tyname) -- drop Ty prefix
+  contents = escapeQuotes (drop 2 tyname) -- drop Ty prefix
 
 channelNode :: Labeled ChannelId -> Doc
 channelNode (Labeled c tyname) =
@@ -133,28 +144,38 @@ channelNode (Labeled c tyname) =
 
 -- Edges -----------------------------------------------------------------------
 
+channelEdge :: NodeEdges -> NodeEdges -> Labeled ChannelId -> Doc
+channelEdge fro to (Labeled chan tyname) = arrow f t <+> brackets desc <> semi
+  where
+  desc = text "label =" <> dquotes lbl <+> text "style=bold"
+  lbl = escapeQuotes (drop 2 tyname) -- drop Ty prefix
+  f = qual (nodees_name fro) (chanName chan)
+  t = qual (nodees_name to)  (chanName chan)
+
 emitterEdge :: NodeSt a -> Labeled ChannelId -> Doc
-emitterEdge node (Labeled chan _) = arrow tnode cnode
+emitterEdge node (Labeled chan _) = arrow tnode cnode <+> semi
   where
   tnode = qual (nodest_name node) (chanName chan)
   cnode = qual (chanName chan) "source"
 
 receiverEdge :: NodeSt a -> Labeled ChannelId -> Doc
-receiverEdge node (Labeled chan _) = arrow cnode tnode
+receiverEdge node (Labeled chan _) = arrow cnode tnode <+> semi
   where
   cnode = qual (chanName chan) "sink"
   tnode = qual (nodest_name node) (chanName chan)
 
 writerEdge :: NodeSt a -> Labeled DataportId -> Doc
-writerEdge node (Labeled dp _) = arrow tnode dnode
+writerEdge node (Labeled dp _) = arrow tnode dnode <+> brackets desc <> semi
   where
+  desc = text "style=dashed"
   tnode = qual (nodest_name node) (dataportName dp)
-  dnode = qual (dataportName dp) "source"
+  dnode = text (dataportName dp)
 
 readerEdge :: NodeSt a -> Labeled DataportId -> Doc
-readerEdge node (Labeled dp _) = arrow dnode tnode
+readerEdge node (Labeled dp _) = arrow dnode tnode <+> brackets desc <> semi
   where
-  dnode = qual (dataportName dp) "sink"
+  desc = text "style=dashed"
+  dnode = text (dataportName dp)
   tnode = qual (nodest_name node) (dataportName dp)
 
 -- Utility functions -----------------------------------------------------------
@@ -163,7 +184,7 @@ qual :: String -> String -> Doc
 qual prefix name = text prefix <> colon <> text name
 
 arrow :: Doc -> Doc -> Doc
-arrow a b = a <+> text "->" <+> b <+> semi
+arrow a b = a <+> text "->" <+> b 
 
 escapeQuotes :: String -> Doc
 escapeQuotes x = text $ aux x -- I know this is probably terrible (pch)

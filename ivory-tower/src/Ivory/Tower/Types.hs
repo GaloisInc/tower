@@ -127,24 +127,46 @@ data NodeCodegen =
     , ncg_mdef  :: ModuleDef
     }
 
+data NodeEdges =
+  NodeEdges
+    { nodees_name        :: Name
+    , nodees_emitters    :: [Labeled ChannelId]
+    , nodees_receivers   :: [Labeled ChannelId]
+    , nodees_datareaders :: [Labeled DataportId]
+    , nodees_datawriters :: [Labeled DataportId]
+    }
+
+-- XXX compatibility, fix later...
+nodest_name :: NodeSt a -> Name
+nodest_name = nodees_name . nodest_edges
+nodest_emitters :: NodeSt a -> [Labeled ChannelId]
+nodest_emitters = nodees_emitters . nodest_edges
+nodest_receivers :: NodeSt a -> [Labeled ChannelId]
+nodest_receivers = nodees_receivers . nodest_edges
+nodest_datareaders :: NodeSt a -> [Labeled DataportId]
+nodest_datareaders = nodees_datareaders . nodest_edges
+nodest_datawriters :: NodeSt a -> [Labeled DataportId]
+nodest_datawriters = nodees_datawriters . nodest_edges
+
 data NodeSt a =
-  NodeSt
-    { nodest_name        :: Name
-    , nodest_emitters    :: [Labeled ChannelId]
-    , nodest_receivers   :: [Labeled ChannelId]
-    , nodest_datareaders :: [Labeled DataportId]
-    , nodest_datawriters :: [Labeled DataportId]
+  NodeSt 
+    { nodest_edges       :: NodeEdges
     , nodest_codegen     :: [NodeCodegen]
     , nodest_impl        :: a
     } deriving (Functor)
 
+emptyNodeEdges :: Name -> NodeEdges
+emptyNodeEdges n = NodeEdges
+  { nodees_name        = n
+  , nodees_emitters    = []
+  , nodees_receivers   = []
+  , nodees_datareaders = []
+  , nodees_datawriters = []
+  }
+
 emptyNodeSt :: Name -> a -> NodeSt a
 emptyNodeSt n impl = NodeSt
-  { nodest_name        = n
-  , nodest_emitters    = []
-  , nodest_receivers   = []
-  , nodest_datareaders = []
-  , nodest_datawriters = []
+  { nodest_edges       = emptyNodeEdges n
   , nodest_codegen     = []
   , nodest_impl        = impl
   }

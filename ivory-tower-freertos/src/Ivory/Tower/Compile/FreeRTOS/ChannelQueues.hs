@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.Compile.FreeRTOS.ChannelQueues where
 
@@ -21,9 +22,9 @@ import Ivory.Tower.Compile.FreeRTOS.Types
 data FreeRTOSChannel area =
   FreeRTOSChannel
     { fch_name      :: String
-    , fch_emit      :: forall eff s cs . (eff `AllocsIn` cs)
+    , fch_emit      :: forall eff s cs . (GetAlloc eff ~ Scope cs)
                     => Ctx -> ConstRef s area -> Ivory eff IBool
-    , fch_emit_      :: forall eff s cs . (eff `AllocsIn` cs)
+    , fch_emit_      :: forall eff s cs . (Allocs eff ~ Scope cs)
                      => Ctx -> ConstRef s area -> Ivory eff ()
     , fch_receive   :: forall eff s cs . (eff `AllocsIn` cs)
                     => Ctx -> Ref s area -> Ivory eff IBool
@@ -34,7 +35,8 @@ data FreeRTOSChannel area =
 
 data FreeRTOSGuard =
   FreeRTOSGuard
-    { guard_block     :: forall eff cs . (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
+    { guard_block     :: forall eff cs . (GetAlloc eff ~ Scope cs)
+                      => Uint32 -> Ivory eff ()
     , guard_notify    :: forall eff . Ctx -> Ivory eff ()
     , guard_initDef   :: Def('[]:->())
     , guard_moduleDef :: ModuleDef
@@ -56,9 +58,6 @@ eventGuard node = FreeRTOSGuard
   -- At least 1 to be a valid freertos primitive.
   size = max 1 $ incomingEvents node
   unique s = s ++ "_" ++ (nodest_name node)
-
-  block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
-  block time = call_ blockProc time
 
   blockProc :: Def('[Uint32] :-> ())
   blockProc = proc (unique "guardBlock") $ \time -> body $ do
@@ -119,7 +118,7 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
   pendingQueue     = addrOf pendingQueueArea
   freeQueue        = addrOf freeQueueArea
 
-  getIx :: (eff `AllocsIn` cs)
+  getIx :: (GetAlloc eff ~ Scope cs)
         => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, Ix n)
   getIx ctx q waittime = do
     vlocal <- local (ival 0)
@@ -135,10 +134,7 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
     User -> call_ Q.send     q (safeCast i) 0 -- should never block
     ISR  -> call_ Q.send_isr q (safeCast i)
 
-  emit :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff IBool
-  emit ctx v = call (emitProc ctx) v
-
-  emit_ :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff ()
+  emit_ :: (GetAlloc eff ~ Scope cs) => Ctx -> ConstRef s area -> Ivory eff ()
   emit_ ctx v = call_ (emitProc ctx) v
 
   emitProc :: Ctx -> Def ('[ConstRef s area] :-> IBool)
@@ -153,7 +149,8 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
   receive ctx v = call (receiveProc ctx) v
 
   receiveProc :: Ctx -> Def ('[Ref s area] :-> IBool)
-  receiveProc ctx = proc (unique ("receiveFrom" ++ (show ctx))) $ \v -> body $ do
+  receiveProc ctx =
+    proc (unique ("receiveFrom" ++ (show ctx))) $ \v -> body $ do
     (got, i) <- getIx ctx pendingQueue 0
     when got $ do
       refCopy v (constRef (eventHeap ! i))

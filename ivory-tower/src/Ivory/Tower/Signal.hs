@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Signal where
@@ -15,7 +16,8 @@ signalModuleDef = sigStAddModuleDef
 
 -- | Declare a signal handler for a 'Signal'. The task body is an 'Ivory'
 --   computation which handles the signal and Always terminates.
-signalBody :: (SigSchedule -> (forall eff cs . (eff `AllocsIn` cs) => Ivory eff ()))
+signalBody :: (SigSchedule -> (forall eff cs . (Allocs eff ~ Alloc cs)
+           => Ivory eff ()))
            -> Signal ()
 signalBody k = do
   s <- getSignalSt

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE KindSignatures #-}
@@ -19,13 +20,13 @@ import Ivory.Tower.Node
 
 -- | Atomic read of shared data, copying to local reference. Always succeeds.
 --   Takes a 'DataReader'.
-readData :: (eff `AllocsIn` cs, IvoryArea area)
+readData :: (Allocs eff ~ Alloc cs, IvoryArea area)
          => TaskSchedule -> DataReader area -> Ref s area -> Ivory eff ()
 readData sch reader ref = tsch_mkDataReader sch reader ref
 
 -- | Atomic write to shared data, copying from local reference. Always
 --   succeeds. Takes a 'DataWriter'.
-writeData :: (eff `AllocsIn` cs, IvoryArea area)
+writeData :: (Allocs eff ~ Alloc cs, IvoryArea area)
           => TaskSchedule -> DataWriter area -> ConstRef s area -> Ivory eff ()
 writeData sch writer ref = tsch_mkDataWriter sch writer ref
 
@@ -34,7 +35,7 @@ writeData sch writer ref = tsch_mkDataWriter sch writer ref
 -- | Construct an 'EventLoop' from a 'ChannelReceiver' and a handler function
 --   which takes a ConstRef to the received event and performs an Ivory
 --   computation
-onChannel :: (SingI n, eff `AllocsIn` cs, IvoryArea area, IvoryZero area)
+onChannel :: (SingI n, Allocs eff ~ Alloc cs, IvoryArea area, IvoryZero area)
     => ChannelReceiver n area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
 onChannel rxer k = EventLoop [ rx ]
@@ -61,13 +62,13 @@ onChannelV rxer k = EventLoop [ rx ]
 
 -- | Construct an 'EventLoop' from a 'Period' and a handler function which
 --   takes the current time (in milliseconds) and performs an Ivory computation
-onTimer :: (eff `AllocsIn` cs)
+onTimer :: (Allocs eff ~ Alloc cs)
     => Period -> (Uint32 -> Ivory eff ())
     -> EventLoop eff
 onTimer per k = EventLoop [ \sch -> tsch_mkPeriodic sch per k ]
 
 -- | Generate Ivory code given a 'TaskSchedule' and 'EventLoop'.
-eventLoop :: (eff `AllocsIn` cs ) => TaskSchedule -> EventLoop eff -> Ivory eff ()
+eventLoop :: (Allocs eff ~ Alloc cs ) => TaskSchedule -> EventLoop eff -> Ivory eff ()
 eventLoop sch el = tsch_mkEventLoop sch [ event sch | event <- unEventLoop el ]
 
 -- Special OS function interface -----------------------------------------------
@@ -82,10 +83,10 @@ getTimeMillis = unOSGetTimeMillis
 
 class EmitSchedulable a where
   -- | Nonblocking emit. Indicates success in return value.
-  emit :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+  emit :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
      => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
   -- | Nonblocking emit. Fails silently.
-  emit_ :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+  emit_ :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
      => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
   emit_ s c r = emit s c r >> return ()
 
@@ -115,7 +116,7 @@ instance EmitSchedulable SigSchedule where
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.
-sigReceive :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+sigReceive :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
      => SigSchedule -> ChannelReceiver n area -> Ref s area -> Ivory eff IBool
 sigReceive schedule emitter ref = ssch_mkReceiver schedule emitter ref
 

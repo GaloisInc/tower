@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Ivory.Tower.Test.FooBarTower where
+module Ivory.Tower.Test.FooBarSignals where
 
 import Data.Monoid
 

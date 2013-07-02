@@ -56,22 +56,20 @@ eventGuard node = FreeRTOSGuard
   unique s = s ++ (nodest_name node)
 
   block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
-  block time = do
-    guardSem <- addrOf guardSemArea
+  block time =
     call_ S.take guardSem time
 
   notify :: Ctx -> Ivory eff ()
   notify ctx = do
-    guardSem <- addrOf guardSemArea
     case ctx of
       User -> call_ S.give     guardSem
       ISR  -> call_ S.give_isr guardSem
 
   guardSemArea :: MemArea S.Semaphore
   guardSemArea = area (unique "guardSem") Nothing
+  guardSem     = addrOf guardSemArea
 
   initDef = proc (unique "freertos_guard_init_") $ body $ do
-    guardSem <- addrOf guardSemArea
     call_ S.create_counting guardSem (fromIntegral size) 0
     retVoid
 
@@ -101,10 +99,13 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
 
   eventHeapArea :: MemArea (Array n area)
   eventHeapArea = area (unique "eventHeap") Nothing
+  eventHeap     = addrOf eventHeapArea
 
   pendingQueueArea, freeQueueArea :: MemArea Q.Queue
   pendingQueueArea = area (unique "pendingQueue") Nothing
   freeQueueArea    = area (unique "freeQueue") Nothing
+  pendingQueue     = addrOf pendingQueueArea
+  freeQueue        = addrOf freeQueueArea
 
   getIx :: (eff `AllocsIn` cs)
         => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, Ix n)
@@ -124,9 +125,6 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
 
   emit :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff IBool
   emit ctx v = do
-    eventHeap    <- addrOf eventHeapArea
-    pendingQueue <- addrOf pendingQueueArea
-    freeQueue    <- addrOf freeQueueArea
     (got, i) <- getIx ctx freeQueue 0
     when got $ do
       refCopy (eventHeap ! i) v
@@ -135,9 +133,6 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
 
   receive :: (eff `AllocsIn` cs) => Ctx -> Ref s area -> Ivory eff IBool
   receive ctx v = do
-    eventHeap    <- addrOf eventHeapArea
-    pendingQueue <- addrOf pendingQueueArea
-    freeQueue    <- addrOf freeQueueArea
     (got, i) <- getIx ctx pendingQueue 0
     when got $ do
       refCopy v (constRef (eventHeap ! i))
@@ -148,8 +143,6 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
 
   initDef :: Def ('[] :-> ())
   initDef = proc initName $ body $ do
-    pendingQueue <- addrOf pendingQueueArea
-    freeQueue    <- addrOf freeQueueArea
     let len :: Uint32
         len = fromInteger (fromSing (sing :: Sing n))
     call_ Q.create pendingQueue len

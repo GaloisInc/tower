@@ -39,35 +39,43 @@ sharedState dataportid = FreeRTOSDataport
   unique :: String -> String
   unique n = n ++ ("_dataport" ++ (show (unDataportId dataportid)))
 
-  name = unique "freertos_sharedState"
+  name = unique "sharedState"
 
   stateArea  :: MemArea area
-  stateArea   = area (unique "freertos_sharedState_state") Nothing
+  stateArea   = area (unique "sharedState_state") Nothing
   state       = addrOf stateArea
   semArea    :: MemArea S.Semaphore
-  semArea     = area (unique "freertos_sharedState_sem") Nothing
+  semArea     = area (unique "sharedState_sem") Nothing
   sem         = addrOf semArea
 
   withSemaphore :: Ivory eff () -> Ivory eff ()
   withSemaphore action = do
     call_ S.takeBlocking sem
-    _ <- action
+    _ <- action -- XXX 
     call_ S.give sem
 
   write :: ConstRef s area -> Ivory eff ()
-  write v = do
+  write v = call_ writeProc v
+
+  writeProc :: Def ('[ConstRef s area] :-> ())
+  writeProc = proc (unique "sharedState_write") $ \v -> body $
     withSemaphore $ refCopy state v
 
   read :: Ref s area -> Ivory eff ()
-  read v = do
+  read v = call_ readProc v
+
+  readProc :: Def ('[Ref s area] :-> ())
+  readProc = proc (unique "sharedState_read") $ \v -> body $
     withSemaphore $ refCopy v state
 
   initDef :: Def ('[] :-> ())
-  initDef = proc (unique "freertos_sharedState_init") $ body $
+  initDef = proc (unique "sharedState_init") $ body $
     call_ S.create sem
 
   m = do
     incl initDef
+    incl writeProc
+    incl readProc
     private $ do
       defMemArea stateArea
       defMemArea semArea

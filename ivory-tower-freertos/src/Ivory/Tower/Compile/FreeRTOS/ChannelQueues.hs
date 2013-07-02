@@ -53,14 +53,20 @@ eventGuard node = FreeRTOSGuard
   where
   -- At least 1 to be a valid freertos primitive.
   size = max 1 $ incomingEvents node
-  unique s = s ++ (nodest_name node)
+  unique s = s ++ "_" ++ (nodest_name node)
 
   block :: (eff `AllocsIn` cs) => Uint32 -> Ivory eff ()
-  block time =
+  block time = call_ blockProc time
+
+  blockProc :: Def('[Uint32] :-> ())
+  blockProc = proc (unique "guardBlock") $ \time -> body $ do
     call_ S.take guardSem time
 
   notify :: Ctx -> Ivory eff ()
-  notify ctx = do
+  notify ctx = call_ (notifyProc ctx)
+
+  notifyProc :: Ctx -> Def ('[]:->())
+  notifyProc ctx = proc (unique ("guardNotifyFrom" ++ (show ctx))) $ body $
     case ctx of
       User -> call_ S.give     guardSem
       ISR  -> call_ S.give_isr guardSem
@@ -69,12 +75,15 @@ eventGuard node = FreeRTOSGuard
   guardSemArea = area (unique "guardSem") Nothing
   guardSem     = addrOf guardSemArea
 
-  initDef = proc (unique "freertos_guard_init_") $ body $ do
+  initDef = proc (unique "guardInit") $ body $ do
     call_ S.create_counting guardSem (fromIntegral size) 0
     retVoid
 
   moduleDef = do
     incl initDef
+    incl blockProc
+    incl (notifyProc ISR)
+    incl (notifyProc User)
     private $ defMemArea guardSemArea
 
 eventQueue :: forall (area :: Area) (n :: Nat) i
@@ -95,7 +104,7 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
   name = printf "channel%d_%s" (chan_id channelid) (nodest_name dest)
 
   unique :: String -> String
-  unique n = n ++ name
+  unique n = n ++ "_" ++ name
 
   eventHeapArea :: MemArea (Array n area)
   eventHeapArea = area (unique "eventHeap") Nothing
@@ -124,20 +133,26 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
     ISR  -> call_ Q.send_isr q (safeCast i)
 
   emit :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff IBool
-  emit ctx v = do
+  emit ctx v = call (emitProc ctx) v
+
+  emitProc :: Ctx -> Def ('[ConstRef s area] :-> IBool)
+  emitProc ctx = proc (unique ("emitFrom" ++ (show ctx))) $ \v -> body $ do
     (got, i) <- getIx ctx freeQueue 0
     when got $ do
       refCopy (eventHeap ! i) v
       putIx ctx pendingQueue i
-    return got
+    ret got
 
   receive :: (eff `AllocsIn` cs) => Ctx -> Ref s area -> Ivory eff IBool
-  receive ctx v = do
+  receive ctx v = call (receiveProc ctx) v
+
+  receiveProc :: Ctx -> Def ('[Ref s area] :-> IBool)
+  receiveProc ctx = proc (unique ("receiveFrom" ++ (show ctx))) $ \v -> body $ do
     (got, i) <- getIx ctx pendingQueue 0
     when got $ do
       refCopy v (constRef (eventHeap ! i))
       putIx ctx freeQueue i
-    return got
+    ret got
 
   initName = unique "freertos_eventQueue_init"
 
@@ -152,6 +167,10 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
 
   mdef = do
     incl initDef
+    incl (emitProc User)
+    incl (emitProc ISR)
+    incl (receiveProc User)
+    incl (receiveProc ISR)
     private $ do
       defMemArea eventHeapArea
       defMemArea pendingQueueArea

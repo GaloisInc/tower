@@ -23,6 +23,8 @@ data FreeRTOSChannel area =
     { fch_name      :: String
     , fch_emit      :: forall eff s cs . (eff `AllocsIn` cs)
                     => Ctx -> ConstRef s area -> Ivory eff IBool
+    , fch_emit_      :: forall eff s cs . (eff `AllocsIn` cs)
+                     => Ctx -> ConstRef s area -> Ivory eff ()
     , fch_receive   :: forall eff s cs . (eff `AllocsIn` cs)
                     => Ctx -> Ref s area -> Ivory eff IBool
     , fch_initDef   :: Def('[]:->())
@@ -95,6 +97,7 @@ eventQueue :: forall (area :: Area) (n :: Nat) i
 eventQueue channelid _sizeSing dest = FreeRTOSChannel
   { fch_name        = unique "freertos_eventQueue"
   , fch_emit        = emit
+  , fch_emit_       = emit_
   , fch_receive     = receive
   , fch_initDef     = initDef
   , fch_moduleDef   = mdef
@@ -134,6 +137,9 @@ eventQueue channelid _sizeSing dest = FreeRTOSChannel
 
   emit :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff IBool
   emit ctx v = call (emitProc ctx) v
+
+  emit_ :: (eff `AllocsIn` cs) => Ctx -> ConstRef s area -> Ivory eff ()
+  emit_ ctx v = call_ (emitProc ctx) v
 
   emitProc :: Ctx -> Def ('[ConstRef s area] :-> IBool)
   emitProc ctx = proc (unique ("emitFrom" ++ (show ctx))) $ \v -> body $ do

@@ -106,12 +106,12 @@ retResult f s c r = do ref <- f s c r
                        return (iNot failed)
 
 instance EmitSchedulable TaskSchedule where
-  emit = retResult tsch_mkEmitter
-  emit_ s c r = tsch_mkEmitter s c r >> return ()
+  emit  = retResult tsch_mkEmitter
+  emit_ = tsch_mkEmitter_
 
 instance EmitSchedulable SigSchedule where
   emit  = retResult ssch_mkEmitter
-  emit_ s c r = ssch_mkEmitter s c r >> return ()
+  emit_ = ssch_mkEmitter_
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.

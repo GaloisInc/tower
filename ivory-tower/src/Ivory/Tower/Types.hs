@@ -257,6 +257,11 @@ data TaskSchedule =
                      => ChannelEmitter n area
                      -> ConstRef s area
                      -> IBoolRef eff cs
+    , tsch_mkEmitter_ :: forall n area s eff cs
+                      . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+                     => ChannelEmitter n area
+                     -> ConstRef s area
+                     -> Ivory eff ()
     , tsch_mkReceiver :: forall n area s eff cs
             . (SingI n, IvoryArea area, eff `AllocsIn` cs)
            => ChannelReceiver n area
@@ -280,6 +285,11 @@ data SigSchedule =
            => ChannelEmitter n area
            -> ConstRef s area
            -> IBoolRef eff cs
+    , ssch_mkEmitter_ :: forall n area s eff cs
+            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+           => ChannelEmitter n area
+           -> ConstRef s area
+           -> Ivory eff ()
     , ssch_mkReceiver :: forall n area s eff cs
             . (SingI n, IvoryArea area, eff `AllocsIn` cs)
            => ChannelReceiver n area

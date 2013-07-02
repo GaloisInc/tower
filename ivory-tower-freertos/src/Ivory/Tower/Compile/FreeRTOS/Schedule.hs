@@ -38,7 +38,8 @@ endpointNodes nodes ch = filter hasref nodes
   where hasref n = elem ch (inboundChannels n)
         inboundChannels n = map unLabeled (nodest_receivers n)
 
--- Schedule emitter: create the emitter macro for the channels.
+-- Schedule emitter: create the emitter macro for the channels. Returns
+-- failure value.
 mkEmitter :: forall n area eff cs s
            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
           => [TaskNode]
@@ -58,14 +59,44 @@ mkEmitter tnodes snodes ctx emitter ref = do
     forM_ endGuards $ \g -> guard_notify g ctx
     return f
   where
+  (endEmitters, endGuards) = mkEmitterPrims tnodes snodes emitter
+
+-- Schedule emitter: create the emitter macro for the channels.
+-- Fails silently
+mkEmitter_ :: forall n area eff cs s
+           . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+          => [TaskNode]
+          -> [SigNode]
+          -> Ctx -- System
+          -> ChannelEmitter n area -- Codegen
+          -> ConstRef s area
+          -> Ivory eff ()
+mkEmitter_ tnodes snodes ctx emitter ref = do
+    -- with all of the endpoints for chref, create an ivory
+    --   monad that calls emit on each one, noting failure if it occurs
+    forM_ endEmitters $ \fch -> do
+      fch_emit_ fch ctx ref
+    --   then calls notify on each of the appropriate guards
+    forM_ endGuards $ \g -> guard_notify g ctx
+  where
+  (endEmitters, endGuards) = mkEmitterPrims tnodes snodes emitter
+
+mkEmitterPrims :: forall n area
+               . (SingI n, IvoryArea area)
+              => [TaskNode]
+              -> [SigNode]
+              -> ChannelEmitter n area -- Codegen
+              -> ([FreeRTOSChannel area],[FreeRTOSGuard])
+mkEmitterPrims tnodes snodes emitter = (chans, guards)
+  where
   channel = unChannelEmitter emitter
   ets = endpointNodes tnodes channel
   ess = endpointNodes snodes channel
-  endGuards :: [FreeRTOSGuard]
-  endGuards = map eventGuard ets
-  endEmitters :: [FreeRTOSChannel area]
-  endEmitters = (map (eventQueue channel (sing :: Sing n)) ets)
-             ++ (map (eventQueue channel (sing :: Sing n)) ess)
+  guards :: [FreeRTOSGuard]
+  guards = map eventGuard ets
+  chans :: [FreeRTOSChannel area]
+  chans = (map (eventQueue channel (sing :: Sing n)) ets)
+       ++ (map (eventQueue channel (sing :: Sing n)) ess)
 
 mkReceiver :: forall n s eff cs area i
             . (SingI n, IvoryArea area, eff `AllocsIn` cs)
@@ -84,6 +115,7 @@ mkReceiver _tnodes _snodes ctx noderx chrx ref =
 mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 mkSigSchedule tnodes signodes tnode = SigSchedule
     { ssch_mkEmitter    = mkSigEmitter
+    , ssch_mkEmitter_   = mkSigEmitter_
     , ssch_mkReceiver   = mkSigReceiver
     , ssch_mkSigBody    = mkSigBody
     }
@@ -93,6 +125,12 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
                -> ConstRef s area
                -> IBoolRef eff cs
   mkSigEmitter emitter ref = mkEmitter tnodes signodes ISR emitter ref
+
+  mkSigEmitter_ :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
+                => ChannelEmitter n area
+                -> ConstRef s area
+                -> Ivory eff ()
+  mkSigEmitter_ emitter ref = mkEmitter_ tnodes signodes ISR emitter ref
 
   mkSigReceiver :: (SingI n, IvoryArea area, eff `AllocsIn` cs)
                 => ChannelReceiver n area
@@ -113,6 +151,7 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
     { tsch_mkDataReader = mkDataReader
     , tsch_mkDataWriter = mkDataWriter
     , tsch_mkEmitter    = mkEmitter tnodes signodes User
+    , tsch_mkEmitter_   = mkEmitter_ tnodes signodes User
     , tsch_mkReceiver   = mkReceiver tnodes signodes User tnode
     , tsch_mkPeriodic   = mkPeriodic
     , tsch_mkEventLoop  = mkEventLoop

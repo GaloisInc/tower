@@ -78,3 +78,8 @@ addModule m = do
   s <- getTowerSt
   setTowerSt $ s { towerst_modules = m : (towerst_modules s) }
 
+addDepends :: Module -> Tower ()
+addDepends m = do
+  s <- getTowerSt
+  setTowerSt $ s { towerst_depends = m : (towerst_depends s) }
+

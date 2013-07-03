@@ -45,6 +45,7 @@ module Ivory.Tower
   , channel
   , channelWithSize
   , addModule
+  , addDepends
 
   , withPeriod
   , withGetTimeMillis

@@ -98,7 +98,7 @@ nodeStAddDataWriter cc lbl = do
 nodeStAddCodegen :: Def('[]:->()) -> ModuleDef -> Node i ()
 nodeStAddCodegen i m = do
   n <- getNode
-  setNode $ n { nodest_codegen = (NodeCodegen i m):(nodest_codegen n) }
+  setNode $ n { nodest_codegen = (Codegen i m):(nodest_codegen n) }
 
 getNode :: Node i (NodeSt i)
 getNode = Node get
@@ -181,10 +181,9 @@ mkDataport label = do
   return dpid
 
 addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower ()
-addDataportCodegen initializer mdef = do
+addDataportCodegen init mdef = do
     s <- getTowerSt
-    setTowerSt $ s { towerst_dataportinit = initializer : (towerst_dataportinit s)
-                   , towerst_moddef       = mdef >> (towerst_moddef s) }
+    setTowerSt $ s { towerst_dataportgen = (Codegen init mdef): (towerst_dataportgen s) }
 
 
 

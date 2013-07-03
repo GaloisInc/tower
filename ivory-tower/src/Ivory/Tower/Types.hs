@@ -121,10 +121,10 @@ newtype OSGetTimeMillis =
 
 -- Node State-------------------------------------------------------------------
 
-data NodeCodegen =
-  NodeCodegen
-    { ncg_init  :: Def('[]:->())
-    , ncg_mdef  :: ModuleDef
+data Codegen =
+  Codegen
+    { cgen_init  :: Def('[]:->())
+    , cgen_mdef  :: ModuleDef
     }
 
 data NodeEdges =
@@ -136,7 +136,7 @@ data NodeEdges =
     , nodees_datawriters :: [Labeled DataportId]
     }
 
--- XXX compatibility, fix later...
+-- ease of use / compatibility with legacy
 nodest_name :: NodeSt a -> Name
 nodest_name = nodees_name . nodest_edges
 nodest_emitters :: NodeSt a -> [Labeled ChannelId]
@@ -151,7 +151,7 @@ nodest_datawriters = nodees_datawriters . nodest_edges
 data NodeSt a =
   NodeSt 
     { nodest_edges       :: NodeEdges
-    , nodest_codegen     :: [NodeCodegen]
+    , nodest_codegen     :: [Codegen]
     , nodest_impl        :: a
     } deriving (Functor)
 
@@ -225,8 +225,8 @@ data TowerSt =
     , towerst_channels     :: [Labeled ChannelId]
     , towerst_tasknodes    :: [TaskNode]
     , towerst_signodes     :: [SigNode]
-    , towerst_dataportinit :: [Def('[]:->())]
-    , towerst_moddef       :: ModuleDef
+    , towerst_dataportgen  :: [Codegen]
+    , towerst_depends      :: [Module]
     }
 
 emptyTowerSt :: TowerSt
@@ -236,8 +236,8 @@ emptyTowerSt = TowerSt
   , towerst_channels = []
   , towerst_tasknodes = []
   , towerst_signodes = []
-  , towerst_dataportinit = []
-  , towerst_moddef = return ()
+  , towerst_dataportgen = []
+  , towerst_depends = []
   }
 
 -- Compiled Schedule -----------------------------------------------------------

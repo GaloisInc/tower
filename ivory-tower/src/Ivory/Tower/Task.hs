@@ -65,8 +65,12 @@ withGetTimeMillis = do
 -- | Declare a task body for a 'Task'. The task body is an 'Ivory'
 --   computation which initializes the task and runs an `eventLoop`.
 --   The Ivory computation Should Not terminate.
-taskBody :: (TaskSchedule -> (forall eff cs . (Allocs eff ~ Alloc cs)
-         => Ivory eff ()))
+taskBody :: (   TaskSchedule
+             -> (forall eff cs .
+                     (GetAlloc eff ~ Scope cs
+                     , eff ~ ClearBreak (AllowBreak eff))
+                  => Ivory eff ())
+            )
          -> Task ()
 taskBody k = do
   s <- getTaskSt

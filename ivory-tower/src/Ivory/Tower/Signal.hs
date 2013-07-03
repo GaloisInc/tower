@@ -16,7 +16,7 @@ signalModuleDef = sigStAddModuleDef
 
 -- | Declare a signal handler for a 'Signal'. The task body is an 'Ivory'
 --   computation which handles the signal and Always terminates.
-signalBody :: (SigSchedule -> (forall eff cs . (Allocs eff ~ Alloc cs)
+signalBody :: (SigSchedule -> (forall eff cs . (GetAlloc eff ~ Scope cs)
            => Ivory eff ()))
            -> Signal ()
 signalBody k = do

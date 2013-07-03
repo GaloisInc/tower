@@ -248,55 +248,60 @@ type IBoolRef eff cs = Ivory eff (Ref (Stack cs) (Stored IBool))
 data TaskSchedule =
   TaskSchedule
     { tsch_mkDataReader :: forall area s eff cs
-                         . (IvoryArea area, Allocs eff ~ Alloc cs)
+                         . (IvoryArea area, GetAlloc eff ~ Scope cs)
                         => DataReader area -> Ref s area -> Ivory eff ()
     , tsch_mkDataWriter :: forall area s eff cs
-                         . (IvoryArea area, Allocs eff ~ Alloc cs)
+                         . (IvoryArea area, GetAlloc eff ~ Scope cs)
                         => DataWriter area -> ConstRef s area -> Ivory eff ()
     , tsch_mkEmitter :: forall n area s eff cs
-                      . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+                      . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
                      => ChannelEmitter n area
                      -> ConstRef s area
                      -> IBoolRef eff cs
     , tsch_mkEmitter_ :: forall n area s eff cs
-                      . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+                      . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
                      => ChannelEmitter n area
                      -> ConstRef s area
                      -> Ivory eff ()
     , tsch_mkReceiver :: forall n area s eff cs
-            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+            . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , tsch_mkPeriodic :: forall eff cs . (Allocs eff ~ Alloc cs)
+    , tsch_mkPeriodic :: forall eff cs . (GetAlloc eff ~ Scope cs)
            => Period
            -> (Uint32 -> Ivory eff ())
            -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
                                        -- part of the loop
-    , tsch_mkEventLoop :: forall eff cs . (Allocs eff ~ Alloc cs)
+    , tsch_mkEventLoop :: forall eff cs .
+                            ( GetAlloc eff ~ Scope cs
+                            , eff ~ ClearBreak (AllowBreak eff)
+                            )
            => [Ivory eff (Ivory eff ())] -> Ivory eff ()
-    , tsch_mkTaskBody :: (forall eff cs . (Allocs eff ~ Alloc cs )
+    , tsch_mkTaskBody :: (forall eff cs . ( GetAlloc eff ~ Scope cs
+                                          , eff ~ ClearBreak (AllowBreak eff)
+                                          )
                      => Ivory eff ()) -> Def('[]:->())
     }
 
 data SigSchedule =
   SigSchedule
     { ssch_mkEmitter :: forall n area s eff cs
-            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+            . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelEmitter n area
            -> ConstRef s area
            -> IBoolRef eff cs
     , ssch_mkEmitter_ :: forall n area s eff cs
-            . (SingI n, IvoryArea area, eff `AllocsIn` cs)
+            . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelEmitter n area
            -> ConstRef s area
            -> Ivory eff ()
     , ssch_mkReceiver :: forall n area s eff cs
-            . (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+            . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , ssch_mkSigBody :: (forall eff cs . (Allocs eff ~ Alloc cs)
+    , ssch_mkSigBody :: (forall eff cs . (GetAlloc eff ~ Scope cs)
                      => Ivory eff ()) -> Def('[]:->())
     }
 
@@ -312,7 +317,7 @@ data OS =
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt
     -- (really just for the name) and a ChannelReceiver.
-    , os_mkChannel     :: forall area i n 
+    , os_mkChannel     :: forall area i n
                         . (SingI n, IvoryArea area, IvoryZero area)
                        => ChannelReceiver n area
                        -> NodeSt i
@@ -320,12 +325,14 @@ data OS =
 
     -- Generate a Schedule for a particular Task, given the set of
     -- all tasks (sufficient for a fully described graph of channels)
-    , os_mkTaskSchedule    :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
+    , os_mkTaskSchedule    :: [TaskNode] -> [SigNode] -> TaskNode
+                           -> TaskSchedule
 
     , os_mkSigSchedule     :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 
     -- Generate any code needed for the system as a whole
-    , os_mkSysSchedule     :: [TaskNode] -> [SigNode] -> (ModuleDef, Def('[]:->()))
+    , os_mkSysSchedule     :: [TaskNode] -> [SigNode]
+                           -> (ModuleDef, Def('[]:->()))
 
     -- Utility function
     , os_getTimeMillis :: forall eff . Ivory eff Uint32

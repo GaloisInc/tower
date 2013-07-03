@@ -20,13 +20,13 @@ import Ivory.Tower.Node
 
 -- | Atomic read of shared data, copying to local reference. Always succeeds.
 --   Takes a 'DataReader'.
-readData :: (Allocs eff ~ Alloc cs, IvoryArea area)
+readData :: (GetAlloc eff ~ Scope cs, IvoryArea area)
          => TaskSchedule -> DataReader area -> Ref s area -> Ivory eff ()
 readData sch reader ref = tsch_mkDataReader sch reader ref
 
 -- | Atomic write to shared data, copying from local reference. Always
 --   succeeds. Takes a 'DataWriter'.
-writeData :: (Allocs eff ~ Alloc cs, IvoryArea area)
+writeData :: (GetAlloc eff ~ Scope cs, IvoryArea area)
           => TaskSchedule -> DataWriter area -> ConstRef s area -> Ivory eff ()
 writeData sch writer ref = tsch_mkDataWriter sch writer ref
 
@@ -35,7 +35,7 @@ writeData sch writer ref = tsch_mkDataWriter sch writer ref
 -- | Construct an 'EventLoop' from a 'ChannelReceiver' and a handler function
 --   which takes a ConstRef to the received event and performs an Ivory
 --   computation
-onChannel :: (SingI n, Allocs eff ~ Alloc cs, IvoryArea area, IvoryZero area)
+onChannel :: (SingI n, GetAlloc eff ~ Scope cs, IvoryArea area, IvoryZero area)
     => ChannelReceiver n area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
 onChannel rxer k = EventLoop [ rx ]
@@ -47,7 +47,7 @@ onChannel rxer k = EventLoop [ rx ]
 
 -- | like 'onChannel', but for atomic values where we don't need to handle by
 --   reference.
-onChannelV :: (SingI n, eff `AllocsIn` cs
+onChannelV :: (SingI n, GetAlloc eff ~ Scope cs
               , IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
     => ChannelReceiver n (Stored t) -> (t -> Ivory eff ())
     -> EventLoop eff
@@ -62,13 +62,15 @@ onChannelV rxer k = EventLoop [ rx ]
 
 -- | Construct an 'EventLoop' from a 'Period' and a handler function which
 --   takes the current time (in milliseconds) and performs an Ivory computation
-onTimer :: (Allocs eff ~ Alloc cs)
+onTimer :: (GetAlloc eff ~ Scope cs)
     => Period -> (Uint32 -> Ivory eff ())
     -> EventLoop eff
 onTimer per k = EventLoop [ \sch -> tsch_mkPeriodic sch per k ]
 
 -- | Generate Ivory code given a 'TaskSchedule' and 'EventLoop'.
-eventLoop :: (Allocs eff ~ Alloc cs ) => TaskSchedule -> EventLoop eff -> Ivory eff ()
+eventLoop :: ( GetAlloc eff ~ Scope cs
+             , eff ~ ClearBreak (AllowBreak eff) )
+          => TaskSchedule -> EventLoop eff -> Ivory eff ()
 eventLoop sch el = tsch_mkEventLoop sch [ event sch | event <- unEventLoop el ]
 
 -- Special OS function interface -----------------------------------------------
@@ -83,21 +85,23 @@ getTimeMillis = unOSGetTimeMillis
 
 class EmitSchedulable a where
   -- | Nonblocking emit. Indicates success in return value.
-  emit :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+  emit :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
      => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
   -- | Nonblocking emit. Fails silently.
-  emit_ :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+  emit_ :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
      => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
   emit_ s c r = emit s c r >> return ()
 
   -- | Emit by value - saves the user from having to give a constref
   --   to an atomic value.
-  emitV :: (SingI n, IvoryInit t, IvoryArea (Stored t), eff `AllocsIn` cs)
+  emitV :: (SingI n, IvoryInit t, IvoryArea (Stored t), GetAlloc eff ~ Scope cs)
      => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff IBool
   emitV s c v = local (ival v) >>= \r -> emit s c (constRef r)
 
-  emitV_ :: (SingI n, IvoryInit t, IvoryArea (Stored t), eff `AllocsIn` cs)
-     => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff ()
+  emitV_ :: ( SingI n, IvoryInit t
+            , IvoryArea (Stored t)
+            , GetAlloc eff ~ Scope cs
+            ) => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff ()
   emitV_ s c v = emitV s c v >> return ()
 
 retResult :: (a -> b -> c -> IBoolRef eff cs)
@@ -116,7 +120,7 @@ instance EmitSchedulable SigSchedule where
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.
-sigReceive :: (SingI n, IvoryArea area, Allocs eff ~ Alloc cs)
+sigReceive :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
      => SigSchedule -> ChannelReceiver n area -> Ref s area -> Ivory eff IBool
 sigReceive schedule emitter ref = ssch_mkReceiver schedule emitter ref
 

@@ -121,5 +121,6 @@ fooBarTower = do
   task "barSourceTask"  $ barSourceTask source_b sink_i
   task "fooBarSinkTask" $ fooBarSinkTask sink_f sink_b
 
+  addDepends fooBarTypes
   addModule fooBarTypes
   addModule someOtherModule

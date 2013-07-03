@@ -30,6 +30,7 @@ compile t = (asm, ms)
   asm = assembleTower t os
   ms = buildModules asm
 
+
 buildModules :: Assembly -> [Module]
 buildModules asm = ms
   where
@@ -38,41 +39,56 @@ buildModules asm = ms
   signals = asm_sigs    asm
   (sys_mdef, sys_initdef) = asm_system asm
 
-  gencode = getgeneratedcode tasks ++ getgeneratedcode signals
+  node_genchannels = getNodeCodegen tasks ++ getNodeCodegen signals
 
-  ms = [ twr_entry ]
+  ms = [ tower_entry ] ++  tower_tasks ++ [ tower_commprim ]
     ++ towerst_modules towerst
     ++ concatMap (taskst_extern_mods . nodest_impl . asmnode_nodest) tasks
 
-  twr_entry = package "tower" $ do
+  tower_commprim = package "tower_commprim" $ do
     -- External C code dependencies
-    mapM_ inclHeader headerdeps
-    mapM_ sourceDep  headerdeps
-    mapM_ sourceDep  sourcedeps
-    -- Assembled code
-    mapM_ (incl . asmnode_tldef) tasks
-    mapM_ (incl . asmnode_tldef) signals
-    mapM_ asmnode_moddef tasks
-    mapM_ asmnode_moddef signals
-    -- Generated code
-    mapM_ ncg_mdef gencode
-    -- User specified code
-    towerst_moddef towerst
-    -- System-wide code
+    mapM_ inclHeader commprim_headers
+    mapM_ sourceDep  commprim_headers
+    mapM_ sourceDep  commprim_sources
+    -- Generated code: channels, dataports
+    mapM_ cgen_mdef node_genchannels
+    mapM_ cgen_mdef (towerst_dataportgen towerst)
+    -- System code
     sys_mdef
+    -- Dependencies
+    mapM_ depend (towerst_depends towerst)
+
+  taskModule :: AssembledNode a -> Module
+  taskModule anode = package n $ do
+    incl (asmnode_tldef anode)
+    asmnode_moddef anode
+    -- Dependencies
+    depend tower_commprim
+    mapM_ depend (towerst_depends towerst)
+    where
+    n = "tower_task_" ++ (nodest_name (asmnode_nodest anode))
+
+  tower_tasks :: [Module]
+  tower_tasks = map taskModule tasks ++ map taskModule signals
+
+  tower_entry = package "tower" $ do
+    -- System-wide code
     incl towerentry
+    -- Dependencies
+    mapM_ depend tower_tasks
+    depend tower_commprim
 
   towerentry :: Def ('[]:->())
   towerentry = proc "tower_entry" $ body $ do
     call_ sys_initdef
-    mapM_ (call_ . ncg_init) gencode
-    mapM_ call_ $ towerst_dataportinit towerst
+    mapM_ (call_ . cgen_init) node_genchannels
+    mapM_ (call_ . cgen_init) (towerst_dataportgen towerst)
     mapM_ taskCreate tasks
     retVoid
 
 
-getgeneratedcode :: [AssembledNode a] -> [NodeCodegen]
-getgeneratedcode as = concatMap (nodest_codegen . asmnode_nodest) as
+getNodeCodegen :: [AssembledNode a] -> [Codegen]
+getNodeCodegen as = concatMap (nodest_codegen . asmnode_nodest) as
 
 taskCreate :: AssembledNode TaskSt -> Ivory eff ()
 taskCreate a = call_ Task.create pointer stacksize priority
@@ -118,15 +134,15 @@ defaulttaskpriority = 1
 
 -- ivory-freertos-wrapper
 
-headerdeps :: [FilePath]
-headerdeps =
+commprim_headers :: [FilePath]
+commprim_headers =
   [ "freertos_queue_wrapper.h"
   , "freertos_semaphore_wrapper.h"
   , "freertos_task_wrapper.h"
   ]
 
-sourcedeps :: [FilePath]
-sourcedeps =
+commprim_sources :: [FilePath]
+commprim_sources =
   [ "freertos_queue_wrapper.c"
   , "freertos_semaphore_wrapper.c"
   , "freertos_task_wrapper.c"

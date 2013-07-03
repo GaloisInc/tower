@@ -58,6 +58,8 @@ module Ivory.Tower
   , withDataWriter
 
   -- Task exports:
+  , taskLocal
+  , taskLocalInit
   , withStackSize
   , withPriority
   , withModule
@@ -69,6 +71,8 @@ module Ivory.Tower
   , eventLoop
 
   -- Signal exports:
+  , signalLocal
+  , signalLocalInit
   , signalBody
   , signalName
   , signalModuleDef

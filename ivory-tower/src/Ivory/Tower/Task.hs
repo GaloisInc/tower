@@ -75,3 +75,16 @@ taskBody k = do
  where
  taskbody sch = tsch_mkTaskBody sch (k sch)
 
+taskLocal :: (IvoryArea area) => Name -> Task (Ref Global area)
+taskLocal n = tlocalAux n Nothing
+
+taskLocalInit :: (IvoryArea area) => Name -> Init area -> Task (Ref Global area)
+taskLocalInit n i = tlocalAux n (Just i)
+
+tlocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Task (Ref Global area)
+tlocalAux n i = do
+  f <- freshname
+  let m = area (n ++ f) i
+  taskStAddModuleDef (const (defMemArea m))
+  return (addrOf m)
+

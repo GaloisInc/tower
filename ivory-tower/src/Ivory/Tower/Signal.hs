@@ -36,3 +36,16 @@ signalName n = do
 sigError :: String -> Signal ()
 sigError msg = getNodeName >>= \name -> error (msg ++ " in signal named " ++ name)
 
+signalLocal :: (IvoryArea area) => Name -> Signal (Ref Global area)
+signalLocal n = siglocalAux n Nothing
+
+signalLocalInit :: (IvoryArea area) => Name -> Init area -> Signal (Ref Global area)
+signalLocalInit n i = siglocalAux n (Just i)
+
+siglocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Signal (Ref Global area)
+siglocalAux n i = do
+  f <- freshname
+  let m = area (n ++ f) i
+  sigStAddModuleDef (const (defMemArea m))
+  return (addrOf m)
+

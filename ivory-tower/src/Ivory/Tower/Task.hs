@@ -6,6 +6,8 @@
 
 module Ivory.Tower.Task where
 
+import Text.Printf
+
 import Ivory.Language
 
 import Ivory.Tower.Types
@@ -19,9 +21,10 @@ instance ChannelEmittable TaskSt where
 taskChannelEmitter :: forall n area . (SingI n, IvoryArea area)
         => ChannelSource n area -> String -> Node TaskSt (ChannelEmitter n area)
 taskChannelEmitter chsrc label = do
-  n <- freshname
+  nodename <- getNodeName
+  unique   <- freshname -- May not be needed.
   let chid    = unChannelSource chsrc
-      emitName = "emitFromTask" ++ n
+      emitName = printf "emitFromTask_%s_chan%d%s" nodename (chan_id chid) unique
       externEmit :: Def ('[ConstRef s area] :-> IBool)
       externEmit = externProc emitName
       procEmit :: TaskSchedule -> Def ('[ConstRef s area] :-> IBool)

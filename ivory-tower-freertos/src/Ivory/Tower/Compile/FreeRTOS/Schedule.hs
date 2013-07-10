@@ -49,7 +49,7 @@ mkEmitter :: forall n area eff cs s
           -> Ctx -- System
           -> ChannelEmitter n area -- Codegen
           -> ConstRef s area
-          -> IBoolRef eff cs
+          -> Ivory eff IBool
 mkEmitter tnodes snodes ctx emitter ref = do
     -- with all of the endpoints for chref, create an ivory
     --   monad that calls emit on each one, noting failure if it occurs
@@ -59,27 +59,7 @@ mkEmitter tnodes snodes ctx emitter ref = do
       unless s (store f true)
     --   then calls notify on each of the appropriate guards
     forM_ endGuards $ \g -> guard_notify g ctx
-    return f
-  where
-  (endEmitters, endGuards) = mkEmitterPrims tnodes snodes emitter
-
--- Schedule emitter: create the emitter macro for the channels.
--- Fails silently
-mkEmitter_ :: forall n area eff cs s
-           . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-          => [TaskNode]
-          -> [SigNode]
-          -> Ctx -- System
-          -> ChannelEmitter n area -- Codegen
-          -> ConstRef s area
-          -> Ivory eff ()
-mkEmitter_ tnodes snodes ctx emitter ref = do
-    -- with all of the endpoints for chref, create an ivory
-    --   monad that calls emit on each one, noting failure if it occurs
-    forM_ endEmitters $ \fch -> do
-      fch_emit_ fch ctx ref
-    --   then calls notify on each of the appropriate guards
-    forM_ endGuards $ \g -> guard_notify g ctx
+    deref f
   where
   (endEmitters, endGuards) = mkEmitterPrims tnodes snodes emitter
 
@@ -91,7 +71,7 @@ mkEmitterPrims :: forall n area
               -> ([FreeRTOSChannel area],[FreeRTOSGuard])
 mkEmitterPrims tnodes snodes emitter = (chans, guards)
   where
-  channel = unChannelEmitter emitter
+  channel = ce_chid emitter
   ets = endpointNodes tnodes channel
   ess = endpointNodes snodes channel
   guards :: [FreeRTOSGuard]
@@ -117,7 +97,6 @@ mkReceiver _tnodes _snodes ctx noderx chrx ref =
 mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 mkSigSchedule tnodes signodes tnode = SigSchedule
     { ssch_mkEmitter    = mkSigEmitter
-    , ssch_mkEmitter_   = mkSigEmitter_
     , ssch_mkReceiver   = mkSigReceiver
     , ssch_mkSigBody    = mkSigBody
     }
@@ -125,14 +104,8 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
   mkSigEmitter :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
                => ChannelEmitter n area
                -> ConstRef s area
-               -> IBoolRef eff cs
+               -> Ivory eff IBool
   mkSigEmitter emitter ref = mkEmitter tnodes signodes ISR emitter ref
-
-  mkSigEmitter_ :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-                => ChannelEmitter n area
-                -> ConstRef s area
-                -> Ivory eff ()
-  mkSigEmitter_ emitter ref = mkEmitter_ tnodes signodes ISR emitter ref
 
   mkSigReceiver :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
                 => ChannelReceiver n area
@@ -153,7 +126,6 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
     { tsch_mkDataReader = mkDataReader
     , tsch_mkDataWriter = mkDataWriter
     , tsch_mkEmitter    = mkEmitter tnodes signodes User
-    , tsch_mkEmitter_   = mkEmitter_ tnodes signodes User
     , tsch_mkReceiver   = mkReceiver tnodes signodes User tnode
     , tsch_mkPeriodic   = mkPeriodic
     , tsch_mkEventLoop  = mkEventLoop

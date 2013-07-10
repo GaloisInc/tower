@@ -2,12 +2,39 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Signal where
 
 import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
+import Ivory.Tower.Node
+
+instance ChannelEmittable SignalSt where
+  withChannelEmitter = signalChannelEmitter
+
+signalChannelEmitter :: forall n area . (SingI n, IvoryArea area)
+        => ChannelSource n area -> String -> Node SignalSt (ChannelEmitter n area)
+signalChannelEmitter chsrc label = do
+  n <- freshname
+  let chid     = unChannelSource chsrc
+      emitName = "emitFromSignal" ++ n
+      externEmit :: Def ('[ConstRef s area] :-> IBool)
+      externEmit = externProc emitName
+      procEmit :: SigSchedule -> Def ('[ConstRef s area] :-> IBool)
+      procEmit schedule = proc emitName $ \ref -> body $ do
+        r <- ssch_mkEmitter schedule emitter ref
+        ret r
+      emitter  = ChannelEmitter
+        { ce_chid         = chid
+        , ce_extern_emit  = call  externEmit
+        , ce_extern_emit_ = call_ externEmit
+        }
+  signalModuleDef $ \sch -> do
+    incl (procEmit sch)
+  nodeStAddEmitter chid label
+  return emitter
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.signalBody' created
 --   in the 'Ivory.Tower.Types.Signal' context.

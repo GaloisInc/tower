@@ -10,8 +10,34 @@ import Ivory.Language
 
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
+import Ivory.Tower.Node
 
 -- Public Task Definitions -----------------------------------------------------
+instance ChannelEmittable TaskSt where
+  withChannelEmitter = taskChannelEmitter
+
+taskChannelEmitter :: forall n area . (SingI n, IvoryArea area)
+        => ChannelSource n area -> String -> Node TaskSt (ChannelEmitter n area)
+taskChannelEmitter chsrc label = do
+  n <- freshname
+  let chid    = unChannelSource chsrc
+      emitName = "emitFromTask" ++ n
+      externEmit :: Def ('[ConstRef s area] :-> IBool)
+      externEmit = externProc emitName
+      procEmit :: TaskSchedule -> Def ('[ConstRef s area] :-> IBool)
+      procEmit schedule = proc emitName $ \ref -> body $ do
+        r <- tsch_mkEmitter schedule emitter ref
+        ret r
+      emitter  = ChannelEmitter
+        { ce_chid         = chid
+        , ce_extern_emit  = call  externEmit
+        , ce_extern_emit_ = call_ externEmit
+        }
+  taskModuleDef $ \sch -> do
+    incl (procEmit sch)
+  nodeStAddEmitter chid label
+  return emitter
+
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.

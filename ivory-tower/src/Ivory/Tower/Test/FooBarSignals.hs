@@ -67,7 +67,7 @@ someSignal ch1 bar = do
     v <- local izero
     success <- sigReceive sch chReceiver v
     output <- local (ival (success ? (1,0)))
-    emit_ sch chEmitter (constRef output)
+    emit_ chEmitter (constRef output)
 
 barSourceTask :: (SingI n, SingI m)
               => ChannelSource n (Struct "bar_state") 
@@ -88,7 +88,7 @@ barSourceTask barSource chSink = do
           incrementEmit = do
             v <- deref (state ~> bar_member)
             store (state ~> bar_member) (v + 1)
-            emit_ sch barEmitter (constRef state)
+            emit_ barEmitter (constRef state)
 
       eventLoop sch $ thandler <> chandler
 

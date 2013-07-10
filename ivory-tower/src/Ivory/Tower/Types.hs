@@ -59,8 +59,12 @@ newtype ChannelSink (n :: Nat) (area :: Area) =
 
 -- | a 'ChannelSource' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
-newtype ChannelEmitter (n :: Nat) (area :: Area) =
-  ChannelEmitter { unChannelEmitter :: ChannelId }
+data ChannelEmitter (n :: Nat) (area :: Area) =
+  ChannelEmitter
+    { ce_chid :: ChannelId
+    , ce_extern_emit  :: forall s eff . ConstRef s area -> Ivory eff IBool
+    , ce_extern_emit_ :: forall s eff . ConstRef s area -> Ivory eff ()
+    }
 
 -- | a 'ChannelSink' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
@@ -243,8 +247,6 @@ emptyTowerSt = TowerSt
 
 -- Compiled Schedule -----------------------------------------------------------
 
-type IBoolRef eff cs = Ivory eff (Ref (Stack cs) (Stored IBool))
-
 data TaskSchedule =
   TaskSchedule
     { tsch_mkDataReader :: forall area s eff cs
@@ -257,12 +259,7 @@ data TaskSchedule =
                       . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
                      => ChannelEmitter n area
                      -> ConstRef s area
-                     -> IBoolRef eff cs
-    , tsch_mkEmitter_ :: forall n area s eff cs
-                      . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-                     => ChannelEmitter n area
-                     -> ConstRef s area
-                     -> Ivory eff ()
+                     -> Ivory eff IBool
     , tsch_mkReceiver :: forall n area s eff cs
             . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelReceiver n area
@@ -290,12 +287,7 @@ data SigSchedule =
             . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelEmitter n area
            -> ConstRef s area
-           -> IBoolRef eff cs
-    , ssch_mkEmitter_ :: forall n area s eff cs
-            . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-           => ChannelEmitter n area
-           -> ConstRef s area
-           -> Ivory eff ()
+           -> Ivory eff IBool
     , ssch_mkReceiver :: forall n area s eff cs
             . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
            => ChannelReceiver n area

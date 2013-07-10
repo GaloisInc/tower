@@ -17,16 +17,12 @@ codegenChannelReceiver rxer = do
   let (channelinit, mdef) = os_mkChannel os rxer thisnode
   nodeStAddCodegen channelinit mdef
 
--- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
---   'Task'.
---   Provide a human-readable name as a debugging aid.
-withChannelEmitter :: (SingI n, IvoryArea area)
-      => ChannelSource n area -> String -> Node i (ChannelEmitter n area)
-withChannelEmitter chsrc label = do
-  let cid     = unChannelSource chsrc
-      emitter = ChannelEmitter cid
-  nodeStAddEmitter cid label
-  return emitter
+class ChannelEmittable i where
+  -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
+  --   'Task'.
+  --   Provide a human-readable name as a debugging aid.
+  withChannelEmitter :: (SingI n, IvoryArea area)
+        => ChannelSource n area -> String -> Node i (ChannelEmitter n area)
 
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
 --   'Task'. Provide a human-readable name as a debugging aid.

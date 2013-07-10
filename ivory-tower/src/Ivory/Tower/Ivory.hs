@@ -83,40 +83,26 @@ getTimeMillis = unOSGetTimeMillis
 
 -- Event Interface--------------------------------------------------------------
 
-class EmitSchedulable a where
-  -- | Nonblocking emit. Indicates success in return value.
-  emit :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-     => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
-  -- | Nonblocking emit. Fails silently.
-  emit_ :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-     => a -> ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
-  emit_ s c r = emit s c r >> return ()
+-- | Nonblocking emit. Indicates success in return value.
+emit :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
+   => ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
+emit c r = ce_extern_emit c r
+-- | Nonblocking emit. Fails silently.
+emit_ :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
+   => ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
+emit_ c r = ce_extern_emit_ c r
 
-  -- | Emit by value - saves the user from having to give a constref
-  --   to an atomic value.
-  emitV :: (SingI n, IvoryInit t, IvoryArea (Stored t), GetAlloc eff ~ Scope cs)
-     => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff IBool
-  emitV s c v = local (ival v) >>= \r -> emit s c (constRef r)
+-- | Emit by value - saves the user from having to give a constref
+--   to an atomic value.
+emitV :: (SingI n, IvoryInit t, IvoryArea (Stored t), GetAlloc eff ~ Scope cs)
+   => ChannelEmitter n (Stored t) -> t -> Ivory eff IBool
+emitV c v = local (ival v) >>= \r -> emit c (constRef r)
 
-  emitV_ :: ( SingI n, IvoryInit t
-            , IvoryArea (Stored t)
-            , GetAlloc eff ~ Scope cs
-            ) => a -> ChannelEmitter n (Stored t) -> t -> Ivory eff ()
-  emitV_ s c v = emitV s c v >> return ()
-
-retResult :: (a -> b -> c -> IBoolRef eff cs)
-          ->  a -> b -> c -> Ivory eff IBool
-retResult f s c r = do ref <- f s c r
-                       failed <- deref ref
-                       return (iNot failed)
-
-instance EmitSchedulable TaskSchedule where
-  emit  = retResult tsch_mkEmitter
-  emit_ = tsch_mkEmitter_
-
-instance EmitSchedulable SigSchedule where
-  emit  = retResult ssch_mkEmitter
-  emit_ = ssch_mkEmitter_
+emitV_ :: ( SingI n, IvoryInit t
+          , IvoryArea (Stored t)
+          , GetAlloc eff ~ Scope cs
+          ) => ChannelEmitter n (Stored t) -> t -> Ivory eff ()
+emitV_ c v = local (ival v) >>= \r -> emit_ c (constRef r)
 
 -- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
 --   Indicates success in return value.

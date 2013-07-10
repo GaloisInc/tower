@@ -11,7 +11,6 @@ module Ivory.Tower
   , ChannelEmitter()
   , ChannelReceiver()
 
-  , EmitSchedulable()
   , emit
   , emit_
   , emitV
@@ -52,7 +51,7 @@ module Ivory.Tower
 
   -- Node exports:
   , Node()
-  , withChannelEmitter
+  , ChannelEmittable(..)
   , withChannelReceiver
   , withDataReader
   , withDataWriter

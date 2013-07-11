@@ -181,9 +181,10 @@ mkDataport label = do
   return dpid
 
 addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower ()
-addDataportCodegen init mdef = do
+addDataportCodegen initializer mdef = do
     s <- getTowerSt
-    setTowerSt $ s { towerst_dataportgen = (Codegen init mdef): (towerst_dataportgen s) }
+    setTowerSt $ s { towerst_dataportgen =
+                      (Codegen initializer mdef): (towerst_dataportgen s) }
 
 
 

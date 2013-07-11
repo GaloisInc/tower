@@ -15,12 +15,13 @@ import Ivory.Tower.Monad
 import Ivory.Tower.Node
 
 -- Public Task Definitions -----------------------------------------------------
-instance ChannelEmittable TaskSt where
-  withChannelEmitter = taskChannelEmitter
+instance Channelable TaskSt where
+  nodeChannelEmitter  = taskChannelEmitter
+  nodeChannelReceiver = taskChannelReceiver
 
 taskChannelEmitter :: forall n area . (SingI n, IvoryArea area)
-        => ChannelSource n area -> String -> Node TaskSt (ChannelEmitter n area)
-taskChannelEmitter chsrc label = do
+        => ChannelSource n area -> Node TaskSt (ChannelEmitter n area)
+taskChannelEmitter chsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
   let chid    = unChannelSource chsrc
@@ -38,9 +39,30 @@ taskChannelEmitter chsrc label = do
         }
   taskModuleDef $ \sch -> do
     incl (procEmit sch)
-  nodeStAddEmitter chid label
   return emitter
 
+taskChannelReceiver :: forall n area
+                     . (SingI n, IvoryArea area, IvoryZero area)
+                    => ChannelSink n area
+                    -> Node TaskSt (ChannelReceiver n area)
+taskChannelReceiver chsnk = do
+  nodename <- getNodeName
+  unique   <- freshname -- May not be needed.
+  let chid = unChannelSink chsnk
+      rxName = printf "receiveFromTask_%s_chan%d%s" nodename (chan_id chid) unique
+      externRx :: Def ('[Ref s area] :-> IBool)
+      externRx = externProc rxName
+      procRx :: TaskSchedule -> Def ('[Ref s area] :-> IBool)
+      procRx schedule = proc rxName $ \ref -> body $ do
+        r <- tsch_mkReceiver schedule rxer ref
+        ret r
+      rxer = ChannelReceiver
+        { cr_chid      = chid
+        , cr_extern_rx = call externRx
+        }
+  taskModuleDef $ \sch -> do
+    incl (procRx sch)
+  return rxer
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.
@@ -83,13 +105,17 @@ withPeriod :: Integer -> Task Period
 withPeriod per = do
   st <- getTaskSt
   setTaskSt $ st { taskst_periods = per : (taskst_periods st)}
-  return (Period per)
+  os <- getOS
+  n <- freshname
+  let (p, initdef, mdef) = os_mkPeriodic os per n
+  nodeStAddCodegen initdef mdef
+  return p
 
 -- | Create an 'Ivory.Tower.Types.OSGetTimeMillis' in the context of a 'Task'.
 withGetTimeMillis :: Task OSGetTimeMillis
 withGetTimeMillis = do
   os <- getOS
-  return (OSGetTimeMillis (os_getTimeMillis os))
+  return $ OSGetTimeMillis (os_getTimeMillis os)
 
 -- | Declare a task body for a 'Task'. The task body is an 'Ivory'
 --   computation which initializes the task and runs an `eventLoop`.

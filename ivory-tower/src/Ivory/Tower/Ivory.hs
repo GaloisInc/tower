@@ -32,18 +32,20 @@ writeData sch writer ref = tsch_mkDataWriter sch writer ref
 
 -- Event Loop Interface --------------------------------------------------------
 
+-- | internal helper function
+eloop :: Ivory eff () -> EventLoop eff
+eloop f = EventLoop [f]
+
 -- | Construct an 'EventLoop' from a 'ChannelReceiver' and a handler function
 --   which takes a ConstRef to the received event and performs an Ivory
 --   computation
 onChannel :: (SingI n, GetAlloc eff ~ Scope cs, IvoryArea area, IvoryZero area)
     => ChannelReceiver n area -> (ConstRef (Stack cs) area -> Ivory eff ())
     -> EventLoop eff
-onChannel rxer k = EventLoop [ rx ]
-  where
-  rx sch = return $ do -- No initialization, pure loop handler
-    ref <- local (izero)
-    success <- tsch_mkReceiver sch rxer ref
-    when success (k (constRef ref))
+onChannel rxer k = eloop $ do
+  ref <- local (izero)
+  success <- cr_extern_rx rxer ref
+  when success (k (constRef ref))
 
 -- | like 'onChannel', but for atomic values where we don't need to handle by
 --   reference.
@@ -51,27 +53,29 @@ onChannelV :: (SingI n, GetAlloc eff ~ Scope cs
               , IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
     => ChannelReceiver n (Stored t) -> (t -> Ivory eff ())
     -> EventLoop eff
-onChannelV rxer k = EventLoop [ rx ]
-  where
-  rx sch = return $ do -- No initialization, pure loop handler
-    ref <- local (izero)
-    success <- tsch_mkReceiver sch rxer ref
-    when success $ do
-      v <- deref ref
-      k v
+onChannelV rxer k = eloop $ do
+  ref <- local (izero)
+  success <- cr_extern_rx rxer ref
+  when success $ do
+    v <- deref ref
+    k v
 
 -- | Construct an 'EventLoop' from a 'Period' and a handler function which
 --   takes the current time (in milliseconds) and performs an Ivory computation
 onTimer :: (GetAlloc eff ~ Scope cs)
     => Period -> (Uint32 -> Ivory eff ())
     -> EventLoop eff
-onTimer per k = EventLoop [ \sch -> tsch_mkPeriodic sch per k ]
+onTimer per k = eloop $ do
+  tick <- per_tick per
+  when tick $ do
+    now <- per_tnow per
+    k now
 
 -- | Generate Ivory code given a 'TaskSchedule' and 'EventLoop'.
 eventLoop :: ( GetAlloc eff ~ Scope cs
              , eff ~ ClearBreak (AllowBreak eff) )
           => TaskSchedule -> EventLoop eff -> Ivory eff ()
-eventLoop sch el = tsch_mkEventLoop sch [ event sch | event <- unEventLoop el ]
+eventLoop sch el = tsch_mkEventLoop sch (unEventLoop el)
 
 -- Special OS function interface -----------------------------------------------
 

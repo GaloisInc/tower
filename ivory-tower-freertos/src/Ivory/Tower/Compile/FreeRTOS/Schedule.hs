@@ -11,10 +11,9 @@ import GHC.TypeLits
 import Control.Monad (forM_)
 
 import Ivory.Language
-import Ivory.Stdlib (when, unless)
+import Ivory.Stdlib
 import Ivory.Tower.Types
 
-import qualified Ivory.OS.FreeRTOS.Task  as Task
 import qualified Ivory.OS.FreeRTOS.Queue as Q
 
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
@@ -92,7 +91,7 @@ mkReceiver :: forall n s eff cs area i
 mkReceiver _tnodes _snodes ctx noderx chrx ref =
   fch_receive fch ctx ref
   where
-  fch = eventQueue (unChannelReceiver chrx) (sing :: Sing n) noderx
+  fch = eventQueue (cr_chid chrx) (sing :: Sing n) noderx
 
 mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 mkSigSchedule tnodes signodes tnode = SigSchedule
@@ -127,7 +126,6 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
     , tsch_mkDataWriter = mkDataWriter
     , tsch_mkEmitter    = mkEmitter tnodes signodes User
     , tsch_mkReceiver   = mkReceiver tnodes signodes User tnode
-    , tsch_mkPeriodic   = mkPeriodic
     , tsch_mkEventLoop  = mkEventLoop
     , tsch_mkTaskBody   = mkTaskBody
     }
@@ -135,14 +133,12 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
   _tasks = map nodest_impl tnodes
   task  =     nodest_impl tnode
 
-  mkEventLoop :: forall eff cs . ( GetAlloc eff ~ Scope cs
-                                 , eff ~ ClearBreak (AllowBreak eff)
-                                 )
-               => [Ivory eff (Ivory eff ())] -> Ivory eff ()
-  mkEventLoop loopConstructors = do
-    loopBodies <- sequence loopConstructors
+  mkEventLoop :: forall eff cs
+               . ( GetAlloc eff ~ Scope cs
+                 , eff ~ ClearBreak (AllowBreak eff))
+               => [Ivory eff ()] -> Ivory eff ()
+  mkEventLoop loopBodies = do
     forever (noBreak $ guard >> sequence_ loopBodies)
-
     where
     guard = guard_block (eventGuard tnode) period_gcd
     period_gcd = case taskst_periods task of
@@ -150,24 +146,12 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
                     ps -> fromInteger $ foldl1 gcd ps
 
   -- scheduleTaskBody: create task def from a TaskBody
-  mkTaskBody :: (forall eff cs . ( GetAlloc eff ~ Scope cs
-                                 , eff ~ ClearBreak (AllowBreak eff)
-                                 )
-             => Ivory eff ()) -> Def('[]:->())
+  mkTaskBody :: (forall eff cs
+                . ( GetAlloc eff ~ Scope cs
+                  , eff ~ ClearBreak (AllowBreak eff))
+             => Ivory eff ())
+             -> Def('[]:->())
   mkTaskBody tb = proc ("taskbody_" ++ (nodest_name tnode)) $ body tb
-
-mkPeriodic :: (GetAlloc eff ~ Scope cs)
-              => Period -> (Uint32 -> Ivory eff ()) -> Ivory eff (Ivory eff ())
-mkPeriodic (Period p) k = do
-  initTime <- call Task.getTimeMillis
-  lastTime <- local (ival initTime)
-  return $ do
-    now  <- call Task.getTimeMillis
-    prev <- deref lastTime
-    assume (now >=? prev) -- The abstract clock should be monotonic.
-    when (now >=? (prev + fromInteger p)) $ do
-      store lastTime now
-      k now
 
 mkDataReader :: (IvoryArea area)
              => DataReader area -> Ref s area -> Ivory eff ()

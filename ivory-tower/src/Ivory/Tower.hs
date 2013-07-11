@@ -51,7 +51,8 @@ module Ivory.Tower
 
   -- Node exports:
   , Node()
-  , ChannelEmittable(..)
+  , Channelable(..)
+  , withChannelEmitter
   , withChannelReceiver
   , withDataReader
   , withDataWriter

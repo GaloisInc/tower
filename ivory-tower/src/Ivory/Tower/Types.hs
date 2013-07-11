@@ -69,8 +69,11 @@ data ChannelEmitter (n :: Nat) (area :: Area) =
 -- | a 'ChannelSink' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
 -- event handler.
-newtype ChannelReceiver (n :: Nat) (area :: Area) =
-  ChannelReceiver { unChannelReceiver :: ChannelId }
+data ChannelReceiver (n :: Nat) (area :: Area) =
+  ChannelReceiver
+    { cr_chid :: ChannelId
+    , cr_extern_rx :: forall s eff . Ref s area -> Ivory eff IBool
+    }
 
 -- Dataport Types --------------------------------------------------------------
 
@@ -107,7 +110,7 @@ newtype DataWriter (area :: Area) = DataWriter { unDataWriter :: DataportId }
 --   Combine EventLoops to be scheduled as part of the same task loop using
 --   'Data.Monoid'
 newtype EventLoop eff =
-  EventLoop { unEventLoop :: [(TaskSchedule -> Ivory eff (Ivory eff ()))] }
+  EventLoop { unEventLoop :: [Ivory eff ()] }
 
 instance Monoid (EventLoop eff) where
   mempty = EventLoop []
@@ -115,8 +118,17 @@ instance Monoid (EventLoop eff) where
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
--- 'Ivory.Tower.Tower.withPeriod'
-newtype Period = Period { unPeriod :: Integer }
+-- 'Ivory.Tower.Tower.withPeriod'. Internal fields: per_tick indicates when
+-- period has gone off since last call. per_tnow indicates the current time.
+
+data Period =
+  Period { per_tick :: forall eff cs
+                      . (GetAlloc eff ~ Scope cs)
+                     => Ivory eff IBool
+         , per_tnow  :: forall eff cs
+                      . (GetAlloc eff ~ Scope cs)
+                     => Ivory eff Uint32
+         }
 
 -- Get Time Millis -------------------------------------------------------------
 -- | Wrapper type for OS get time millis implementation , created using
@@ -265,20 +277,16 @@ data TaskSchedule =
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , tsch_mkPeriodic :: forall eff cs . (GetAlloc eff ~ Scope cs)
-           => Period
-           -> (Uint32 -> Ivory eff ())
-           -> Ivory eff (Ivory eff ()) -- Outer part of the loop returns inner
-                                       -- part of the loop
-    , tsch_mkEventLoop :: forall eff cs .
-                            ( GetAlloc eff ~ Scope cs
-                            , eff ~ ClearBreak (AllowBreak eff)
-                            )
-           => [Ivory eff (Ivory eff ())] -> Ivory eff ()
-    , tsch_mkTaskBody :: (forall eff cs . ( GetAlloc eff ~ Scope cs
-                                          , eff ~ ClearBreak (AllowBreak eff)
-                                          )
-                     => Ivory eff ()) -> Def('[]:->())
+    , tsch_mkEventLoop :: forall eff cs
+                        . ( GetAlloc eff ~ Scope cs
+                          , eff ~ ClearBreak (AllowBreak eff) )
+                       => [ Ivory eff () ]
+                       -> Ivory eff ()
+    , tsch_mkTaskBody :: (forall eff cs
+                         . ( GetAlloc eff ~ Scope cs
+                           , eff ~ ClearBreak (AllowBreak eff))
+                         => Ivory eff ())
+                      -> Def('[]:->())
     }
 
 data SigSchedule =
@@ -314,6 +322,8 @@ data OS =
                        => ChannelReceiver n area
                        -> NodeSt i
                        -> (Def ('[]:->()), ModuleDef)
+    -- Timing
+    , os_mkPeriodic   :: Integer -> Name -> (Period, Def ('[]:->()), ModuleDef)
 
     -- Generate a Schedule for a particular Task, given the set of
     -- all tasks (sufficient for a fully described graph of channels)

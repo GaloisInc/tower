@@ -13,6 +13,7 @@ module Ivory.Tower.Compile.FreeRTOS
 import GHC.TypeLits
 
 import Ivory.Language
+import Ivory.Stdlib
 import Ivory.Tower.Types
 import Ivory.Tower.Tower (assembleTower)
 
@@ -105,8 +106,10 @@ os = OS
   , os_mkSysSchedule  = mkSystemSchedule
   , os_mkSigSchedule  = mkSigSchedule
   , os_mkChannel      = mkChannel
+  , os_mkPeriodic     = mkPeriodic
   , os_getTimeMillis  = call Task.getTimeMillis
   }
+
 
 mkDataPort :: forall (area :: Area) . (IvoryArea area)
            => DataSource area -> (Def ('[]:->()), ModuleDef)
@@ -122,9 +125,33 @@ mkChannel :: forall (n :: Nat) (area :: Area) i
            -> (Def('[]:->()), ModuleDef)
 mkChannel rxer destNode = (fch_initDef fch, fch_moduleDef fch)
   where
-  chid = unChannelReceiver rxer
   fch :: FreeRTOSChannel area
-  fch = eventQueue chid (sing :: Sing n) destNode
+  fch = eventQueue (cr_chid rxer) (sing :: Sing n) destNode
+
+mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)
+mkPeriodic p n = (Period tick time, initDef, mDef)
+  where
+  unique i = i ++ n
+  lastTimeArea = area (unique "periodicLastTime") Nothing
+  lastTime = addrOf lastTimeArea
+  mDef = do
+    incl initDef
+    incl tickDef
+    private $ defMemArea lastTimeArea
+  initDef = proc (unique "initPeriodic") $ body $ do
+    initTime <- call Task.getTimeMillis
+    store lastTime initTime
+  tickDef :: Def ('[]:->IBool)
+  tickDef = proc (unique "tickPeriodic") $ body $ do
+    now  <- call Task.getTimeMillis
+    prev <- deref lastTime
+    assume (now >=? prev) -- The abstract clock should be monotonic.
+    ticked <- assign (now >=? (prev + fromInteger p))
+    when ticked $
+      store lastTime now
+    ret ticked
+  tick = call tickDef
+  time = call Task.getTimeMillis
 
 defaultstacksize :: Uint32
 defaultstacksize = 256

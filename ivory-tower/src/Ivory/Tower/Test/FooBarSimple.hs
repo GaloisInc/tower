@@ -42,12 +42,12 @@ fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
-    taskBody $ \sch -> do
-      state <- local (istruct [])
-      eventLoop sch $ onTimer p $ \_now -> do
-        v <- deref (state ~> foo_member)
-        store (state ~> foo_member) (v + 1)
-        writeData sch fooWriter (constRef state)
+    state <- taskLocal "state"
+    onPeriod p $ \_now -> do
+      v <- deref (state ~> foo_member)
+      store (state ~> foo_member) (v + 1)
+      let sch = undefined -- XXX
+      writeData sch fooWriter (constRef state)
 
 barSourceTask :: (SingI n)
               => ChannelSource n (Struct "bar_state") 
@@ -55,12 +55,11 @@ barSourceTask :: (SingI n)
 barSourceTask barSource = do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
-    taskBody $ \sch -> do
-      state <- local (istruct [])
-      eventLoop sch $ onTimer p $ \_now -> do
-        v <- deref (state ~> bar_member)
-        store (state ~> bar_member) (v + 1)
-        emit_ barEmitter (constRef state)
+    state <- taskLocal "state"
+    onPeriod p $ \_now -> do
+      v <- deref (state ~> bar_member)
+      store (state ~> bar_member) (v + 1)
+      emit_ barEmitter (constRef state)
 
 fooBarSinkTask :: (SingI n)
                => DataSink (Struct "foo_state")
@@ -69,10 +68,12 @@ fooBarSinkTask :: (SingI n)
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
-  taskBody $ \sch -> do
-    latestFoo <- local (istruct [])
-    latestSum <- local (ival 0)
-    eventLoop sch $ onChannel barReceiver $ \latestBar -> do
+  latestFoo   <- taskLocal "latestFoo"
+  latestSum   <- taskLocal "latestSum"
+  taskInit $ do
+    store latestSum 0
+  onChannel barReceiver $ \latestBar -> do
+      let sch = undefined -- XXX
       readData sch fooReader latestFoo
       bmember <- deref (latestBar ~> bar_member)
       fmember <- deref (latestFoo ~> foo_member)

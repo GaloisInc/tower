@@ -33,16 +33,15 @@ assembleTask :: OS -> [TaskNode] -> [SigNode]
         -> TaskNode -> AssembledNode TaskSt
 assembleTask os tnodes snodes tnode = AssembledNode
   { asmnode_nodest = tnode
-  , asmnode_tldef  = mkbody sched
+  , asmnode_tldef  = mkbody sched taskinit taskhandlers
   , asmnode_moddef = taskst_moddef taskst sched
   }
   where
   sched  = os_mkTaskSchedule os tnodes snodes tnode
   taskst = nodest_impl tnode
-  mkbody = case taskst_taskbody taskst of
-    Just b -> b
-    Nothing -> error ("tower input error: Missing task body in " 
-                        ++ (nodest_name tnode))
+  taskinit = taskst_taskinit taskst
+  taskhandlers = taskst_taskhandlers taskst
+  mkbody = undefined -- XXX
 
 assembleSig :: OS -> [TaskNode] -> [SigNode]
         -> SigNode -> AssembledNode SignalSt
@@ -127,6 +126,11 @@ getTaskSt = getNode >>= \n -> return (nodest_impl n)
 
 setTaskSt :: TaskSt -> Task ()
 setTaskSt s = getNode >>= \n -> setNode (n { nodest_impl = s })
+
+taskStAddTaskHandler :: TaskHandler -> Task ()
+taskStAddTaskHandler th = do
+  s <- getTaskSt
+  setTaskSt s { taskst_taskhandlers = th : (taskst_taskhandlers s) }
 
 taskStAddModuleDef :: (TaskSchedule -> ModuleDef) -> Task ()
 taskStAddModuleDef md = do

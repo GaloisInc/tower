@@ -32,6 +32,7 @@ writeData sch writer ref = tsch_mkDataWriter sch writer ref
 
 -- Event Loop Interface --------------------------------------------------------
 
+{- XXX
 -- | internal helper function
 eloop :: Ivory eff () -> EventLoop eff
 eloop f = EventLoop [f]
@@ -76,6 +77,8 @@ eventLoop :: ( GetAlloc eff ~ Scope cs
              , eff ~ ClearBreak (AllowBreak eff) )
           => TaskSchedule -> EventLoop eff -> Ivory eff ()
 eventLoop sch el = tsch_mkEventLoop sch (unEventLoop el)
+
+-} -- XXX 
 
 -- Special OS function interface -----------------------------------------------
 
@@ -128,8 +131,10 @@ stateProxy chsink = do
   task "stateProxy" $ do
     chrxer <- withChannelReceiver chsink "proxy event"
     data_writer <- withDataWriter src_data "proxy data"
-    taskBody $ \schedule ->
-      eventLoop schedule $ onChannel chrxer $ \val -> do
-        writeData schedule data_writer val
+    onChannel chrxer $ \val -> do writeData undefined data_writer val -- XXX scheduling needs fix
+-- XXX
+--    taskBody $ \schedule ->
+--      eventLoop schedule $ onChannel chrxer $ \val -> do
+--        writeData schedule data_writer val
   return snk_data
 

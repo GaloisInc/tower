@@ -12,7 +12,6 @@ module Ivory.Tower.Types where
 
 import GHC.TypeLits
 import MonadLib
-import Data.Monoid
 
 import Ivory.Language
 
@@ -103,18 +102,26 @@ newtype DataReader (area :: Area) = DataReader { unDataReader :: DataportId }
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
 newtype DataWriter (area :: Area) = DataWriter { unDataWriter :: DataportId }
 
--- EventLoop types -------------------------------------------------------------
 
--- | Pairs of events and handlers. Event handling will be multiplexed into an
---   task loop, see 'Ivory.Tower.Tower.taskBody'.
---   Combine EventLoops to be scheduled as part of the same task loop using
---   'Data.Monoid'
-newtype EventLoop eff =
-  EventLoop { unEventLoop :: [Ivory eff ()] }
+-- | TaskHandlers
 
-instance Monoid (EventLoop eff) where
-  mempty = EventLoop []
-  mappend el1 el2 = EventLoop ((unEventLoop el1) ++ (unEventLoop el2))
+data TaskHandler
+  = TH_Channel ChannelHandler
+  | TH_Period PeriodHandler
+
+data ChannelHandler =
+  forall area . ChannelHandler
+    { ch_receiver :: forall eff s . Ref s area -> Ivory eff IBool
+    , ch_callback :: forall eff s s'
+                   . ConstRef s area -> Ivory (ProcEffects s' ()) ()
+    }
+
+data PeriodHandler =
+  PeriodHandler
+    { ph_period :: Period
+    , ph_callback  :: forall s 
+                    . Uint32 -> Ivory (ProcEffects s ()) ()
+    }
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
@@ -198,7 +205,8 @@ data TaskSt =
     , taskst_priority    :: Maybe Integer
     , taskst_moddef      :: TaskSchedule -> ModuleDef
     , taskst_extern_mods :: [Module]
-    , taskst_taskbody    :: Maybe (TaskSchedule -> Def('[]:->()))
+    , taskst_taskinit    :: Maybe (Def('[]:->()))
+    , taskst_taskhandlers :: [TaskHandler]
     }
 
 -- | Internal only
@@ -209,7 +217,8 @@ emptyTaskSt = TaskSt
   , taskst_priority    = Nothing
   , taskst_moddef      = const (return ())
   , taskst_extern_mods = []
-  , taskst_taskbody    = Nothing
+  , taskst_taskinit    = Nothing
+  , taskst_taskhandlers = []
   }
 
 type TaskNode = NodeSt TaskSt

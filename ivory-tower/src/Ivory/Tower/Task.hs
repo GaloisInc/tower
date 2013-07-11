@@ -117,25 +117,6 @@ withGetTimeMillis = do
   os <- getOS
   return $ OSGetTimeMillis (os_getTimeMillis os)
 
--- | Declare a task body for a 'Task'. The task body is an 'Ivory'
---   computation which initializes the task and runs an `eventLoop`.
---   The Ivory computation Should Not terminate.
-taskBody :: (   TaskSchedule
-             -> (forall eff cs .
-                     (GetAlloc eff ~ Scope cs
-                     , eff ~ ClearBreak (AllowBreak eff))
-                  => Ivory eff ())
-            )
-         -> Task ()
-taskBody k = do
-  s <- getTaskSt
-  case taskst_taskbody s of
-    Nothing -> setTaskSt $ s { taskst_taskbody = Just taskbody }
-    Just _ -> getNodeName >>= \name ->
-              error ("multiple taskBody definitions in task named " ++ name)
- where
- taskbody sch = tsch_mkTaskBody sch (k sch)
-
 taskLocal :: (IvoryArea area) => Name -> Task (Ref Global area)
 taskLocal n = tlocalAux n Nothing
 
@@ -148,4 +129,31 @@ tlocalAux n i = do
   let m = area (n ++ f) i
   taskStAddModuleDef (const (defMemArea m))
   return (addrOf m)
+
+taskInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Task ()
+taskInit i = do
+  s <- getTaskSt
+  n <- getNodeName
+  case taskst_taskinit s of
+    Nothing -> setTaskSt $ s { taskst_taskinit = Just (initproc n) }
+    Just _ -> (err n)
+  where
+  err nodename = error ("multiple taskInit definitions in task named "
+                          ++ nodename)
+  initproc nodename = proc ("taskInit_" ++ nodename) $ body i
+
+onChannel :: ChannelReceiver n area
+          -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
+          -> Task ()
+onChannel chrxer k = taskStAddTaskHandler $ TH_Channel handler
+  where
+  handler = ChannelHandler { ch_receiver = cr_extern_rx chrxer
+                           , ch_callback = k }
+
+onPeriod :: Period -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task ()
+onPeriod per k = taskStAddTaskHandler $ TH_Period handler
+  where
+  handler = PeriodHandler { ph_period = per
+                          , ph_callback =  k
+                          }
 

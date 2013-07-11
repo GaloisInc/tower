@@ -15,8 +15,7 @@ module Ivory.Tower
   , emit_
   , emitV
   , emitV_
-  , onChannel
-  , onChannelV
+  --, onChannelV -- XXX need to implement.
   , sigReceive
 
   -- DataPort exports:
@@ -65,10 +64,9 @@ module Ivory.Tower
   , withModule
 
   , taskModuleDef
-  , taskBody
-
-  , onTimer
-  , eventLoop
+  , taskInit
+  , onPeriod
+  , onChannel
 
   -- Signal exports:
   , signalLocal

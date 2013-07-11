@@ -1,13 +1,11 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Ivory.Tower.Test.FooBarSignals where
-
-import Data.Monoid
 
 import Ivory.Language
 import Ivory.Stdlib
@@ -48,12 +46,12 @@ fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
     taskModuleDef $ \_sch -> depend fooBarTypes
-    taskBody $ \sch -> do
-      state <- local (istruct [])
-      eventLoop sch $ onTimer p $ \_now -> do
-        v <- deref (state ~> foo_member)
-        store (state ~> foo_member) (v + 1)
-        writeData sch fooWriter (constRef state)
+    state <- taskLocal "state"
+    onPeriod p $ \_now -> do
+      v <- deref (state ~> foo_member)
+      store (state ~> foo_member) (v + 1)
+      let sch = undefined -- XXX
+      writeData sch fooWriter (constRef state)
 
 someSignal :: (SingI n, SingI m)
            => ChannelSource n (Stored Uint8)
@@ -78,19 +76,18 @@ barSourceTask barSource chSink = do
     p <- withPeriod 125
     c <- withChannelReceiver chSink "signalCh"
     taskModuleDef $ \_sch -> depend fooBarTypes
-    taskBody $ \sch -> do
-      state <- local (istruct [])
-      let thandler = onTimer p $ \_now -> incrementEmit
-          chandler = onChannel c $ \iref -> do
-            i <- deref iref
-            when (i >? 0) $ incrementEmit
+    (state :: Ref Global (Struct "bar_state")) <- taskLocal "state"
+    let incrementEmit :: (GetAlloc eff ~ Scope s) => Ivory eff ()
+        incrementEmit = do
+          v <- deref (state ~> bar_member)
+          store (state ~> bar_member) (v + 1)
+          emit_ barEmitter (constRef state)
+    onPeriod p $ \_now -> incrementEmit
+    onChannel c $ \iref -> do
+      i <- deref iref
+      when (i >? 0) $ incrementEmit
 
-          incrementEmit = do
-            v <- deref (state ~> bar_member)
-            store (state ~> bar_member) (v + 1)
-            emit_ barEmitter (constRef state)
 
-      eventLoop sch $ thandler <> chandler
 
 fooBarSinkTask :: (SingI n)
                => DataSink (Struct "foo_state")
@@ -100,14 +97,15 @@ fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
   taskModuleDef $ \_sch -> depend fooBarTypes
-  taskBody $ \sch -> do
-    latestFoo <- local (istruct [])
-    latestSum <- local (ival 0)
-    eventLoop sch $ onChannel barReceiver $ \latestBar -> do
-      readData sch fooReader latestFoo
-      bmember <- deref (latestBar ~> bar_member)
-      fmember <- deref (latestFoo ~> foo_member)
-      store latestSum (bmember + fmember)
+  latestFoo <- taskLocal "latestFoo"
+  latestSum <- taskLocal "latestSum"
+  taskInit $ store latestSum 0
+  onChannel barReceiver $ \latestBar -> do
+    let sch = undefined -- XXX
+    readData sch fooReader latestFoo
+    bmember <- deref (latestBar ~> bar_member)
+    fmember <- deref (latestFoo ~> foo_member)
+    store latestSum (bmember + fmember)
 
 fooBarTower :: Tower ()
 fooBarTower = do

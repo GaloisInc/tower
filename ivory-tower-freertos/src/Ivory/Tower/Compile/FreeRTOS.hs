@@ -44,7 +44,7 @@ buildModules asm = ms
 
   ms = [ tower_entry ] ++  tower_tasks ++ [ tower_commprim ]
     ++ towerst_modules towerst
-    ++ concatMap (taskst_extern_mods . nodest_impl . asmnode_nodest) tasks
+    ++ concatMap (taskst_extern_mods . nodest_impl . an_nodest) tasks
 
   tower_commprim = package "tower_commprim" $ do
     -- External C code dependencies
@@ -59,15 +59,15 @@ buildModules asm = ms
     -- Dependencies
     mapM_ depend (towerst_depends towerst)
 
-  taskModule :: AssembledNode a -> Module
+  taskModule :: AssembledNode a -> Module -- XXX this moves to assembleTask
   taskModule anode = package n $ do
-    incl (asmnode_tldef anode)
-    asmnode_moddef anode
+    incl (an_entry anode)
+  --  asmnode_moddef anode
     -- Dependencies
     depend tower_commprim
     mapM_ depend (towerst_depends towerst)
     where
-    n = "tower_task_" ++ (nodest_name (asmnode_nodest anode))
+    n = "tower_task_" ++ (nodest_name (an_nodest anode))
 
   tower_tasks :: [Module]
   tower_tasks = map taskModule tasks ++ map taskModule signals
@@ -89,24 +89,26 @@ buildModules asm = ms
 
 
 getNodeCodegen :: [AssembledNode a] -> [Codegen]
-getNodeCodegen as = concatMap (nodest_codegen . asmnode_nodest) as
+getNodeCodegen as = concatMap (nodest_codegen . an_nodest) as
 
 taskCreate :: AssembledNode TaskSt -> Ivory eff ()
 taskCreate a = call_ Task.create pointer stacksize priority
   where
-  taskst    = nodest_impl (asmnode_nodest a)
-  pointer   = procPtr (asmnode_tldef a)
+  taskst    = nodest_impl (an_nodest a)
+  pointer   = procPtr (an_entry a)
   stacksize = maybe defaultstacksize fromIntegral (taskst_stacksize taskst)
   priority  = defaulttaskpriority + (maybe 0 fromIntegral (taskst_priority taskst))
 
 os :: OS
 os = OS
   { os_mkDataPort     = mkDataPort
-  , os_mkTaskSchedule = mkTaskSchedule
-  , os_mkSysSchedule  = mkSystemSchedule
-  , os_mkSigSchedule  = mkSigSchedule
   , os_mkChannel      = mkChannel
   , os_mkPeriodic     = mkPeriodic
+
+  , os_assembleTask   = assembleTask
+  , os_assembleSignal = assembleSignal
+
+  , os_mkSysSchedule  = mkSystemSchedule
   , os_getTimeMillis  = call Task.getTimeMillis
   }
 

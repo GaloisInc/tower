@@ -286,16 +286,6 @@ data TaskSchedule =
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , tsch_mkEventLoop :: forall eff cs
-                        . ( GetAlloc eff ~ Scope cs
-                          , eff ~ ClearBreak (AllowBreak eff) )
-                       => [ Ivory eff () ]
-                       -> Ivory eff ()
-    , tsch_mkTaskBody :: (forall eff cs
-                         . ( GetAlloc eff ~ Scope cs
-                           , eff ~ ClearBreak (AllowBreak eff))
-                         => Ivory eff ())
-                      -> Def('[]:->())
     }
 
 data SigSchedule =
@@ -310,8 +300,6 @@ data SigSchedule =
            => ChannelReceiver n area
            -> Ref s area
            -> Ivory eff IBool
-    , ssch_mkSigBody :: (forall eff cs . (GetAlloc eff ~ Scope cs)
-                     => Ivory eff ()) -> Def('[]:->())
     }
 
 -- Operating System ------------------------------------------------------------
@@ -334,12 +322,11 @@ data OS =
     -- Timing
     , os_mkPeriodic   :: Integer -> Name -> (Period, Def ('[]:->()), ModuleDef)
 
-    -- Generate a Schedule for a particular Task, given the set of
-    -- all tasks (sufficient for a fully described graph of channels)
-    , os_mkTaskSchedule    :: [TaskNode] -> [SigNode] -> TaskNode
-                           -> TaskSchedule
+    , os_assembleTask   :: [TaskNode] -> [SigNode] -> TaskNode
+                        -> AssembledNode TaskSt
 
-    , os_mkSigSchedule     :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
+    , os_assembleSignal :: [TaskNode] -> [SigNode] -> SigNode
+                        -> AssembledNode SignalSt
 
     -- Generate any code needed for the system as a whole
     , os_mkSysSchedule     :: [TaskNode] -> [SigNode]
@@ -406,9 +393,9 @@ data Assembly =
     }
 
 data AssembledNode a =
-  AssembledNode 
-    { asmnode_nodest :: NodeSt a
-    , asmnode_tldef  :: Def('[]:->())
-    , asmnode_moddef :: ModuleDef
+  AssembledNode
+    { an_nodest         :: NodeSt a
+    , an_entry          :: Def('[]:->())
+    , an_modules        :: [Module]
     }
 

@@ -97,7 +97,6 @@ mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule
 mkSigSchedule tnodes signodes tnode = SigSchedule
     { ssch_mkEmitter    = mkSigEmitter
     , ssch_mkReceiver   = mkSigReceiver
-    , ssch_mkSigBody    = mkSigBody
     }
   where
   mkSigEmitter :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
@@ -112,6 +111,7 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
                 -> Ivory eff IBool
   mkSigReceiver chrxer k = mkReceiver tnodes signodes ISR tnode chrxer k
 
+  {-
   mkSigBody :: (forall eff cs . (GetAlloc eff ~ Scope cs) => Ivory eff ())
             -> Def('[]:->())
   mkSigBody b = proc name (body b)
@@ -119,6 +119,7 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
     name = case signalst_cname (nodest_impl tnode)  of
       Just n  -> n
       Nothing -> nodest_name tnode
+  -}
 
 mkTaskSchedule :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
 mkTaskSchedule tnodes signodes tnode = TaskSchedule
@@ -126,13 +127,13 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
     , tsch_mkDataWriter = mkDataWriter
     , tsch_mkEmitter    = mkEmitter tnodes signodes User
     , tsch_mkReceiver   = mkReceiver tnodes signodes User tnode
-    , tsch_mkEventLoop  = mkEventLoop
-    , tsch_mkTaskBody   = mkTaskBody
+    --, tsch_mkEventLoop  = mkEventLoop
+    --, tsch_mkTaskBody   = mkTaskBody
     }
-  where
-  _tasks = map nodest_impl tnodes
-  task  =     nodest_impl tnode
 
+  {-
+  where
+  task  =     nodest_impl tnode
   mkEventLoop :: forall eff cs
                . ( GetAlloc eff ~ Scope cs
                  , eff ~ ClearBreak (AllowBreak eff))
@@ -152,6 +153,7 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
              => Ivory eff ())
              -> Def('[]:->())
   mkTaskBody tb = proc ("taskbody_" ++ (nodest_name tnode)) $ body tb
+  -}
 
 mkDataReader :: (IvoryArea area)
              => DataReader area -> Ref s area -> Ivory eff ()
@@ -163,4 +165,10 @@ mkDataWriter :: (IvoryArea area)
 mkDataWriter writer = fdp_write fdp
   where fdp = sharedState (unDataWriter writer)
 
+
+assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
+assembleTask tnodes snodes tnode = undefined
+
+assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
+assembleSignal tnodes snodes snode = undefined
 

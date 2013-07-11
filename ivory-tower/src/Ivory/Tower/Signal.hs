@@ -77,10 +77,8 @@ signalBody :: (SigSchedule -> (forall eff cs . (GetAlloc eff ~ Scope cs)
 signalBody k = do
   s <- getSignalSt
   case signalst_body s of
-    Nothing -> setSignalSt $ s { signalst_body = Just sigbody }
+    Nothing -> setSignalSt $ s { signalst_body = Just undefined } -- XXX fixup later
     Just _ -> sigError  "multiple signalBody definitions"
- where
- sigbody sch = ssch_mkSigBody sch (k sch)
 
 -- | set signal handler name. this will be the name in the generated C code.
 signalName :: String -> Signal ()

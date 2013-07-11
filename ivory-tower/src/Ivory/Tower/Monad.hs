@@ -21,42 +21,13 @@ runTower twr = do
   os <- getOS
   let tnodes  = towerst_tasknodes towerst
       snodes  = towerst_signodes towerst
-      genTask = assembleTask os tnodes snodes
-      genSig  = assembleSig  os tnodes snodes
+      genTask = os_assembleTask   os tnodes snodes
+      genSig  = os_assembleSignal os tnodes snodes
   return $ Assembly { asm_towerst = towerst
                     , asm_tasks   = map genTask tnodes
                     , asm_sigs    = map genSig  snodes
                     , asm_system  = os_mkSysSchedule os tnodes snodes
                     }
-
-assembleTask :: OS -> [TaskNode] -> [SigNode]
-        -> TaskNode -> AssembledNode TaskSt
-assembleTask os tnodes snodes tnode = AssembledNode
-  { asmnode_nodest = tnode
-  , asmnode_tldef  = mkbody sched taskinit taskhandlers
-  , asmnode_moddef = taskst_moddef taskst sched
-  }
-  where
-  sched  = os_mkTaskSchedule os tnodes snodes tnode
-  taskst = nodest_impl tnode
-  taskinit = taskst_taskinit taskst
-  taskhandlers = taskst_taskhandlers taskst
-  mkbody = undefined -- XXX
-
-assembleSig :: OS -> [TaskNode] -> [SigNode]
-        -> SigNode -> AssembledNode SignalSt
-assembleSig os tnodes snodes snode = AssembledNode
-  { asmnode_nodest = snode
-  , asmnode_tldef  = mkbody sched
-  , asmnode_moddef = signalst_moddef sigst sched
-  }
-  where
-  sched  = os_mkSigSchedule os tnodes snodes snode
-  sigst  = nodest_impl snode
-  mkbody = case signalst_body sigst of
-    Just b -> b
-    Nothing -> error ("tower input error: Missing signal body in "
-                        ++ (nodest_name snode))
 
 runTask :: Name -> Task () -> Tower TaskNode
 runTask name t = do

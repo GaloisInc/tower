@@ -108,6 +108,11 @@ taskStAddModuleDef md = do
   s <- getTaskSt
   setTaskSt s { taskst_moddef = \sch -> taskst_moddef s sch >> md sch }
 
+taskStAddModuleDefUser :: ModuleDef -> Task ()
+taskStAddModuleDefUser md = do
+  s <- getTaskSt
+  setTaskSt s { taskst_moddef_user = taskst_moddef_user s >> md }
+
 -- Signal Getters/Setters --------------------------------------------------------
 
 getSignalSt :: Signal SignalSt

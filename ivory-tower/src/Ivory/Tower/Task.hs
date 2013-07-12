@@ -9,6 +9,7 @@ module Ivory.Tower.Task where
 import Text.Printf
 
 import Ivory.Language
+import Ivory.Stdlib (when)
 
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
@@ -113,7 +114,7 @@ taskDataWriter dsrc = do
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.
 taskModuleDef :: ModuleDef -> Task ()
-taskModuleDef = taskStAddModuleDef . const
+taskModuleDef = taskStAddModuleDefUser
 
 -- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody'
 --   created in the 'Ivory.Tower.Types.Task' context.
@@ -188,18 +189,37 @@ taskInit i = do
                           ++ nodename)
   initproc nodename = proc ("taskInit_" ++ nodename) $ body i
 
-onChannel :: ChannelReceiver n area
+onChannel :: forall n area
+           . (IvoryArea area, IvoryZero area)
+          => ChannelReceiver n area
           -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
           -> Task ()
-onChannel chrxer k = taskStAddTaskHandler $ TH_Channel handler
-  where
-  handler = ChannelHandler { ch_receiver = cr_extern_rx chrxer
-                           , ch_callback = k }
+onChannel chrxer k = do
+  n <- getNodeName
+  f <- freshname
+  let name = printf "channelhandler_%s_chan%d%s" n (chan_id (cr_chid chrxer)) f
+      callback :: Def ('[ConstRef s area]:->())
+      callback = proc name $ \ref -> body $ k ref
+  taskStAddTaskHandler $ TaskHandler
+    { th_scheduler = do
+        ref <- local izero
+        success <- cr_extern_rx chrxer ref
+        when success $ call_ callback (constRef ref)
+    , th_moddef = incl callback
+    }
 
 onPeriod :: Period -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task ()
-onPeriod per k = taskStAddTaskHandler $ TH_Period handler
-  where
-  handler = PeriodHandler { ph_period = per
-                          , ph_callback =  k
-                          }
-
+onPeriod per k = do
+  n <- getNodeName
+  f <- freshname
+  let name = printf "periodhandler_%s_interval%d%s" n (per_interval per) f
+      callback :: Def ('[Uint32]:->())
+      callback = proc name $ \time -> body $ k time
+  taskStAddTaskHandler $ TaskHandler
+    { th_scheduler = do
+        success <- per_tick per
+        when success $ do
+          now <- per_tnow per
+          call_ callback now
+    , th_moddef = incl callback
+    }

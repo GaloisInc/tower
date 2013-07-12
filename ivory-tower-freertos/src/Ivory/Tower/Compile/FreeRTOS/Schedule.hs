@@ -127,33 +127,7 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
     , tsch_mkDataWriter = mkDataWriter
     , tsch_mkEmitter    = mkEmitter tnodes signodes User
     , tsch_mkReceiver   = mkReceiver tnodes signodes User tnode
-    --, tsch_mkEventLoop  = mkEventLoop
-    --, tsch_mkTaskBody   = mkTaskBody
     }
-
-  {-
-  where
-  task  =     nodest_impl tnode
-  mkEventLoop :: forall eff cs
-               . ( GetAlloc eff ~ Scope cs
-                 , eff ~ ClearBreak (AllowBreak eff))
-               => [Ivory eff ()] -> Ivory eff ()
-  mkEventLoop loopBodies = do
-    forever (noBreak $ guard >> sequence_ loopBodies)
-    where
-    guard = guard_block (eventGuard tnode) period_gcd
-    period_gcd = case taskst_periods task of
-                    [] -> Q.maxWait
-                    ps -> fromInteger $ foldl1 gcd ps
-
-  -- scheduleTaskBody: create task def from a TaskBody
-  mkTaskBody :: (forall eff cs
-                . ( GetAlloc eff ~ Scope cs
-                  , eff ~ ClearBreak (AllowBreak eff))
-             => Ivory eff ())
-             -> Def('[]:->())
-  mkTaskBody tb = proc ("taskbody_" ++ (nodest_name tnode)) $ body tb
-  -}
 
 mkDataReader :: (IvoryArea area)
              => DataSink area -> Ref s area -> Ivory eff ()
@@ -166,8 +140,39 @@ mkDataWriter dsrc = fdp_write fdp
   where fdp = sharedState (unDataSource dsrc)
 
 
+
 assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
-assembleTask tnodes snodes tnode = undefined
+assembleTask tnodes snodes tnode = AssembledNode
+  { an_nodest = tnode
+  , an_entry = entry
+  , an_modules = \sysdeps -> [ taskLoopMod sysdeps, taskUserCodeMod sysdeps ]
+  }
+  where
+  schedule = mkTaskSchedule tnodes snodes tnode
+  named n = (n ++ nodest_name tnode)
+  taskst = nodest_impl tnode
+  taskLoopMod sysdeps = package (named "tower_task_loop_") $ do
+    taskst_moddef taskst schedule
+    incl entry
+    depend (taskUserCodeMod sysdeps)
+
+  taskUserCodeMod sysdeps = package (named "tower_task_usercode_") $ do
+    taskst_moddef_user taskst
+    mapM_ th_moddef $ taskst_taskhandlers taskst
+    depend (taskLoopMod sysdeps)
+    sysdeps
+
+  entry = proc (named "tower_task_loop_") $ body $ do
+    case taskst_taskinit taskst of
+      Just p -> call_ p
+      Nothing -> return ()
+    forever $ noBreak $ do
+      guard_block (eventGuard tnode) period_gcd
+      mapM_ th_scheduler $ taskst_taskhandlers taskst
+    where
+    period_gcd = case taskst_periods taskst of
+                    [] -> Q.maxWait
+                    ps -> fromInteger $ foldl1 gcd ps
 
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = undefined

@@ -59,18 +59,16 @@ buildModules asm = ms
     -- Dependencies
     mapM_ depend (towerst_depends towerst)
 
-  taskModule :: AssembledNode a -> Module -- XXX this moves to assembleTask
-  taskModule anode = package n $ do
-    incl (an_entry anode)
-  --  asmnode_moddef anode
-    -- Dependencies
+  systemDeps :: ModuleDef
+  systemDeps = do
     depend tower_commprim
     mapM_ depend (towerst_depends towerst)
-    where
-    n = "tower_task_" ++ (nodest_name (an_nodest anode))
+
+  nodeModules :: AssembledNode a -> [Module]
+  nodeModules n = an_modules n systemDeps
 
   tower_tasks :: [Module]
-  tower_tasks = map taskModule tasks ++ map taskModule signals
+  tower_tasks = concatMap nodeModules tasks ++ concatMap nodeModules signals
 
   tower_entry = package "tower" $ do
     -- System-wide code
@@ -131,7 +129,7 @@ mkChannel rxer destNode = (fch_initDef fch, fch_moduleDef fch)
   fch = eventQueue (cr_chid rxer) (sing :: Sing n) destNode
 
 mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)
-mkPeriodic p n = (Period tick time, initDef, mDef)
+mkPeriodic p n = (Period tick time p, initDef, mDef)
   where
   unique i = i ++ n
   lastTimeArea = area (unique "periodicLastTime") Nothing

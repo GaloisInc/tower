@@ -114,22 +114,12 @@ data DataWriter (area :: Area) =
 
 -- | TaskHandlers
 
-data TaskHandler
-  = TH_Channel ChannelHandler
-  | TH_Period PeriodHandler
-
-data ChannelHandler =
-  forall area . ChannelHandler
-    { ch_receiver :: forall eff s . Ref s area -> Ivory eff IBool
-    , ch_callback :: forall s s'
-                   . ConstRef s area -> Ivory (ProcEffects s' ()) ()
-    }
-
-data PeriodHandler =
-  PeriodHandler
-    { ph_period :: Period
-    , ph_callback  :: forall s 
-                    . Uint32 -> Ivory (ProcEffects s ()) ()
+data TaskHandler =
+  TaskHandler
+    { th_scheduler :: forall eff cs
+                    . (GetAlloc eff ~ Scope cs)
+                   => Ivory eff ()
+    , th_moddef    :: ModuleDef
     }
 
 -- Period ----------------------------------------------------------------------
@@ -144,6 +134,7 @@ data Period =
          , per_tnow  :: forall eff cs
                       . (GetAlloc eff ~ Scope cs)
                      => Ivory eff Uint32
+         , per_interval :: Integer
          }
 
 -- Get Time Millis -------------------------------------------------------------
@@ -209,25 +200,27 @@ emptyNodeSt n impl = NodeSt
 -- | Internal only: this is the result of a complete 'Task' context.
 data TaskSt =
   TaskSt
-    { taskst_periods     :: [Integer]
-    , taskst_stacksize   :: Maybe Integer
-    , taskst_priority    :: Maybe Integer
-    , taskst_moddef      :: TaskSchedule -> ModuleDef
-    , taskst_extern_mods :: [Module]
-    , taskst_taskinit    :: Maybe (Def('[]:->()))
-    , taskst_taskhandlers :: [TaskHandler]
+    { taskst_periods       :: [Integer]
+    , taskst_stacksize     :: Maybe Integer
+    , taskst_priority      :: Maybe Integer
+    , taskst_moddef        :: TaskSchedule -> ModuleDef
+    , taskst_moddef_user   :: ModuleDef
+    , taskst_extern_mods   :: [Module]
+    , taskst_taskinit      :: Maybe (Def('[]:->()))
+    , taskst_taskhandlers  :: [TaskHandler]
     }
 
 -- | Internal only
 emptyTaskSt :: TaskSt
 emptyTaskSt = TaskSt
-  { taskst_periods     = []
-  , taskst_stacksize   = Nothing
-  , taskst_priority    = Nothing
-  , taskst_moddef      = const (return ())
-  , taskst_extern_mods = []
-  , taskst_taskinit    = Nothing
-  , taskst_taskhandlers = []
+  { taskst_periods       = []
+  , taskst_stacksize     = Nothing
+  , taskst_priority      = Nothing
+  , taskst_moddef        = const (return ())
+  , taskst_moddef_user   = return ()
+  , taskst_extern_mods   = []
+  , taskst_taskinit      = Nothing
+  , taskst_taskhandlers  = []
   }
 
 type TaskNode = NodeSt TaskSt
@@ -285,16 +278,16 @@ data TaskSchedule =
     , tsch_mkDataWriter :: forall area s eff cs
                          . (IvoryArea area, GetAlloc eff ~ Scope cs)
                         => DataSource area -> ConstRef s area -> Ivory eff ()
-    , tsch_mkEmitter :: forall n area s eff cs
-                      . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-                     => ChannelEmitter n area
-                     -> ConstRef s area
-                     -> Ivory eff IBool
-    , tsch_mkReceiver :: forall n area s eff cs
-            . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-           => ChannelReceiver n area
-           -> Ref s area
-           -> Ivory eff IBool
+    , tsch_mkEmitter    :: forall n area s eff cs
+                         . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
+                        => ChannelEmitter n area
+                        -> ConstRef s area
+                        -> Ivory eff IBool
+    , tsch_mkReceiver   :: forall n area s eff cs
+                         . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
+                        => ChannelReceiver n area
+                        -> Ref s area
+                        -> Ivory eff IBool
     }
 
 data SigSchedule =
@@ -405,6 +398,6 @@ data AssembledNode a =
   AssembledNode
     { an_nodest         :: NodeSt a
     , an_entry          :: Def('[]:->())
-    , an_modules        :: [Module]
+    , an_modules        :: ModuleDef -> [Module] -- open to adding system deps
     }
 

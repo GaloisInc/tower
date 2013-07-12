@@ -16,7 +16,7 @@ module Ivory.Tower
   , emitV
   , emitV_
   --, onChannelV -- XXX need to implement.
-  , sigReceive
+  , receive
 
   -- DataPort exports:
   , DataSource()

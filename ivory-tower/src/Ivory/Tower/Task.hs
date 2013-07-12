@@ -37,7 +37,7 @@ taskChannelEmitter chsrc = do
         , ce_extern_emit  = call  externEmit
         , ce_extern_emit_ = call_ externEmit
         }
-  taskModuleDef $ \sch -> do
+  taskStAddModuleDef $ \sch -> do
     incl (procEmit sch)
   return emitter
 
@@ -60,14 +60,60 @@ taskChannelReceiver chsnk = do
         { cr_chid      = chid
         , cr_extern_rx = call externRx
         }
-  taskModuleDef $ \sch -> do
+  taskStAddModuleDef $ \sch -> do
     incl (procRx sch)
   return rxer
 
+------
+
+instance DataPortable TaskSt where
+  nodeDataReader = taskDataReader
+  nodeDataWriter = taskDataWriter
+
+taskDataReader :: forall area . (IvoryArea area)
+               => DataSink area -> Node TaskSt (DataReader area)
+taskDataReader dsnk = do
+  nodename <- getNodeName
+  unique   <- freshname -- May not be needed.
+  let dpid = unDataSink dsnk
+      readerName = printf "read_%s_dataport%d%s" nodename (unDataportId dpid) unique
+      externReader :: Def ('[Ref s area] :-> ())
+      externReader = externProc readerName
+      procReader :: TaskSchedule -> Def ('[Ref s area] :-> ())
+      procReader schedule = proc readerName $ \ref -> body $
+        tsch_mkDataReader schedule dsnk ref
+      reader = DataReader
+        { dr_dpid   = dpid
+        , dr_extern = call_ externReader
+        }
+  taskStAddModuleDef $ \sch -> do
+    incl (procReader sch)
+  return reader
+
+taskDataWriter :: forall area . (IvoryArea area)
+               => DataSource area -> Node TaskSt (DataWriter area)
+taskDataWriter dsrc = do
+  nodename <- getNodeName
+  unique   <- freshname -- May not be needed.
+  let dpid = unDataSource dsrc
+      writerName = printf "write_%s_dataport%d%s" nodename (unDataportId dpid) unique
+      externWriter :: Def ('[ConstRef s area] :-> ())
+      externWriter = externProc writerName
+      procWriter :: TaskSchedule -> Def ('[ConstRef s area] :-> ())
+      procWriter schedule = proc writerName $ \ref -> body $
+        tsch_mkDataWriter schedule dsrc ref
+      writer = DataWriter
+        { dw_dpid   = dpid
+        , dw_extern = call_ externWriter
+        }
+  taskStAddModuleDef $ \sch -> do
+    incl (procWriter sch)
+  return writer
+
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.
-taskModuleDef :: (TaskSchedule -> ModuleDef) -> Task ()
-taskModuleDef = taskStAddModuleDef
+taskModuleDef :: ModuleDef -> Task ()
+taskModuleDef = taskStAddModuleDef . const
 
 -- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody'
 --   created in the 'Ivory.Tower.Types.Task' context.

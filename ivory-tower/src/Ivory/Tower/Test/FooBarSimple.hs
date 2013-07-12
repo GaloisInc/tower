@@ -46,8 +46,7 @@ fooSourceTask fooSource = do
     onPeriod p $ \_now -> do
       v <- deref (state ~> foo_member)
       store (state ~> foo_member) (v + 1)
-      let sch = undefined -- XXX
-      writeData sch fooWriter (constRef state)
+      writeData fooWriter (constRef state)
 
 barSourceTask :: (SingI n)
               => ChannelSource n (Struct "bar_state") 
@@ -73,8 +72,7 @@ fooBarSinkTask fooSink barSink = do
   taskInit $ do
     store latestSum 0
   onChannel barReceiver $ \latestBar -> do
-      let sch = undefined -- XXX
-      readData sch fooReader latestFoo
+      readData fooReader latestFoo
       bmember <- deref (latestBar ~> bar_member)
       fmember <- deref (latestFoo ~> foo_member)
       store latestSum (bmember + fmember)

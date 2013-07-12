@@ -156,14 +156,14 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
   -}
 
 mkDataReader :: (IvoryArea area)
-             => DataReader area -> Ref s area -> Ivory eff ()
-mkDataReader reader = fdp_read fdp
-  where fdp = sharedState (unDataReader reader)
+             => DataSink area -> Ref s area -> Ivory eff ()
+mkDataReader dsnk = fdp_read fdp
+  where fdp = sharedState (unDataSink dsnk)
 
 mkDataWriter :: (IvoryArea area)
-             => DataWriter area -> ConstRef s area -> Ivory eff ()
-mkDataWriter writer = fdp_write fdp
-  where fdp = sharedState (unDataWriter writer)
+             => DataSource area -> ConstRef s area -> Ivory eff ()
+mkDataWriter dsrc = fdp_write fdp
+  where fdp = sharedState (unDataSource dsrc)
 
 
 assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt

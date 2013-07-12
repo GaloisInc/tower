@@ -9,22 +9,26 @@ import Ivory.Tower.Types
 import Ivory.Tower.Monad
 
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
---   'Task'. Provide a human-readable name as a debugging aid.
-withDataReader :: (IvoryArea area)
+--   'Node'. Provide a human-readable name as a debugging aid.
+withDataReader :: (DataPortable i, IvoryArea area)
                => DataSink area -> String -> Node i (DataReader area)
 withDataReader ds label = do
-  let dpid = unDataSink ds
-  nodeStAddDataReader dpid label
-  return (DataReader dpid)
+  nodeStAddDataReader (unDataSink ds) label
+  nodeDataReader ds
 
 -- | Transform a 'DataSource' into a 'DataWriter' in the context of a
---   'Task '. Provide a human-readable name as a debugging aid.
-withDataWriter :: (IvoryArea area)
+--   'Node'. Provide a human-readable name as a debugging aid.
+withDataWriter :: (DataPortable i, IvoryArea area)
                => DataSource area -> String -> Node i (DataWriter area)
 withDataWriter ds label = do
-  let dpid = unDataSource ds
-  nodeStAddDataWriter dpid label
-  return (DataWriter dpid)
+  nodeStAddDataWriter (unDataSource ds) label
+  nodeDataWriter ds
+
+class DataPortable i where
+  nodeDataReader :: (IvoryArea area)
+                 => DataSink   area -> Node i (DataReader area)
+  nodeDataWriter :: (IvoryArea area)
+                 => DataSource area -> Node i (DataWriter area)
 
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
 --   'Task'.
@@ -59,9 +63,6 @@ codegenChannelReceiver rxer = do
   nodeStAddCodegen channelinit mdef
 
 class Channelable i where
-  -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
-  --   'Task'.
-  --   Provide a human-readable name as a debugging aid.
   nodeChannelEmitter :: (SingI n, IvoryArea area)
         => ChannelSource n area -> Node i (ChannelEmitter n area)
   nodeChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area)

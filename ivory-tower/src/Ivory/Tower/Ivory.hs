@@ -20,14 +20,14 @@ import Ivory.Tower.Node
 -- | Atomic read of shared data, copying to local reference. Always succeeds.
 --   Takes a 'DataReader'.
 readData :: (GetAlloc eff ~ Scope cs, IvoryArea area)
-         => TaskSchedule -> DataReader area -> Ref s area -> Ivory eff ()
-readData sch reader ref = tsch_mkDataReader sch reader ref
+         => DataReader area -> Ref s area -> Ivory eff ()
+readData reader ref = dr_extern reader ref
 
 -- | Atomic write to shared data, copying from local reference. Always
 --   succeeds. Takes a 'DataWriter'.
 writeData :: (GetAlloc eff ~ Scope cs, IvoryArea area)
-          => TaskSchedule -> DataWriter area -> ConstRef s area -> Ivory eff ()
-writeData sch writer ref = tsch_mkDataWriter sch writer ref
+          => DataWriter area -> ConstRef s area -> Ivory eff ()
+writeData writer ref = dw_extern writer ref
 
 -- XXX implement onChannelV, onReceiveV
 
@@ -62,11 +62,11 @@ emitV_ :: ( SingI n, IvoryInit t
           ) => ChannelEmitter n (Stored t) -> t -> Ivory eff ()
 emitV_ c v = local (ival v) >>= \r -> emit_ c (constRef r)
 
--- | Nonblocking receive for Signals. (To receive in Tasks, use 'onChannel').
+-- | Nonblocking receive.
 --   Indicates success in return value.
-sigReceive :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
-     => SigSchedule -> ChannelReceiver n area -> Ref s area -> Ivory eff IBool
-sigReceive schedule emitter ref = ssch_mkReceiver schedule emitter ref
+receive :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
+     => ChannelReceiver n area -> Ref s area -> Ivory eff IBool
+receive rxer ref = cr_extern_rx rxer ref
 
 -- StateProxy ------------------------------------------------------------------
 
@@ -82,10 +82,6 @@ stateProxy chsink = do
   task "stateProxy" $ do
     chrxer <- withChannelReceiver chsink "proxy event"
     data_writer <- withDataWriter src_data "proxy data"
-    onChannel chrxer $ \val -> do writeData undefined data_writer val -- XXX scheduling needs fix
--- XXX
---    taskBody $ \schedule ->
---      eventLoop schedule $ onChannel chrxer $ \val -> do
---        writeData schedule data_writer val
+    onChannel chrxer $ \val -> writeData data_writer val
   return snk_data
 

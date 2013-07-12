@@ -60,7 +60,7 @@ newtype ChannelSink (n :: Nat) (area :: Area) =
 -- can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
 data ChannelEmitter (n :: Nat) (area :: Area) =
   ChannelEmitter
-    { ce_chid :: ChannelId
+    { ce_chid         :: ChannelId
     , ce_extern_emit  :: forall s eff . ConstRef s area -> Ivory eff IBool
     , ce_extern_emit_ :: forall s eff . ConstRef s area -> Ivory eff ()
     }
@@ -70,7 +70,7 @@ data ChannelEmitter (n :: Nat) (area :: Area) =
 -- event handler.
 data ChannelReceiver (n :: Nat) (area :: Area) =
   ChannelReceiver
-    { cr_chid :: ChannelId
+    { cr_chid      :: ChannelId
     , cr_extern_rx :: forall s eff . Ref s area -> Ivory eff IBool
     }
 
@@ -95,13 +95,22 @@ newtype DataSink (area :: Area) = DataSink { unDataSink   :: DataportId }
 -- | An implementation of a reader on a channel. The only valid operation on
 --   a 'DataReader' is 'Ivory.Tower.DataPort.readData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-newtype DataReader (area :: Area) = DataReader { unDataReader :: DataportId }
+data DataReader (area :: Area) =
+  DataReader
+    { dr_dpid   :: DataportId
+    , dr_extern :: forall eff s . (IvoryArea area)
+                => Ref s area -> Ivory eff ()
+    }
 
 -- | An implementation of a writer on a channel. The only valid operation on
 --   a 'DataWriter' is 'Ivory.Tower.DataPort.writeData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-newtype DataWriter (area :: Area) = DataWriter { unDataWriter :: DataportId }
-
+data DataWriter (area :: Area) =
+  DataWriter
+    { dw_dpid   :: DataportId
+    , dw_extern :: forall eff s . (IvoryArea area)
+                => ConstRef s area -> Ivory eff ()
+    }
 
 -- | TaskHandlers
 
@@ -112,7 +121,7 @@ data TaskHandler
 data ChannelHandler =
   forall area . ChannelHandler
     { ch_receiver :: forall eff s . Ref s area -> Ivory eff IBool
-    , ch_callback :: forall eff s s'
+    , ch_callback :: forall s s'
                    . ConstRef s area -> Ivory (ProcEffects s' ()) ()
     }
 
@@ -229,7 +238,7 @@ type TaskNode = NodeSt TaskSt
 data SignalSt =
   SignalSt
     { signalst_moddef :: SigSchedule -> ModuleDef
-    , signalst_body   :: Maybe (SigSchedule -> Def('[]:->()))
+    , signalst_body   :: forall s . Maybe (Ivory (ProcEffects s ()) ())
     , signalst_cname  :: Maybe String
     }
 
@@ -272,10 +281,10 @@ data TaskSchedule =
   TaskSchedule
     { tsch_mkDataReader :: forall area s eff cs
                          . (IvoryArea area, GetAlloc eff ~ Scope cs)
-                        => DataReader area -> Ref s area -> Ivory eff ()
+                        => DataSink area -> Ref s area -> Ivory eff ()
     , tsch_mkDataWriter :: forall area s eff cs
                          . (IvoryArea area, GetAlloc eff ~ Scope cs)
-                        => DataWriter area -> ConstRef s area -> Ivory eff ()
+                        => DataSource area -> ConstRef s area -> Ivory eff ()
     , tsch_mkEmitter :: forall n area s eff cs
                       . (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
                      => ChannelEmitter n area

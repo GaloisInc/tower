@@ -45,13 +45,12 @@ fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     p <- withPeriod 250
-    taskModuleDef $ \_sch -> depend fooBarTypes
+    taskModuleDef $ depend fooBarTypes
     state <- taskLocal "state"
     onPeriod p $ \_now -> do
       v <- deref (state ~> foo_member)
       store (state ~> foo_member) (v + 1)
-      let sch = undefined -- XXX
-      writeData sch fooWriter (constRef state)
+      writeData fooWriter (constRef state)
 
 someSignal :: (SingI n, SingI m)
            => ChannelSource n (Stored Uint8)
@@ -61,9 +60,9 @@ someSignal ch1 bar = do
   chEmitter  <- withChannelEmitter ch1 "someChan"
   chReceiver <- withChannelReceiver bar "barToISR"
   signalName "isr_123"
-  signalBody $ \sch -> do
+  signalBody $ do
     v <- local izero
-    success <- sigReceive sch chReceiver v
+    success <- receive chReceiver v
     output <- local (ival (success ? (1,0)))
     emit_ chEmitter (constRef output)
 
@@ -75,7 +74,7 @@ barSourceTask barSource chSink = do
     barEmitter <- withChannelEmitter barSource "barSource"
     p <- withPeriod 125
     c <- withChannelReceiver chSink "signalCh"
-    taskModuleDef $ \_sch -> depend fooBarTypes
+    taskModuleDef $ depend fooBarTypes
     (state :: Ref Global (Struct "bar_state")) <- taskLocal "state"
     let incrementEmit :: (GetAlloc eff ~ Scope s) => Ivory eff ()
         incrementEmit = do
@@ -96,13 +95,12 @@ fooBarSinkTask :: (SingI n)
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
-  taskModuleDef $ \_sch -> depend fooBarTypes
+  taskModuleDef $ depend fooBarTypes
   latestFoo <- taskLocal "latestFoo"
   latestSum <- taskLocal "latestSum"
   taskInit $ store latestSum 0
   onChannel barReceiver $ \latestBar -> do
-    let sch = undefined -- XXX
-    readData sch fooReader latestFoo
+    readData fooReader latestFoo
     bmember <- deref (latestBar ~> bar_member)
     fmember <- deref (latestFoo ~> foo_member)
     store latestSum (bmember + fmember)

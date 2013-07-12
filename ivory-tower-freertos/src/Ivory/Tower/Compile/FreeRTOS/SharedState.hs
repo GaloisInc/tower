@@ -51,7 +51,7 @@ sharedState dataportid = FreeRTOSDataport
   withSemaphore :: Ivory eff () -> Ivory eff ()
   withSemaphore action = do
     call_ S.takeBlocking sem
-    _ <- action -- XXX
+    action
     call_ S.give sem
 
   write :: ConstRef s area -> Ivory eff ()

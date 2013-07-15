@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Ivory.Tower.Task where
 
@@ -194,12 +195,28 @@ onChannel :: forall n area
           => ChannelReceiver n area
           -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
           -> Task ()
-onChannel chrxer k = do
+onChannel chrxer k = mkOnChannel chrxer $ \name ->
+  proc name $ \ref -> body $ k ref
+
+onChannelV :: forall n t
+           . (IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
+          => ChannelReceiver n (Stored t)
+          -> (forall s . t -> Ivory (ProcEffects s ()) ())
+          -> Task ()
+onChannelV chrxer k = mkOnChannel chrxer $ \name ->
+  proc name $ \ref -> body $ deref ref >>= k
+
+mkOnChannel :: forall n area
+             . (IvoryArea area, IvoryZero area)
+            => ChannelReceiver n area
+            -> (forall s . Name -> Def ('[ConstRef s area] :-> ()))
+            -> Task ()
+mkOnChannel chrxer mkproc = do
   n <- getNodeName
   f <- freshname
   let name = printf "channelhandler_%s_chan%d%s" n (chan_id (cr_chid chrxer)) f
-      callback :: Def ('[ConstRef s area]:->())
-      callback = proc name $ \ref -> body $ k ref
+      callback :: Def ('[ConstRef s area] :-> ())
+      callback = mkproc name
   taskStAddTaskHandler $ TaskHandler
     { th_scheduler = do
         ref <- local izero

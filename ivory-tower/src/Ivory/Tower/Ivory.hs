@@ -29,8 +29,6 @@ writeData :: (GetAlloc eff ~ Scope cs, IvoryArea area)
           => DataWriter area -> ConstRef s area -> Ivory eff ()
 writeData writer ref = dw_extern writer ref
 
--- XXX implement onChannelV, onReceiveV
-
 -- Special OS function interface -----------------------------------------------
 
 -- | Use an 'Ivory.Tower.Types.OSGetTimeMillis' implementation in an Ivory

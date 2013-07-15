@@ -67,6 +67,7 @@ module Ivory.Tower
   , taskInit
   , onPeriod
   , onChannel
+  , onChannelV
 
   -- Signal exports:
   , signalLocal

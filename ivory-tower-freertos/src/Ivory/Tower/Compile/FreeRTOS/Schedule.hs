@@ -111,16 +111,6 @@ mkSigSchedule tnodes signodes tnode = SigSchedule
                 -> Ivory eff IBool
   mkSigReceiver chrxer k = mkReceiver tnodes signodes ISR tnode chrxer k
 
-  {-
-  mkSigBody :: (forall eff cs . (GetAlloc eff ~ Scope cs) => Ivory eff ())
-            -> Def('[]:->())
-  mkSigBody b = proc name (body b)
-    where
-    name = case signalst_cname (nodest_impl tnode)  of
-      Just n  -> n
-      Nothing -> nodest_name tnode
-  -}
-
 mkTaskSchedule :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
 mkTaskSchedule tnodes signodes tnode = TaskSchedule
     { tsch_mkDataReader = mkDataReader
@@ -139,7 +129,7 @@ mkDataWriter :: (IvoryArea area)
 mkDataWriter dsrc = fdp_write fdp
   where fdp = sharedState (unDataSource dsrc)
 
-
+-- Assemble: 
 
 assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
 assembleTask tnodes snodes tnode = AssembledNode
@@ -152,13 +142,16 @@ assembleTask tnodes snodes tnode = AssembledNode
   named n = (n ++ nodest_name tnode)
   taskst = nodest_impl tnode
   taskLoopMod sysdeps = package (named "tower_task_loop_") $ do
-    taskst_moddef taskst schedule
     incl entry
+    taskst_moddef taskst schedule
     depend (taskUserCodeMod sysdeps)
 
   taskUserCodeMod sysdeps = package (named "tower_task_usercode_") $ do
-    taskst_moddef_user taskst
+    case taskst_taskinit taskst of
+      Just t -> incl t
+      Nothing -> return ()
     mapM_ th_moddef $ taskst_taskhandlers taskst
+    taskst_moddef_user taskst
     depend (taskLoopMod sysdeps)
     sysdeps
 
@@ -175,5 +168,25 @@ assembleTask tnodes snodes tnode = AssembledNode
                     ps -> fromInteger $ foldl1 gcd ps
 
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
-assembleSignal tnodes snodes snode = undefined
+assembleSignal tnodes snodes snode = AssembledNode
+  { an_nodest = snode
+  , an_entry = entry
+  , an_modules = \sysdeps -> [ signalMod sysdeps ]
+  }
+  where
+  sigst = nodest_impl snode
+  nodename = nodest_name snode
+  schedule = mkSigSchedule tnodes snodes snode
+  procname = case signalst_cname sigst of
+      Just n  -> n
+      Nothing -> nodest_name snode
+  entry = proc procname $ body $ do
+    case signalst_body sigst of
+      Just b -> b
+      Nothing -> error ("assembleSignal: no body present in signal named " ++ nodename)
+  signalMod sysdeps = package ("tower_signal_" ++ nodename ) $ do
+    signalst_moddef sigst schedule
+    incl entry
+    sysdeps
+
 

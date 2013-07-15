@@ -44,10 +44,9 @@ someOtherModule= package "someOtherModule" $ do
 fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
-    p <- withPeriod 250
     taskModuleDef $ depend fooBarTypes
     state <- taskLocal "state"
-    onPeriod p $ \_now -> do
+    onPeriod 250 $ \_now -> do
       v <- deref (state ~> foo_member)
       store (state ~> foo_member) (v + 1)
       writeData fooWriter (constRef state)
@@ -72,7 +71,6 @@ barSourceTask :: (SingI n, SingI m)
               -> Task ()
 barSourceTask barSource chSink = do
     barEmitter <- withChannelEmitter barSource "barSource"
-    p <- withPeriod 125
     c <- withChannelReceiver chSink "signalCh"
     taskModuleDef $ depend fooBarTypes
     (state :: Ref Global (Struct "bar_state")) <- taskLocal "state"
@@ -81,7 +79,7 @@ barSourceTask barSource chSink = do
           v <- deref (state ~> bar_member)
           store (state ~> bar_member) (v + 1)
           emit_ barEmitter (constRef state)
-    onPeriod p $ \_now -> incrementEmit
+    onPeriod 125 $ \_now -> incrementEmit
     onChannel c $ \iref -> do
       i <- deref iref
       when (i >? 0) $ incrementEmit

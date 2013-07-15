@@ -147,17 +147,6 @@ withModule m = do
   s <- getTaskSt
   setTaskSt $ s { taskst_extern_mods = m:(taskst_extern_mods s)}
 
--- | Create a 'Period' in the context of a 'Task'. Integer argument
---   declares period in milliseconds.
-withPeriod :: Integer -> Task Period
-withPeriod per = do
-  st <- getTaskSt
-  setTaskSt $ st { taskst_periods = per : (taskst_periods st)}
-  os <- getOS
-  n <- freshname
-  let (p, initdef, mdef) = os_mkPeriodic os per n
-  nodeStAddCodegen initdef mdef
-  return p
 
 -- | Create an 'Ivory.Tower.Types.OSGetTimeMillis' in the context of a 'Task'.
 withGetTimeMillis :: Task OSGetTimeMillis
@@ -225,8 +214,9 @@ mkOnChannel chrxer mkproc = do
     , th_moddef = incl callback
     }
 
-onPeriod :: Period -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task ()
-onPeriod per k = do
+onPeriod :: Integer -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task ()
+onPeriod interval k = do
+  per <- mkPeriod interval
   n <- getNodeName
   f <- freshname
   let name = printf "periodhandler_%s_interval%d%s" n (per_interval per) f
@@ -240,3 +230,16 @@ onPeriod per k = do
           call_ callback now
     , th_moddef = incl callback
     }
+
+-- | Private: interal, makes a Period from an integer, stores
+--   generated code
+mkPeriod :: Integer -> Task Period
+mkPeriod per = do
+  st <- getTaskSt
+  setTaskSt $ st { taskst_periods = per : (taskst_periods st)}
+  os <- getOS
+  n <- freshname
+  let (p, initdef, mdef) = os_mkPeriodic os per n
+  nodeStAddCodegen initdef mdef
+  return p
+

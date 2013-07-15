@@ -41,9 +41,8 @@ someOtherModule= package "someOtherModule" $ do
 fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
-    p <- withPeriod 250
     state <- taskLocal "state"
-    onPeriod p $ \_now -> do
+    onPeriod 250 $ \_now -> do
       v <- deref (state ~> foo_member)
       store (state ~> foo_member) (v + 1)
       writeData fooWriter (constRef state)
@@ -53,9 +52,8 @@ barSourceTask :: (SingI n)
               -> Task ()
 barSourceTask barSource = do
     barEmitter <- withChannelEmitter barSource "barSource"
-    p <- withPeriod 125
     state <- taskLocal "state"
-    onPeriod p $ \_now -> do
+    onPeriod 125 $ \_now -> do
       v <- deref (state ~> bar_member)
       store (state ~> bar_member) (v + 1)
       emit_ barEmitter (constRef state)

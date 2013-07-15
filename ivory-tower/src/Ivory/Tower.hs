@@ -45,7 +45,6 @@ module Ivory.Tower
   , addModule
   , addDepends
 
-  , withPeriod
   , withGetTimeMillis
 
   -- Node exports:

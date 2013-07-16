@@ -30,7 +30,8 @@ library
                         filepath,
                         ivory,
                         ivory-stdlib,
-                        ivory-tower >= 0.3
+                        ivory-tower >= 0.3,
+                        ivory-backend-c
 
   hs-source-dirs:       src
   default-language:     Haskell2010

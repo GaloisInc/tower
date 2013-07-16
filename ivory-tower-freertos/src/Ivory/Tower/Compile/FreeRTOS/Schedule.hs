@@ -15,6 +15,7 @@ import Ivory.Stdlib
 import Ivory.Tower.Types
 
 import qualified Ivory.OS.FreeRTOS.Queue as Q
+import qualified Ivory.OS.FreeRTOS.Task  as Task
 
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
 import Ivory.Tower.Compile.FreeRTOS.SharedState
@@ -129,7 +130,7 @@ mkDataWriter :: (IvoryArea area)
 mkDataWriter dsrc = fdp_write fdp
   where fdp = sharedState (unDataSource dsrc)
 
--- Assemble: 
+-- Assemble:
 
 assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
 assembleTask tnodes snodes tnode = AssembledNode
@@ -159,13 +160,29 @@ assembleTask tnodes snodes tnode = AssembledNode
     case taskst_taskinit taskst of
       Just p -> call_ p
       Nothing -> return ()
+
+    -- Initialize a variable for when the task finishes computation.
+    timeDone <- local izero
+    updateTime timeDone
     forever $ noBreak $ do
-      guard_block (eventGuard tnode) period_gcd
+      -- Get the current time.
+      timeStart <- call Task.getTimeMillis
+      td <- deref timeDone
+      -- Subtract the duration of the task from the (GCD of the) period.
+      diff <- assign (period_gcd - (timeStart - td))
+      -- This must be nonnegative!.
+      assert (diff >=? 0)
+      guard_block (eventGuard tnode) diff
+      -- Do the work.
       mapM_ th_scheduler $ taskst_taskhandlers taskst
+      -- Update our finish time variable.
+      updateTime timeDone
     where
+    updateTime = resultInto (call Task.getTimeMillis)
+    period_gcd :: Uint32
     period_gcd = case taskst_periods taskst of
                     [] -> Q.maxWait
-                    ps -> fromInteger $ foldl1 gcd ps
+                    ps -> fromInteger (foldl1 gcd ps)
 
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = AssembledNode
@@ -183,7 +200,8 @@ assembleSignal tnodes snodes snode = AssembledNode
   entry = proc procname $ body $ do
     case signalst_body sigst of
       Just b -> b
-      Nothing -> error ("assembleSignal: no body present in signal named " ++ nodename)
+      Nothing -> error (   "assembleSignal: no body present in signal named "
+                        ++ nodename)
   signalMod sysdeps = package ("tower_signal_" ++ nodename ) $ do
     signalst_moddef sigst schedule
     incl entry

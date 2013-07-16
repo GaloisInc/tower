@@ -19,5 +19,12 @@ delay = importProc "ivory_freertos_task_delay" taskWrapperHeader
 delayUntil :: Def ('[ Ref s (Stored Uint32), Uint32 ] :->())
 delayUntil = importProc "ivory_freertos_task_delayuntil" taskWrapperHeader
 
-getTimeMillis :: Def ('[] :-> Uint32 )
-getTimeMillis = importProc "ivory_freertos_task_gettickcount" taskWrapperHeader
+getTimeMillis :: Def ('[] :-> Uint32)
+getTimeMillis =
+  importProc "ivory_freertos_task_getmilliscount" taskWrapperHeader
+
+getTimeTick :: Def ('[] :-> Uint32)
+getTimeTick = importProc "ivory_freertos_task_gettickcount" taskWrapperHeader
+
+millisToTicks :: Def ('[Uint32] :-> Uint32)
+millisToTicks = importProc "ivory_freertos_task_millistoticks" taskWrapperHeader

@@ -48,27 +48,33 @@ runSignal name s = do
 nodeStAddReceiver :: ChannelId -> String -> Node i ()
 nodeStAddReceiver r lbl = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_receivers = (Labeled r lbl) : (nodees_receivers n)}
+  setNodeEdges $ n { nodees_receivers = (Labeled r lbl)
+               : (nodees_receivers n)}
 
 nodeStAddEmitter :: ChannelId -> String -> Node i ()
 nodeStAddEmitter r lbl = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_emitters = (Labeled r lbl) : (nodees_emitters n)}
+  setNodeEdges $ n { nodees_emitters = (Labeled r lbl)
+               : (nodees_emitters n)}
 
 nodeStAddDataReader :: DataportId -> String -> Node i ()
 nodeStAddDataReader cc lbl = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_datareaders = (Labeled cc lbl) : (nodees_datareaders n)}
+  setNodeEdges $ n { nodees_datareaders = Labeled cc lbl
+                                        : nodees_datareaders n
+                   }
 
 nodeStAddDataWriter :: DataportId -> String -> Node i ()
 nodeStAddDataWriter cc lbl = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_datawriters = (Labeled cc lbl) : (nodees_datawriters n)}
+  setNodeEdges $ n { nodees_datawriters = Labeled cc lbl
+                                        : nodees_datawriters n
+                   }
 
-nodeStAddCodegen :: Def('[]:->()) -> ModuleDef -> Node i ()
+nodeStAddCodegen :: Def ('[] :-> ()) -> ModuleDef -> Node i ()
 nodeStAddCodegen i m = do
   n <- getNode
-  setNode $ n { nodest_codegen = (Codegen i m):(nodest_codegen n) }
+  setNode $ n { nodest_codegen = Codegen i m : nodest_codegen n }
 
 getNode :: Node i (NodeSt i)
 getNode = Node get
@@ -101,7 +107,7 @@ setTaskSt s = getNode >>= \n -> setNode (n { nodest_impl = s })
 taskStAddTaskHandler :: TaskHandler -> Task ()
 taskStAddTaskHandler th = do
   s <- getTaskSt
-  setTaskSt s { taskst_taskhandlers = th : (taskst_taskhandlers s) }
+  setTaskSt s { taskst_taskhandlers = th : taskst_taskhandlers s }
 
 taskStAddModuleDef :: (TaskSchedule -> ModuleDef) -> Task ()
 taskStAddModuleDef md = do
@@ -137,19 +143,19 @@ setTowerSt s = Tower $ set s
 addTaskNode :: TaskNode -> Tower ()
 addTaskNode n = do
   s <- getTowerSt
-  setTowerSt $ s { towerst_tasknodes = n : (towerst_tasknodes s) }
+  setTowerSt $ s { towerst_tasknodes = n : towerst_tasknodes s }
 
 addSigNode :: SigNode -> Tower ()
 addSigNode n = do
   s <- getTowerSt
-  setTowerSt $ s { towerst_signodes = n : (towerst_signodes s) }
+  setTowerSt $ s { towerst_signodes = n : towerst_signodes s }
 
 mkChannel :: Integer -> String -> Tower ChannelId
 mkChannel size label = do
   n <- fresh
   let cid = ChannelId { chan_id = (toInteger n), chan_size = size }
   st <- getTowerSt
-  setTowerSt $ st { towerst_channels = (Labeled cid label) : towerst_channels st }
+  setTowerSt $ st { towerst_channels = Labeled cid label : towerst_channels st }
   return cid
 
 mkDataport :: String -> Tower DataportId
@@ -157,14 +163,15 @@ mkDataport label = do
   n <- fresh
   let dpid = DataportId n
   st <- getTowerSt
-  setTowerSt $ st { towerst_dataports = (Labeled dpid label) : towerst_dataports st }
+  setTowerSt $ st { towerst_dataports = Labeled dpid label
+                                      : towerst_dataports st }
   return dpid
 
 addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower ()
 addDataportCodegen initializer mdef = do
     s <- getTowerSt
-    setTowerSt $ s { towerst_dataportgen =
-                      (Codegen initializer mdef): (towerst_dataportgen s) }
+    setTowerSt $ s { towerst_dataportgen = Codegen initializer mdef
+                                         : towerst_dataportgen s }
 
 
 

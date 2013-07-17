@@ -30,5 +30,5 @@ uint32_t ivory_freertos_task_gettickcount(void) {
 
 uint32_t ivory_freertos_millistoticks(uint32_t ms)
 {
-  return time * portTICK_RATE_MS;
+  return ms * portTICK_RATE_MS;
 }

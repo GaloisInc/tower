@@ -162,21 +162,21 @@ assembleTask tnodes snodes tnode = AssembledNode
       Nothing -> return ()
 
     -- Initialize a variable for when the task finishes computation.
-    timeDone <- local izero
-    updateTime timeDone
+    timeExitGuard <- local izero
+    updateTime timeExitGuard
     forever $ noBreak $ do
       -- Get the current time.
-      timeStart <- call Task.getTimeMillis
-      td <- deref timeDone
+      timeEnterGuard <- call Task.getTimeMillis
+      teg <- deref timeExitGuard
       -- Subtract the duration of the task from the (GCD of the) period.
-      diff <- assign (period_gcd - (timeStart - td))
+      diff <- assign (period_gcd - (timeEnterGuard - teg))
       -- This must be nonnegative!.
       assert (diff >=? 0)
       guard_block (eventGuard tnode) diff
+      -- Update our finish time variable.
+      updateTime timeExitGuard
       -- Do the work.
       mapM_ th_scheduler $ taskst_taskhandlers taskst
-      -- Update our finish time variable.
-      updateTime timeDone
     where
     updateTime = resultInto (call Task.getTimeMillis)
     period_gcd :: Uint32

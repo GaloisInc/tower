@@ -16,6 +16,7 @@ library
                         Ivory.Tower.Tower,
                         Ivory.Tower.Monad,
                         Ivory.Tower.Types,
+                        Ivory.Tower.RPC,
 
                         Ivory.Tower.Graphviz,
 
@@ -32,6 +33,7 @@ library
                         containers,
                         wl-pprint,
                         monadLib,
+                        free,
                         ivory,
                         ivory-stdlib
 

@@ -164,7 +164,8 @@ tlocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Task (Ref Global a
 tlocalAux n i = do
   f <- freshname
   let m = area (n ++ f) i
-  taskStAddModuleDef (const (defMemArea m))
+  -- Task Locals should only ever be used privately in user code.
+  taskStAddModuleDefUser $ private $ defMemArea m
   return (addrOf m)
 
 taskInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Task ()

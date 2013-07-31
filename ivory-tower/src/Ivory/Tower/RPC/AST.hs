@@ -31,14 +31,14 @@ data Block (f :: Area) (t :: Area) =
     }
 
 -- User API to build SMs:
-start :: Stmt t -> SM f t
-start s = mempty { sm_start = [s] }
+start :: [Stmt t] -> SM f t
+start s = mempty { sm_start = s }
 
 block :: (forall s . Ref s f) -> [Stmt t] -> SM f t
 block ref stmts = mempty { sm_blocks = [Block ref stmts] }
 
-end :: Stmt t -> SM f t
-end s = mempty { sm_end = [s] }
+end :: [Stmt t] -> SM f t
+end s = mempty { sm_end = s }
 
 liftIvory :: (forall s . Ivory (AllocEffects s) ()) -> Stmt t
 liftIvory i = SLifted (i >> return false)

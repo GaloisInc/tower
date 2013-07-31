@@ -1,41 +1,49 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Ivory.Tower.RPC.Monad where
 
 import MonadLib
-import Data.Monoid
 
 import Ivory.Language
 
+import Ivory.Tower
 import Ivory.Tower.Types
 import Ivory.Tower.RPC.AST
 
 newtype RPC f t a =
   RPC
-    { unRPC :: WriterT (RPCSt f t) (Node TaskSt) a
+    { unRPC :: WriterT (SM f t) (Node TaskSt) a
     } deriving (Functor, Monad)
 
-data RPCSt f t =
-  RPCSt
-    { rpcst_moddef :: ModuleDef
-    , rpcst_sm :: SM f t
-    }
-
-instance Monoid (RPCSt f t) where
-  mempty      = RPCSt { rpcst_moddef = return ()
-                      , rpcst_sm     = mempty
-                      }
-  mappend a b = RPCSt { rpcst_moddef = rpcst_moddef a >> rpcst_moddef b
-                      , rpcst_sm     = rpcst_sm a <> rpcst_sm b
-                      }
+runRPCMonad :: RPC f t () -> Task (SM f t)
+runRPCMonad m = do
+  (_, sm) <- runWriterT (unRPC m)
+  return sm
 
 writeSM :: SM f t -> RPC f t ()
-writeSM s = RPC $ put RPCSt { rpcst_moddef = return (), rpcst_sm = s }
+writeSM s = RPC $ put s
 
-writeModdef :: ModuleDef -> RPC f t ()
-writeModdef m = RPC $ put RPCSt { rpcst_moddef = m , rpcst_sm = mempty }
+-- Public API:
+
+rpcLocal :: (IvoryArea area) => Name -> RPC t f (Ref Global area)
+rpcLocal n = RPC $ lift $ taskLocal n
+
+rpcLocalInit :: (IvoryArea area) => Name -> Init area -> RPC t f (Ref Global area)
+rpcLocalInit n i = RPC $ lift $ taskLocalInit n i
 
 instance BaseUtils (RPC f t) where
   fresh = RPC $ lift fresh
   getOS = RPC $ lift getOS
+
+rpcStart :: [Stmt t] -> RPC f t ()
+rpcStart s = writeSM $ start s
+
+rpcBlock :: (forall s . Ref s f) -> [Stmt t] -> RPC f t ()
+rpcBlock r s = writeSM $ block r s
+
+rpcEnd :: [Stmt t] -> RPC f t ()
+rpcEnd s = writeSM $ end s
+
 

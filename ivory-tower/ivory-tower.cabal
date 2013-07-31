@@ -18,6 +18,7 @@ library
                         Ivory.Tower.Types,
                         Ivory.Tower.RPC,
                         Ivory.Tower.RPC.AST,
+                        Ivory.Tower.RPC.Compile,
                         Ivory.Tower.RPC.Monad,
 
                         Ivory.Tower.Graphviz,

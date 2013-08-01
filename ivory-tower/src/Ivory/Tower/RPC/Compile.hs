@@ -1,3 +1,5 @@
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
@@ -5,31 +7,77 @@
 module Ivory.Tower.RPC.Compile where
 
 import Ivory.Language
+import Ivory.Stdlib
 
 import Ivory.Tower.RPC.AST
 
 data RPCRunnable =
   RPCRunnable
-    { runnable_start   :: Def('[]:->())
+    { runnable_begin   :: Def('[]:->())
     , runnable_active  :: Def('[]:->IBool)
     }
 
-compileSM :: SM f t
-          -> (ConstRef s t -> Ivory (AllocEffects ss) ()) -- Emit callback
-          -> String -- Fresh Name
-          -> (RPCRunnable, (ConstRef s' f -> Ivory (AllocEffects ss') ()), ModuleDef)
-compileSM sm emit freshname = (runnable, rxer, moddef)
+compileSM :: forall f t . (IvoryArea f)
+          => SM f t
+          -> (forall s cs . ConstRef s t -> Ivory (AllocEffects cs) ())
+          -> String
+          -> ( RPCRunnable
+             , (forall s' cs' . ConstRef s' f -> Ivory (AllocEffects cs') ())
+             , ModuleDef )
+compileSM sm emitter freshname = (runnable, rxer, moddef)
   where
   unique n = n ++ freshname
   runnable = RPCRunnable
-    { runnable_start  = start
+    { runnable_begin  = begin
     , runnable_active = active }
-  start  = proc (unique "rpc_start_")  $ body $ return () -- XXX
-  active = proc (unique "rpc_active_") $ body $ ret false -- XXX
-  stateArea = area (unique "rpc_state_") $ Just (ival 0)
-  (state :: Ref Global (Stored Uint32)) = addrOf stateArea
+
+  begin = proc (unique "rpc_begin") $ body $ do
+    a <- call active
+    unless a $ noReturn $ do
+      compileStmts 1 (sm_start sm)
+
+  active = proc (unique "rpc_active")   $ body $ do
+    s <- deref state
+    ret (s ==? 0)
+
+  nextstate :: Sint32 -> Ivory eff ()
+  nextstate s = store state s
+
+  stateArea = area (unique "rpc_state") $ Just (ival 0)
+  (state :: Ref Global (Stored Sint32)) = addrOf stateArea
   moddef = private $ do
-    incl start
+    incl begin
     incl active
     defMemArea stateArea
-  rxer v = return () -- XXX
+
+  rxer v = do
+    s <- deref state
+    mapM_ (compileBlock s v) $ zip [1..] (sm_blocks sm )
+
+  compileStmts ::Int
+              -> [Stmt t]
+              -> Ivory (AllocEffects cs') ()
+  compileStmts successState stmts = do
+      ss <- mapM compileStmt stmts
+      anytrue <- assign $ foldr (.||) false ss
+      ifte_ anytrue
+        (nextstate (-1)) -- Error
+        (nextstate (fromIntegral successState)) -- Continue
+
+  compileBlock :: Sint32
+               -> ConstRef s' f
+               -> (Int, Block f t)
+               -> Ivory (AllocEffects cs) ()
+  compileBlock currentstate rxedvalue (mystate, b) = do
+    when ((fromIntegral mystate) ==? currentstate) $ case b of
+       Block r ss -> do
+         refCopy r rxedvalue
+         compileStmts (mystate + 1) ss
+
+  compileStmt :: Stmt t
+              -> Ivory (AllocEffects cs') IBool
+  compileStmt s = case s of
+    SLifted i -> i
+    SEmit r   -> emitter r >> return false
+
+

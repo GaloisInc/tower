@@ -23,6 +23,11 @@ struct bar
   }
 |]
 
+fooBarTypes :: Module
+fooBarTypes = package "fooBarTypes" $ do
+  defStruct (Proxy :: Proxy "foo")
+  defStruct (Proxy :: Proxy "bar")
+
 client :: (SingI n, SingI m)
        => ChannelSource n (Struct "foo")
        -> ChannelSink   m (Struct "bar")
@@ -87,3 +92,5 @@ rpcTower = do
   task "client" $ client (src callCh) (snk respCh)
   task "server" $ server (snk callCh) (src respCh)
 
+  addDepends fooBarTypes
+  addModule fooBarTypes

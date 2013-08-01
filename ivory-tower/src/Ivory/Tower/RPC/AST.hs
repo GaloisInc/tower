@@ -22,7 +22,7 @@ instance Monoid (SM f t) where
                    (sm_end a <> sm_end b)
 
 data Stmt (t :: Area)
-  = forall s . SLifted (Ivory (AllocEffects s) IBool)
+  = SLifted (forall cs . (Ivory (AllocEffects cs) IBool)) -- True if error
   | forall s . SEmit (ConstRef s t)
 
 data Block (f :: Area) (t :: Area) =
@@ -42,10 +42,10 @@ end :: [Stmt t] -> SM f t
 end s = mempty { sm_end = s }
 
 liftIvory :: (forall s . Ivory (AllocEffects s) ()) -> Stmt t
-liftIvory i = SLifted (i >> return false)
+liftIvory i = SLifted (i >> return false) -- Never give error
 
 check :: (forall s . Ivory (AllocEffects s) IBool) -> Stmt t
-check i = SLifted i
+check i = SLifted i -- Allow user code to indicate error with return true
 
 send :: ConstRef s t -> Stmt t
 send r = SEmit r

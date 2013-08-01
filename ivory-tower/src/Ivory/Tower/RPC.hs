@@ -32,7 +32,7 @@ import Ivory.Tower.RPC.Compile
 import Ivory.Tower.RPC.Monad
 
 rpcBegin :: RPCRunnable -> Ivory eff ()
-rpcBegin = call_ . runnable_start
+rpcBegin = call_ . runnable_begin
 
 rpcActive :: RPCRunnable -> Ivory eff IBool
 rpcActive = call . runnable_active

@@ -24,7 +24,8 @@ library
                         Ivory.Tower.Graphviz,
 
                         Ivory.Tower.Test.FooBarSimple,
-                        Ivory.Tower.Test.FooBarSignals
+                        Ivory.Tower.Test.FooBarSignals,
+                        Ivory.Tower.Test.RPC
 
   build-depends:        base >= 4.6,
                         srcloc,

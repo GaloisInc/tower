@@ -46,3 +46,6 @@ liftIvory i = SLifted (i >> return false)
 check :: (forall s . Ivory (AllocEffects s) IBool) -> Stmt t
 check i = SLifted i
 
+send :: (forall s . ConstRef s t) -> Stmt t
+send r = SEmit r
+

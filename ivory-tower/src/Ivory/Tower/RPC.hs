@@ -10,6 +10,7 @@ module Ivory.Tower.RPC
   , Stmt
   , liftIvory
   , check
+  , send
   -- Monad exports
   , RPC()
   , rpcLocal
@@ -37,8 +38,8 @@ rpcActive :: RPCRunnable -> Ivory eff IBool
 rpcActive = call . runnable_active
 
 rpc :: (IvoryArea f, IvoryZero f, IvoryArea t, IvoryZero t, SingI n, SingI m)
-    => ChannelSource n f
-    -> ChannelSink m t
+    => ChannelSource n t
+    -> ChannelSink m f
     -> String
     -> RPC f t ()
     -> Task RPCRunnable
@@ -46,8 +47,9 @@ rpc source sink name m = do
   e  <- withChannelEmitter  source ("rpcTxer" ++ name)
   r  <- withChannelReceiver sink   ("rpcRxer" ++ name)
   sm <- runRPCMonad m
+  n  <- freshname
   -- Need to turn SM into RPCRunnable, recieve callback, and ModuleDef (e.g. generated code)
-  let (runnable, callback, moddef) = compileSM sm (emit_ e)
+  let (runnable, callback, moddef) = compileSM sm (emit_ e) n
   onChannel r $ \v -> do
     noReturn $ callback v
     retVoid

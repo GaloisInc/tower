@@ -38,7 +38,7 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
 
   active = proc (unique "rpc_active")   $ body $ do
     s <- deref state
-    ret (s ==? 0)
+    ret (s /=? 0)
 
   nextstate :: Sint32 -> Ivory eff ()
   nextstate s = store state s
@@ -52,7 +52,28 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
 
   rxer v = do
     s <- deref state
-    mapM_ (compileBlock s v) $ zip [1..] (sm_blocks sm )
+    sequence_ $ zipWith3 (compileBlock s v) fro to bbs
+    where
+    blocks  = sm_blocks sm
+    nblocks = length blocks
+    states  = cycle $ [0..nblocks]
+    fro = drop 1 states -- state 0 is taken care of already
+    to  = drop 1 fro -- always go one state ahead
+
+    (bs, [final]) = splitAt (nblocks - 1) blocks
+    bbs = bs ++ [ final { block_stmts = (block_stmts final) ++ (sm_end sm) } ]
+
+  compileBlock :: Sint32
+               -> ConstRef s' f
+               -> Int
+               -> Int
+               -> Block f t
+               -> Ivory (AllocEffects cs) ()
+  compileBlock currentstate rxedvalue thisstate nextstate b = do
+    when ((fromIntegral thisstate) ==? currentstate) $ case b of
+       Block r ss -> do
+         refCopy r rxedvalue
+         compileStmts nextstate ss
 
   compileStmts ::Int
               -> [Stmt t]
@@ -63,16 +84,6 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
       ifte_ anytrue
         (nextstate (-1)) -- Error
         (nextstate (fromIntegral successState)) -- Continue
-
-  compileBlock :: Sint32
-               -> ConstRef s' f
-               -> (Int, Block f t)
-               -> Ivory (AllocEffects cs) ()
-  compileBlock currentstate rxedvalue (mystate, b) = do
-    when ((fromIntegral mystate) ==? currentstate) $ case b of
-       Block r ss -> do
-         refCopy r rxedvalue
-         compileStmts (mystate + 1) ss
 
   compileStmt :: Stmt t
               -> Ivory (AllocEffects cs') IBool

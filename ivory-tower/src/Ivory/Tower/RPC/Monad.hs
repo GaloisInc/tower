@@ -40,7 +40,7 @@ instance BaseUtils (RPC f t) where
 rpcStart :: [Stmt t] -> RPC f t ()
 rpcStart s = writeSM $ start s
 
-rpcBlock :: (forall s . Ref s f) -> [Stmt t] -> RPC f t ()
+rpcBlock :: Ref s f -> [Stmt t] -> RPC f t ()
 rpcBlock r s = writeSM $ block r s
 
 rpcEnd :: [Stmt t] -> RPC f t ()

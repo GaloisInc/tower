@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
@@ -21,12 +22,12 @@ instance Monoid (SM f t) where
                    (sm_end a <> sm_end b)
 
 data Stmt (t :: Area)
-  = SLifted (forall s . Ivory (AllocEffects s) IBool)
-  | SEmit (forall s . ConstRef  s t)
+  = forall s . SLifted (Ivory (AllocEffects s) IBool)
+  | forall s . SEmit (ConstRef s t)
 
 data Block (f :: Area) (t :: Area) =
-  Block
-    { block_ref :: (forall s . Ref s f)
+  forall s . Block
+    { block_ref :: Ref s f
     , block_stmts :: [Stmt t]
     }
 
@@ -34,7 +35,7 @@ data Block (f :: Area) (t :: Area) =
 start :: [Stmt t] -> SM f t
 start s = mempty { sm_start = s }
 
-block :: (forall s . Ref s f) -> [Stmt t] -> SM f t
+block :: Ref s f -> [Stmt t] -> SM f t
 block ref stmts = mempty { sm_blocks = [Block ref stmts] }
 
 end :: [Stmt t] -> SM f t
@@ -46,6 +47,6 @@ liftIvory i = SLifted (i >> return false)
 check :: (forall s . Ivory (AllocEffects s) IBool) -> Stmt t
 check i = SLifted i
 
-send :: (forall s . ConstRef s t) -> Stmt t
+send :: ConstRef s t -> Stmt t
 send r = SEmit r
 

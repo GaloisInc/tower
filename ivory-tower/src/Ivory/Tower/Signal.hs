@@ -76,7 +76,7 @@ signalBody :: (forall s . Ivory (ProcEffects s ()) ())
 signalBody b = do
   s <- getSignalSt
   case signalst_body s of
-    Nothing -> setSignalSt $ s { signalst_body = Just b } -- XXX fixup later
+    Nothing -> setSignalSt $ s { signalst_body = Just b }
     Just _ -> sigError  "multiple signalBody definitions"
 
 -- | set signal handler name. this will be the name in the generated C code.

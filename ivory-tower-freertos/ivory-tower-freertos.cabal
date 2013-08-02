@@ -49,6 +49,18 @@ executable ivory-tower-freertos-example
                        ivory-tower,
                        ivory-tower-freertos
 
+executable ivory-tower-freertos-example-signals
+  main-is:             FooBarSignals.hs
+  hs-source-dirs:      examples
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory-bitdata,
+                       ivory,
+                       ivory-stdlib,
+                       ivory-backend-c,
+                       ivory-tower,
+                       ivory-tower-freertos
+
 executable ivory-tower-freertos-example-rpc
   main-is:             RPC.hs
   hs-source-dirs:      examples

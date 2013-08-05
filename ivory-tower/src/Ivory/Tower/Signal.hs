@@ -17,10 +17,10 @@ instance Channelable SignalSt where
   nodeChannelEmitter  = signalChannelEmitter
   nodeChannelReceiver = signalChannelReceiver
 
-signalChannelEmitter :: forall n area
+signalChannelEmitter :: forall n area p
                       . (SingI n, IvoryArea area)
                      => ChannelSource n area
-                     -> Node SignalSt (ChannelEmitter n area)
+                     -> Node SignalSt p (ChannelEmitter n area)
 signalChannelEmitter chsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -41,10 +41,10 @@ signalChannelEmitter chsrc = do
     incl (procEmit sch)
   return emitter
 
-signalChannelReceiver :: forall n area
+signalChannelReceiver :: forall n area p
                        . (SingI n, IvoryArea area, IvoryZero area)
                       => ChannelSink n area
-                      -> Node SignalSt (ChannelReceiver n area)
+                      -> Node SignalSt p (ChannelReceiver n area)
 signalChannelReceiver chsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -66,13 +66,13 @@ signalChannelReceiver chsnk = do
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.signalBody' created
 --   in the 'Ivory.Tower.Types.Signal' context.
-signalModuleDef :: ModuleDef ->  Signal ()
+signalModuleDef :: ModuleDef ->  Signal p ()
 signalModuleDef = sigStAddModuleDef . const
 
 -- | Declare a signal handler for a 'Signal'. The task body is an 'Ivory'
 --   computation which handles the signal and Always terminates.
 signalBody :: (forall s . Ivory (ProcEffects s ()) ())
-           -> Signal ()
+           -> Signal p ()
 signalBody b = do
   s <- getSignalSt
   case signalst_body s of
@@ -80,23 +80,23 @@ signalBody b = do
     Just _ -> sigError  "multiple signalBody definitions"
 
 -- | set signal handler name. this will be the name in the generated C code.
-signalName :: String -> Signal ()
+signalName :: String -> Signal p ()
 signalName n = do
   s <- getSignalSt
   case signalst_cname s of
     Nothing -> setSignalSt $ s { signalst_cname = Just n }
     Just _ -> sigError "multiple signalName definitions"
 
-sigError :: String -> Signal ()
+sigError :: String -> Signal p ()
 sigError msg = getNodeName >>= \name -> error (msg ++ " in signal named " ++ name)
 
-signalLocal :: (IvoryArea area) => Name -> Signal (Ref Global area)
+signalLocal :: (IvoryArea area) => Name -> Signal p (Ref Global area)
 signalLocal n = siglocalAux n Nothing
 
-signalLocalInit :: (IvoryArea area) => Name -> Init area -> Signal (Ref Global area)
+signalLocalInit :: (IvoryArea area) => Name -> Init area -> Signal p (Ref Global area)
 signalLocalInit n i = siglocalAux n (Just i)
 
-siglocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Signal (Ref Global area)
+siglocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Signal p (Ref Global area)
 siglocalAux n i = do
   f <- freshname
   let m = area (n ++ f) i

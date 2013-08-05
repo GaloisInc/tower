@@ -38,7 +38,7 @@ someOtherModule= package "someOtherModule" $ do
   defStruct (Proxy :: Proxy "some_other_type")
 
 
-fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
+fooSourceTask :: DataSource (Struct "foo_state") -> Task p ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     state <- taskLocal "state"
@@ -49,7 +49,7 @@ fooSourceTask fooSource = do
 
 barSourceTask :: (SingI n)
               => ChannelSource n (Struct "bar_state") 
-              -> Task ()
+              -> Task p ()
 barSourceTask barSource = do
     barEmitter <- withChannelEmitter barSource "barSource"
     state <- taskLocal "state"
@@ -61,7 +61,7 @@ barSourceTask barSource = do
 fooBarSinkTask :: (SingI n)
                => DataSink (Struct "foo_state")
                -> ChannelSink n (Struct "bar_state")
-               -> Task ()
+               -> Task p ()
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
@@ -75,7 +75,7 @@ fooBarSinkTask fooSink barSink = do
       fmember <- deref (latestFoo ~> foo_member)
       store latestSum (bmember + fmember)
 
-fooBarTower :: Tower ()
+fooBarTower :: Tower p ()
 fooBarTower = do
   (source_f, sink_f) <- dataport
   (source_b, sink_b) <- channel

@@ -41,7 +41,7 @@ someOtherModule= package "someOtherModule" $ do
   defStruct (Proxy :: Proxy "some_other_type")
 
 
-fooSourceTask :: DataSource (Struct "foo_state") -> Task ()
+fooSourceTask :: DataSource (Struct "foo_state") -> Task p ()
 fooSourceTask fooSource = do
     fooWriter <- withDataWriter fooSource "fooSource"
     taskModuleDef $ depend fooBarTypes
@@ -54,7 +54,7 @@ fooSourceTask fooSource = do
 someSignal :: (SingI n, SingI m)
            => ChannelSource n (Stored Uint8)
            -> ChannelSink m (Struct "bar_state")
-           -> Signal ()
+           -> Signal p ()
 someSignal ch1 bar = do
   chEmitter  <- withChannelEmitter ch1 "someChan"
   chReceiver <- withChannelReceiver bar "barToISR"
@@ -68,7 +68,7 @@ someSignal ch1 bar = do
 barSourceTask :: (SingI n, SingI m)
               => ChannelSource n (Struct "bar_state") 
               -> ChannelSink m (Stored Uint8)
-              -> Task ()
+              -> Task p ()
 barSourceTask barSource chSink = do
     barEmitter <- withChannelEmitter barSource "barSource"
     c <- withChannelReceiver chSink "signalCh"
@@ -89,7 +89,7 @@ barSourceTask barSource chSink = do
 fooBarSinkTask :: (SingI n)
                => DataSink (Struct "foo_state")
                -> ChannelSink n (Struct "bar_state")
-               -> Task ()
+               -> Task p ()
 fooBarSinkTask fooSink barSink = do
   barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
@@ -103,7 +103,7 @@ fooBarSinkTask fooSink barSink = do
     fmember <- deref (latestFoo ~> foo_member)
     store latestSum (bmember + fmember)
 
-fooBarTower :: Tower ()
+fooBarTower :: Tower p ()
 fooBarTower = do
   (source_f, sink_f) <- dataport
   (source_b, sink_b) <- channel

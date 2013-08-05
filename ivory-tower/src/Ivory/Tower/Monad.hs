@@ -15,7 +15,7 @@ import Ivory.Tower.Types
 runBase :: Base a -> OS -> a
 runBase b os = fst (runM (unBase b) os 0)
 
-runTower :: Tower () -> Base Assembly
+runTower :: Tower p () -> Base Assembly
 runTower twr = do
   (_, towerst) <- runStateT emptyTowerSt (unTower twr)
   os <- getOS
@@ -29,14 +29,14 @@ runTower twr = do
                     , asm_system  = os_mkSysSchedule os tnodes snodes
                     }
 
-runTask :: Name -> Task () -> Tower TaskNode
+runTask :: Name -> Task p () -> Tower p TaskNode
 runTask name t = do
   n <- freshname
   let uniquename = name ++ n
   (_, tnode) <- runStateT (emptyNodeSt uniquename emptyTaskSt) (unNode t)
   return $ tnode
 
-runSignal :: Name -> Signal () -> Tower SigNode
+runSignal :: Name -> Signal p () -> Tower p SigNode
 runSignal name s = do
   n <- freshname
   let uniquename = name ++ n
@@ -45,52 +45,52 @@ runSignal name s = do
 
 -- Node Transformers----------------------------------------------------------
 
-nodeStAddReceiver :: ChannelId -> String -> Node i ()
+nodeStAddReceiver :: ChannelId -> String -> Node i p ()
 nodeStAddReceiver r lbl = do
   n <- getNodeEdges
   setNodeEdges $ n { nodees_receivers = (Labeled r lbl)
                : (nodees_receivers n)}
 
-nodeStAddEmitter :: ChannelId -> String -> Node i ()
+nodeStAddEmitter :: ChannelId -> String -> Node i p ()
 nodeStAddEmitter r lbl = do
   n <- getNodeEdges
   setNodeEdges $ n { nodees_emitters = (Labeled r lbl)
                : (nodees_emitters n)}
 
-nodeStAddDataReader :: DataportId -> String -> Node i ()
+nodeStAddDataReader :: DataportId -> String -> Node i p ()
 nodeStAddDataReader cc lbl = do
   n <- getNodeEdges
   setNodeEdges $ n { nodees_datareaders = Labeled cc lbl
                                         : nodees_datareaders n
                    }
 
-nodeStAddDataWriter :: DataportId -> String -> Node i ()
+nodeStAddDataWriter :: DataportId -> String -> Node i p ()
 nodeStAddDataWriter cc lbl = do
   n <- getNodeEdges
   setNodeEdges $ n { nodees_datawriters = Labeled cc lbl
                                         : nodees_datawriters n
                    }
 
-nodeStAddCodegen :: Def ('[] :-> ()) -> ModuleDef -> Node i ()
+nodeStAddCodegen :: Def ('[] :-> ()) -> ModuleDef -> Node i p ()
 nodeStAddCodegen i m = do
   n <- getNode
   setNode $ n { nodest_codegen = Codegen i m : nodest_codegen n }
 
-getNode :: Node i (NodeSt i)
+getNode :: Node i p (NodeSt i)
 getNode = Node get
 
-getNodeEdges :: Node i NodeEdges
+getNodeEdges :: Node i p NodeEdges
 getNodeEdges = getNode >>= \n -> return (nodest_edges n)
 
-setNode :: NodeSt i -> Node i ()
+setNode :: NodeSt i -> Node i p ()
 setNode n = Node $ set n
 
-setNodeEdges :: NodeEdges -> Node i ()
+setNodeEdges :: NodeEdges -> Node i p ()
 setNodeEdges e = do
   n <- getNode
   setNode $ n { nodest_edges = e }
 
-getNodeName:: Node i Name
+getNodeName:: Node i p Name
 getNodeName = do
   n <- getNodeEdges
   return (nodees_name n)
@@ -98,59 +98,59 @@ getNodeName = do
 
 -- Task Getters/Setters --------------------------------------------------------
 
-getTaskSt :: Task TaskSt
+getTaskSt :: Task p TaskSt
 getTaskSt = getNode >>= \n -> return (nodest_impl n)
 
-setTaskSt :: TaskSt -> Task ()
+setTaskSt :: TaskSt -> Task p ()
 setTaskSt s = getNode >>= \n -> setNode (n { nodest_impl = s })
 
-taskStAddTaskHandler :: TaskHandler -> Task ()
+taskStAddTaskHandler :: TaskHandler -> Task p ()
 taskStAddTaskHandler th = do
   s <- getTaskSt
   setTaskSt s { taskst_taskhandlers = th : taskst_taskhandlers s }
 
-taskStAddModuleDef :: (TaskSchedule -> ModuleDef) -> Task ()
+taskStAddModuleDef :: (TaskSchedule -> ModuleDef) -> Task p ()
 taskStAddModuleDef md = do
   s <- getTaskSt
   setTaskSt s { taskst_moddef = \sch -> taskst_moddef s sch >> md sch }
 
-taskStAddModuleDefUser :: ModuleDef -> Task ()
+taskStAddModuleDefUser :: ModuleDef -> Task p ()
 taskStAddModuleDefUser md = do
   s <- getTaskSt
   setTaskSt s { taskst_moddef_user = taskst_moddef_user s >> md }
 
 -- Signal Getters/Setters --------------------------------------------------------
 
-getSignalSt :: Signal SignalSt
+getSignalSt :: Signal p SignalSt
 getSignalSt = getNode >>= \n -> return (nodest_impl n)
 
-setSignalSt :: SignalSt -> Signal ()
+setSignalSt :: SignalSt -> Signal p ()
 setSignalSt s = getNode >>= \n -> setNode (n { nodest_impl = s })
 
-sigStAddModuleDef :: (SigSchedule -> ModuleDef) -> Signal ()
+sigStAddModuleDef :: (SigSchedule -> ModuleDef) -> Signal p ()
 sigStAddModuleDef md = do
   s <- getSignalSt
   setSignalSt s { signalst_moddef = \sch -> signalst_moddef s sch >> md sch }
 
 -- Tower Getters/Setters -------------------------------------------------------
 
-getTowerSt :: Tower TowerSt
+getTowerSt :: Tower p TowerSt
 getTowerSt = Tower get
 
-setTowerSt :: TowerSt -> Tower ()
+setTowerSt :: TowerSt -> Tower p ()
 setTowerSt s = Tower $ set s
 
-addTaskNode :: TaskNode -> Tower ()
+addTaskNode :: TaskNode -> Tower p ()
 addTaskNode n = do
   s <- getTowerSt
   setTowerSt $ s { towerst_tasknodes = n : towerst_tasknodes s }
 
-addSigNode :: SigNode -> Tower ()
+addSigNode :: SigNode -> Tower p ()
 addSigNode n = do
   s <- getTowerSt
   setTowerSt $ s { towerst_signodes = n : towerst_signodes s }
 
-mkChannel :: Integer -> String -> Tower ChannelId
+mkChannel :: Integer -> String -> Tower p ChannelId
 mkChannel size label = do
   n <- fresh
   let cid = ChannelId { chan_id = (toInteger n), chan_size = size }
@@ -158,7 +158,7 @@ mkChannel size label = do
   setTowerSt $ st { towerst_channels = Labeled cid label : towerst_channels st }
   return cid
 
-mkDataport :: String -> Tower DataportId
+mkDataport :: String -> Tower p DataportId
 mkDataport label = do
   n <- fresh
   let dpid = DataportId n
@@ -167,7 +167,7 @@ mkDataport label = do
                                       : towerst_dataports st }
   return dpid
 
-addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower ()
+addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower p ()
 addDataportCodegen initializer mdef = do
     s <- getTowerSt
     setTowerSt $ s { towerst_dataportgen = Codegen initializer mdef

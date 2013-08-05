@@ -11,7 +11,7 @@ import Ivory.Tower.Monad
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
 --   'Node'. Provide a human-readable name as a debugging aid.
 withDataReader :: (DataPortable i, IvoryArea area)
-               => DataSink area -> String -> Node i (DataReader area)
+               => DataSink area -> String -> Node i p (DataReader area)
 withDataReader ds label = do
   nodeStAddDataReader (unDataSink ds) label
   nodeDataReader ds
@@ -19,22 +19,22 @@ withDataReader ds label = do
 -- | Transform a 'DataSource' into a 'DataWriter' in the context of a
 --   'Node'. Provide a human-readable name as a debugging aid.
 withDataWriter :: (DataPortable i, IvoryArea area)
-               => DataSource area -> String -> Node i (DataWriter area)
+               => DataSource area -> String -> Node i p (DataWriter area)
 withDataWriter ds label = do
   nodeStAddDataWriter (unDataSource ds) label
   nodeDataWriter ds
 
 class DataPortable i where
   nodeDataReader :: (IvoryArea area)
-                 => DataSink   area -> Node i (DataReader area)
+                 => DataSink   area -> Node i p (DataReader area)
   nodeDataWriter :: (IvoryArea area)
-                 => DataSource area -> Node i (DataWriter area)
+                 => DataSource area -> Node i p (DataWriter area)
 
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
 --   'Task'.
 --   A human-readable name is provided to aid in debugging.
 withChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area, Channelable i)
-      => ChannelSink n area -> String -> Node i (ChannelReceiver n area)
+      => ChannelSink n area -> String -> Node i p (ChannelReceiver n area)
 withChannelReceiver chsink label = do
   rxer <- nodeChannelReceiver chsink
   -- Register the receiver into the graph context
@@ -47,7 +47,7 @@ withChannelReceiver chsink label = do
 --   'Task'.
 --   Provide a human-readable name as a debugging aid.
 withChannelEmitter :: (SingI n, IvoryArea area, Channelable i)
-      => ChannelSource n area -> String -> Node i (ChannelEmitter n area)
+      => ChannelSource n area -> String -> Node i p (ChannelEmitter n area)
 withChannelEmitter chsrc label = do
   emitter <- nodeChannelEmitter chsrc
   nodeStAddEmitter (unChannelSource chsrc) label
@@ -55,7 +55,7 @@ withChannelEmitter chsrc label = do
 
 -- | private
 codegenChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area)
-                       => ChannelReceiver n area -> Node i ()
+                       => ChannelReceiver n area -> Node i p ()
 codegenChannelReceiver rxer = do
   os <- getOS
   thisnode <- getNode
@@ -64,6 +64,6 @@ codegenChannelReceiver rxer = do
 
 class Channelable i where
   nodeChannelEmitter :: (SingI n, IvoryArea area)
-        => ChannelSource n area -> Node i (ChannelEmitter n area)
+        => ChannelSource n area -> Node i p (ChannelEmitter n area)
   nodeChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area)
-        => ChannelSink n area -> Node i (ChannelReceiver n area)
+        => ChannelSink n area -> Node i p (ChannelReceiver n area)

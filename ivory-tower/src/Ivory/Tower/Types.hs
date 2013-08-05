@@ -342,17 +342,17 @@ data OS =
 
 -- | Tower monad: context for instantiating connections (channels & dataports)
 --   and tasks.
-newtype Tower a = Tower
+newtype Tower p a = Tower
   { unTower :: StateT TowerSt Base a
   } deriving (Functor, Monad)
 
 -- | Node monad: context for task-specific code generation
-newtype Node i a = Node
-  { unNode :: StateT (NodeSt i) Tower a
+newtype Node i p a = Node
+  { unNode :: StateT (NodeSt i) (Tower p) a
   } deriving (Functor, Monad)
 
-type Task a = Node TaskSt a
-type Signal a = Node SignalSt a
+type Task p a = Node TaskSt p a
+type Signal p a = Node SignalSt p a
 
 -- | Base monad: internal only. State on fresh names, Reader on OS
 newtype Base a = Base
@@ -376,11 +376,11 @@ instance BaseUtils Base where
     return n
   getOS = Base ask
 
-instance BaseUtils Tower where
+instance BaseUtils (Tower p) where
   fresh = Tower $ lift fresh
   getOS = Tower $ lift getOS
 
-instance BaseUtils (Node i) where
+instance BaseUtils (Node i p) where
   fresh = Node $ lift fresh
   getOS = Node $ lift getOS
 

@@ -21,8 +21,8 @@ instance Channelable TaskSt where
   nodeChannelEmitter  = taskChannelEmitter
   nodeChannelReceiver = taskChannelReceiver
 
-taskChannelEmitter :: forall n area . (SingI n, IvoryArea area)
-        => ChannelSource n area -> Node TaskSt (ChannelEmitter n area)
+taskChannelEmitter :: forall n area p . (SingI n, IvoryArea area)
+        => ChannelSource n area -> Node TaskSt p (ChannelEmitter n area)
 taskChannelEmitter chsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -43,10 +43,10 @@ taskChannelEmitter chsrc = do
     incl (procEmit sch)
   return emitter
 
-taskChannelReceiver :: forall n area
+taskChannelReceiver :: forall n area p
                      . (SingI n, IvoryArea area, IvoryZero area)
                     => ChannelSink n area
-                    -> Node TaskSt (ChannelReceiver n area)
+                    -> Node TaskSt p (ChannelReceiver n area)
 taskChannelReceiver chsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -72,8 +72,8 @@ instance DataPortable TaskSt where
   nodeDataReader = taskDataReader
   nodeDataWriter = taskDataWriter
 
-taskDataReader :: forall area . (IvoryArea area)
-               => DataSink area -> Node TaskSt (DataReader area)
+taskDataReader :: forall area p . (IvoryArea area)
+               => DataSink area -> Node TaskSt p (DataReader area)
 taskDataReader dsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -92,8 +92,8 @@ taskDataReader dsnk = do
     incl (procReader sch)
   return reader
 
-taskDataWriter :: forall area . (IvoryArea area)
-               => DataSource area -> Node TaskSt (DataWriter area)
+taskDataWriter :: forall area p . (IvoryArea area)
+               => DataSource area -> Node TaskSt p (DataWriter area)
 taskDataWriter dsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -114,12 +114,12 @@ taskDataWriter dsrc = do
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.
-taskModuleDef :: ModuleDef -> Task ()
+taskModuleDef :: ModuleDef -> Task p ()
 taskModuleDef = taskStAddModuleDefUser
 
 -- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody'
 --   created in the 'Ivory.Tower.Types.Task' context.
-withStackSize :: Integer -> Task ()
+withStackSize :: Integer -> Task p ()
 withStackSize stacksize = do
   s <- getTaskSt
   case taskst_stacksize s of
@@ -131,7 +131,7 @@ withStackSize stacksize = do
 -- | Specify an OS priority level of the 'Ivory.Tower.Tower.taskBody' created in
 --   the 'Ivory.Tower.Types.Task' context. Implementation at the backend
 --   defined by the 'Ivory.Tower.Types.OS' implementation.
-withPriority :: Integer -> Task ()
+withPriority :: Integer -> Task p ()
 withPriority p = do
   s <- getTaskSt
   case taskst_priority s of
@@ -142,25 +142,25 @@ withPriority p = do
 
 -- | Add an Ivory Module to the result of this Tower compilation, from the
 --   Task context.
-withModule :: Module -> Task ()
+withModule :: Module -> Task p ()
 withModule m = do
   s <- getTaskSt
   setTaskSt $ s { taskst_extern_mods = m:(taskst_extern_mods s)}
 
 
 -- | Create an 'Ivory.Tower.Types.OSGetTimeMillis' in the context of a 'Task'.
-withGetTimeMillis :: Task OSGetTimeMillis
+withGetTimeMillis :: Task p OSGetTimeMillis
 withGetTimeMillis = do
   os <- getOS
   return $ OSGetTimeMillis (os_getTimeMillis os)
 
-taskLocal :: (IvoryArea area) => Name -> Task (Ref Global area)
+taskLocal :: (IvoryArea area) => Name -> Task p (Ref Global area)
 taskLocal n = tlocalAux n Nothing
 
-taskLocalInit :: (IvoryArea area) => Name -> Init area -> Task (Ref Global area)
+taskLocalInit :: (IvoryArea area) => Name -> Init area -> Task p (Ref Global area)
 taskLocalInit n i = tlocalAux n (Just i)
 
-tlocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Task (Ref Global area)
+tlocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Task p (Ref Global area)
 tlocalAux n i = do
   f <- freshname
   let m = area (n ++ f) i
@@ -168,7 +168,7 @@ tlocalAux n i = do
   taskStAddModuleDefUser $ private $ defMemArea m
   return (addrOf m)
 
-taskInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Task ()
+taskInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Task p ()
 taskInit i = do
   s <- getTaskSt
   n <- getNodeName
@@ -180,27 +180,27 @@ taskInit i = do
                           ++ nodename)
   initproc nodename = proc ("taskInit_" ++ nodename) $ body i
 
-onChannel :: forall n area
+onChannel :: forall n area p
            . (IvoryArea area, IvoryZero area)
           => ChannelReceiver n area
           -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
-          -> Task ()
+          -> Task p ()
 onChannel chrxer k = mkOnChannel chrxer $ \name ->
   proc name $ \ref -> body $ k ref
-
-onChannelV :: forall n t
+ 
+onChannelV :: forall n t p
            . (IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
           => ChannelReceiver n (Stored t)
           -> (forall s . t -> Ivory (ProcEffects s ()) ())
-          -> Task ()
+          -> Task p ()
 onChannelV chrxer k = mkOnChannel chrxer $ \name ->
   proc name $ \ref -> body $ deref ref >>= k
 
-mkOnChannel :: forall n area
+mkOnChannel :: forall n area p
              . (IvoryArea area, IvoryZero area)
             => ChannelReceiver n area
             -> (forall s . Name -> Def ('[ConstRef s area] :-> ()))
-            -> Task ()
+            -> Task p ()
 mkOnChannel chrxer mkproc = do
   n <- getNodeName
   f <- freshname
@@ -215,7 +215,7 @@ mkOnChannel chrxer mkproc = do
     , th_moddef = incl callback
     }
 
-onPeriod :: Integer -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task ()
+onPeriod :: Integer -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task p ()
 onPeriod interval k = do
   per <- mkPeriod interval
   n <- getNodeName
@@ -234,7 +234,7 @@ onPeriod interval k = do
 
 -- | Private: interal, makes a Period from an integer, stores
 --   generated code
-mkPeriod :: Integer -> Task Period
+mkPeriod :: Integer -> Task p Period
 mkPeriod per = do
   st <- getTaskSt
   setTaskSt $ st { taskst_periods = per : (taskst_periods st)}

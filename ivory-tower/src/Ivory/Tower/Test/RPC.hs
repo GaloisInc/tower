@@ -31,7 +31,7 @@ fooBarTypes = package "fooBarTypes" $ do
 client :: (SingI n, SingI m)
        => ChannelSource n (Struct "foo")
        -> ChannelSink   m (Struct "bar")
-       -> Task ()
+       -> Task p ()
 client t f = do
   send1 <- taskLocal "send1"
   send2 <- taskLocal "send2"
@@ -61,7 +61,7 @@ client t f = do
 server :: (SingI n, SingI m)
        => ChannelSink   n (Struct "foo")
        -> ChannelSource m (Struct "bar")
-       -> Task ()
+       -> Task p ()
 server inCh outCh = do
   ostream  <- withChannelEmitter  outCh "ostream"
   istream  <- withChannelReceiver inCh  "istream"
@@ -85,7 +85,7 @@ server inCh outCh = do
       (e :: Uint32) <- deref err
       store err (e + 1)
 
-rpcTower :: Tower ()
+rpcTower :: Tower p ()
 rpcTower = do
   callCh <- channel
   respCh <- channel

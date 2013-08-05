@@ -41,8 +41,8 @@ rpc :: (IvoryArea f, IvoryZero f, IvoryArea t, IvoryZero t, SingI n, SingI m)
     => ChannelSource n t
     -> ChannelSink m f
     -> String
-    -> RPC f t ()
-    -> Task RPCRunnable
+    -> RPC p f t ()
+    -> Task p RPCRunnable
 rpc source sink name m = do
   e  <- withChannelEmitter  source ("rpcTxer" ++ name)
   r  <- withChannelReceiver sink   ("rpcRxer" ++ name)

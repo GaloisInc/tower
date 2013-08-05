@@ -25,7 +25,7 @@ import Ivory.Tower.Compile.FreeRTOS.Schedule
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir
 
-compile :: Tower () -> (Assembly, [Module])
+compile :: Tower p () -> (Assembly, [Module])
 compile t = (asm, ms)
   where
   asm = assembleTower t os

@@ -37,7 +37,6 @@ library
                         containers,
                         wl-pprint,
                         monadLib,
-                        free,
                         ivory,
                         ivory-stdlib
 

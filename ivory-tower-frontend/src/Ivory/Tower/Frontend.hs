@@ -75,20 +75,21 @@ compileFreeRTOS compiler conf t = do
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s = case (e1, e2) of
-  ([],[]) -> case cfremaining of
+  ([],[]) -> case tfunmatched ++ cfunmatched ++ cfunrecog of
     [] -> case (mconcat cfs, mconcat tfs) of
-      (C.Success cf, C.Success tf) ->
+      (C.Success cf, C.Success tf) -> do
         let c_opts = cf C.initialOpts
             t_opts = tf T.initialOpts
-        in case T.optsToConfig t_opts c_opts of
+        toconf <- T.optsToConfig t_opts c_opts
+        case toconf of
           Right t_conf -> return (c_opts, t_conf)
           Left e -> die [e]
       _ -> die ["impossible failure concatinating parsed options"]
-    _ -> die ("Unknown options:":cfremaining)
+    unmatched -> die ("Unknown options:":unmatched)
   _ -> die (e1 ++ e2)
   where
-  (tfs,tfremaining,e1) = getOpt Permute T.options s
-  (cfs,cfremaining,e2) = getOpt Permute C.options tfremaining
+  (tfs,tfunmatched,tfunrecog,e1) = getOpt' Permute T.options s
+  (cfs,cfunmatched,cfunrecog,e2) = getOpt' Permute C.options tfunrecog
 
 die :: [String] -> IO a
 die errs = do

@@ -1,14 +1,15 @@
 
 module Ivory.Tower.Frontend.Options where
 
+import System.Environment (getProgName)
+
+import MonadLib.Monads hiding (Id)
+
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 
 import Ivory.Compile.C.CmdlineFrontend.Options (OptParser(..), success)
 import System.Console.GetOpt
 
--- XXX utility - are these in base? sorry you guys
-
-newtype Id a = Id { unId :: a }
 
 -- Two pass evaulation for getting arguments input, then processing them
 -- for required / default cases
@@ -36,6 +37,7 @@ initialOpts = OptsR
   }
 
 -- Then we produce a completed record which has each value
+newtype Id a = Id { unId :: a } -- Quick-n-dirty
 type Config = OptsR Id
 
 -- public accessors for Config:
@@ -46,7 +48,7 @@ conf_platform :: Config -> String
 conf_platform = unId . or_platform
 
 conf_os :: Config -> String
-conf_os= unId . or_os
+conf_os = unId . or_os
 
 conf_mkdot :: Config -> Bool
 conf_mkdot = unId . or_mkdot
@@ -58,15 +60,15 @@ conf_outdir = unId . or_outdir
 
 options :: [OptDescr (OptParser Opts)]
 options =
-  [ Option "n" ["project"]          (ReqArg setName "STRING")
+  [ Option "" ["project"]          (ReqArg setName "STRING")
       "tower project name"
-  , Option "p" ["platform"]         (ReqArg setPlatform "STRING")
+  , Option "" ["platform"]         (ReqArg setPlatform "STRING")
       "tower platform name"
-  , Option "s" ["operating-system"] (ReqArg setOS "STRING")
+  , Option "" ["operating-system"] (ReqArg setOS "STRING")
       "tower operating system name"
-  , Option "d" ["dot"]              (NoArg (setMkDot True))
+  , Option "" ["dot"]              (NoArg (setMkDot True))
       "enable dot file output (default)"
-  , Option "D" ["no-dot"]           (NoArg (setMkDot False))
+  , Option "" ["no-dot"]           (NoArg (setMkDot False))
       "disable dot file output"
   , Option ""  ["tower-outdir"]     (ReqArg setOutdir "STRING")
       "tower metadata output directory"
@@ -86,28 +88,32 @@ options =
 
 -- Process the incomplete Opts record into a complete Config record,
 -- using the C backend options to fill in defaults OR throwing an error.
-optsToConfig :: Opts -> C.Opts -> Either String Config
+optsToConfig :: Opts -> C.Opts -> IO (Either String Config)
 optsToConfig topts copts = do
-  n <- required or_name "missing required option 'project'"
-  p <- required or_platform "missing required option 'platform'"
-  s <- required or_os "missing required option 'operating-system'"
-  d <- case or_mkdot topts of
-    Just v -> return v
-    Nothing -> return True
-  o <- case or_outdir topts of
-    Just o -> return o
-    Nothing -> return $ C.srcDir copts
-  return $ OptsR
-    { or_name = Id n
-    , or_platform = Id p
-    , or_os = Id s
-    , or_mkdot = Id d
-    , or_outdir = Id o
-    }
+  prog <- getProgName
+  return $ runException $ do
+    n <- case or_name topts of
+      Just v -> return v
+      Nothing -> return prog
+    p <- required or_platform "missing required option 'platform'"
+    s <- required or_os "missing required option 'operating-system'"
+    d <- case or_mkdot topts of
+      Just v -> return v
+      Nothing -> return $ not (C.stdOut copts)
+    o <- case or_outdir topts of
+      Just o -> return o
+      Nothing -> return $ C.srcDir copts
+    return $ OptsR
+      { or_name = Id n
+      , or_platform = Id p
+      , or_os = Id s
+      , or_mkdot = Id d
+      , or_outdir = Id o
+      }
  where
- required :: (Opts -> Maybe a) -> String -> Either String a
+ required :: (Opts -> Maybe a) -> String -> Exception String a
  required accessor errmsg =
    case accessor topts of
-     Nothing -> fail errmsg
+     Nothing -> raise errmsg
      Just a -> return a
 

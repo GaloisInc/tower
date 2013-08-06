@@ -8,7 +8,9 @@ cabal-version:       >= 1.10
 license:             BSD3
 
 library
-  exposed-modules:      Ivory.Tower.Frontend
+  exposed-modules:      Ivory.Tower.Frontend,
+                        Ivory.Tower.Frontend.Options
+
   build-depends:        base >= 4.6,
                         srcloc,
                         template-haskell >= 2.8,
@@ -20,6 +22,8 @@ library
                         wl-pprint,
                         monadLib,
                         ivory,
+                        ivory-opts,
+                        ivory-backend-c,
                         ivory-stdlib,
                         ivory-tower,
                         ivory-tower-freertos

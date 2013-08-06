@@ -16,6 +16,7 @@ import System.FilePath
 import Ivory.Language
 import Ivory.Tower
 import qualified Ivory.Opts.CFG as CFG
+import qualified Ivory.Stdlib.SearchDir as Stdlib
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
@@ -33,7 +34,7 @@ data BuildConf =
 defaultBuildConf :: BuildConf
 defaultBuildConf = BuildConf
   { bc_sizemap    = Nothing
-  , bc_searchpath = []
+  , bc_searchpath = [Stdlib.searchDir]
   }
 
 searchPathConf :: [IO FilePath] -> BuildConf
@@ -46,11 +47,11 @@ compile bc t = do
   towerCompile (ivoryCompile bc c_opts) t_opts t
 
 ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO ()
-ivoryCompile bc copts ms sp = 
+ivoryCompile bc copts ms platformspecific_sp = 
   C.runCompilerWith szmap spath ms copts
   where
   szmap = bc_sizemap bc
-  spath = Just $ sp ++ bc_searchpath bc
+  spath = Just $ bc_searchpath bc ++ platformspecific_sp
 
 towerCompile :: ([Module] -> [IO FilePath] -> IO ())
              -> T.Config

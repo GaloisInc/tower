@@ -22,8 +22,9 @@ import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 
 import qualified Ivory.Tower.Graphviz         as T
-import qualified Ivory.Tower.Compile.FreeRTOS as FreeRTOS
 import qualified Ivory.Tower.Frontend.Options as T
+import qualified Ivory.Tower.Compile.FreeRTOS as FreeRTOS
+import qualified Ivory.Tower.Compile.AADL     as AADL
 
 data BuildConf =
   BuildConf
@@ -60,8 +61,9 @@ towerCompile :: ([Module] -> [IO FilePath] -> IO ())
 towerCompile compiler conf t = do
   case T.conf_os conf of
     "freertos" -> compileFreeRTOS compiler conf t
-    "aadl"     -> error "yell at pat to write an AADL compiler"
-    o -> die ["unsupported operating system " ++ o]
+    "aadl"     -> compileAADL     compiler conf t
+    o -> die [ "unsupported operating system " ++ o
+             , "tower frontend supports: freertos, aadl"]
 
 compileFreeRTOS :: ([Module] -> [IO FilePath] -> IO ())
                 -> T.Config
@@ -70,9 +72,21 @@ compileFreeRTOS :: ([Module] -> [IO FilePath] -> IO ())
 compileFreeRTOS compiler conf t = do
   let (asm, objs) = FreeRTOS.compile t
   compiler objs [FreeRTOS.searchDir]
-  when (T.conf_mkdot conf) $
-    let f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
-    in T.graphvizToFile f asm
+  compileDot conf asm
+
+compileAADL :: ([Module] -> [IO FilePath] -> IO ())
+            -> T.Config
+            -> Tower p ()
+            -> IO ()
+compileAADL compiler conf t = do
+  let (asm, objs) = AADL.compile t
+  compiler objs []
+  compileDot conf asm
+
+compileDot :: T.Config -> Assembly -> IO ()
+compileDot conf asm =
+  when (T.conf_mkdot conf) $ T.graphvizToFile f asm
+  where f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s = case (e1, e2) of

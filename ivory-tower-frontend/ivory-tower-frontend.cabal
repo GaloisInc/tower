@@ -26,7 +26,8 @@ library
                         ivory-backend-c,
                         ivory-stdlib,
                         ivory-tower,
-                        ivory-tower-freertos
+                        ivory-tower-freertos,
+                        ivory-tower-aadl
 
   hs-source-dirs:       src
   default-language:     Haskell2010
@@ -43,6 +44,7 @@ executable tower-example-simple
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos,
+                       ivory-tower-aadl,
                        ivory-tower-frontend
 
 executable tower-example-signals
@@ -56,6 +58,7 @@ executable tower-example-signals
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos,
+                       ivory-tower-aadl,
                        ivory-tower-frontend
 
 
@@ -70,5 +73,6 @@ executable tower-example-rpc
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos,
+                       ivory-tower-aadl,
                        ivory-tower-frontend
 

@@ -22,6 +22,7 @@ data OptsR a = OptsR
   , or_platform :: a String
   , or_os       :: a String
   , or_mkdot    :: a Bool
+  , or_mkmeta   :: a Bool
   , or_outdir   :: a FilePath
   }
 
@@ -33,6 +34,7 @@ initialOpts = OptsR
   , or_platform  = Nothing
   , or_os        = Nothing
   , or_mkdot     = Nothing
+  , or_mkmeta    = Nothing
   , or_outdir    = Nothing
   }
 
@@ -53,6 +55,9 @@ conf_os = unId . or_os
 conf_mkdot :: Config -> Bool
 conf_mkdot = unId . or_mkdot
 
+conf_mkmeta :: Config -> Bool
+conf_mkmeta = unId . or_mkmeta
+
 conf_outdir :: Config -> FilePath
 conf_outdir = unId . or_outdir
 
@@ -70,7 +75,11 @@ options =
       "enable dot file output (default)"
   , Option "" ["no-dot"]           (NoArg (setMkDot False))
       "disable dot file output"
-  , Option ""  ["tower-outdir"]     (ReqArg setOutdir "STRING")
+  , Option "" ["meta"]             (NoArg (setMkMeta True))
+      "enable metadata file output (default)"
+  , Option "" ["no-meta"]          (NoArg (setMkMeta False))
+      "disable metadata file output"
+  , Option ""  ["tower-outdir"]    (ReqArg setOutdir "STRING")
       "tower metadata output directory"
   ]
   where
@@ -83,6 +92,8 @@ options =
   setPlatform s = success (\opts -> opts { or_platform = Just s })
   setMkDot :: Bool -> OptParser Opts
   setMkDot b = success (\opts -> opts { or_mkdot = Just b })
+  setMkMeta :: Bool -> OptParser Opts
+  setMkMeta b = success (\opts -> opts { or_mkmeta = Just b })
   setOutdir :: String -> OptParser Opts
   setOutdir s = success (\opts -> opts { or_outdir = Just s })
 
@@ -99,7 +110,10 @@ optsToConfig topts copts = do
     s <- required or_os "missing required option 'operating-system'"
     d <- case or_mkdot topts of
       Just v -> return v
-      Nothing -> return $ not (C.stdOut copts)
+      Nothing -> return towerSpecificCompilations
+    m <- case or_mkmeta topts of
+      Just v -> return v
+      Nothing -> return towerSpecificCompilations
     o <- case or_outdir topts of
       Just o -> return o
       Nothing -> return $ C.srcDir copts
@@ -108,6 +122,7 @@ optsToConfig topts copts = do
       , or_platform = Id p
       , or_os = Id s
       , or_mkdot = Id d
+      , or_mkmeta = Id m
       , or_outdir = Id o
       }
  where
@@ -116,4 +131,11 @@ optsToConfig topts copts = do
    case accessor topts of
      Nothing -> raise errmsg
      Just a -> return a
+ -- The tower compiler has special outputs (dot, metadata files)
+ -- which should not always invoked.
+ towerSpecificCompilations :: Bool
+ towerSpecificCompilations = (not (C.stdOut copts))
+                          && ((C.deps copts) /= "")
+                          && (not (C.outProcSyms copts))
+
 

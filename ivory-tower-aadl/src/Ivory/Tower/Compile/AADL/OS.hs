@@ -53,7 +53,6 @@ assembleSignal tnodes snodes snode = AssembledNode
   sigst = nodest_impl snode
   nodename = nodest_name snode
   schedule = mkSigSchedule tnodes snodes snode -- XXX figure this out
-  mkSigSchedule = undefined
   procname = case signalst_cname sigst of
       Just n  -> n
       Nothing -> nodest_name snode
@@ -67,9 +66,21 @@ assembleSignal tnodes snodes snode = AssembledNode
     incl entry
     sysdeps
 
+mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule 
+mkSigSchedule tnodes snodes snode = SigSchedule
+  { ssch_mkEmitter  = \emitter ref -> call (emitterproc emitter) ref
+  , ssch_mkReceiver = \rxer ref -> call (receiverproc rxer) ref
+  }
+  where
+  emitterproc :: (SingI n, IvoryArea area)
+              => ChannelEmitter n area -> Def('[ConstRef s area] :-> IBool)
+  emitterproc emitter = externProc "mkSigSchedule_emitterProc_placeholder" -- XXX annotate with channelname, nodename
+  receiverproc :: (SingI n, IvoryArea area)
+               => ChannelReceiver n area -> Def('[Ref s area] :-> IBool)
+  receiverproc rxer   = externProc "mkSigSchedule_receiverProc_placeholder" -- XXX
 
 mkSystemSchedule :: [TaskNode] -> [SigNode] -> (ModuleDef, Def('[]:->()))
-mkSystemSchedule = undefined
+mkSystemSchedule _ _ = (return (), externProc "mkSystemSchedule_unneeded")
 
 getTimeMillis :: Def('[]:->Uint32)
 getTimeMillis = externProc "tower_gettimemillis"
@@ -86,29 +97,13 @@ mkChannel :: forall (n :: Nat) (area :: Area) i
 mkChannel rxer destNode = (externProc "mkChannel_unneeded", return ())
 
 mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)
-mkPeriodic p n = undefined -- (Period tick time p, initDef, mDef)
-{-
-
+mkPeriodic p n = (period, externProc "mkPeriodic_unneeded", return ())
   where
-  unique i = i ++ n
-  lastTimeArea = area (unique "periodicLastTime") Nothing
-  lastTime = addrOf lastTimeArea
-  mDef = do
-    incl initDef
-    incl tickDef
-    private $ defMemArea lastTimeArea
-  initDef = proc (unique "initPeriodic") $ body $ do
-    initTime <- call Task.getTimeMillis
-    store lastTime initTime
-  tickDef :: Def ('[]:->IBool)
-  tickDef = proc (unique "tickPeriodic") $ body $ do
-    now  <- call Task.getTimeMillis
-    prev <- deref lastTime
-    assume (now >=? prev) -- The abstract clock should be monotonic.
-    ticked <- assign (now >=? (prev + fromInteger p))
-    when ticked $
-      store lastTime now
-    ret ticked
-  tick = call tickDef
-  time = call Task.getTimeMillis
--}
+  period = Period
+    { per_tick = call per_tick_proc
+    , per_tnow = call getTimeMillis
+    , per_interval = p
+    }
+  per_tick_proc :: Def('[]:->IBool)
+  per_tick_proc = externProc "mkPeriodic_perTickProc_unneeded"
+

@@ -18,13 +18,13 @@ buildModules asm = ms
     ++ concatMap (taskst_extern_mods . nodest_impl . an_nodest) tasks
 
   nodeModules :: AssembledNode a -> [Module]
-  nodeModules n = an_modules n (return ())
+  nodeModules n = an_modules n systemDeps
+
+  systemDeps :: ModuleDef
+  systemDeps = do
+    mapM_ depend (towerst_depends towerst)
 
   tower_tasks :: [Module]
   tower_tasks = concatMap nodeModules tasks ++ concatMap nodeModules signals
 
--- XXX somehow emit all of the header names for the systemDeps
---  systemDeps :: ModuleDef
---  systemDeps = do
---    mapM_ depend (towerst_depends towerst)
 

@@ -27,7 +27,7 @@ assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
 assembleTask tnodes snodes tnode = AssembledNode
   { an_nodest = tnode
   , an_entry = externProc (named "assembleTask_entry_unneeded_")
-  , an_modules = \sysdeps -> [ taskUserCodeMod sysdeps ]
+  , an_modules = \sysdeps -> [ taskLoopMod sysdeps, taskUserCodeMod sysdeps ]
   }
   where
   named n = (n ++ nodest_name tnode)
@@ -38,15 +38,32 @@ assembleTask tnodes snodes tnode = AssembledNode
       Nothing -> return ()
     mapM_ th_moddef $ taskst_taskhandlers taskst
     taskst_moddef_user taskst
-    inclHeader (named "tower_task_loop_")
+    depend (taskLoopMod sysdeps)
     sysdeps
+
+  taskLoopMod sysdeps = package (named "tower_task_loop_") $ do
+    taskst_moddef taskst schedule
+    depend (taskUserCodeMod sysdeps)
+  schedule = mkTaskSchedule tnodes snodes tnode
+
+-- Task Schedule is the vehicle for generating backend specific code, but we
+-- aren't generating code, so just give the trivial implementation for each of
+-- these. (This implementation will be emitted into the task_loop c files, but
+-- those files are not to be compiled)
+mkTaskSchedule :: [TaskNode] -> [SigNode] -> TaskNode -> TaskSchedule
+mkTaskSchedule _ _ _ = TaskSchedule
+  { tsch_mkDataReader = \_ _ -> return ()
+  , tsch_mkDataWriter = \_ _ -> return ()
+  , tsch_mkEmitter    = \_ _ -> return true
+  , tsch_mkReceiver   = \_ _ -> return true
+  }
 
 
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = AssembledNode
   { an_nodest = snode
   , an_entry = externProc (named "assembleSignal_entry_unneeded_")
-  , an_modules = \sysdeps -> [ signalMod sysdeps ]
+  , an_modules = \sysdeps -> [ signalCommMod sysdeps, signalUserCodeMod sysdeps ]
   }
   where
   named n = (n ++ nodest_name snode)
@@ -61,29 +78,37 @@ assembleSignal tnodes snodes snode = AssembledNode
       Just b -> b
       Nothing -> error (   "assembleSignal: no body present in signal named "
                         ++ nodename)
-  signalMod sysdeps = package ("tower_signal_" ++ nodename ) $ do
+  signalCommMod sysdeps = package ("tower_signal_comm_" ++ nodename ) $ do
     signalst_moddef sigst schedule
-    incl entry
+    depend (signalUserCodeMod sysdeps)
     sysdeps
 
+  signalUserCodeMod sysdeps = package ("tower_signal_usercode_" ++ nodename ) $ do
+    signalst_moddef_user sigst
+    incl entry
+    depend (signalCommMod sysdeps)
+    sysdeps
+
+-- SigSchedule is the vehicle for generating backend specific code, but we
+-- aren't generating code, so just give the trivial implementation for each of
+-- these. (This implementation will be emitted into the user code c files, but
+-- those files are not to be compiled)
 mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule 
 mkSigSchedule tnodes snodes snode = SigSchedule
-  { ssch_mkEmitter  = \emitter ref -> call (emitterproc emitter) ref
-  , ssch_mkReceiver = \rxer ref -> call (receiverproc rxer) ref
+  { ssch_mkEmitter  = \_ _ -> return true
+  , ssch_mkReceiver = \_ _ -> return true
   }
-  where
-  emitterproc :: (SingI n, IvoryArea area)
-              => ChannelEmitter n area -> Def('[ConstRef s area] :-> IBool)
-  emitterproc emitter = externProc "mkSigSchedule_emitterProc_placeholder" -- XXX annotate with channelname, nodename
-  receiverproc :: (SingI n, IvoryArea area)
-               => ChannelReceiver n area -> Def('[Ref s area] :-> IBool)
-  receiverproc rxer   = externProc "mkSigSchedule_receiverProc_placeholder" -- XXX
+
+-- This may actually end up being called.
+getTimeMillis :: Def('[]:->Uint32)
+getTimeMillis = importProc "tower_gettimemillis" "tower_gettimemillis.h"
+
+-- The following functions are all empty because we will never call or
+-- generate this backend-specific code.
 
 mkSystemSchedule :: [TaskNode] -> [SigNode] -> (ModuleDef, Def('[]:->()))
 mkSystemSchedule _ _ = (return (), externProc "mkSystemSchedule_unneeded")
 
-getTimeMillis :: Def('[]:->Uint32)
-getTimeMillis = externProc "tower_gettimemillis"
 
 mkDataPort :: forall (area :: Area) . (IvoryArea area)
            => DataSource area -> (Def ('[]:->()), ModuleDef)
@@ -96,8 +121,9 @@ mkChannel :: forall (n :: Nat) (area :: Area) i
            -> (Def('[]:->()), ModuleDef)
 mkChannel rxer destNode = (externProc "mkChannel_unneeded", return ())
 
+-- In this case we might end up needing the gettimemillis or interval number
 mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)
-mkPeriodic p n = (period, externProc "mkPeriodic_unneeded", return ())
+mkPeriodic p _ = (period, externProc "mkPeriodic_unneeded", return ())
   where
   period = Period
     { per_tick = call per_tick_proc

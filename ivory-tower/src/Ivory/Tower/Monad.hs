@@ -132,6 +132,11 @@ sigStAddModuleDef md = do
   s <- getSignalSt
   setSignalSt s { signalst_moddef = \sch -> signalst_moddef s sch >> md sch }
 
+sigStAddModuleDefUser :: ModuleDef -> Signal p ()
+sigStAddModuleDefUser md = do
+  s <- getSignalSt
+  setSignalSt s { signalst_moddef_user = signalst_moddef_user s >> md }
+
 -- Tower Getters/Setters -------------------------------------------------------
 
 getTowerSt :: Tower p TowerSt

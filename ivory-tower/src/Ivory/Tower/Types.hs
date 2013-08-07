@@ -230,16 +230,18 @@ type TaskNode = NodeSt TaskSt
 -- | Internal only: this is the result of a complete 'Signal' context.
 data SignalSt =
   SignalSt
-    { signalst_moddef :: SigSchedule -> ModuleDef
-    , signalst_body   :: forall s . Maybe (Ivory (ProcEffects s ()) ())
-    , signalst_cname  :: Maybe String
+    { signalst_moddef      :: SigSchedule -> ModuleDef
+    , signalst_moddef_user :: ModuleDef
+    , signalst_body        :: forall s . Maybe (Ivory (ProcEffects s ()) ())
+    , signalst_cname       :: Maybe String
     }
 
 emptySignalSt :: SignalSt
 emptySignalSt = SignalSt
-  { signalst_moddef = const (return ())
-  , signalst_body   = Nothing
-  , signalst_cname  = Nothing
+  { signalst_moddef      = const (return ())
+  , signalst_moddef_user = return ()
+  , signalst_body        = Nothing
+  , signalst_cname       = Nothing
   }
 
 type SigNode = NodeSt SignalSt

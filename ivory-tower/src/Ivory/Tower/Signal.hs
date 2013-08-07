@@ -67,7 +67,7 @@ signalChannelReceiver chsnk = do
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.signalBody' created
 --   in the 'Ivory.Tower.Types.Signal' context.
 signalModuleDef :: ModuleDef ->  Signal p ()
-signalModuleDef = sigStAddModuleDef . const
+signalModuleDef = sigStAddModuleDefUser
 
 -- | Declare a signal handler for a 'Signal'. The task body is an 'Ivory'
 --   computation which handles the signal and Always terminates.

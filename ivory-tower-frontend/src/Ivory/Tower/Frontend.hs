@@ -1,9 +1,13 @@
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Ivory.Tower.Frontend
   ( BuildConf(..)
   , defaultBuildConf
   , searchPathConf
   , compile
+
+  , Twr(..)
+  , compilePlatforms
   ) where
 
 import Data.Monoid (mconcat)
@@ -32,6 +36,8 @@ data BuildConf =
     , bc_searchpath :: [IO FilePath]
     }
 
+data Twr = forall p . Twr (Tower p ())
+
 defaultBuildConf :: BuildConf
 defaultBuildConf = BuildConf
   { bc_sizemap    = Nothing
@@ -43,9 +49,17 @@ searchPathConf p = defaultBuildConf { bc_searchpath = p }
 
 compile :: BuildConf -> Tower p () -> IO ()
 compile bc t = do
-  args <- getArgs
-  (c_opts, t_opts) <- parseOptions args
+  (c_opts, t_opts) <- parseOptions =<< getArgs
   towerCompile (ivoryCompile bc c_opts) t_opts t
+
+compilePlatforms :: BuildConf -> [(String, Twr)] -> IO ()
+compilePlatforms bc table =  do
+  (c_opts, t_opts) <- parseOptions =<< getArgs
+  case lookup (T.conf_platform t_opts) table of
+    Just (Twr t) -> towerCompile (ivoryCompile bc c_opts) t_opts t
+    Nothing -> die msg
+  where
+  msg = "unsupported platform. the following platforms are supported:":(map fst table)
 
 ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO ()
 ivoryCompile bc copts ms platformspecific_sp = 

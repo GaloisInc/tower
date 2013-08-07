@@ -8,7 +8,9 @@ cabal-version:       >= 1.10
 license:             BSD3
 
 library
-  exposed-modules:      Ivory.Tower.Compile.AADL
+  exposed-modules:      Ivory.Tower.Compile.AADL,
+                        Ivory.Tower.Compile.AADL.OS
+
   build-depends:        base >= 4.6,
                         template-haskell >= 2.8,
                         filepath,

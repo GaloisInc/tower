@@ -188,7 +188,7 @@ assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = AssembledNode
   { an_nodest = snode
   , an_entry = entry
-  , an_modules = \sysdeps -> [ signalMod sysdeps ]
+  , an_modules = \sysdeps -> [ signalCommMod sysdeps, signalUserCodeMod sysdeps ]
   }
   where
   sigst = nodest_impl snode
@@ -202,9 +202,15 @@ assembleSignal tnodes snodes snode = AssembledNode
       Just b -> b
       Nothing -> error (   "assembleSignal: no body present in signal named "
                         ++ nodename)
-  signalMod sysdeps = package ("tower_signal_" ++ nodename ) $ do
+  signalCommMod sysdeps = package ("tower_signal_comm_" ++ nodename ) $ do
     signalst_moddef sigst schedule
+    depend (signalUserCodeMod sysdeps)
+    sysdeps
+
+  signalUserCodeMod sysdeps = package ("tower_signal_usercode_" ++ nodename) $ do
+    signalst_moddef_user sigst
     incl entry
+    depend (signalCommMod sysdeps)
     sysdeps
 
 

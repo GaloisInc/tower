@@ -24,6 +24,7 @@ library
                         ivory,
                         ivory-opts,
                         ivory-backend-c,
+                        ivory-backend-aadl,
                         ivory-stdlib,
                         ivory-tower,
                         ivory-tower-freertos,

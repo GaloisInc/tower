@@ -10,6 +10,7 @@ module Ivory.Tower.Frontend
   , compilePlatforms
   ) where
 
+import Data.Maybe (catMaybes)
 import Data.Monoid (mconcat)
 import Control.Monad (when)
 import System.Console.GetOpt
@@ -24,6 +25,8 @@ import qualified Ivory.Stdlib.SearchDir as Stdlib
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
+import qualified Ivory.Compile.AADL.Modules as A
+import qualified Ivory.Compile.AADL.AST as A
 
 import qualified Ivory.Tower.Graphviz         as T
 import qualified Ivory.Tower.Frontend.Options as T
@@ -94,13 +97,24 @@ compileAADL :: ([Module] -> [IO FilePath] -> IO ())
             -> IO ()
 compileAADL compiler conf t = do
   let (asm, objs) = AADL.compile t
-  compiler objs []
+  compiler objs searchpath
   compileDot conf asm
+  compileAADLStructDefs conf objs
+  where
+  searchpath = []
 
 compileDot :: T.Config -> Assembly -> IO ()
 compileDot conf asm =
   when (T.conf_mkdot conf) $ T.graphvizToFile f asm
   where f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
+
+compileAADLStructDefs :: T.Config -> [Module] -> IO ()
+compileAADLStructDefs conf mods =
+  when (T.conf_mkmeta conf) $ mapM_ out aadlDocs
+  where
+  aadlDocs = catMaybes $ map A.compileModule mods
+  out d = writeFile (fname d) (show d)
+  fname d = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s = case (e1, e2) of

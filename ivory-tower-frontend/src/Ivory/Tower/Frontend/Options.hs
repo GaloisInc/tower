@@ -134,8 +134,7 @@ optsToConfig topts copts = do
  -- The tower compiler has special outputs (dot, metadata files)
  -- which should not always invoked.
  towerSpecificCompilations :: Bool
- towerSpecificCompilations = (not (C.stdOut copts))
-                          && ((C.deps copts) /= "")
-                          && (not (C.outProcSyms copts))
-
+ towerSpecificCompilations = not $ C.stdOut copts
+                                || (C.deps copts) /= ""
+                                || C.outProcSyms copts
 

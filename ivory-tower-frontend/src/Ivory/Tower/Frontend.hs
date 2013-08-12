@@ -25,8 +25,7 @@ import qualified Ivory.Stdlib.SearchDir as Stdlib
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
-import qualified Ivory.Compile.AADL.Modules as A
-import qualified Ivory.Compile.AADL.AST as A
+import qualified Ivory.Compile.AADL as A
 
 import qualified Ivory.Tower.Graphviz         as T
 import qualified Ivory.Tower.Frontend.Options as T
@@ -113,7 +112,7 @@ compileAADLStructDefs conf mods =
   when (T.conf_mkmeta conf) $ mapM_ out aadlDocs
   where
   aadlDocs = catMaybes $ map A.compileModule mods
-  out d = writeFile (fname d) (show d)
+  out d = A.documentToFile (fname d) d -- writeFile (fname d) (show d)
   fname d = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)

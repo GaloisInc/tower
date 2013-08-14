@@ -118,8 +118,12 @@ compileAADLStructDefs conf mods =
   fname d = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 compileAADLAssembly :: T.Config -> [Module] -> Assembly -> IO ()
-compileAADLAssembly conf mods asm = return ()
-  -- XXX: lets work on implementing this next
+compileAADLAssembly conf mods asm = 
+  when (T.conf_mkmeta conf) $ A.documentToFile fname d
+  where
+  packagename = "somename"
+  d = AADL.assemblyDoc packagename mods asm
+  fname = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s = case (e1, e2) of

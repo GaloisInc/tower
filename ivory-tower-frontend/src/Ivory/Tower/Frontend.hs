@@ -97,8 +97,9 @@ compileAADL :: ([Module] -> [IO FilePath] -> IO ())
 compileAADL compiler conf t = do
   let (asm, objs) = AADL.compile t
   compiler objs searchpath
-  compileDot conf asm
+  compileDot            conf      asm
   compileAADLStructDefs conf objs
+  compileAADLAssembly   conf objs asm
   where
   searchpath = []
 
@@ -111,9 +112,14 @@ compileAADLStructDefs :: T.Config -> [Module] -> IO ()
 compileAADLStructDefs conf mods =
   when (T.conf_mkmeta conf) $ mapM_ out aadlDocs
   where
-  aadlDocs = catMaybes $ map A.compileModule mods
-  out d = A.documentToFile (fname d) d -- writeFile (fname d) (show d)
+  aadlDocs = catMaybes $ map compileWithCtx mods
+  compileWithCtx = A.compileModule mods
+  out d = A.documentToFile (fname d) d
   fname d = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
+
+compileAADLAssembly :: T.Config -> [Module] -> Assembly -> IO ()
+compileAADLAssembly conf mods asm = return ()
+  -- XXX: lets work on implementing this next
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s = case (e1, e2) of

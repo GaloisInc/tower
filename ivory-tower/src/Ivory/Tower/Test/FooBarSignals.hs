@@ -16,12 +16,15 @@ import Ivory.Tower
 [ivory|
 struct foo_state
   { foo_member :: Stored Uint8
+  ; foo_arr    :: Array 10 (Stored Uint16)
   }
 |]
 
 [ivory|
 struct bar_state
   { bar_member :: Stored Uint8
+  ; bar_arr1   :: Array 7 (Stored Uint32)
+  ; bar_arr2   :: Array 10 (Stored Uint16)
   }
 |]
 

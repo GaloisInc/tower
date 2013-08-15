@@ -20,7 +20,7 @@ instance Channelable SignalSt where
 signalChannelEmitter :: forall n area p
                       . (SingI n, IvoryArea area)
                      => ChannelSource n area
-                     -> Node SignalSt p (ChannelEmitter n area)
+                     -> Node SignalSt p (ChannelEmitter n area, String)
 signalChannelEmitter chsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -39,12 +39,12 @@ signalChannelEmitter chsrc = do
         }
   sigStAddModuleDef $ \sch -> do
     incl (procEmit sch)
-  return emitter
+  return (emitter, emitName)
 
 signalChannelReceiver :: forall n area p
                        . (SingI n, IvoryArea area, IvoryZero area)
                       => ChannelSink n area
-                      -> Node SignalSt p (ChannelReceiver n area)
+                      -> Node SignalSt p (ChannelReceiver n area, String)
 signalChannelReceiver chsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -62,7 +62,7 @@ signalChannelReceiver chsnk = do
         }
   sigStAddModuleDef $ \sch -> do
     incl (procRx sch)
-  return rxer
+  return (rxer, rxName)
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.signalBody' created
 --   in the 'Ivory.Tower.Types.Signal' context.

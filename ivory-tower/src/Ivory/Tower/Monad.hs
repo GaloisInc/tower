@@ -46,29 +46,29 @@ runSignal name s = do
 
 -- Node Transformers----------------------------------------------------------
 
-nodeStAddReceiver :: ChannelId -> String -> Node i p ()
-nodeStAddReceiver r lbl = do
+nodeStAddReceiver :: ChannelId -> String -> String -> Node i p ()
+nodeStAddReceiver r l1 l2 = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_receivers = (Labeled r lbl)
+  setNodeEdges $ n { nodees_receivers = (Labeled r l1 l2)
                : (nodees_receivers n)}
 
-nodeStAddEmitter :: ChannelId -> String -> Node i p ()
-nodeStAddEmitter r lbl = do
+nodeStAddEmitter :: ChannelId -> String -> String -> Node i p ()
+nodeStAddEmitter r l1 l2 = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_emitters = (Labeled r lbl)
+  setNodeEdges $ n { nodees_emitters = (Labeled r l1 l2)
                : (nodees_emitters n)}
 
-nodeStAddDataReader :: DataportId -> String -> Node i p ()
-nodeStAddDataReader cc lbl = do
+nodeStAddDataReader :: DataportId -> String -> String -> Node i p ()
+nodeStAddDataReader cc l1 l2 = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_datareaders = Labeled cc lbl
+  setNodeEdges $ n { nodees_datareaders = Labeled cc l1 l2
                                         : nodees_datareaders n
                    }
 
-nodeStAddDataWriter :: DataportId -> String -> Node i p ()
-nodeStAddDataWriter cc lbl = do
+nodeStAddDataWriter :: DataportId -> String -> String -> Node i p ()
+nodeStAddDataWriter cc l1 l2 = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_datawriters = Labeled cc lbl
+  setNodeEdges $ n { nodees_datawriters = Labeled cc l1 l2
                                         : nodees_datawriters n
                    }
 

@@ -23,14 +23,19 @@ import qualified Ivory.Language.Syntax as I
 type Name = String
 
 -- | 'Labeled' is used internally to pair a value with a String.
-data Labeled a = Labeled a String deriving (Show)
+data Labeled a =
+  Labeled
+    { lbl_un :: a
+    , lbl_user :: String
+    , lbl_code :: String
+    } deriving (Show)
 
 instance Functor Labeled where
-  fmap f (Labeled a s) = Labeled (f a) s
+  fmap f (Labeled a s ss) = Labeled (f a) s ss
 
 -- | unwraps a 'Labeled' value
 unLabeled :: Labeled a -> a
-unLabeled (Labeled a _) = a
+unLabeled = lbl_un
 
 -- Channel Types ---------------------------------------------------------------
 

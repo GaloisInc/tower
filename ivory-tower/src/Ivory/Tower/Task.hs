@@ -22,7 +22,7 @@ instance Channelable TaskSt where
   nodeChannelReceiver = taskChannelReceiver
 
 taskChannelEmitter :: forall n area p . (SingI n, IvoryArea area)
-        => ChannelSource n area -> Node TaskSt p (ChannelEmitter n area)
+        => ChannelSource n area -> Node TaskSt p (ChannelEmitter n area, String)
 taskChannelEmitter chsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -41,12 +41,12 @@ taskChannelEmitter chsrc = do
         }
   taskStAddModuleDef $ \sch -> do
     incl (procEmit sch)
-  return emitter
+  return (emitter, emitName)
 
 taskChannelReceiver :: forall n area p
                      . (SingI n, IvoryArea area, IvoryZero area)
                     => ChannelSink n area
-                    -> Node TaskSt p (ChannelReceiver n area)
+                    -> Node TaskSt p (ChannelReceiver n area, String)
 taskChannelReceiver chsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -64,7 +64,7 @@ taskChannelReceiver chsnk = do
         }
   taskStAddModuleDef $ \sch -> do
     incl (procRx sch)
-  return rxer
+  return (rxer, rxName)
 
 ------
 
@@ -73,7 +73,7 @@ instance DataPortable TaskSt where
   nodeDataWriter = taskDataWriter
 
 taskDataReader :: forall area p . (IvoryArea area)
-               => DataSink area -> Node TaskSt p (DataReader area)
+               => DataSink area -> Node TaskSt p (DataReader area, String)
 taskDataReader dsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -90,10 +90,10 @@ taskDataReader dsnk = do
         }
   taskStAddModuleDef $ \sch -> do
     incl (procReader sch)
-  return reader
+  return (reader, readerName)
 
 taskDataWriter :: forall area p . (IvoryArea area)
-               => DataSource area -> Node TaskSt p (DataWriter area)
+               => DataSource area -> Node TaskSt p (DataWriter area, String)
 taskDataWriter dsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
@@ -110,7 +110,7 @@ taskDataWriter dsrc = do
         }
   taskStAddModuleDef $ \sch -> do
     incl (procWriter sch)
-  return writer
+  return (writer, writerName)
 
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.

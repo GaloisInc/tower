@@ -114,13 +114,13 @@ mkNode title auxfields n = name <+> brackets attrs <> semi
   edge_field nm d1 d2 =
     angles (text nm) <+> text d1 <+> text d2
 
-  emitter_field (Labeled chid descr) =
+  emitter_field (Labeled chid descr _) =
     edge_field (chanName chid)  descr "emitter"
-  receiver_field (Labeled chid descr) =
+  receiver_field (Labeled chid descr _) =
     edge_field (chanName chid) descr "receiver"
-  reader_field (Labeled dpid descr) =
+  reader_field (Labeled dpid descr _) =
     edge_field (dataportName  dpid) descr "reader"
-  writer_field (Labeled dpid descr) =
+  writer_field (Labeled dpid descr _) =
     edge_field (dataportName dpid) descr "writer"
 
 -- Dataport, Channel Nodes -----------------------------------------------------
@@ -155,26 +155,26 @@ channelEdge fro to chan = arrow f t <+> brackets desc <> semi
   tyname = show (chan_ityp chan)
 
 emitterEdge :: NodeSt a -> Labeled ChannelId -> Doc
-emitterEdge node (Labeled chan _) = arrow tnode cnode <+> semi
+emitterEdge node (Labeled chan _ _) = arrow tnode cnode <+> semi
   where
   tnode = qual (nodest_name node) (chanName chan)
   cnode = qual (chanName chan) "source"
 
 receiverEdge :: NodeSt a -> Labeled ChannelId -> Doc
-receiverEdge node (Labeled chan _) = arrow cnode tnode <+> semi
+receiverEdge node (Labeled chan _ _) = arrow cnode tnode <+> semi
   where
   cnode = qual (chanName chan) "sink"
   tnode = qual (nodest_name node) (chanName chan)
 
 writerEdge :: NodeSt a -> Labeled DataportId -> Doc
-writerEdge node (Labeled dp _) = arrow tnode dnode <+> brackets desc <> semi
+writerEdge node (Labeled dp _ _) = arrow tnode dnode <+> brackets desc <> semi
   where
   desc = text "style=dashed"
   tnode = qual (nodest_name node) (dataportName dp)
   dnode = text (dataportName dp)
 
 readerEdge :: NodeSt a -> Labeled DataportId -> Doc
-readerEdge node (Labeled dp _) = arrow dnode tnode <+> brackets desc <> semi
+readerEdge node (Labeled dp _ _) = arrow dnode tnode <+> brackets desc <> semi
   where
   desc = text "style=dashed"
   dnode = text (dataportName dp)

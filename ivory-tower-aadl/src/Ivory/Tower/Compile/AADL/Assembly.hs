@@ -9,35 +9,36 @@ import Ivory.Tower.Types
 import Ivory.Compile.AADL.AST
 import Ivory.Compile.AADL.Identifier
 import Ivory.Compile.AADL.Monad
+import Ivory.Compile.AADL.Gen (mkType)
 
 assemblyDoc :: String -> [Module] -> Assembly -> Document
 assemblyDoc name mods asm = runCompile mods virtMod $ do
-  mapM_ (taskDef   asm) (asm_tasks asm)
-  mapM_ (signalDef asm) (asm_sigs  asm)
+  mapM_ taskDef   (asm_tasks asm)
+  mapM_ signalDef (asm_sigs  asm)
   where
   virtMod = package name $ do
     mapM_ depend mods
 
-taskDef :: Assembly -> AssembledNode TaskSt -> CompileM ()
-taskDef asm asmtask = do
-  features <- featuresDef asm asmtask
+taskDef :: AssembledNode TaskSt -> CompileM ()
+taskDef asmtask = do
+  features <- featuresDef asmtask
   writeThreadDefinition (t features)
   where
   t fs = ThreadDef name fs props
   name = nodest_name (an_nodest asmtask)
   props = []
 
-signalDef :: Assembly -> AssembledNode SignalSt -> CompileM ()
-signalDef asm asmsig = do
-  features <- featuresDef asm asmsig
+signalDef :: AssembledNode SignalSt -> CompileM ()
+signalDef asmsig = do
+  features <- featuresDef asmsig
   writeThreadDefinition (t features)
   where
   t fs = ThreadDef name fs props
   name = nodest_name (an_nodest asmsig)
   props = []
 
-featuresDef :: Assembly -> AssembledNode a -> CompileM [ThreadFeature]
-featuresDef asm an = do
+featuresDef :: AssembledNode a -> CompileM [ThreadFeature]
+featuresDef an = do
   ems <- mapM emitterDef    (nodees_emitters    edges)
   rxs <- mapM receiverDef   (nodees_receivers   edges)
   wrs <- mapM dataWriterDef (nodees_datawriters edges)
@@ -50,27 +51,27 @@ featuresDef asm an = do
 
   emitterDef :: Labeled ChannelId -> CompileM ThreadFeature
   emitterDef (Labeled e n) = do
-    t <- channelTypename asm e
+    t <- channelTypename e
     return $ ThreadFeaturePort (identifier n) PortKindEvent Out t props
 
   receiverDef :: Labeled ChannelId -> CompileM ThreadFeature
   receiverDef (Labeled e n) = do
-    t <- channelTypename asm e
+    t <- channelTypename e
     return $ ThreadFeaturePort (identifier n) PortKindEvent In t props
 
   dataWriterDef :: Labeled DataportId -> CompileM ThreadFeature
   dataWriterDef (Labeled e n) = do
-    t <- dataportTypename asm e
+    t <- dataportTypename e
     return $ ThreadFeaturePort (identifier n) PortKindData Out t props
 
   dataReaderDef :: Labeled DataportId -> CompileM ThreadFeature
   dataReaderDef (Labeled e n) = do
-    t <- dataportTypename asm e
+    t <- dataportTypename e
     return $ ThreadFeaturePort (identifier n) PortKindData In t props
 
-channelTypename :: Assembly -> ChannelId -> CompileM TypeName
-channelTypename _ _ = return $ UnqualTypeName "FIXME_channelTypename"
+channelTypename :: ChannelId -> CompileM TypeName
+channelTypename chid = mkType (chan_ityp chid)
 
-dataportTypename :: Assembly -> DataportId -> CompileM TypeName
-dataportTypename _ _ = return $ UnqualTypeName "FIXME_dataportTypename"
+dataportTypename :: DataportId -> CompileM TypeName
+dataportTypename dpid = mkType (dp_ityp dpid)
 

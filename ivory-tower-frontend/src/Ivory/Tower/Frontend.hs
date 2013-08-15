@@ -110,20 +110,22 @@ compileDot conf asm =
 
 compileAADLStructDefs :: T.Config -> [Module] -> IO ()
 compileAADLStructDefs conf mods =
-  when (T.conf_mkmeta conf) $ mapM_ out aadlDocs
+  when (T.conf_mkmeta conf) $ mapM_ (writeAADLDoc conf) aadlDocs
   where
   aadlDocs = catMaybes $ map compileWithCtx mods
   compileWithCtx = A.compileModule mods
-  out d = A.documentToFile (fname d) d
-  fname d = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 compileAADLAssembly :: T.Config -> [Module] -> Assembly -> IO ()
-compileAADLAssembly conf mods asm = 
-  when (T.conf_mkmeta conf) $ A.documentToFile fname d
+compileAADLAssembly conf mods asm =
+  when (T.conf_mkmeta conf) $ writeAADLDoc conf d
   where
-  packagename = "somename"
-  d = AADL.assemblyDoc packagename mods asm
-  fname = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
+  d = AADL.assemblyDoc (T.conf_name conf) mods asm
+
+writeAADLDoc :: T.Config -> A.Document -> IO ()
+writeAADLDoc conf d = do
+  writeFile (fname <.> "debug") (show d) -- XXX
+  A.documentToFile fname d
+  where fname = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s = case (e1, e2) of

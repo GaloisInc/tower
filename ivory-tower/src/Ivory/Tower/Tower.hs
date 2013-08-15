@@ -10,7 +10,6 @@ import GHC.TypeLits
 import Control.Monad (when)
 
 import Ivory.Language
-import qualified Ivory.Language.Area as IArea
 
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
@@ -39,12 +38,11 @@ signal name s = do
 dataport :: forall area p . (IvoryArea area)
          => Tower p (DataSource area, DataSink area)
 dataport = do
-  dpid <- mkDataport tyname
+  dpid <- mkDataport (Proxy :: Proxy area)
   let (source, sink) = (DataSource dpid, DataSink dpid)
   codegenDataport source
   return (source, sink)
   where
-  tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
   -- Need this broken out separately to give it a type signature,
   -- for some reason GHC won't infer the type properly:
   codegenDataport :: (IvoryArea area) => DataSource area -> Tower p ()
@@ -66,10 +64,9 @@ channelWithSize :: forall area n p . (SingI n, IvoryArea area)
                 => Tower p (ChannelSource n area, ChannelSink n area)
 channelWithSize = do
   when (size < 1) $ error "channelWithSize: size must be at least 1"
-  chid <- mkChannel size tyname
+  chid <- mkChannel size (Proxy :: Proxy area)
   return (ChannelSource chid, ChannelSink chid)
   where
-  tyname = show $ IArea.ivoryArea (Proxy :: Proxy area)
   size = fromSing (sing :: Sing n)
 
 -- | Add an arbitrary Ivory 'Module' to Tower. The module will be present in the

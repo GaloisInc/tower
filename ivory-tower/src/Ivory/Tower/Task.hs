@@ -78,7 +78,7 @@ taskDataReader dsnk = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
   let dpid = unDataSink dsnk
-      readerName = printf "read_%s_dataport%d%s" nodename (unDataportId dpid) unique
+      readerName = printf "read_%s_dataport%d%s" nodename (dp_id dpid) unique
       externReader :: Def ('[Ref s area] :-> ())
       externReader = externProc readerName
       procReader :: TaskSchedule -> Def ('[Ref s area] :-> ())
@@ -98,7 +98,7 @@ taskDataWriter dsrc = do
   nodename <- getNodeName
   unique   <- freshname -- May not be needed.
   let dpid = unDataSource dsrc
-      writerName = printf "write_%s_dataport%d%s" nodename (unDataportId dpid) unique
+      writerName = printf "write_%s_dataport%d%s" nodename (dp_id dpid) unique
       externWriter :: Def ('[ConstRef s area] :-> ())
       externWriter = externProc writerName
       procWriter :: TaskSchedule -> Def ('[ConstRef s area] :-> ())

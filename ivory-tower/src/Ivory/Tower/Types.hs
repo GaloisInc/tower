@@ -14,6 +14,7 @@ import GHC.TypeLits
 import MonadLib
 
 import Ivory.Language
+import qualified Ivory.Language.Syntax as I
 
 -- Name ------------------------------------------------------------------------
 
@@ -42,6 +43,7 @@ data ChannelId =
   ChannelId
     { chan_id :: Integer
     , chan_size :: Integer
+    , chan_ityp :: I.Type
     } deriving (Eq, Show)
 
 -- | Designates a Source, the end of a Channel which is written to. The only
@@ -77,10 +79,14 @@ data ChannelReceiver (n :: Nat) (area :: Area) =
 -- Dataport Types --------------------------------------------------------------
 
 -- | The basic reference type underlying all Dataports. Internal only.
-newtype DataportId = DataportId { unDataportId :: Int } deriving (Eq)
+data DataportId =
+  DataportId
+    { dp_id   :: Integer
+    , dp_ityp :: I.Type
+    } deriving (Eq)
 
 instance Show DataportId where
-  show dpid = "DataportId " ++ (show (unDataportId dpid))
+  show dpid = "DataportId " ++ (show (dp_id dpid))
 
 -- | Designates a Dataport Source, the end of a Dataport
 --   which is written to. The only valid operation on 'DataSource' is
@@ -251,8 +257,8 @@ type SigNode = NodeSt SignalSt
 data TowerSt =
   TowerSt
     { towerst_modules      :: [Module]
-    , towerst_dataports    :: [Labeled DataportId]
-    , towerst_channels     :: [Labeled ChannelId]
+    , towerst_dataports    :: [DataportId]
+    , towerst_channels     :: [ChannelId]
     , towerst_tasknodes    :: [TaskNode]
     , towerst_signodes     :: [SigNode]
     , towerst_dataportgen  :: [Codegen]

@@ -7,6 +7,7 @@ module Ivory.Tower.Monad where
 import MonadLib
 
 import Ivory.Language
+import Ivory.Language.Area (ivoryArea)
 
 import Ivory.Tower.Types
 
@@ -155,21 +156,24 @@ addSigNode n = do
   s <- getTowerSt
   setTowerSt $ s { towerst_signodes = n : towerst_signodes s }
 
-mkChannel :: Integer -> String -> Tower p ChannelId
-mkChannel size label = do
+mkChannel :: (IvoryArea a) => Integer -> Proxy a -> Tower p ChannelId
+mkChannel size t = do
   n <- fresh
-  let cid = ChannelId { chan_id = (toInteger n), chan_size = size }
+  let cid = ChannelId { chan_id   = toInteger n
+                      , chan_size = size
+                      , chan_ityp = ivoryArea t
+                      }
   st <- getTowerSt
-  setTowerSt $ st { towerst_channels = Labeled cid label : towerst_channels st }
+  setTowerSt $ st { towerst_channels = cid : towerst_channels st }
   return cid
 
-mkDataport :: String -> Tower p DataportId
-mkDataport label = do
+mkDataport :: (IvoryArea a) => Proxy a -> Tower p DataportId
+mkDataport t = do
   n <- fresh
-  let dpid = DataportId n
+  let dpid = DataportId { dp_id   = toInteger n
+                        , dp_ityp = ivoryArea t }
   st <- getTowerSt
-  setTowerSt $ st { towerst_dataports = Labeled dpid label
-                                      : towerst_dataports st }
+  setTowerSt $ st { towerst_dataports = dpid : towerst_dataports st }
   return dpid
 
 addDataportCodegen :: Def('[]:->()) -> ModuleDef -> Tower p ()

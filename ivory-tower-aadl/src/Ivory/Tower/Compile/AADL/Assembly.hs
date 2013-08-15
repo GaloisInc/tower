@@ -70,8 +70,18 @@ featuresDef an = do
     return $ ThreadFeaturePort (identifier n) PortKindData In t props
 
 channelTypename :: ChannelId -> CompileM TypeName
-channelTypename chid = mkType (chan_ityp chid)
+channelTypename chid = do
+  t <- mkType (chan_ityp chid)
+  return $ implNonBaseTypes t
 
 dataportTypename :: DataportId -> CompileM TypeName
-dataportTypename dpid = mkType (dp_ityp dpid)
+dataportTypename dpid = do
+  t <- mkType (dp_ityp dpid)
+  return $ implNonBaseTypes t
+
+-- HACK: user declared datatypes always need .impl appended
+implNonBaseTypes :: TypeName -> TypeName
+implNonBaseTypes t = case t of
+  QualTypeName "Base_Types" _ -> t
+  _ -> DotTypeName t "impl"
 

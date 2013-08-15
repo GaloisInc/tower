@@ -37,7 +37,7 @@ sharedState dataportid = FreeRTOSDataport
   }
   where
   unique :: String -> String
-  unique n = n ++ ("_dataport" ++ (show (unDataportId dataportid)))
+  unique n = n ++ ("_dataport" ++ (show (dp_id dataportid)))
 
   name = unique "sharedState"
 

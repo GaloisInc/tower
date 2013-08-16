@@ -15,11 +15,16 @@ import Ivory.Compile.AADL.Gen (mkType)
 
 assemblyDoc :: String -> [Module] -> Assembly -> Document
 assemblyDoc name mods asm = runCompile mods virtMod $ do
+  writeImport "SMACCM_SYS"
   mapM_ taskDef   (asm_tasks asm)
   mapM_ signalDef (asm_sigs  asm)
+  writeProcessDefinition (processDef name asm)
   where
   virtMod = package name $ do
     mapM_ depend mods
+
+smaccmProp :: String -> String -> ThreadProperty
+smaccmProp k v = ThreadProperty  ("SMACCM_SYS::" ++ k) v
 
 taskDef :: AssembledNode TaskSt -> CompileM ()
 taskDef asmtask = do
@@ -29,8 +34,13 @@ taskDef asmtask = do
   n = nodest_name (an_nodest asmtask)
   loopsource = "tower_task_loop_" ++ n
   usersource = "tower_task_usercode_" ++ n
-  props = [ ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
-          ]
+  props = [ smaccmProp "Dispatch" (dquotes "EventLoop")
+          , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
+          ] ++ initprop
+  initprop = case taskst_taskinit (nodest_impl (an_nodest asmtask)) of
+    Just _ -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+    Nothing -> []
+  initdefname = "taskInit_" ++ n -- magic: see Ivory.Tower.Task.taskInit
 
 signalDef :: AssembledNode SignalSt -> CompileM ()
 signalDef asmsig = do
@@ -40,8 +50,12 @@ signalDef asmsig = do
   n = nodest_name (an_nodest asmsig)
   commsource = "tower_signal_comm_" ++ n 
   usersource = "tower_signal_usercode_" ++ n
-  props = [ ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
-          ]
+  props = [ smaccmProp "Dispatch" (dquotes "ISR")
+          , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
+          ] ++ isrprop
+  isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
+    Just signame -> [ smaccmProp "Signal_Name" (dquotes signame) ]
+    Nothing -> []
 
 featuresDef :: AssembledNode a -> FilePath -> CompileM [ThreadFeature]
 featuresDef an headername = do
@@ -54,10 +68,11 @@ featuresDef an headername = do
   where
   edges = nodest_edges (an_nodest an)
   props sourcetext =
-    [ ("Compute_Entrypoint_Source_Header", dquotes headername)
-    , ("Compute_Entrypoint_Source_Text", dquotes sourcetext)
+    [ smaccmProp "CommPrim_Source_Header" (dquotes headername)
+    , smaccmProp "CommPrim_Source_Text"   (dquotes sourcetext)
     ]
-  channelprops sourcetext len = ("Queue_Size", show len) : props sourcetext
+  channelprops sourcetext len = qp : props sourcetext
+   where qp = ThreadProperty "Queue_Size" (show len)
 
   emitterDef :: Labeled ChannelId -> CompileM ThreadFeature
   emitterDef lc = do
@@ -101,8 +116,33 @@ dataportTypename dpid = do
 implNonBaseTypes :: TypeName -> TypeName
 implNonBaseTypes t = case t of
   QualTypeName "Base_Types" _ -> t
+  DotTypeName _ _ -> t
   _ -> DotTypeName t "impl"
 
 dquotes :: String -> String
 dquotes s = "\"" ++ s ++ "\""
+
+processDef :: String -> Assembly -> ProcessDef
+processDef n asm = ProcessDef name components connections
+  where
+  name = identifier (n ++ "_process")
+  components = [ pc t | t <- asm_tasks asm ]
+            ++ [ pc s | s <- asm_sigs asm ]
+  pc an = ProcessComponent (n ++ "_inst") n
+    where n = identifier (nodest_name (an_nodest an))
+
+  channels = towerst_channels  (asm_towerst asm)
+  dataports = towerst_dataports (asm_towerst asm)
+  edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
+       ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
+
+  connections = concatMap (chanConns edges) channels
+             ++ concatMap (dataConns edges) dataports
+
+chanConns :: [NodeEdges] -> ChannelId -> [ProcessConnection]
+chanConns es chid = [] -- XXX search all node edges for emitters matching chid,
+                       -- match those to all node edges with receivers matching chid
+
+dataConns :: [NodeEdges] -> DataportId -> [ProcessConnection]
+dataConns es dpid = [] -- XXX same basic algorithm
 

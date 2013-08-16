@@ -122,27 +122,45 @@ implNonBaseTypes t = case t of
 dquotes :: String -> String
 dquotes s = "\"" ++ s ++ "\""
 
+threadInstance :: String -> String
+threadInstance threadtypename = threadtypename ++ "_inst"
+
 processDef :: String -> Assembly -> ProcessDef
-processDef n asm = ProcessDef name components connections
+processDef nodename asm = ProcessDef name components connections
   where
-  name = identifier (n ++ "_process")
+  name = identifier (nodename ++ "_process")
   components = [ pc t | t <- asm_tasks asm ]
             ++ [ pc s | s <- asm_sigs asm ]
-  pc an = ProcessComponent (n ++ "_inst") n
+  pc an = ProcessComponent (threadInstance n) n
     where n = identifier (nodest_name (an_nodest an))
 
-  channels = towerst_channels  (asm_towerst asm)
-  dataports = towerst_dataports (asm_towerst asm)
   edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
        ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
+  connections = chanConns edges ++ dataConns edges
 
-  connections = concatMap (chanConns edges) channels
-             ++ concatMap (dataConns edges) dataports
+chanConns :: [NodeEdges] -> [ProcessConnection]
+chanConns edges =
+  [ mkConn (nodees_name anode) aport (nodees_name bnode) bport
+  | anode <- edges
+  , aport <- nodees_emitters anode
+  , bnode <- edges
+  , bport <- nodees_receivers bnode
+  , unLabeled aport == unLabeled bport
+  ]
 
-chanConns :: [NodeEdges] -> ChannelId -> [ProcessConnection]
-chanConns es chid = [] -- XXX search all node edges for emitters matching chid,
-                       -- match those to all node edges with receivers matching chid
+dataConns :: [NodeEdges] -> [ProcessConnection]
+dataConns edges =
+  [ mkConn (nodees_name anode) aport (nodees_name bnode) bport
+  | anode <- edges
+  , aport <- nodees_datawriters anode
+  , bnode <- edges
+  , bport <- nodees_datareaders bnode
+  , unLabeled aport == unLabeled bport
+  ]
 
-dataConns :: [NodeEdges] -> DataportId -> [ProcessConnection]
-dataConns es dpid = [] -- XXX same basic algorithm
+mkConn :: String -> Labeled a -> String -> Labeled a -> ProcessConnection
+mkConn n1 p1 n2 p2 = ProcessConnection (port n1 p1) (port n2 p2)
+  where port n p = ProcessPort nn pp
+          where nn = identifier (threadInstance n)
+                pp = identifier (lbl_user p)
 

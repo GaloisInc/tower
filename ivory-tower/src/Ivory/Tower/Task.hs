@@ -112,10 +112,18 @@ taskDataWriter dsrc = do
     incl (procWriter sch)
   return (writer, writerName)
 
+--------------------------------------------------------------------------------
+
 -- | Track Ivory dependencies used by the 'Ivory.Tower.Tower.taskBody' created
 --   in the 'Ivory.Tower.Types.Task' context.
 taskModuleDef :: ModuleDef -> Task p ()
 taskModuleDef = taskStAddModuleDefUser
+
+taskDependency :: Task p ModuleDef
+taskDependency = do
+  n <- getNode
+  let fakepkg = package (taskst_pkgname_user n) (return ())
+  return (depend fakepkg)
 
 -- | Specify the stack size, in bytes, of the 'Ivory.Tower.Tower.taskBody'
 --   created in the 'Ivory.Tower.Types.Task' context.
@@ -154,12 +162,16 @@ withGetTimeMillis = do
   os <- getOS
   return $ OSGetTimeMillis (os_getTimeMillis os)
 
+-- | Create a global (e.g. not stack) variable which is private to the task
+--   code.
 taskLocal :: (IvoryArea area) => Name -> Task p (Ref Global area)
 taskLocal n = tlocalAux n Nothing
 
+-- | like 'TaskLocal' but you can provide an 'Init' initialization value.
 taskLocalInit :: (IvoryArea area) => Name -> Init area -> Task p (Ref Global area)
 taskLocalInit n i = tlocalAux n (Just i)
 
+-- | Private helper implements 'taskLocal' and 'taskLocalInit'
 tlocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Task p (Ref Global area)
 tlocalAux n i = do
   f <- freshname
@@ -168,6 +180,7 @@ tlocalAux n i = do
   taskStAddModuleDefUser $ private $ defMemArea m
   return (addrOf m)
 
+-- | Task Initialization handler. Called once when the Tower system initializes.
 taskInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Task p ()
 taskInit i = do
   s <- getTaskSt
@@ -180,6 +193,8 @@ taskInit i = do
                           ++ nodename)
   initproc nodename = proc ("taskInit_" ++ nodename) $ body i
 
+-- | Channel event handler. Called once per received event. Gives event by
+--   reference.
 onChannel :: forall n area p
            . (IvoryArea area, IvoryZero area)
           => ChannelReceiver n area
@@ -187,7 +202,9 @@ onChannel :: forall n area p
           -> Task p ()
 onChannel chrxer k = mkOnChannel chrxer $ \name ->
   proc name $ \ref -> body $ k ref
- 
+
+-- | Channel event handler. Like 'onChannel', but for 'Stored' type events,
+--   which can be given by value.
 onChannelV :: forall n t p
            . (IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
           => ChannelReceiver n (Stored t)
@@ -196,6 +213,7 @@ onChannelV :: forall n t p
 onChannelV chrxer k = mkOnChannel chrxer $ \name ->
   proc name $ \ref -> body $ deref ref >>= k
 
+-- | Private helper function used to implement 'onChannel' and 'onChannelV'
 mkOnChannel :: forall n area p
              . (IvoryArea area, IvoryZero area)
             => ChannelReceiver n area
@@ -215,6 +233,8 @@ mkOnChannel chrxer mkproc = do
     , th_moddef = incl callback
     }
 
+-- | Timer period handler. Calls the event handler at a fixed period, giving the
+--   current time as the event handler argument. All times in ms.
 onPeriod :: Integer -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task p ()
 onPeriod interval k = do
   per <- mkPeriod interval

@@ -236,6 +236,15 @@ emptyTaskSt = TaskSt
 
 type TaskNode = NodeSt TaskSt
 
+-- Task package names: OS implementations must use these to name the
+-- Ivory packages of generated code.
+
+taskst_pkgname_user :: TaskNode -> Name
+taskst_pkgname_user t = "tower_task_usercode_" ++ (nodest_name t)
+
+taskst_pkgname_loop :: TaskNode -> Name
+taskst_pkgname_loop t = "tower_task_loop_" ++ (nodest_name t)
+
 -- Signal State-----------------------------------------------------------------
 
 -- | Internal only: this is the result of a complete 'Signal' context.
@@ -256,6 +265,15 @@ emptySignalSt = SignalSt
   }
 
 type SigNode = NodeSt SignalSt
+
+-- Task package names: OS implementations must use these to name the
+-- Ivory packages of generated code.
+
+sigst_pkgname_user :: SigNode -> Name
+sigst_pkgname_user s = "tower_signal_usercode_" ++ (nodest_name s)
+
+sigst_pkgname_comm :: SigNode -> Name
+sigst_pkgname_comm s = "tower_signal_comm_" ++ (nodest_name s)
 
 -- Tower State -----------------------------------------------------------------
 

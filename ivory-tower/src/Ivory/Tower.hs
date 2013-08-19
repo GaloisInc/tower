@@ -64,6 +64,7 @@ module Ivory.Tower
 
   , taskModuleDef
   , taskInit
+  , taskDependency
   , onPeriod
   , onChannel
   , onChannelV

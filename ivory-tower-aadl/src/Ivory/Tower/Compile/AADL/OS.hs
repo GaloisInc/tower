@@ -32,7 +32,7 @@ assembleTask tnodes snodes tnode = AssembledNode
   where
   named n = (n ++ nodest_name tnode)
   taskst = nodest_impl tnode
-  taskUserCodeMod sysdeps = package (named "tower_task_usercode_") $ do
+  taskUserCodeMod sysdeps = package (taskst_pkgname_user tnode) $ do
     case taskst_taskinit taskst of
       Just t -> incl t
       Nothing -> return ()
@@ -41,7 +41,7 @@ assembleTask tnodes snodes tnode = AssembledNode
     depend (taskLoopMod sysdeps)
     sysdeps
 
-  taskLoopMod sysdeps = package (named "tower_task_loop_") $ do
+  taskLoopMod sysdeps = package (taskst_pkgname_loop tnode ) $ do
     taskst_moddef taskst schedule
     depend (taskUserCodeMod sysdeps)
   schedule = mkTaskSchedule tnodes snodes tnode
@@ -78,12 +78,12 @@ assembleSignal tnodes snodes snode = AssembledNode
       Just b -> b
       Nothing -> error (   "assembleSignal: no body present in signal named "
                         ++ nodename)
-  signalCommMod sysdeps = package ("tower_signal_comm_" ++ nodename ) $ do
+  signalCommMod sysdeps = package (sigst_pkgname_comm snode) $ do
     signalst_moddef sigst schedule
     depend (signalUserCodeMod sysdeps)
     sysdeps
 
-  signalUserCodeMod sysdeps = package ("tower_signal_usercode_" ++ nodename ) $ do
+  signalUserCodeMod sysdeps = package (sigst_pkgname_user snode) $ do
     signalst_moddef_user sigst
     incl entry
     depend (signalCommMod sysdeps)

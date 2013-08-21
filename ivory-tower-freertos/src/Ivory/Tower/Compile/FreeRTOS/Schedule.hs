@@ -140,12 +140,12 @@ assembleTask tnodes snodes tnode = AssembledNode
   }
   where
   schedule = mkTaskSchedule tnodes snodes tnode
-  named n = (n ++ nodest_name tnode)
   taskst = nodest_impl tnode
   taskLoopMod sysdeps = package (taskst_pkgname_loop tnode) $ do
     incl entry
     taskst_moddef taskst schedule
     depend (taskUserCodeMod sysdeps)
+    sysdeps
 
   taskUserCodeMod sysdeps = package (taskst_pkgname_user tnode) $ do
     case taskst_taskinit taskst of

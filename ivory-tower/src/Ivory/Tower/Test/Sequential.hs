@@ -4,12 +4,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Ivory.Tower.Test.RPC where
+module Ivory.Tower.Test.Sequential where
 
 import Ivory.Language
 import Ivory.Stdlib
 import Ivory.Tower
-import Ivory.Tower.RPC
+import qualified Ivory.Tower.Sequential as S
 
 [ivory|
 struct foo
@@ -36,25 +36,25 @@ client t f = do
   send1 <- taskLocal "send1"
   send2 <- taskLocal "send2"
   gotSum <- taskLocal "gotSum"
-  runner <- rpc t f "sampleClient" $ do
-    rpcStart [ send (constRef send1) ]
-    rx1 <- rpcLocal "rx1"
-    rpcBlock rx1
-      [ send (constRef send2) ]
-    rx2 <- rpcLocal "rx2"
-    rpcBlock rx2 [
-      liftIvory $ do
+  runner <- S.sequential t f "sampleClient" $ do
+    S.start [ S.send (constRef send1) ]
+    rx1 <- S.local "rx1"
+    S.block rx1
+      [ S.send (constRef send2) ]
+    rx2 <- S.local "rx2"
+    S.block rx2 [
+      S.liftIvory $ do
         r1 <- deref (rx1 ~> bar_member)
         r2 <- deref (rx2 ~> bar_member)
         store gotSum (r1 + r2)
       ]
 
   onPeriod 100 $ \_time -> do
-    a <- rpcActive runner
+    a <- S.active runner
     unless a $ do
       store (send1 ~> foo_member) 10
       store (send2 ~> foo_member) 33
-      rpcBegin runner
+      S.begin runner
 
 -- Server adds one to a number, but only returns the result at
 -- a fixed 250ms period boundary.
@@ -85,8 +85,8 @@ server inCh outCh = do
       (e :: Uint32) <- deref err
       store err (e + 1)
 
-rpcTower :: Tower p ()
-rpcTower = do
+sequentialTestTower :: Tower p ()
+sequentialTestTower = do
   callCh <- channel
   respCh <- channel
   task "client" $ client (src callCh) (snk respCh)

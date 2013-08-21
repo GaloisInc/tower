@@ -16,16 +16,16 @@ library
                         Ivory.Tower.Tower,
                         Ivory.Tower.Monad,
                         Ivory.Tower.Types,
-                        Ivory.Tower.RPC,
-                        Ivory.Tower.RPC.AST,
-                        Ivory.Tower.RPC.Compile,
-                        Ivory.Tower.RPC.Monad,
+                        Ivory.Tower.Sequential,
+                        Ivory.Tower.Sequential.AST,
+                        Ivory.Tower.Sequential.Compile,
+                        Ivory.Tower.Sequential.Monad,
 
                         Ivory.Tower.Graphviz,
 
                         Ivory.Tower.Test.FooBarSimple,
                         Ivory.Tower.Test.FooBarSignals,
-                        Ivory.Tower.Test.RPC
+                        Ivory.Tower.Test.Sequential
 
   build-depends:        base >= 4.6,
                         srcloc,

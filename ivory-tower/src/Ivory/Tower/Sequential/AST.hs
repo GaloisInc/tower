@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
 
-module Ivory.Tower.RPC.AST where
+module Ivory.Tower.Sequential.AST where
 
 import Data.Monoid
 import Ivory.Language

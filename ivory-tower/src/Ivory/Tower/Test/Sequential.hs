@@ -39,10 +39,10 @@ client t f = do
   runner <- S.sequential t f "sampleClient" $ do
     S.start [ S.send (constRef send1) ]
     rx1 <- S.local "rx1"
-    S.block rx1
+    S.receive rx1
       [ S.send (constRef send2) ]
     rx2 <- S.local "rx2"
-    S.block rx2 [
+    S.receive rx2 [
       S.liftIvory $ do
         r1 <- deref (rx1 ~> bar_member)
         r2 <- deref (rx2 ~> bar_member)

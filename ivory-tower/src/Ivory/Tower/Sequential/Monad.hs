@@ -6,7 +6,7 @@ module Ivory.Tower.Sequential.Monad where
 
 import MonadLib
 
-import Ivory.Language hiding (local, localInit)
+import Ivory.Language hiding (local)
 
 import Ivory.Tower
 import Ivory.Tower.Types
@@ -40,8 +40,11 @@ instance BaseUtils (Sequential p f t) where
 start :: [A.Stmt t] -> Sequential p f t ()
 start s = writeSM $ A.start s
 
-block :: Ref s f -> [A.Stmt t] -> Sequential p f t ()
-block r s = writeSM $ A.block r s
+receive :: Ref s f -> [A.Stmt t] -> Sequential p f t ()
+receive r s = writeSM $ A.blockReceive r s
+
+delay :: Integer -> [A.Stmt t] -> Sequential p f t ()
+delay t s = writeSM $ A.blockTime t s
 
 end :: [A.Stmt t] -> Sequential p f t ()
 end s = writeSM $ A.end s

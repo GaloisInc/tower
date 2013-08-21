@@ -16,7 +16,8 @@ module Ivory.Tower.Sequential
   , local
   , localInit
   , start
-  , block
+  , receive
+  , delay
   , end
   ) where
 
@@ -25,9 +26,9 @@ import Ivory.Language hiding (local, localInit)
 import Ivory.Tower.Types
 import Ivory.Tower.Node
 import Ivory.Tower.Task
-import Ivory.Tower.Ivory
+import Ivory.Tower.Ivory hiding (receive)
 
-import Ivory.Tower.Sequential.AST hiding (start, block, end)
+import Ivory.Tower.Sequential.AST hiding (start, end)
 import Ivory.Tower.Sequential.Compile
 import Ivory.Tower.Sequential.Monad
 

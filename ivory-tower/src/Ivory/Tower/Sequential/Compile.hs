@@ -71,7 +71,7 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
                -> Ivory (AllocEffects cs) ()
   compileBlock currentstate rxedvalue thisstate next b = do
     when ((fromIntegral thisstate) ==? currentstate) $ case b of
-       Block r ss -> do
+       Block (ReceiveEvent r) ss -> do
          refCopy r rxedvalue
          compileStmts next ss
 

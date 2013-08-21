@@ -27,16 +27,23 @@ data Stmt (t :: Area)
 
 data Block (f :: Area) (t :: Area) =
   forall s . Block
-    { block_ref :: Ref s f
+    { block_evt :: BlockEvent s f
     , block_stmts :: [Stmt t]
     }
+
+data BlockEvent s (f :: Area)
+  = ReceiveEvent (Ref s f)
+  | TimeEvent Integer
 
 -- User API to build SMs:
 start :: [Stmt t] -> SM f t
 start s = mempty { sm_start = s }
 
-block :: Ref s f -> [Stmt t] -> SM f t
-block ref stmts = mempty { sm_blocks = [Block ref stmts] }
+blockReceive :: Ref s f -> [Stmt t] -> SM f t
+blockReceive ref stmts = mempty { sm_blocks = [Block (ReceiveEvent ref) stmts] }
+
+blockTime :: Integer -> [Stmt t] -> SM f t
+blockTime t stmts = mempty { sm_blocks = [Block (TimeEvent t) stmts] }
 
 end :: [Stmt t] -> SM f t
 end s = mempty { sm_end = s }

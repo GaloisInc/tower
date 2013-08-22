@@ -151,12 +151,11 @@ assembleTask tnodes snodes tnode = AssembledNode
     case taskst_taskinit taskst of
       Just t -> incl t
       Nothing -> return ()
-    mapM_ th_moddef $ taskst_taskhandlers taskst
     taskst_moddef_user taskst
     depend (taskLoopMod sysdeps)
     sysdeps
 
-  entry = proc ((taskst_pkgname_loop tnode) ++ "_proc") $ body $ do
+  entry = proc ((taskst_pkgname_loop tnode) ++ "_proc") $ body $ noReturn $ do
     case taskst_taskinit taskst of
       Just p -> call_ p
       Nothing -> return ()
@@ -175,8 +174,10 @@ assembleTask tnodes snodes tnode = AssembledNode
       guard_block (eventGuard tnode) diff
       -- Update our finish time variable.
       updateTime timeExitGuard
-      -- Do the work.
-      mapM_ th_scheduler $ taskst_taskhandlers taskst
+      -- Pull events off the channels/timers
+      mapM_ unAction (taskst_evt_rxers taskst)
+      -- Run event handlers
+      mapM_ unAction (taskst_evt_handlers taskst)
     where
     updateTime = resultInto (call Task.getTimeMillis)
     period_gcd :: Uint32

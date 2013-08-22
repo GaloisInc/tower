@@ -33,7 +33,7 @@ class DataPortable i where
                  => DataSource area -> Node i p (DataWriter area, String)
 
 -- | Transform a 'ChannelSink' into a 'ChannelReceiver' in the context of a
---   'Task'.
+--   'Node'.
 --   A human-readable name is provided to aid in debugging.
 withChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area, Channelable i)
       => ChannelSink n area -> String -> Node i p (ChannelReceiver n area)
@@ -46,7 +46,7 @@ withChannelReceiver chsink label = do
   return rxer
 
 -- | Transform a 'ChannelSource' into a 'ChannelEmitter' in the context of a
---   'Task'.
+--   'Node'.
 --   Provide a human-readable name as a debugging aid.
 withChannelEmitter :: (SingI n, IvoryArea area, Channelable i)
       => ChannelSource n area -> String -> Node i p (ChannelEmitter n area)

@@ -105,10 +105,15 @@ getTaskSt = getNode >>= \n -> return (nodest_impl n)
 setTaskSt :: TaskSt -> Task p ()
 setTaskSt s = getNode >>= \n -> setNode (n { nodest_impl = s })
 
-taskStAddTaskHandler :: TaskHandler -> Task p ()
-taskStAddTaskHandler th = do
+taskStAddEventRxer :: Action -> Task p ()
+taskStAddEventRxer a = do
   s <- getTaskSt
-  setTaskSt s { taskst_taskhandlers = th : taskst_taskhandlers s }
+  setTaskSt s { taskst_evt_rxers = a : taskst_evt_rxers s }
+
+taskStAddEventHandler :: Action -> Task p ()
+taskStAddEventHandler a = do
+  s <- getTaskSt
+  setTaskSt s { taskst_evt_handlers = a : taskst_evt_handlers s }
 
 taskStAddModuleDef :: (TaskSchedule -> ModuleDef) -> Task p ()
 taskStAddModuleDef md = do

@@ -42,7 +42,8 @@ client t f = do
     S.receive rx1
       [ S.send (constRef send2) ]
     rx2 <- S.local "rx2"
-    S.receive rx2 [
+    S.receive rx2 []
+    S.delay 125 [
       S.liftIvory $ do
         r1 <- deref (rx1 ~> bar_member)
         r2 <- deref (rx2 ~> bar_member)
@@ -62,9 +63,8 @@ server :: (SingI n, SingI m)
        => ChannelSink   n (Struct "foo")
        -> ChannelSource m (Struct "bar")
        -> Task p ()
-server inCh outCh = do
+server istream outCh = do
   ostream  <- withChannelEmitter  outCh "ostream"
-  istream  <- withChannelReceiver inCh  "istream"
   tosend   <- taskLocalInit "tosend" (ival false)
   lastrxed <- taskLocal "lastrxed"
   err      <- taskLocalInit "error" (ival 0)
@@ -75,7 +75,7 @@ server inCh outCh = do
       out <- local (istruct [ bar_member .= ival (got + 1) ])
       emit_ ostream (constRef out)
       store tosend false
-  onChannel istream $ \v -> do
+  onChannel istream "istream" $ \v -> do
     full <- deref tosend
     unless full $ do
       refCopy lastrxed v

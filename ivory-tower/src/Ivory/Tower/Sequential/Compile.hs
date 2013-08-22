@@ -26,16 +26,16 @@ data Compiled f
   | CTime    (forall cs
              .                 Uint32 -> Sint32 -> Ivory (AllocEffects cs) ())
 
-compileSM :: forall f t n m p
-           . (IvoryArea t, IvoryArea f, IvoryZero f, SingI n, SingI m)
+compileSM :: forall f t n p
+           . (IvoryArea t, IvoryArea f, IvoryZero f, SingI n)
           => SM f t
           -> ChannelEmitter n t
-          -> ChannelReceiver m f
+          -> Event f
           -> String
           -> OSGetTimeMillis
           -> Task p Runnable
 compileSM sm ce cr freshn m = do
-  onChannel cr $ \v -> noReturn $ rxer v m
+  onEvent cr   $ \v -> noReturn $ rxer v m
   onPeriod  1  $ \t -> noReturn $ timerproc t
   taskModuleDef moddef
   return runnable

@@ -202,64 +202,89 @@ taskInit i = do
                           ++ nodename)
   initproc nodename = proc ("taskInit_" ++ nodename) $ body i
 
--- | Channel event handler. Called once per received event. Gives event by
+-- | Event handler. Called once per received event. Gives event by
 --   reference.
-onChannel :: forall n area p
+onEvent :: forall area p
            . (IvoryArea area, IvoryZero area)
-          => ChannelReceiver n area
+          => Event area
           -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
           -> Task p ()
-onChannel chrxer k = mkOnChannel chrxer $ \name ->
+onEvent evt k = onEventAux evt $ \name ->
   proc name $ \ref -> body $ k ref
 
--- | Channel event handler. Like 'onChannel', but for 'Stored' type events,
+-- | Channel event handler. Like 'onEvent', but for 'Stored' type events,
 --   which can be given by value.
-onChannelV :: forall n t p
+onEventV  :: forall t p
            . (IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
-          => ChannelReceiver n (Stored t)
+          => Event (Stored t)
           -> (forall s . t -> Ivory (ProcEffects s ()) ())
           -> Task p ()
-onChannelV chrxer k = mkOnChannel chrxer $ \name ->
+onEventV evt k = onEventAux evt $ \name ->
   proc name $ \ref -> body $ deref ref >>= k
 
--- | Private helper function used to implement 'onChannel' and 'onChannelV'
-mkOnChannel :: forall n area p
-             . (IvoryArea area, IvoryZero area)
-            => ChannelReceiver n area
+-- | Private helper function used to implement 'onEvent' and 'onEventV'
+onEventAux  :: forall area p
+             . (IvoryArea area)
+            => Event area
             -> (forall s . Name -> Def ('[ConstRef s area] :-> ()))
             -> Task p ()
-mkOnChannel chrxer mkproc = do
+onEventAux evt mkproc = do
   n <- getNodeName
   f <- freshname
-  let name = printf "channelhandler_%s_chan%d%s" n (chan_id (cr_chid chrxer)) f
+  let name = printf "eventhandler_%s_%s%s"  n evtname f
       callback :: Def ('[ConstRef s area] :-> ())
       callback = mkproc name
-  taskStAddTaskHandler $ TaskHandler
-    { th_scheduler = do
-        ref <- local izero
-        success <- cr_extern_rx chrxer ref
-        when success $ call_ callback (constRef ref)
-    , th_moddef = incl callback
-    }
+  taskStAddModuleDefUser $ incl callback
+  taskStAddEventHandler $ Action $ do
+    rdy <- deref (evt_ready evt)
+    when rdy $ call_ callback (evt_ref evt)
+  where
+  evtname = case evt_impl evt of
+    ChannelEvent chid -> "chan" ++ (show (chan_id chid))
+    PeriodEvent  p    -> "per" ++ (show p)
 
--- | Timer period handler. Calls the event handler at a fixed period, giving the
---   current time as the event handler argument. All times in ms.
-onPeriod :: Integer -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task p ()
-onPeriod interval k = do
-  per <- mkPeriod interval
-  n <- getNodeName
-  f <- freshname
-  let name = printf "periodhandler_%s_interval%d%s" n (per_interval per) f
-      callback :: Def ('[Uint32]:->())
-      callback = proc name $ \time -> body $ k time
-  taskStAddTaskHandler $ TaskHandler
-    { th_scheduler = do
-        success <- per_tick per
-        when success $ do
-          now <- per_tnow per
-          call_ callback now
-    , th_moddef = incl callback
+-- | Private: generate code to make a channel drive an event handler.
+--   Assumes the channel receiver is ONLY used to drive event handler - don't
+--   expose the receiver to the user after using it to drive an event handler.
+makeChannelEvent :: (IvoryArea area) => ChannelReceiver n area -> Task p (Event area)
+makeChannelEvent chrxer = do
+  ready <- taskLocal (named "ready")
+  ref   <- taskLocal (named "ref")
+  taskStAddEventRxer $ Action $ do
+    success <- cr_extern_rx chrxer ref
+    store ready success
+  return $ Event
+    { evt_impl  = ChannelEvent (cr_chid chrxer)
+    , evt_ref   = constRef ref
+    , evt_ready = constRef ready
     }
+  where
+  named n = "chan" ++ (show (chan_id (cr_chid chrxer))) ++ "_evt_" ++ n
+
+-- | Public: Make a channel receiver which drives an event handler.
+withChannelEvent :: (SingI n, IvoryArea area, IvoryZero area)
+      => ChannelSink n area -> String -> Task p (Event area)
+withChannelEvent chsink label = do
+  rxer <- withChannelReceiver chsink label
+  makeChannelEvent rxer
+
+withPeriodicEvent :: Integer -> Task p (Event (Stored Uint32))
+withPeriodicEvent interval = do
+  per   <- mkPeriod interval
+  ready <- taskLocal (named "ready")
+  ref   <- taskLocal (named "ref")
+  taskStAddEventRxer $ Action $ do
+    success <- per_tick per
+    now     <- per_tnow per
+    store ready success
+    store ref   now
+  return $ Event
+    { evt_impl  = PeriodEvent interval
+    , evt_ref   = constRef ref
+    , evt_ready = constRef ready
+    }
+  where
+  named n = "per" ++ (show interval) ++ "_evt_" ++ n
 
 -- | Private: interal, makes a Period from an integer, stores
 --   generated code
@@ -273,3 +298,23 @@ mkPeriod per = do
   nodeStAddCodegen initdef mdef
   return p
 
+--- Legacy interface emulation
+
+onPeriod :: Integer -> (forall s  . Uint32 -> Ivory (ProcEffects s ()) ()) -> Task p ()
+onPeriod p k = do
+  e <- withPeriodicEvent p
+  onEventV e k
+
+onChannel :: (SingI n, IvoryArea area, IvoryZero area)
+          => ChannelSink n area -> String
+          -> (forall s cs . ConstRef s area -> Ivory (ProcEffects cs ()) ()) -> Task p ()
+onChannel c label k = do
+  e <- withChannelEvent c label
+  onEvent e k
+
+onChannelV :: (SingI n, IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
+           => ChannelSink n (Stored t) -> String
+           -> (forall cs . t -> Ivory (ProcEffects cs ()) ()) -> Task p ()
+onChannelV c label k = do
+  e <- withChannelEvent c label
+  onEventV e k

@@ -63,13 +63,12 @@ fooBarSinkTask :: (SingI n)
                -> ChannelSink n (Struct "bar_state")
                -> Task p ()
 fooBarSinkTask fooSink barSink = do
-  barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
   latestFoo   <- taskLocal "latestFoo"
   latestSum   <- taskLocal "latestSum"
   taskInit $ do
     store latestSum 0
-  onChannel barReceiver $ \latestBar -> do
+  onChannel barSink "barSink" $ \latestBar -> do
       readData fooReader latestFoo
       bmember <- deref (latestBar ~> bar_member)
       fmember <- deref (latestFoo ~> foo_member)

@@ -78,8 +78,7 @@ stateProxy :: (SingI n, IvoryArea area, IvoryZero area)
 stateProxy chsink = do
   (src_data, snk_data) <- dataport
   task "stateProxy" $ do
-    chrxer <- withChannelReceiver chsink "proxy event"
-    data_writer <- withDataWriter src_data "proxy data"
-    onChannel chrxer $ \val -> writeData data_writer val
+    data_writer <- withDataWriter src_data "proxyData"
+    onChannel chsink "proxyEvent" $ \val -> writeData data_writer val
   return snk_data
 

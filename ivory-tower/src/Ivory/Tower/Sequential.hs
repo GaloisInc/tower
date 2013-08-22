@@ -46,7 +46,7 @@ sequential :: (IvoryArea f, IvoryZero f, IvoryArea t, IvoryZero t, SingI n, Sing
     -> Task p Runnable
 sequential source sink name m = do
   e  <- withChannelEmitter  source ("sequentialTxer" ++ name)
-  r  <- withChannelReceiver sink   ("sequentialRxer" ++ name)
+  r  <- withChannelEvent    sink   ("sequentialRxer" ++ name)
   sm <- runSequentialMonad m
   n  <- freshname
   millis <- withGetTimeMillis

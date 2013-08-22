@@ -62,9 +62,14 @@ module Ivory.Tower
   , withPriority
   , withModule
 
+  , withChannelEvent
+  , onEvent
+  , onEventV
+
   , taskModuleDef
   , taskInit
   , taskDependency
+
   , onPeriod
   , onChannel
   , onChannelV
@@ -81,6 +86,7 @@ module Ivory.Tower
   , Assembly()
   , TaskSchedule()
   , SigSchedule()
+  , Event()
 
   -- Built in helpers
   , stateProxy

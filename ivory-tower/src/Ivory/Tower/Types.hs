@@ -81,6 +81,17 @@ data ChannelReceiver (n :: Nat) (area :: Area) =
     , cr_extern_rx :: forall s eff . Ref s area -> Ivory eff IBool
     }
 
+data Event (area :: Area)
+  = Event
+      { evt_impl  :: EventImpl
+      , evt_ref   :: ConstRef Global area
+      , evt_ready :: ConstRef Global (Stored IBool)
+      }
+
+data EventImpl
+  = ChannelEvent ChannelId
+  | PeriodEvent  Integer
+
 -- Dataport Types --------------------------------------------------------------
 
 -- | The basic reference type underlying all Dataports. Internal only.
@@ -123,15 +134,7 @@ data DataWriter (area :: Area) =
                 => ConstRef s area -> Ivory eff ()
     }
 
--- | TaskHandlers
-
-data TaskHandler =
-  TaskHandler
-    { th_scheduler :: forall eff cs
-                    . (GetAlloc eff ~ Scope cs)
-                   => Ivory eff ()
-    , th_moddef    :: ModuleDef
-    }
+data Action = Action { unAction :: forall cs . Ivory (AllocEffects cs) () }
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
@@ -218,7 +221,8 @@ data TaskSt =
     , taskst_moddef_user   :: ModuleDef
     , taskst_extern_mods   :: [Module]
     , taskst_taskinit      :: Maybe (Def('[]:->()))
-    , taskst_taskhandlers  :: [TaskHandler]
+    , taskst_evt_rxers     :: [Action]
+    , taskst_evt_handlers  :: [Action]
     }
 
 -- | Internal only
@@ -231,7 +235,8 @@ emptyTaskSt = TaskSt
   , taskst_moddef_user   = return ()
   , taskst_extern_mods   = []
   , taskst_taskinit      = Nothing
-  , taskst_taskhandlers  = []
+  , taskst_evt_rxers     = []
+  , taskst_evt_handlers  = []
   }
 
 type TaskNode = NodeSt TaskSt

@@ -74,7 +74,6 @@ barSourceTask :: (SingI n, SingI m)
               -> Task p ()
 barSourceTask barSource chSink = do
     barEmitter <- withChannelEmitter barSource "barSource"
-    c <- withChannelReceiver chSink "signalCh"
     taskModuleDef $ depend fooBarTypes
     (state :: Ref Global (Struct "bar_state")) <- taskLocal "state"
     let incrementEmit :: (GetAlloc eff ~ Scope s) => Ivory eff ()
@@ -83,7 +82,7 @@ barSourceTask barSource chSink = do
           store (state ~> bar_member) (v + 1)
           emit_ barEmitter (constRef state)
     onPeriod 125 $ \_now -> incrementEmit
-    onChannel c $ \iref -> do
+    onChannel chSink "signalCh" $ \iref -> do
       i <- deref iref
       when (i >? 0) $ incrementEmit
 
@@ -94,13 +93,12 @@ fooBarSinkTask :: (SingI n)
                -> ChannelSink n (Struct "bar_state")
                -> Task p ()
 fooBarSinkTask fooSink barSink = do
-  barReceiver <- withChannelReceiver barSink "barSink"
   fooReader   <- withDataReader    fooSink "fooSink"
   taskModuleDef $ depend fooBarTypes
   latestFoo <- taskLocal "latestFoo"
   latestSum <- taskLocal "latestSum"
   taskInit $ store latestSum 0
-  onChannel barReceiver $ \latestBar -> do
+  onChannel barSink "barSink" $ \latestBar -> do
     readData fooReader latestFoo
     bmember <- deref (latestBar ~> bar_member)
     fmember <- deref (latestFoo ~> foo_member)

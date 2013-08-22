@@ -6,7 +6,10 @@
 
 module Ivory.Tower.Sequential.Compile where
 
+import Control.Monad (forM_)
+
 import Ivory.Language
+import Ivory.Tower
 import Ivory.Stdlib
 
 import Ivory.Tower.Sequential.AST
@@ -17,16 +20,27 @@ data Runnable =
     , runnable_active  :: Def('[]:->IBool)
     }
 
-compileSM :: forall f t . (IvoryArea f)
+data Compiled f
+  = CReceive (forall s cs 
+             . ConstRef s f -> Uint32 -> Sint32 -> Ivory (AllocEffects cs) ())
+  | CTime    (forall cs
+             .                 Uint32 -> Sint32 -> Ivory (AllocEffects cs) ())
+
+compileSM :: forall f t n m p
+           . (IvoryArea t, IvoryArea f, IvoryZero f, SingI n, SingI m)
           => SM f t
-          -> (forall s cs . ConstRef s t -> Ivory (AllocEffects cs) ())
+          -> ChannelEmitter n t
+          -> ChannelReceiver m f
           -> String
-          -> ( Runnable
-             , (forall s' cs' . ConstRef s' f -> Ivory (AllocEffects cs') ())
-             , ModuleDef )
-compileSM sm emitter freshname = (runnable, rxer, moddef)
+          -> OSGetTimeMillis
+          -> Task p Runnable
+compileSM sm ce cr freshn m = do
+  onChannel cr $ \v -> noReturn $ rxer v m
+  onPeriod  1  $ \t -> noReturn $ timerproc t
+  taskModuleDef moddef
+  return runnable
   where
-  unique n = n ++ freshname
+  unique n = n ++ freshn
   runnable = Runnable
     { runnable_begin  = begin
     , runnable_active = active }
@@ -34,7 +48,9 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
   begin = proc (unique "sequential_begin") $ body $ do
     a <- call active
     unless a $ noReturn $ do
-      compileStmts 1 (sm_start sm)
+      t <- getTimeMillis m
+      ss <- mapM compileStmt (sm_start sm)
+      continue 1 ss t
 
   active = proc (unique "sequential_active")   $ body $ do
     s <- deref state
@@ -45,14 +61,15 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
 
   stateArea = area (unique "sequential_state") $ Just (ival 0)
   (state :: Ref Global (Stored Sint32)) = addrOf stateArea
+  stateChangeArea = area (unique "sequential_state_change_time") $ Just (ival 0)
+  (stateChangeTime :: Ref Global (Stored Uint32)) = addrOf stateChangeArea
   moddef = private $ do
     incl begin
     incl active
     defMemArea stateArea
+    defMemArea stateChangeArea
 
-  rxer v = do
-    s <- deref state
-    sequence_ $ zipWith3 (compileBlock s v) fro to bbs
+  compiledStates = zipWith3 compileBlock fro to bbs
     where
     blocks  = sm_blocks sm
     nblocks = length blocks
@@ -63,23 +80,41 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
     (bs, [final]) = splitAt (nblocks - 1) blocks
     bbs = bs ++ [ final { block_stmts = (block_stmts final) ++ (sm_end sm) } ]
 
-  compileBlock :: Sint32
-               -> ConstRef s' f
-               -> Int
+  rxer v m = do
+    s <- deref state
+    t <- getTimeMillis m
+    forM_ compiledStates $ \c -> case c of
+      CReceive k -> k v t s
+      _ -> return ()
+
+  timerproc t = do
+    s <- deref state
+    forM_ compiledStates $ \c -> case c of
+      CTime k -> k t s
+      _ -> return ()
+
+  compileBlock :: Int
                -> Int
                -> Block f t
-               -> Ivory (AllocEffects cs) ()
-  compileBlock currentstate rxedvalue thisstate next b = do
-    when ((fromIntegral thisstate) ==? currentstate) $ case b of
-       Block (ReceiveEvent r) ss -> do
-         refCopy r rxedvalue
-         compileStmts next ss
+               -> Compiled f
+  compileBlock thisstate next b =
+    case b of
+      Block (ReceiveEvent r) stmts -> CReceive $ \rxedvalue currenttime currentstate -> do
+        when ((fromIntegral thisstate) ==? currentstate) $ case r of
+          ScopedRef r -> do
+             refCopy r rxedvalue
+             ss <- mapM compileStmt stmts
+             continue next ss currenttime
+      Block (TimeEvent time) stmts -> CTime $ \currenttime currentstate -> do
+        when ((fromIntegral thisstate) ==? currentstate) $ do
+          t <- deref stateChangeTime
+          when ((currenttime - t) >? (fromIntegral time)) $ do
+             ss <- mapM compileStmt stmts
+             continue next ss currenttime
 
-  compileStmts ::Int
-              -> [Stmt t]
-              -> Ivory (AllocEffects cs') ()
-  compileStmts successState stmts = do
-      ss <- mapM compileStmt stmts
+  continue :: Int -> [IBool] -> Uint32 -> Ivory (AllocEffects cs) ()
+  continue successState ss currenttime = do
+      store stateChangeTime currenttime
       anytrue <- assign $ foldr (.||) false ss
       ifte_ anytrue
         (nextstate (-1)) -- Error
@@ -89,6 +124,7 @@ compileSM sm emitter freshname = (runnable, rxer, moddef)
               -> Ivory (AllocEffects cs') IBool
   compileStmt s = case s of
     SLifted i -> i
-    SEmit r   -> emitter r >> return false
+    SEmit r   -> emit_ ce r >> return false
+
 
 

@@ -49,11 +49,7 @@ sequential source sink name m = do
   r  <- withChannelReceiver sink   ("sequentialRxer" ++ name)
   sm <- runSequentialMonad m
   n  <- freshname
+  millis <- withGetTimeMillis
   -- Need to turn SM into Runnable, recieve callback, and ModuleDef (e.g. generated code)
-  let (runnable, callback, moddef) = compileSM sm (emit_ e) n
-  onChannel r $ \v -> do
-    noReturn $ callback v
-    retVoid
-  taskModuleDef moddef
-  return runnable
+  compileSM sm e r n millis
 

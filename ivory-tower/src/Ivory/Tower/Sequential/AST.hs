@@ -26,21 +26,23 @@ data Stmt (t :: Area)
   | forall s . SEmit (ConstRef s t)
 
 data Block (f :: Area) (t :: Area) =
-  forall s . Block
-    { block_evt :: BlockEvent s f
+  Block
+    { block_evt :: BlockEvent f
     , block_stmts :: [Stmt t]
     }
 
-data BlockEvent s (f :: Area)
-  = ReceiveEvent (Ref s f)
+data BlockEvent (f :: Area)
+  = ReceiveEvent (ScopedRef f)
   | TimeEvent Integer
+
+data ScopedRef f = forall s . ScopedRef (Ref s f)
 
 -- User API to build SMs:
 start :: [Stmt t] -> SM f t
 start s = mempty { sm_start = s }
 
 blockReceive :: Ref s f -> [Stmt t] -> SM f t
-blockReceive ref stmts = mempty { sm_blocks = [Block (ReceiveEvent ref) stmts] }
+blockReceive ref stmts = mempty { sm_blocks = [Block (ReceiveEvent (ScopedRef ref)) stmts] }
 
 blockTime :: Integer -> [Stmt t] -> SM f t
 blockTime t stmts = mempty { sm_blocks = [Block (TimeEvent t) stmts] }

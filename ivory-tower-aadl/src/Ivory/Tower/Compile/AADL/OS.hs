@@ -36,7 +36,6 @@ assembleTask tnodes snodes tnode = AssembledNode
     case taskst_taskinit taskst of
       Just t -> incl t
       Nothing -> return ()
-    mapM_ th_moddef $ taskst_taskhandlers taskst
     taskst_moddef_user taskst
     depend (taskLoopMod sysdeps)
     sysdeps

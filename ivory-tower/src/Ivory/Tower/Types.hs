@@ -199,6 +199,7 @@ nodest_datawriters = nodees_datawriters . nodest_edges
 data NodeSt a =
   NodeSt 
     { nodest_edges       :: NodeEdges
+    , nodest_nodeinit    :: Maybe (Def('[]:->()))
     , nodest_codegen     :: [Codegen]
     , nodest_impl        :: a
     } deriving (Functor)
@@ -215,6 +216,7 @@ emptyNodeEdges n = NodeEdges
 emptyNodeSt :: Name -> a -> NodeSt a
 emptyNodeSt n impl = NodeSt
   { nodest_edges       = emptyNodeEdges n
+  , nodest_nodeinit    = Nothing
   , nodest_codegen     = []
   , nodest_impl        = impl
   }
@@ -230,7 +232,6 @@ data TaskSt =
     , taskst_moddef        :: TaskSchedule -> ModuleDef
     , taskst_moddef_user   :: ModuleDef
     , taskst_extern_mods   :: [Module]
-    , taskst_taskinit      :: Maybe (Def('[]:->()))
     , taskst_evt_rxers     :: [Action]
     , taskst_evt_handlers  :: [Action]
     }
@@ -244,7 +245,6 @@ emptyTaskSt = TaskSt
   , taskst_moddef        = const (return ())
   , taskst_moddef_user   = return ()
   , taskst_extern_mods   = []
-  , taskst_taskinit      = Nothing
   , taskst_evt_rxers     = []
   , taskst_evt_handlers  = []
   }
@@ -443,6 +443,7 @@ data Assembly =
 data AssembledNode a =
   AssembledNode
     { an_nodest         :: NodeSt a
+    , an_init           :: Maybe (Def('[]:->()))
     , an_entry          :: Def('[]:->())
     , an_modules        :: ModuleDef -> [Module] -- open to adding system deps
     }

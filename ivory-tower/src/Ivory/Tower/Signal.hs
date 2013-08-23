@@ -106,3 +106,7 @@ siglocalAux n i = do
   sigStAddModuleDef (const (defMemArea m))
   return (addrOf m)
 
+-- | Task Initialization handler. Called once when the Tower system initializes.
+signalInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Signal p ()
+signalInit = nodeInit
+

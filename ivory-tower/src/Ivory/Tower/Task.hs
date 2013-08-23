@@ -194,16 +194,7 @@ tlocalAux n i = do
 
 -- | Task Initialization handler. Called once when the Tower system initializes.
 taskInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Task p ()
-taskInit i = do
-  s <- getTaskSt
-  n <- getNodeName
-  case taskst_taskinit s of
-    Nothing -> setTaskSt $ s { taskst_taskinit = Just (initproc n) }
-    Just _ -> (err n)
-  where
-  err nodename = error ("multiple taskInit definitions in task named "
-                          ++ nodename)
-  initproc nodename = proc ("taskInit_" ++ nodename) $ body i
+taskInit = nodeInit
 
 -- | Event handler. Called once per received event. Gives event by
 --   reference.

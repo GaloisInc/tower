@@ -1,6 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Ivory.Tower.Node where
 
@@ -87,3 +89,15 @@ getChannelSourceCallback cs = aux cs (const (return ()), return ())
   aux (ChannelSourceExtended cb mdef rest) acc =
     (\r -> cb r >> cb' r, mdef >> mdef')
     where (cb', mdef') = aux rest acc
+
+nodeInit :: ( forall s . Ivory (ProcEffects s ()) () ) -> Node i p ()
+nodeInit i = do
+  s <- getNode
+  n <- getNodeName
+  case nodest_nodeinit s of
+    Nothing -> setNode $ s { nodest_nodeinit = Just (initproc n) }
+    Just _ -> (err n)
+  where
+  err nodename = error ("multiple nodeInit definitions in node named "
+                          ++ nodename)
+  initproc nodename = proc ("nodeInit_" ++ nodename) $ body i

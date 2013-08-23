@@ -21,12 +21,11 @@ module Ivory.Tower.Sequential
   , end
   ) where
 
-import Ivory.Language hiding (local, localInit)
+import Ivory.Language hiding (local)
 
 import Ivory.Tower.Types
 import Ivory.Tower.Node
 import Ivory.Tower.Task
-import Ivory.Tower.Ivory hiding (receive)
 
 import Ivory.Tower.Sequential.AST hiding (start, end)
 import Ivory.Tower.Sequential.Compile

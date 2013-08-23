@@ -81,6 +81,7 @@ module Ivory.Tower
   , signalBody
   , signalName
   , signalModuleDef
+  , signalInit
 
   -- Types
   , Name

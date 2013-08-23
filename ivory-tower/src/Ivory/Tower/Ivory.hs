@@ -42,11 +42,16 @@ getTimeMillis = unOSGetTimeMillis
 -- | Nonblocking emit. Indicates success in return value.
 emit :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
    => ChannelEmitter n area -> ConstRef s area -> Ivory eff IBool
-emit c r = ce_extern_emit c r
+emit c r = do
+  res <- ce_extern_emit c r
+  (fst . getChannelSourceCallback . ce_chsrc) c r
+  return res
 -- | Nonblocking emit. Fails silently.
 emit_ :: (SingI n, IvoryArea area, GetAlloc eff ~ Scope cs)
    => ChannelEmitter n area -> ConstRef s area -> Ivory eff ()
-emit_ c r = ce_extern_emit_ c r
+emit_ c r = do
+  ce_extern_emit_ c r
+  (fst . getChannelSourceCallback . ce_chsrc) c r
 
 -- | Emit by value - saves the user from having to give a constref
 --   to an atomic value.

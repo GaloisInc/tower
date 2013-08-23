@@ -65,7 +65,7 @@ channelWithSize :: forall area n p . (SingI n, IvoryArea area)
 channelWithSize = do
   when (size < 1) $ error "channelWithSize: size must be at least 1"
   chid <- mkChannel size (Proxy :: Proxy area)
-  return (ChannelSource chid, ChannelSink chid)
+  return (ChannelSourcePrim chid, ChannelSink chid)
   where
   size = fromSing (sing :: Sing n)
 

@@ -34,13 +34,16 @@ taskChannelEmitter chsrc = do
       procEmit schedule = proc emitName $ \ref -> body $ do
         r <- tsch_mkEmitter schedule emitter ref
         ret r
+      (_, cb_mdef) = getChannelSourceCallback chsrc
       emitter  = ChannelEmitter
         { ce_chid         = chid
-        , ce_extern_emit  = call  externEmit
+        , ce_chsrc        = chsrc
+        , ce_extern_emit  = call externEmit
         , ce_extern_emit_ = call_ externEmit
         }
   taskStAddModuleDef $ \sch -> do
     incl (procEmit sch)
+  taskStAddModuleDefUser cb_mdef
   return (emitter, emitName)
 
 taskChannelReceiver :: forall n area p

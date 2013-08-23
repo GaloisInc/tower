@@ -69,3 +69,21 @@ class Channelable i where
         => ChannelSource n area -> Node i p (ChannelEmitter n area, String)
   nodeChannelReceiver :: (SingI n, IvoryArea area, IvoryZero area)
         => ChannelSink n area -> Node i p (ChannelReceiver n area, String)
+
+-- Will expose this publicly:
+channelSourceCallback :: forall n area
+            . (forall s eff . ConstRef s area -> Ivory eff ())
+           -> ModuleDef
+           -> ChannelSource n area
+           -> ChannelSource n area
+channelSourceCallback k mdef cs = ChannelSourceExtended k mdef cs
+
+-- Private
+getChannelSourceCallback :: ChannelSource n a
+           -> (ConstRef s a -> Ivory eff (), ModuleDef)
+getChannelSourceCallback cs = aux cs (const (return ()), return ())
+  where
+  aux (ChannelSourcePrim _) acc = acc
+  aux (ChannelSourceExtended cb mdef rest) acc =
+    (\r -> cb r >> cb' r, mdef >> mdef')
+    where (cb', mdef') = aux rest acc

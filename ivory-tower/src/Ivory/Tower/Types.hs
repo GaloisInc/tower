@@ -54,8 +54,17 @@ data ChannelId =
 -- | Designates a Source, the end of a Channel which is written to. The only
 -- valid operation on a 'ChannelSource' is
 -- 'Ivory.Tower.Tower.withChannelEmitter'
-newtype ChannelSource (n :: Nat) (area :: Area) =
-  ChannelSource { unChannelSource :: ChannelId }
+data ChannelSource (n :: Nat) (area :: Area)
+  = ChannelSourcePrim { csprim_chid :: ChannelId }
+  | ChannelSourceExtended
+      { csext_cb   :: forall s eff . ConstRef s area -> Ivory eff ()
+      , csext_mdef :: ModuleDef
+      , csext_base :: ChannelSource n area
+      }
+
+unChannelSource :: ChannelSource n a -> ChannelId
+unChannelSource (ChannelSourcePrim chid) = chid
+unChannelSource (ChannelSourceExtended _ _ b) = unChannelSource b
 
 -- | Designates a Sink, the end of a Channel which is read from. The only
 -- valid operation on a 'ChannelSink' is
@@ -68,6 +77,7 @@ newtype ChannelSink (n :: Nat) (area :: Area) =
 data ChannelEmitter (n :: Nat) (area :: Area) =
   ChannelEmitter
     { ce_chid         :: ChannelId
+    , ce_chsrc        :: ChannelSource n area
     , ce_extern_emit  :: forall s eff . ConstRef s area -> Ivory eff IBool
     , ce_extern_emit_ :: forall s eff . ConstRef s area -> Ivory eff ()
     }

@@ -55,6 +55,7 @@ module Ivory.Tower
   , withDataReader
   , withDataWriter
 
+  , channelSourceCallback
   -- Task exports:
   , taskLocal
   , taskLocalInit

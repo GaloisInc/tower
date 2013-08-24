@@ -33,7 +33,7 @@ assembleTask tnodes snodes tnode = AssembledNode
   named n = (n ++ nodest_name tnode)
   taskst = nodest_impl tnode
   taskUserCodeMod sysdeps = package (taskst_pkgname_user tnode) $ do
-    case taskst_taskinit taskst of
+    case nodest_nodeinit tnode of
       Just t -> incl t
       Nothing -> return ()
     taskst_moddef_user taskst
@@ -83,6 +83,9 @@ assembleSignal tnodes snodes snode = AssembledNode
     sysdeps
 
   signalUserCodeMod sysdeps = package (sigst_pkgname_user snode) $ do
+    case nodest_nodeinit snode of
+      Just t -> incl t
+      Nothing -> return ()
     signalst_moddef_user sigst
     incl entry
     depend (signalCommMod sysdeps)

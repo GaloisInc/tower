@@ -37,10 +37,10 @@ taskDef asmtask = do
   props = [ smaccmProp "Dispatch" (dquotes "EventLoop")
           , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
           ] ++ initprop
-  initprop = case taskst_taskinit (nodest_impl (an_nodest asmtask)) of
-    Just _ -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+  initprop = case an_init asmtask of
+    Just p -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
     Nothing -> []
-  initdefname = "taskInit_" ++ n -- magic: see Ivory.Tower.Task.taskInit
+  initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
 signalDef :: AssembledNode SignalSt -> CompileM ()
 signalDef asmsig = do
@@ -52,10 +52,14 @@ signalDef asmsig = do
   usersource = "tower_signal_usercode_" ++ n
   props = [ smaccmProp "Dispatch" (dquotes "ISR")
           , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
-          ] ++ isrprop
+          ] ++ isrprop ++ initprop
   isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
     Just signame -> [ smaccmProp "Signal_Name" (dquotes signame) ]
     Nothing -> []
+  initprop = case an_init asmsig of
+    Just p -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+    Nothing -> []
+  initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
 featuresDef :: AssembledNode a -> FilePath -> CompileM [ThreadFeature]
 featuresDef an headername = do

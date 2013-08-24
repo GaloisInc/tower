@@ -82,12 +82,19 @@ buildModules asm = ms
     call_ sys_initdef
     mapM_ (call_ . cgen_init) node_genchannels
     mapM_ (call_ . cgen_init) (towerst_dataportgen towerst)
+    mapM_ taskInit   tasks
+    mapM_ taskInit   signals
     mapM_ taskCreate tasks
     retVoid
 
 
 getNodeCodegen :: [AssembledNode a] -> [Codegen]
 getNodeCodegen as = concatMap (nodest_codegen . an_nodest) as
+
+taskInit :: AssembledNode i -> Ivory eff ()
+taskInit a = case an_init a of
+  Just p -> call_ p
+  Nothing -> return ()
 
 taskCreate :: AssembledNode TaskSt -> Ivory eff ()
 taskCreate a = call_ Task.create pointer stacksize priority

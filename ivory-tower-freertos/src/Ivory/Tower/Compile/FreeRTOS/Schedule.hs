@@ -134,8 +134,9 @@ mkDataWriter dsrc = fdp_write fdp
 
 assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
 assembleTask tnodes snodes tnode = AssembledNode
-  { an_nodest = tnode
-  , an_entry = entry
+  { an_nodest  = tnode
+  , an_init    = nodest_nodeinit tnode
+  , an_entry   = entry
   , an_modules = \sysdeps -> [ taskLoopMod sysdeps, taskUserCodeMod sysdeps ]
   }
   where
@@ -148,7 +149,7 @@ assembleTask tnodes snodes tnode = AssembledNode
     sysdeps
 
   taskUserCodeMod sysdeps = package (taskst_pkgname_user tnode) $ do
-    case taskst_taskinit taskst of
+    case nodest_nodeinit tnode of
       Just t -> incl t
       Nothing -> return ()
     taskst_moddef_user taskst
@@ -156,10 +157,6 @@ assembleTask tnodes snodes tnode = AssembledNode
     sysdeps
 
   entry = proc ((taskst_pkgname_loop tnode) ++ "_proc") $ body $ noReturn $ do
-    case taskst_taskinit taskst of
-      Just p -> call_ p
-      Nothing -> return ()
-
     -- Initialize a variable for when the task finishes computation.
     timeExitGuard <- local izero
     updateTime timeExitGuard
@@ -187,8 +184,9 @@ assembleTask tnodes snodes tnode = AssembledNode
 
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = AssembledNode
-  { an_nodest = snode
-  , an_entry = entry
+  { an_nodest  = snode
+  , an_init    = nodest_nodeinit snode
+  , an_entry   = entry
   , an_modules = \sysdeps -> [ signalCommMod sysdeps, signalUserCodeMod sysdeps ]
   }
   where
@@ -208,6 +206,9 @@ assembleSignal tnodes snodes snode = AssembledNode
     sysdeps
 
   signalUserCodeMod sysdeps = package (sigst_pkgname_user snode) $ do
+    case nodest_nodeinit snode of
+      Just t -> incl t
+      Nothing -> return ()
     signalst_moddef_user sigst
     incl entry
     depend (signalCommMod sysdeps)

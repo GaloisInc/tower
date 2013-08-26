@@ -146,7 +146,11 @@ assembleTask tnodes snodes tnode = AssembledNode
     incl entry
     taskst_moddef taskst schedule
     depend (taskUserCodeMod sysdeps)
+    private (defMemArea overrun_area)
     sysdeps
+
+  overrun_area = area ("period_overrun_" ++ (taskst_pkgname_loop tnode))
+    (Just (ival 0))
 
   taskUserCodeMod sysdeps = package (taskst_pkgname_user tnode) $ do
     case nodest_nodeinit tnode of
@@ -163,12 +167,23 @@ assembleTask tnodes snodes tnode = AssembledNode
     forever $ noBreak $ do
       -- Get the current time.
       timeEnterGuard <- call Task.getTimeMillis
-      teg <- deref timeExitGuard
+      tExitG <- deref timeExitGuard
+      dt <- assign (timeEnterGuard - tExitG)
+      assert (dt >=? 0)
       -- Subtract the duration of the task from the (GCD of the) period.
-      diff <- assign (period_gcd - (timeEnterGuard - teg))
-      -- This must be nonnegative!.
-      assert (diff >=? 0)
-      guard_block (eventGuard tnode) diff
+      perRemaining <- assign (period_gcd - (safeCast dt))
+      -- If there is time remaining in the period, block for it.
+      when (perRemaining >=? 0) $ do
+        -- Cast back down to an unsigned time
+        r <- assign  (castWith 0 perRemaining)
+        -- Block for the remaining time in the period.
+        guard_block (eventGuard tnode) r
+
+      -- It is possible that a handler overran the task's periodic time,
+      -- in which case we record an error to notify the programmer.
+      unless (perRemaining >=? 0) $ do
+        store (addrOf overrun_area) tExitG
+
       -- Update our finish time variable.
       updateTime timeExitGuard
       -- Pull events off the channels/timers
@@ -177,8 +192,8 @@ assembleTask tnodes snodes tnode = AssembledNode
       mapM_ unAction (taskst_evt_handlers taskst)
     where
     updateTime = resultInto (call Task.getTimeMillis)
-    period_gcd :: Uint32
-    period_gcd = case taskst_periods taskst of
+    period_gcd :: Sint64
+    period_gcd = safeCast $ case taskst_periods taskst of
                     [] -> Q.maxWait
                     ps -> fromInteger (foldl1 gcd ps)
 

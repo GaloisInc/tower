@@ -63,8 +63,8 @@ executable tower-example-signals
                        ivory-tower-frontend
 
 
-executable tower-example-sequential
-  main-is:             Sequential.hs
+executable tower-example-statemachine
+  main-is:             StateMachine.hs
   hs-source-dirs:      examples
   ghc-options:          -Wall
   build-depends:       base >= 4.6,

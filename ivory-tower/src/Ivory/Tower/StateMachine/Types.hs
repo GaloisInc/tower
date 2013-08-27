@@ -28,10 +28,10 @@ writeCFlow s = CFlowM$ put [s]
 runCFlowM :: CFlowM () -> [CFlowAST]
 runCFlowM m = snd $ runM (unCFlowM m)
 
-class CFlowable a where
-  cflow :: CFlowAST -> a
+class CFlowable m where
+  cflow :: CFlowAST -> m ()
 
-instance CFlowable (CFlowM ()) where
+instance CFlowable CFlowM where
   cflow = writeCFlow
 
 data Stmt s = Stmt (Ivory (AllocEffects s) CFlow)
@@ -48,7 +48,7 @@ runStmtM :: StmtM s () -> [Stmt s]
 runStmtM m = ss
   where (_, ss) = runM (unStmtM m)
 
-instance CFlowable (StmtM s ()) where
+instance CFlowable (StmtM s) where
   cflow cf = writeStmt (Stmt (return (writeCFlow cf)))
 
 data Handler

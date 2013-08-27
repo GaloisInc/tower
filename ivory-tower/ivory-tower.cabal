@@ -24,7 +24,7 @@ library
 
                         Ivory.Tower.Test.FooBarSimple,
                         Ivory.Tower.Test.FooBarSignals,
-                        Ivory.Tower.Test.Sequential
+                        Ivory.Tower.Test.StateMachine
 
   build-depends:        base >= 4.6,
                         srcloc,

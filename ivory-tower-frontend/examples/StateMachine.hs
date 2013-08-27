@@ -1,8 +1,8 @@
 module Main where
 
-import Ivory.Tower.Test.Sequential
+import Ivory.Tower.Test.StateMachine
 import Ivory.Tower.Frontend
 
 main :: IO ()
-main = compile defaultBuildConf sequentialTestTower
+main = compile defaultBuildConf stateMachineTestTower
 

@@ -3,11 +3,31 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecursiveDo #-}
 
-module Ivory.Tower.StateMachine where
+module Ivory.Tower.StateMachine
+  ( onEvent
+  , onTimeout
+
+  , Runnable
+  , active
+  , begin
+  , stateMachine
+
+  , MachineM
+  , Stmt
+
+  , state
+  , branch
+  , goto
+  , haltWhen
+  , halt
+  , liftIvory
+  , liftIvory_
+  ) where
 
 import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.StateMachine.Types
+import Ivory.Tower.StateMachine.Compile
 
 onEvent :: forall area
          . (IvoryArea area, IvoryZero area)
@@ -28,19 +48,16 @@ state sh = do
   writeState $ runStateM sh l
   return l
 
--- nextState :: StateLabel -> StmtM s ()
--- nextState s = writeStmt $ Stmt (return [(true, s)])
-
-branch :: (CFlowable a) => IBool -> StateLabel -> a
+branch :: (CFlowable m) => IBool -> StateLabel -> m ()
 branch b lbl = cflow $ CFlowBranch b lbl
 
-goto :: (CFlowable a) => StateLabel -> a
+goto :: (CFlowable m) => StateLabel -> m ()
 goto lbl = branch true lbl
 
-haltWhen :: (CFlowable a) => IBool -> a
+haltWhen :: (CFlowable m) => IBool -> m ()
 haltWhen p = cflow $ CFlowHalt p
 
-halt :: (CFlowable a) => a
+halt :: (CFlowable m) => m ()
 halt = haltWhen true
 
 liftIvory_ :: Ivory (AllocEffects s) () -> StmtM s ()

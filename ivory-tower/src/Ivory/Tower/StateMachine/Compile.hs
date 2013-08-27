@@ -19,12 +19,18 @@ data Runnable =
     , runnable_active :: Def ('[]:->IBool)
     }
 
-stateMachine :: MachineM StateLabel -> Task p Runnable
-stateMachine machine = do
+begin :: Runnable -> Ivory eff ()
+begin r = call_ (runnable_begin r)
+
+active :: Runnable -> Ivory eff IBool
+active r = call (runnable_active r)
+
+stateMachine :: String -> MachineM StateLabel -> Task p Runnable
+stateMachine name machine = do
   n <- freshname
   m <- withGetTimeMillis
   p <- withPeriodicEvent 1
-  aux n m p
+  aux (name ++ n) m p
   where
   (istate, states) = runMachineM machine
   aux :: String -> OSGetTimeMillis -> Event (Stored Uint32) -> Task p Runnable
@@ -34,7 +40,7 @@ stateMachine machine = do
     taskModuleDef moddef
     return runner
     where
-    unique n = "machine" ++ freshn ++ "_" ++ n
+    unique n = n ++ "_machine_" ++ freshn
     runner = Runnable
       { runnable_begin = begin
       , runnable_active = active

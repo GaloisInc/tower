@@ -20,6 +20,9 @@ library
                         Ivory.Tower.Sequential.AST,
                         Ivory.Tower.Sequential.Compile,
                         Ivory.Tower.Sequential.Monad,
+                        Ivory.Tower.StateMachine,
+                        Ivory.Tower.StateMachine.Types,
+                        Ivory.Tower.StateMachine.Compile,
 
                         Ivory.Tower.Graphviz,
 

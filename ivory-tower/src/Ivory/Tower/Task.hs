@@ -205,10 +205,10 @@ taskInit = nodeInit
 -- | Event handler. Called once per received event. Gives event by
 --   reference.
 onEvent :: forall area p
-           . (IvoryArea area, IvoryZero area)
-          => Event area
-          -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
-          -> Task p ()
+         . (IvoryArea area, IvoryZero area)
+        => Event area
+        -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
+        -> Task p ()
 onEvent evt k = onEventAux evt $ \name ->
   proc name $ \ref -> body $ k ref
 
@@ -268,6 +268,7 @@ withChannelEvent chsink label = do
   rxer <- withChannelReceiver chsink label
   makeChannelEvent rxer
 
+-- | Public: make a periodic event handler
 withPeriodicEvent :: Integer -> Task p (Event (Stored Uint32))
 withPeriodicEvent interval = do
   per   <- mkPeriod interval

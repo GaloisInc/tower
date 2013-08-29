@@ -4,8 +4,10 @@
 {-# LANGUAGE RecursiveDo #-}
 
 module Ivory.Tower.StateMachine
-  ( onEvent
-  , onTimeout
+  ( on
+  , period
+  , timeout
+  , entry
 
   , Runnable
   , active
@@ -29,18 +31,24 @@ import Ivory.Tower.Types
 import Ivory.Tower.StateMachine.Types
 import Ivory.Tower.StateMachine.Compile
 
-onEvent :: forall area
+on :: forall area
          . (IvoryArea area, IvoryZero area)
         => Event area
         -> (forall s s' . ConstRef s' area -> StmtM s ())
         -> StateM ()
-onEvent e stmtM = writeHandler $ EventHandler e (ScopedStatements stmts)
+on e stmtM = writeHandler $ EventHandler e (ScopedStatements stmts)
   where
   stmts :: ConstRef s' area -> [Stmt s]
   stmts ref = runStmtM (stmtM ref)
 
-onTimeout :: Int -> (forall s . StmtM s ()) -> StateM ()
-onTimeout t stmtM = writeHandler $ TimeoutHandler t (ScopedStatements (const (runStmtM stmtM)))
+entry :: (forall s . StmtM s ()) -> StateM ()
+entry stmtM = writeHandler $ EntryHandler (ScopedStatements (const (runStmtM stmtM)))
+
+timeout :: Int -> (forall s . StmtM s ()) -> StateM ()
+timeout t stmtM = writeHandler $ TimeoutHandler t (ScopedStatements (const (runStmtM stmtM)))
+
+period :: Int -> (forall s . StmtM s ()) -> StateM ()
+period t stmtM = writeHandler $ PeriodHandler t (ScopedStatements (const (runStmtM stmtM)))
 
 state :: StateM () -> Machine
 state sh = do
@@ -65,19 +73,4 @@ liftIvory_ i = writeStmt $ Stmt (i >> return (return ()))
 
 liftIvory :: Ivory (AllocEffects s) CFlow-> StmtM s ()
 liftIvory i = writeStmt $ Stmt i
-
---------------------------------------------------------------------------------
-
-test :: Machine
-test = mdo
-  a <- state $ do
-        onTimeout 20 $ do
-          liftIvory_ $ return ()
-          goto b
-        -- onEvent "SomeEventA" (nextState b)
-  b <- state $ do
-        onTimeout 10 (goto a)
-        -- onEvent "SomeEventA" (nextState b)
-  return a
-
 

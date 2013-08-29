@@ -9,7 +9,7 @@ module Ivory.Tower.Test.StateMachine where
 
 import Ivory.Language
 import Ivory.Stdlib
-import Ivory.Tower hiding (onEvent)
+import Ivory.Tower
 import Ivory.Tower.StateMachine
 
 [ivory|
@@ -44,18 +44,18 @@ client t f = do
   tx <- withChannelEmitter t "to"
 
   runner <- stateMachine "testClient" $ mdo
-    s1 <- state $ onTimeout 0 $ do
+    s1 <- state $ timeout 0 $ do
       liftIvory_ $ emit_ tx (constRef send1)
       goto s2
-    s2 <- state $ onEvent rx $ \v -> do
+    s2 <- state $ on rx $ \v -> do
       liftIvory_ $ do
         deref (v ~> bar_member) >>= (store got1)
         emit_ tx (constRef send2)
       goto s3
-    s3 <- state $ onEvent rx $ \v -> do
+    s3 <- state $ on rx $ \v -> do
       liftIvory_ $ deref (v ~> bar_member) >>= (store got2)
       goto s4
-    s4 <- state $ onTimeout 125 $ do
+    s4 <- state $ timeout 125 $ do
       liftIvory $ do
         r1 <- deref got1
         r2 <- deref got2

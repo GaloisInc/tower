@@ -52,20 +52,29 @@ instance CFlowable (StmtM s) where
   cflow cf = writeStmt (Stmt (return (writeCFlow cf)))
 
 data Handler
-  = TimeoutHandler Int (ScopedStatements (Stored Uint32))
+  = EntryHandler (ScopedStatements (Stored Uint32))
+  | TimeoutHandler Int (ScopedStatements (Stored Uint32))
+  | PeriodHandler Int  (ScopedStatements (Stored Uint32))
   | forall a . (IvoryArea a, IvoryZero a)
      => EventHandler (Event a) (ScopedStatements a)
 
 instance Show Handler where
+  show (EntryHandler _)     = "EntryHandler"
   show (TimeoutHandler _ _) = "TimeoutHandler"
-  show (EventHandler _ _) = "EventHandler"
+  show (PeriodHandler _ _)  = "PeriodHandler"
+  show (EventHandler _ _)   = "EventHandler"
 
 data ScopedStatements a = ScopedStatements (forall s s' . ConstRef s' a -> [Stmt s])
+
+scopedIvory :: (forall s s' . ConstRef s' a -> Ivory (AllocEffects s) ())
+            -> ScopedStatements a
+scopedIvory k = ScopedStatements (\r -> [ Stmt ( k r >> return (return ())) ] )
+
 
 data State = State StateLabel [Handler]
      deriving (Show)
 
-data StateLabel = StateLabel Int
+data StateLabel = StateLabel { unStateLabel :: Int }
      deriving (Show)
 
 newtype MachineM a =

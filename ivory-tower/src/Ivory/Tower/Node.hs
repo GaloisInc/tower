@@ -6,9 +6,12 @@
 
 module Ivory.Tower.Node where
 
+import MonadLib (lift)
+
 import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Monad
+import Ivory.Tower.Tower (channelWithSize)
 
 -- | Transform a 'DataSink' into a 'DataReader' in the context of a
 --   'Node'. Provide a human-readable name as a debugging aid.
@@ -101,3 +104,9 @@ nodeInit i = do
   err nodename = error ("multiple nodeInit definitions in node named "
                           ++ nodename)
   initproc nodename = proc ("nodeInit_" ++ nodename) $ body i
+
+-- | Private: for use by StateMachine
+nodeChannel :: forall area p n. (IvoryArea area, SingI n)
+        => Task p (ChannelSource n area, ChannelSink n area)
+nodeChannel = Node $ lift channelWithSize
+

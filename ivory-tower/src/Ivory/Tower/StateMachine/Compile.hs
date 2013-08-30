@@ -142,10 +142,10 @@ stateMachine name machine = do
     mkStmt :: Stmt s -> Ivory (AllocEffects s) ()
     mkStmt (Stmt s) = do
       cflowM <- s
-      foldl mkCFlow (return ()) (runCFlowM cflowM)
+      foldr mkCFlow (return ()) (runCFlowM cflowM)
 
-    mkCFlow :: Ivory (AllocEffects s) () -> CFlowAST -> Ivory (AllocEffects s) ()
-    mkCFlow acc (CFlowBranch b lbl) = ifte_ b (nextstate lbl) acc
-    mkCFlow acc (CFlowHalt   b)     = ifte_ b (store activeState false) acc
+    mkCFlow :: CFlowAST -> Ivory (AllocEffects s) () -> Ivory (AllocEffects s) ()
+    mkCFlow (CFlowBranch b lbl) acc = ifte_ b (nextstate lbl) acc
+    mkCFlow (CFlowHalt   b)     acc = ifte_ b (store activeState false) acc
 
 

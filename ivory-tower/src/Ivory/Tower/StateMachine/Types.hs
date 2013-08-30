@@ -23,7 +23,7 @@ newtype CFlowM a =
 type CFlow = CFlowM ()
 
 writeCFlow :: CFlowAST -> CFlowM ()
-writeCFlow s = CFlowM$ put [s]
+writeCFlow s = CFlowM $ put [s]
 
 runCFlowM :: CFlowM () -> [CFlowAST]
 runCFlowM m = snd $ runM (unCFlowM m)

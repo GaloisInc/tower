@@ -18,6 +18,7 @@ module Ivory.Tower.StateMachine
   , Stmt
 
   , state
+  , stateNamed
   , branch
   , goto
   , haltWhen
@@ -51,9 +52,15 @@ period :: Int -> (forall s . StmtM s ()) -> StateM ()
 period t stmtM = writeHandler $ PeriodHandler t (ScopedStatements (const (runStmtM stmtM)))
 
 state :: StateM () -> Machine
-state sh = do
+state sh = stateAux sh Nothing
+
+stateNamed :: String -> StateM () -> Machine
+stateNamed n sh = stateAux sh (Just n)
+
+stateAux :: StateM () -> Maybe String-> Machine
+stateAux sh name = do
   l <- label
-  writeState $ runStateM sh l
+  writeState $ runStateM sh l name
   return l
 
 branch :: (CFlowable m) => IBool -> StateLabel -> m ()

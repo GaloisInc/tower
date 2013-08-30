@@ -86,9 +86,9 @@ stateMachine name machine = do
       when (current ==? (fromIntegral s)) (noReturn k)
 
     mkState :: State -> Task p ()
-    mkState (State s handlers) = do
+    mkState (State s maybename handlers) = do
       ehs <- mapM mkHandler handlers
-      onEventV newstate_evt $ \newst -> noReturn $
+      onEventNamedV newstate_evt nsname $ \newst -> noReturn $
         when (newst ==? (fromIntegral (unStateLabel s))) $ do
           store state newst
           now <- getTimeMillis millis
@@ -96,10 +96,20 @@ stateMachine name machine = do
           forM_ ehs $ \(ScopedStatements ss) ->
             mapM_ mkStmt (ss (constRef currenttime))
       where
+      nsname = case maybename of
+        Just n -> "newstate_" ++ n
+        Nothing -> "newstate"
+      onEvt :: (IvoryArea area, IvoryZero area)
+            => Event area
+            -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
+            -> Task p ()
+      onEvt e k = case maybename of
+        Just n -> onEventNamed e n k
+        Nothing -> onEvent e k
       mkHandler (EntryHandler stmts) = return stmts -- XXX correct?
       mkHandler (TimeoutHandler i stmts) = do
         due <- taskLocal (unique ("timeoutDue" ++ show i))
-        onEvent tick $ \currenttime -> handleState s $ do
+        onEvt tick $ \currenttime -> handleState s $ do
           now <- deref currenttime
           d <- deref due
           when ((d >? 0) .&& (d <=? now)) $ case stmts of
@@ -112,7 +122,7 @@ stateMachine name machine = do
 
       mkHandler (PeriodHandler i stmts) = do
         due <- taskLocal (unique ("periodDue" ++ show i))
-        onEvent tick $ \currenttime -> case stmts of
+        onEvt tick $ \currenttime -> case stmts of
           ScopedStatements ss -> handleState s $ do
             now <- deref currenttime
             d   <- deref due
@@ -124,7 +134,7 @@ stateMachine name machine = do
           store due (t + (fromIntegral i))
 
       mkHandler (EventHandler evt stmts) = do
-        onEvent evt $ case stmts of
+        onEvt evt $ case stmts of
           ScopedStatements ss -> \v -> handleState s $ do
             mapM_ mkStmt (ss v)
         return $ scopedIvory $ const (return ())

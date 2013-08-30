@@ -71,7 +71,7 @@ scopedIvory :: (forall s s' . ConstRef s' a -> Ivory (AllocEffects s) ())
 scopedIvory k = ScopedStatements (\r -> [ Stmt ( k r >> return (return ())) ] )
 
 
-data State = State StateLabel [Handler]
+data State = State StateLabel (Maybe String) [Handler]
      deriving (Show)
 
 data StateLabel = StateLabel { unStateLabel :: Int }
@@ -108,7 +108,7 @@ writeState sm = MachineM $ do
 writeHandler :: Handler -> StateM ()
 writeHandler h = StateM $ put [h]
 
-runStateM :: StateM () -> StateLabel -> State
-runStateM sh lbl = State lbl handlers
+runStateM :: StateM () -> StateLabel -> Maybe String -> State
+runStateM sh lbl n = State lbl n handlers
   where (_, handlers) = runM (unStateM sh)
 

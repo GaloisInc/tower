@@ -67,7 +67,9 @@ module Ivory.Tower
   , withChannelEvent
   , withPeriodicEvent
   , onEvent
+  , onEventNamed
   , onEventV
+  , onEventNamedV
 
   , taskModuleDef
   , taskInit

@@ -209,7 +209,7 @@ onEvent :: forall area p
         => Event area
         -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
         -> Task p ()
-onEvent evt k = onEventAux evt $ \name ->
+onEvent evt k = onEventAux evt Nothing $ \name ->
   proc name $ \ref -> body $ k ref
 
 -- | Channel event handler. Like 'onEvent', but for 'Stored' type events,
@@ -219,19 +219,43 @@ onEventV  :: forall t p
           => Event (Stored t)
           -> (forall s . t -> Ivory (ProcEffects s ()) ())
           -> Task p ()
-onEventV evt k = onEventAux evt $ \name ->
+onEventV evt k = onEventAux evt Nothing $ \name ->
+  proc name $ \ref -> body $ deref ref >>= k
+
+-- | Event handler. Called once per received event. Gives event by
+--   reference.
+onEventNamed :: forall area p
+              . (IvoryArea area, IvoryZero area)
+             => Event area
+             -> String
+             -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
+             -> Task p ()
+onEventNamed evt n k = onEventAux evt (Just n) $ \name ->
+  proc name $ \ref -> body $ k ref
+
+-- | Channel event handler. Like 'onEvent', but for 'Stored' type events,
+--   which can be given by value.
+onEventNamedV  :: forall t p
+                . (IvoryVar t, IvoryArea (Stored t), IvoryZero (Stored t))
+               => Event (Stored t)
+               -> String
+               -> (forall s . t -> Ivory (ProcEffects s ()) ())
+               -> Task p ()
+onEventNamedV evt n k = onEventAux evt (Just n) $ \name ->
   proc name $ \ref -> body $ deref ref >>= k
 
 -- | Private helper function used to implement 'onEvent' and 'onEventV'
 onEventAux  :: forall area p
              . (IvoryArea area)
             => Event area
+            -> Maybe String
             -> (forall s . Name -> Def ('[ConstRef s area] :-> ()))
             -> Task p ()
-onEventAux evt mkproc = do
+onEventAux evt username mkproc = do
   n <- getNodeName
   f <- freshname
-  let name = printf "eventhandler_%s_%s%s"  n evtname f
+  let name = printf "eventhandler_%s_%s%s%s" n evtname user f
+      user = maybe [] (\n -> '_':n) username
       callback :: Def ('[ConstRef s area] :-> ())
       callback = mkproc name
   taskStAddModuleDefUser $ incl callback

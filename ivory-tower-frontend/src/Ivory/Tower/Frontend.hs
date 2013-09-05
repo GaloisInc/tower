@@ -59,9 +59,10 @@ compilePlatforms bc table =  do
   (c_opts, t_opts) <- parseOptions =<< getArgs
   case lookup (T.conf_platform t_opts) table of
     Just (Twr t) -> towerCompile (ivoryCompile bc c_opts) t_opts t
-    Nothing -> die msg
+    Nothing -> die (msg (T.conf_platform t_opts))
   where
-  msg = "unsupported platform. the following platforms are supported:":(map fst table)
+  msg p = ("unsupported platform \"" ++ p ++ "\"."):
+    (" the following platforms are supported:"):(map fst table)
 
 ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO ()
 ivoryCompile bc copts ms platformspecific_sp = 

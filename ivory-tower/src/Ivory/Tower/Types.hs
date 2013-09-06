@@ -10,6 +10,7 @@
 
 module Ivory.Tower.Types where
 
+import Control.Applicative (Applicative)
 import GHC.TypeLits
 import MonadLib
 
@@ -391,12 +392,12 @@ data OS =
 --   and tasks.
 newtype Tower p a = Tower
   { unTower :: StateT TowerSt Base a
-  } deriving (Functor, Monad)
+  } deriving (Functor, Monad, Applicative)
 
 -- | Node monad: context for task-specific code generation
 newtype Node i p a = Node
   { unNode :: StateT (NodeSt i) (Tower p) a
-  } deriving (Functor, Monad)
+  } deriving (Functor, Monad, Applicative)
 
 type Task p a = Node TaskSt p a
 type Signal p a = Node SignalSt p a

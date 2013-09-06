@@ -123,12 +123,18 @@ mkTaskSchedule tnodes signodes tnode = TaskSchedule
 mkDataReader :: (IvoryArea area)
              => DataSink area -> Ref s area -> Ivory eff ()
 mkDataReader dsnk = fdp_read fdp
-  where fdp = sharedState (unDataSink dsnk)
+  where
+  -- INVARIANT: the fdp_read method should be independent of the Init val
+  -- given to sharedState.
+  fdp = sharedState (unDataSink dsnk) Nothing
 
 mkDataWriter :: (IvoryArea area)
              => DataSource area -> ConstRef s area -> Ivory eff ()
 mkDataWriter dsrc = fdp_write fdp
-  where fdp = sharedState (unDataSource dsrc)
+  where
+  -- INVARIANT: the fdp_write method should be independent of the Init val
+  -- given to sharedState.
+  fdp = sharedState (unDataSource dsrc) Nothing
 
 -- Assemble:
 

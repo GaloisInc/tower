@@ -40,6 +40,7 @@ module Ivory.Tower
   , task
   , signal
   , dataport
+  , dataportInit
   , channel
   , channelWithSize
   , addModule

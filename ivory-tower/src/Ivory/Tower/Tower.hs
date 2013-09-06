@@ -35,9 +35,20 @@ signal name s = do
 
 -- | Instantiate a data port. Result is a matching pair of 'DataSource' and
 --   'DataSink'.
-dataport :: forall area p . (IvoryArea area)
-         => Tower p (DataSource area, DataSink area)
-dataport = do
+dataport :: (IvoryArea area) => Tower p (DataSource area, DataSink area)
+dataport = dpAux Nothing
+
+-- | Instantiate a data port, providing a static initial value.
+--   Result is a matching pair of 'DataSource' and 'DataSink'.
+dataportInit :: (IvoryArea area)
+             => Init area
+             -> Tower p (DataSource area, DataSink area)
+dataportInit i = dpAux (Just i)
+
+dpAux :: forall area p . (IvoryArea area)
+      => Maybe (Init area)
+      -> Tower p (DataSource area, DataSink area)
+dpAux i = do
   dpid <- mkDataport (Proxy :: Proxy area)
   let (source, sink) = (DataSource dpid, DataSink dpid)
   codegenDataport source
@@ -48,7 +59,7 @@ dataport = do
   codegenDataport :: (IvoryArea area) => DataSource area -> Tower p ()
   codegenDataport datasource = do
     os <- getOS
-    let (initializer,mdef) = os_mkDataPort os datasource
+    let (initializer,mdef) = os_mkDataPort os datasource i
     addDataportCodegen initializer mdef
 
 

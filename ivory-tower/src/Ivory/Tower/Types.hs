@@ -358,6 +358,7 @@ data OS =
   OS
     { os_mkDataPort    :: forall area . (IvoryArea area)
                        => DataSource area
+                       -> Maybe (Init area)
                        -> (Def ('[]:->()), ModuleDef)
 
     -- Generate code needed to implement Channel, given the endpoint TaskSt

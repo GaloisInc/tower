@@ -26,8 +26,9 @@ data FreeRTOSDataport area =
 
 sharedState :: forall area . (IvoryArea area)
             => DataportId
+            -> Maybe (Init area)
             -> FreeRTOSDataport area
-sharedState dataportid = FreeRTOSDataport
+sharedState dataportid dpival = FreeRTOSDataport
   { fdp_name = name
   , fdp_read = read
   , fdp_write = write
@@ -42,7 +43,7 @@ sharedState dataportid = FreeRTOSDataport
   name = unique "sharedState"
 
   stateArea  :: MemArea area
-  stateArea   = area (unique "sharedState_state") Nothing
+  stateArea   = area (unique "sharedState_state") dpival
   state       = addrOf stateArea
   semArea    :: MemArea S.Semaphore
   semArea     = area (unique "sharedState_sem") Nothing

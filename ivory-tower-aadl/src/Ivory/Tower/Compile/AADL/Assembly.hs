@@ -5,6 +5,8 @@ module Ivory.Tower.Compile.AADL.Assembly
 
 import System.FilePath
 
+import Data.List (find)
+
 import Ivory.Language
 import Ivory.Tower.Types
 
@@ -31,16 +33,30 @@ taskDef asmtask = do
   features <- featuresDef asmtask (loopsource <.> "h")
   writeThreadDefinition (ThreadDef n features props)
   where
-  n = nodest_name (an_nodest asmtask)
+  nodest = an_nodest asmtask
+  n = nodest_name nodest
+  edges = nodest_edges nodest
+  taskst = nodest_impl nodest
   loopsource = "tower_task_loop_" ++ n
   usersource = "tower_task_usercode_" ++ n
   props = [ smaccmProp "Dispatch" (dquotes "EventLoop")
           , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
-          ] ++ initprop
+          ] ++ initprop ++ (map eventprop (taskst_evt_handlers taskst))
   initprop = case an_init asmtask of
-    Just p -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+    Just _ -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
     Nothing -> []
+  eventprop act = UnprintableThreadProperty
+    ((eimpl_str (act_evt act)) ++ (act_callname act))
+  eimpl_str (ChannelEvent chid) = (eportname chid) ++ " event port handler "
+  eimpl_str (PeriodEvent i) = "periodic (" ++ (show i) ++ "ms) event handler "
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
+  eportname chid = case find p (nodees_receivers edges) of
+    Just e -> lbl_user e
+    Nothing -> error msg
+    where
+    p e = unLabeled e == chid
+    msg = "impossible: could not find chid " ++ (show (chan_id chid))
+        ++ " in taskDef " ++ n
 
 signalDef :: AssembledNode SignalSt -> CompileM ()
 signalDef asmsig = do
@@ -57,7 +73,7 @@ signalDef asmsig = do
     Just signame -> [ smaccmProp "Signal_Name" (dquotes signame) ]
     Nothing -> []
   initprop = case an_init asmsig of
-    Just p -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+    Just _ -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 

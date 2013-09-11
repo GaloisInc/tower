@@ -193,9 +193,9 @@ assembleTask tnodes snodes tnode = AssembledNode
       -- Update our finish time variable.
       updateTime timeExitGuard
       -- Pull events off the channels/timers
-      mapM_ unAction (taskst_evt_rxers taskst)
+      mapM_ act_code (taskst_evt_rxers taskst)
       -- Run event handlers
-      mapM_ unAction (taskst_evt_handlers taskst)
+      mapM_ act_code (taskst_evt_handlers taskst)
     where
     updateTime = resultInto (call Task.getTimeMillis)
     period_gcd :: Sint64

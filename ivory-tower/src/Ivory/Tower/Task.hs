@@ -259,7 +259,7 @@ onEventAux evt username mkproc = do
       callback :: Def ('[ConstRef s area] :-> ())
       callback = mkproc name
   taskStAddModuleDefUser $ incl callback
-  taskStAddEventHandler $ Action $ do
+  taskStAddEventHandler $ Action (evt_impl evt) name $ do
     rdy <- deref (evt_ready evt)
     when rdy $ call_ callback (evt_ref evt)
   where
@@ -274,7 +274,7 @@ makeChannelEvent :: (IvoryArea area) => ChannelReceiver n area -> Task p (Event 
 makeChannelEvent chrxer = do
   ready <- taskLoopLocal (named "ready")
   ref   <- taskLoopLocal (named "ref")
-  taskStAddEventRxer $ Action $ do
+  taskStAddEventRxer $ Action (ChannelEvent (cr_chid chrxer)) "<chanRxer>" $ do
     success <- cr_extern_rx chrxer ref
     store ready success
   return $ Event
@@ -298,7 +298,7 @@ withPeriodicEvent interval = do
   per   <- mkPeriod interval
   ready <- taskLoopLocal (named "ready")
   ref   <- taskLoopLocal (named "ref")
-  taskStAddEventRxer $ Action $ do
+  taskStAddEventRxer $ Action (PeriodEvent interval) "<periodRxer>" $ do
     success <- per_tick per
     now     <- per_tnow per
     store ready success

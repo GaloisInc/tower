@@ -145,7 +145,13 @@ data DataWriter (area :: Area) =
                 => ConstRef s area -> Ivory eff ()
     }
 
-data Action = Action { unAction :: forall cs . Ivory (AllocEffects cs) () }
+data Action =
+  Action
+    { act_evt      :: EventImpl
+    , act_callname :: String
+    , act_code     :: forall cs . Ivory (AllocEffects cs) ()
+    }
+
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using

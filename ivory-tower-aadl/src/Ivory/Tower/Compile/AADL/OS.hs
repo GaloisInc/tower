@@ -26,6 +26,7 @@ os = OS
 assembleTask :: [TaskNode] -> [SigNode] -> TaskNode -> AssembledNode TaskSt
 assembleTask tnodes snodes tnode = AssembledNode
   { an_nodest = tnode
+  , an_init = Nothing
   , an_entry = externProc (named "assembleTask_entry_unneeded_")
   , an_modules = \sysdeps -> [ taskLoopMod sysdeps, taskUserCodeMod sysdeps ]
   }
@@ -61,6 +62,7 @@ mkTaskSchedule _ _ _ = TaskSchedule
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = AssembledNode
   { an_nodest = snode
+  , an_init = Nothing
   , an_entry = externProc (named "assembleSignal_entry_unneeded_")
   , an_modules = \sysdeps -> [ signalCommMod sysdeps, signalUserCodeMod sysdeps ]
   }
@@ -96,7 +98,7 @@ assembleSignal tnodes snodes snode = AssembledNode
 -- these. (This implementation will be emitted into the user code c files, but
 -- those files are not to be compiled)
 mkSigSchedule :: [TaskNode] -> [SigNode] -> SigNode -> SigSchedule 
-mkSigSchedule tnodes snodes snode = SigSchedule
+mkSigSchedule _tnodes _snodes _snode = SigSchedule
   { ssch_mkEmitter  = \_ _ -> return true
   , ssch_mkReceiver = \_ _ -> return true
   }
@@ -120,7 +122,7 @@ mkChannel :: forall (n :: Nat) (area :: Area) i
            => ChannelReceiver n area
            -> NodeSt i
            -> (Def('[]:->()), ModuleDef)
-mkChannel rxer destNode = (externProc "mkChannel_unneeded", return ())
+mkChannel _rxer _destNode = (externProc "mkChannel_unneeded", return ())
 
 -- In this case we might end up needing the gettimemillis or interval number
 mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)

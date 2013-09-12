@@ -89,7 +89,7 @@ eventGuard node = FreeRTOSGuard
     incl (notifyProc User)
     private $ defMemArea guardSemArea
 
-eventQueue :: forall (area :: Area) (n :: Nat) i
+eventQueue :: forall (area :: Area *) (n :: Nat) i
             . (SingI n, IvoryArea area)
            => ChannelId
            -> Sing n

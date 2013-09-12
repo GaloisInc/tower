@@ -113,11 +113,11 @@ getTimeMillis = importProc "tower_gettimemillis" "tower_gettimemillis.h"
 mkSystemSchedule :: [TaskNode] -> [SigNode] -> (ModuleDef, Def('[]:->()))
 mkSystemSchedule _ _ = (return (), externProc "mkSystemSchedule_unneeded")
 
-mkDataPort :: forall (area :: Area) . (IvoryArea area)
+mkDataPort :: forall (area :: Area *) . (IvoryArea area)
            => DataSource area -> Maybe (Init area) -> (Def ('[]:->()), ModuleDef)
 mkDataPort _source _init = (externProc "mkDataPort_unneeded", return ())
 
-mkChannel :: forall (n :: Nat) (area :: Area) i
+mkChannel :: forall (n :: Nat) (area :: Area *) i
            . (SingI n, IvoryArea area, IvoryZero area)
            => ChannelReceiver n area
            -> NodeSt i

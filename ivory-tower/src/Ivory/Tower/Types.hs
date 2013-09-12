@@ -55,7 +55,7 @@ data ChannelId =
 -- | Designates a Source, the end of a Channel which is written to. The only
 -- valid operation on a 'ChannelSource' is
 -- 'Ivory.Tower.Tower.withChannelEmitter'
-data ChannelSource (n :: Nat) (area :: Area)
+data ChannelSource (n :: Nat) (area :: Area *)
   = ChannelSourcePrim { csprim_chid :: ChannelId }
   | ChannelSourceExtended
       { csext_cb   :: forall s eff . ConstRef s area -> Ivory eff ()
@@ -70,12 +70,12 @@ unChannelSource (ChannelSourceExtended _ _ b) = unChannelSource b
 -- | Designates a Sink, the end of a Channel which is read from. The only
 -- valid operation on a 'ChannelSink' is
 -- 'Ivory.Tower.Tower.withChannelReceiver'
-newtype ChannelSink (n :: Nat) (area :: Area) =
+newtype ChannelSink (n :: Nat) (area :: Area *) =
   ChannelSink { unChannelSink :: ChannelId }
 
 -- | a 'ChannelSource' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.Channel.emit' to create Ivory code.
-data ChannelEmitter (n :: Nat) (area :: Area) =
+data ChannelEmitter (n :: Nat) (area :: Area *) =
   ChannelEmitter
     { ce_chid         :: ChannelId
     , ce_chsrc        :: ChannelSource n area
@@ -86,13 +86,13 @@ data ChannelEmitter (n :: Nat) (area :: Area) =
 -- | a 'ChannelSink' which has been registered in the context of a 'Task'
 -- can then be used with 'Ivory.Tower.EventLoop.onChannel' to create an Ivory
 -- event handler.
-data ChannelReceiver (n :: Nat) (area :: Area) =
+data ChannelReceiver (n :: Nat) (area :: Area *) =
   ChannelReceiver
     { cr_chid      :: ChannelId
     , cr_extern_rx :: forall s eff . Ref s area -> Ivory eff IBool
     }
 
-data Event (area :: Area)
+data Event (area :: Area *)
   = Event
       { evt_impl  :: EventImpl
       , evt_ref   :: ConstRef Global area
@@ -118,17 +118,17 @@ instance Show DataportId where
 -- | Designates a Dataport Source, the end of a Dataport
 --   which is written to. The only valid operation on 'DataSource' is
 --   'Ivory.Tower.Tower.withDataWriter'
-newtype DataSource (area :: Area) = DataSource { unDataSource :: DataportId  }
+newtype DataSource (area :: Area *) = DataSource { unDataSource :: DataportId  }
 
 -- | Designates a Dataport sink, the end of a Dataport
 --   which is read from. The only valid operation on 'DataSink' is
 --   'Ivory.Tower.Tower.withDataReader'
-newtype DataSink (area :: Area) = DataSink { unDataSink   :: DataportId }
+newtype DataSink (area :: Area *) = DataSink { unDataSink   :: DataportId }
 
 -- | An implementation of a reader on a channel. The only valid operation on
 --   a 'DataReader' is 'Ivory.Tower.DataPort.readData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-data DataReader (area :: Area) =
+data DataReader (area :: Area *) =
   DataReader
     { dr_dpid   :: DataportId
     , dr_extern :: forall eff s . (IvoryArea area)
@@ -138,7 +138,7 @@ data DataReader (area :: Area) =
 -- | An implementation of a writer on a channel. The only valid operation on
 --   a 'DataWriter' is 'Ivory.Tower.DataPort.writeData', which unpacks the
 --   implementation into the correct 'Ivory.Language.Ivory' effect scope.
-data DataWriter (area :: Area) =
+data DataWriter (area :: Area *) =
   DataWriter
     { dw_dpid   :: DataportId
     , dw_extern :: forall eff s . (IvoryArea area)

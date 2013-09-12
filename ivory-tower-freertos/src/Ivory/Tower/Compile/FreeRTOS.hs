@@ -118,14 +118,14 @@ os = OS
   }
 
 
-mkDataPort :: forall (area :: Area) . (IvoryArea area)
+mkDataPort :: forall (area :: Area *) . (IvoryArea area)
            => DataSource area -> Maybe (Init area) -> (Def ('[]:->()), ModuleDef)
 mkDataPort source i = (fdp_initDef fdp, fdp_moduleDef fdp)
   where
   fdp :: FreeRTOSDataport area
   fdp = sharedState (unDataSource source) i
 
-mkChannel :: forall (n :: Nat) (area :: Area) i
+mkChannel :: forall (n :: Nat) (area :: Area *) i
            . (SingI n, IvoryArea area, IvoryZero area)
            => ChannelReceiver n area
            -> NodeSt i

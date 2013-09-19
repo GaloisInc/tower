@@ -7,8 +7,12 @@
 void ivory_freertos_task_create(void (*tsk)(void),
         uint32_t stacksize, uint8_t priority)
 {
-    xTaskCreate((void (*)(void*)) tsk, /* this cast is undefined behavior */
+    portBASE_TYPE created = xTaskCreate(
+            (void (*)(void*)) tsk, /* this cast is undefined behavior */
             NULL, stacksize, NULL, priority, NULL);
+    if (created != pdPASS) {
+        for(;;);
+    }
 }
 
 void ivory_freertos_task_delay(uint32_t time_ms)

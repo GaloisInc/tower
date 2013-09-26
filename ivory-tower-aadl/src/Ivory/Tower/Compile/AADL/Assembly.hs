@@ -35,7 +35,7 @@ smaccmProp k v = threadProp ("SMACCM_SYS::" ++ k) v
 
 taskDef :: AssembledNode TaskSt -> CompileM ()
 taskDef asmtask = do
-  features <- featuresDef asmtask (loopsource <.> "h")
+  features <- featuresDef asmtask (loopsource <.> "h") channelevts
   writeThreadDefinition (ThreadDef n features props)
   where
   nodest = an_nodest asmtask
@@ -73,6 +73,15 @@ taskDef asmtask = do
     aux (Action (PeriodEvent i) cname _) = Just (i, cname)
     aux _ = Nothing
 
+  channelevts = map (\xs -> (fst (head xs), map snd xs))
+              $ groupBy (\a b -> fst a == fst b)
+              $ sortBy (\a b -> fst a `compare` fst b)
+              $ catMaybes
+              $ map aux (taskst_evt_handlers taskst)
+    where
+    aux (Action (ChannelEvent chid) cname _) = Just (chid, cname)
+    aux _ = Nothing
+
   mkPeriodProperty interval callbacks =
     [ threadProp "Dispatch" "Hybrid"
     , ThreadProperty "Period" (PropUnit (fromIntegral interval) "ms")
@@ -94,7 +103,7 @@ taskDef asmtask = do
 
 signalDef :: AssembledNode SignalSt -> CompileM ()
 signalDef asmsig = do
-  features <- featuresDef asmsig (commsource <.> "h")
+  features <- featuresDef asmsig (commsource <.> "h") []
   writeThreadDefinition (ThreadDef n features props)
   where
   n = nodest_name (an_nodest asmsig)
@@ -111,8 +120,9 @@ signalDef asmsig = do
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
-featuresDef :: AssembledNode a -> FilePath -> CompileM [ThreadFeature]
-featuresDef an headername = do
+featuresDef :: AssembledNode a -> FilePath -> [(ChannelId,[String])]
+            -> CompileM [ThreadFeature]
+featuresDef an headername channelevts = do
   ems <- mapM emitterDef    (nodees_emitters    edges)
   rxs <- mapM receiverDef   (nodees_receivers   edges)
   wrs <- mapM dataWriterDef (nodees_datawriters edges)
@@ -140,11 +150,17 @@ featuresDef an headername = do
   receiverDef :: Labeled ChannelId -> CompileM ThreadFeature
   receiverDef lc = do
     chtype <- channelTypename ch
-    return $ ThreadFeaturePort portname PortKindEvent In chtype ps
+    return $ ThreadFeaturePort portname PortKindEvent In chtype (ps ++ cs)
     where
     ch = unLabeled lc
     portname = identifier (lbl_user lc)
     ps = channelprops (lbl_code lc) (chan_size ch)
+    cs = case lookup (unLabeled lc) channelevts of
+      Nothing -> []
+      Just [cb] -> tp (PropString cb)
+      Just cbs  -> tp (PropList (map PropString cbs))
+    tp prop = [ThreadProperty "Compute_Entrypoint_Source_Text" prop]
+
 
   dataWriterDef :: Labeled DataportId -> CompileM ThreadFeature
   dataWriterDef (Labeled e n c) = do

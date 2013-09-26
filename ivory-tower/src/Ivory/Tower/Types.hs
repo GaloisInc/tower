@@ -50,7 +50,7 @@ data ChannelId =
     { chan_id :: Integer
     , chan_size :: Integer
     , chan_ityp :: I.Type
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Ord)
 
 -- | Designates a Source, the end of a Channel which is written to. The only
 -- valid operation on a 'ChannelSource' is

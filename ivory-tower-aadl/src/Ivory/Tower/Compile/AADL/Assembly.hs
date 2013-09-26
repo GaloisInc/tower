@@ -4,8 +4,10 @@ module Ivory.Tower.Compile.AADL.Assembly
   ) where
 
 import System.FilePath
+import Debug.Trace
 
-import Data.List (find)
+import Data.List (sortBy, groupBy, find)
+import Data.Maybe (catMaybes)
 
 import Ivory.Language
 import Ivory.Tower.Types
@@ -25,8 +27,11 @@ assemblyDoc name mods asm = runCompile mods virtMod $ do
   virtMod = package name $ do
     mapM_ depend mods
 
+threadProp :: String -> String -> ThreadProperty
+threadProp k v = ThreadProperty k (PropString v)
+
 smaccmProp :: String -> String -> ThreadProperty
-smaccmProp k v = ThreadProperty  ("SMACCM_SYS::" ++ k) v
+smaccmProp k v = threadProp ("SMACCM_SYS::" ++ k) v
 
 taskDef :: AssembledNode TaskSt -> CompileM ()
 taskDef asmtask = do
@@ -39,16 +44,45 @@ taskDef asmtask = do
   taskst = nodest_impl nodest
   loopsource = "tower_task_loop_" ++ n
   usersource = "tower_task_usercode_" ++ n
-  props = [ smaccmProp "Dispatch" (dquotes "EventLoop")
-          , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
-          ] ++ initprop ++ (map eventprop (taskst_evt_handlers taskst))
+  props = [ threadProp "Source_Text" (usersource <.> "c") ]
+        ++ initprop
+        ++ periodprops
+        ++ (map eventprop (taskst_evt_handlers taskst))
   initprop = case an_init asmtask of
-    Just _ -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+    Just _ -> [ threadProp "Initialize_Source_Text" initdefname ]
     Nothing -> []
+
+  -- XXX deprecate this once done debugging:
   eventprop act = UnprintableThreadProperty
     ((eimpl_str (act_evt act)) ++ (act_callname act))
   eimpl_str (ChannelEvent chid) = (eportname chid) ++ " event port handler "
   eimpl_str (PeriodEvent i) = "periodic (" ++ (show i) ++ "ms) event handler "
+
+  periodprops = case uniq of
+      [(a, bs)] -> mkPeriodProperty a bs
+      [] -> [ threadProp "Dispatch" "Sporadic"]
+      _ -> trace warnmsg $ [UnprintableThreadProperty warnmsg ]
+    where
+    warnmsg = "Warning: multiple periodic rates in tower task named "
+            ++ n ++ " cannot be rendered into an AADL property"
+    uniq = map (\xs -> (fst (head xs), map snd xs))
+         $ groupBy (\a b -> fst a == fst b)
+         $ sortBy (\a b -> fst a `compare` fst b)
+         $ catMaybes
+         $ map aux (taskst_evt_handlers taskst)
+    aux (Action (PeriodEvent i) cname _) = Just (i, cname)
+    aux _ = Nothing
+
+  mkPeriodProperty interval callbacks =
+    [ threadProp "Dispatch" "Hybrid"
+    , ThreadProperty "Period" (PropUnit (fromIntegral interval) "ms")
+    , ThreadProperty "Compute_Entrypoint_Source_Text" cbprop
+    ]
+    where
+    cbprop = case callbacks of
+      [c] -> PropString c
+      cs -> PropList (map PropString cs)
+
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
   eportname chid = case find p (nodees_receivers edges) of
     Just e -> lbl_user e
@@ -66,14 +100,14 @@ signalDef asmsig = do
   n = nodest_name (an_nodest asmsig)
   commsource = "tower_signal_comm_" ++ n 
   usersource = "tower_signal_usercode_" ++ n
-  props = [ smaccmProp "Dispatch" (dquotes "ISR")
-          , ThreadProperty "Source_Text" (dquotes (usersource <.> "c"))
+  props = [ smaccmProp "Dispatch" "ISR"
+          , threadProp "Source_Text" (usersource <.> "c")
           ] ++ isrprop ++ initprop
   isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
-    Just signame -> [ smaccmProp "Signal_Name" (dquotes signame) ]
+    Just signame -> [ smaccmProp "Signal_Name" signame ]
     Nothing -> []
   initprop = case an_init asmsig of
-    Just _ -> [ ThreadProperty "Initialize_Source_Text" (dquotes initdefname) ]
+    Just _ -> [ threadProp "Initialize_Source_Text" initdefname ]
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
@@ -88,11 +122,11 @@ featuresDef an headername = do
   where
   edges = nodest_edges (an_nodest an)
   props sourcetext =
-    [ smaccmProp "CommPrim_Source_Header" (dquotes headername)
-    , smaccmProp "CommPrim_Source_Text"   (dquotes sourcetext)
+    [ smaccmProp "CommPrim_Source_Header" headername
+    , smaccmProp "CommPrim_Source_Text"   sourcetext
     ]
   channelprops sourcetext len = qp : props sourcetext
-   where qp = ThreadProperty "Queue_Size" (show len)
+   where qp = ThreadProperty "Queue_Size" (PropInteger (fromIntegral len))
 
   emitterDef :: Labeled ChannelId -> CompileM ThreadFeature
   emitterDef lc = do
@@ -138,9 +172,6 @@ implNonBaseTypes t = case t of
   QualTypeName "Base_Types" _ -> t
   DotTypeName _ _ -> t
   _ -> DotTypeName t "impl"
-
-dquotes :: String -> String
-dquotes s = "\"" ++ s ++ "\""
 
 threadInstance :: String -> String
 threadInstance threadtypename = threadtypename ++ "_inst"

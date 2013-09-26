@@ -65,7 +65,7 @@ client t f = do
           halt
     return s1
 
-  onPeriod 2000 $ \_time -> do
+  onPeriod 1 $ \_now -> do
     a <- active runner
     unless a $ do
       store (send1 ~> foo_member) 10

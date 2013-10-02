@@ -44,23 +44,17 @@ taskDef asmtask = do
   taskst = nodest_impl nodest
   loopsource = "tower_task_loop_" ++ n
   usersource = "tower_task_usercode_" ++ n
-  props = [ threadProp "Source_Text" (usersource <.> "c") ]
+  props = [ ThreadProperty "Source_Text"
+              (PropList [ PropString (usersource <.> "c") ]) ]
         ++ initprop
         ++ periodprops
-        ++ (map eventprop (taskst_evt_handlers taskst))
   initprop = case an_init asmtask of
     Just _ -> [ threadProp "Initialize_Source_Text" initdefname ]
     Nothing -> []
 
-  -- XXX deprecate this once done debugging:
-  eventprop act = UnprintableThreadProperty
-    ((eimpl_str (act_evt act)) ++ (act_callname act))
-  eimpl_str (ChannelEvent chid) = (eportname chid) ++ " event port handler "
-  eimpl_str (PeriodEvent i) = "periodic (" ++ (show i) ++ "ms) event handler "
-
   periodprops = case uniq of
       [(a, bs)] -> mkPeriodProperty a bs
-      [] -> [ threadProp "Dispatch" "Sporadic"]
+      [] -> [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Sporadic") ]
       _ -> trace warnmsg $ [UnprintableThreadProperty warnmsg ]
     where
     warnmsg = "Warning: multiple periodic rates in tower task named "
@@ -83,14 +77,12 @@ taskDef asmtask = do
     aux _ = Nothing
 
   mkPeriodProperty interval callbacks =
-    [ threadProp "Dispatch" "Hybrid"
-    , ThreadProperty "Period" (PropUnit (fromIntegral interval) "ms")
+    [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Hybrid")
+    , ThreadProperty "Period" (PropUnit interval "ms")
     , ThreadProperty "Compute_Entrypoint_Source_Text" cbprop
     ]
     where
-    cbprop = case callbacks of
-      [c] -> PropString c
-      cs -> PropList (map PropString cs)
+    cbprop = PropList (map PropString callbacks)
 
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
   eportname chid = case find p (nodees_receivers edges) of
@@ -109,8 +101,9 @@ signalDef asmsig = do
   n = nodest_name (an_nodest asmsig)
   commsource = "tower_signal_comm_" ++ n 
   usersource = "tower_signal_usercode_" ++ n
-  props = [ smaccmProp "Dispatch" "ISR"
-          , threadProp "Source_Text" (usersource <.> "c")
+  props = [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Sporadic")
+          , ThreadProperty "Source_Text"
+              (PropList [ PropString (usersource <.> "c") ])
           ] ++ isrprop ++ initprop
   isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
     Just signame -> [ smaccmProp "Signal_Name" signame ]
@@ -157,7 +150,6 @@ featuresDef an headername channelevts = do
     ps = channelprops (lbl_code lc) (chan_size ch)
     cs = case lookup (unLabeled lc) channelevts of
       Nothing -> []
-      Just [cb] -> tp (PropString cb)
       Just cbs  -> tp (PropList (map PropString cbs))
     tp prop = [ThreadProperty "Compute_Entrypoint_Source_Text" prop]
 

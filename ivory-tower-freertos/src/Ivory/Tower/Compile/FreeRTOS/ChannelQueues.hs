@@ -12,9 +12,8 @@ import Text.Printf
 
 import Ivory.Language
 import Ivory.Stdlib
-import qualified Ivory.OS.FreeRTOS.Queue as Q
 import qualified Ivory.OS.FreeRTOS.Semaphore as S
-import           Ivory.OS.FreeRTOS.Queue (QueueHandle)
+import qualified Ivory.OS.FreeRTOS.Atomic as A
 
 import Ivory.Tower.Types
 import Ivory.Tower.Compile.FreeRTOS.Types
@@ -23,11 +22,11 @@ data FreeRTOSChannel area =
   FreeRTOSChannel
     { fch_name      :: String
     , fch_emit      :: forall eff s cs . (GetAlloc eff ~ Scope cs)
-                    => Ctx -> ConstRef s area -> Ivory eff IBool
+                    => ConstRef s area -> Ivory eff IBool
     , fch_emit_     :: forall eff s cs . (GetAlloc eff ~ Scope cs)
-                    => Ctx -> ConstRef s area -> Ivory eff ()
+                    => ConstRef s area -> Ivory eff ()
     , fch_receive   :: forall eff s cs . (GetAlloc eff ~ Scope cs)
-                    => Ctx -> Ref s area -> Ivory eff IBool
+                    => Ref s area -> Ivory eff IBool
     , fch_initDef   :: Def('[]:->())
     , fch_moduleDef :: ModuleDef
     , fch_channelid :: ChannelId
@@ -95,92 +94,82 @@ eventQueue :: forall (area :: Area *) (n :: Nat) i
            -> Sing n
            -> NodeSt i -- Destination Node
            -> FreeRTOSChannel area
-eventQueue channelid _sizeSing dest = FreeRTOSChannel
-  { fch_name        = unique "freertos_eventQueue"
-  , fch_emit        = emit
-  , fch_emit_       = emit_
-  , fch_receive     = receive
-  , fch_initDef     = initDef
-  , fch_moduleDef   = mdef
-  , fch_channelid   = channelid
-  }
+eventQueue channelid sizeSing dest = if size < 2 then err else fch
   where
+  (size :: Integer) = fromSing sizeSing
+  err = error ("error: in channel named " ++ name ++ ":\n" ++
+               "Tower FreeRTOS Channel must be of size > 1; " ++
+               "channels hold one fewer event than their size")
+  fch = FreeRTOSChannel
+    { fch_name        = unique "freertos_eventQueue"
+    , fch_emit        = emit
+    , fch_emit_       = emit_
+    , fch_receive     = receive
+    , fch_initDef     = initDef
+    , fch_moduleDef   = mdef
+    , fch_channelid   = channelid
+    }
+
   name = printf "channel%d_%s" (chan_id channelid) (nodest_name dest)
 
   unique :: String -> String
   unique n = n ++ "_" ++ name
 
-  eventHeapArea :: MemArea (Array n area)
-  eventHeapArea = area (unique "eventHeap") Nothing
-  eventHeap     = addrOf eventHeapArea
+  ringBufArea :: MemArea (Array n area)
+  ringBufArea = area (unique "ringBuf") Nothing
+  ringBuffer  = addrOf ringBufArea
 
-  pendingQueueArea, freeQueueArea :: MemArea Q.Queue
-  pendingQueueArea = area (unique "pendingQueue") Nothing
-  freeQueueArea    = area (unique "freeQueue") Nothing
-  pendingQueue     = addrOf pendingQueueArea
-  freeQueue        = addrOf freeQueueArea
+  insertArea :: MemArea (Stored (Ix n))
+  insertArea = area (unique "insert") (Just (ival 0))
+  insert = addrOf insertArea
 
-  getIx :: (GetAlloc eff ~ Scope cs)
-        => Ctx -> QueueHandle -> Uint32 -> Ivory eff (IBool, Ix n)
-  getIx ctx q waittime = do
-    vlocal <- local (ival 0)
-    s <- case ctx of
-           User -> call Q.receive     q vlocal waittime
-           ISR  -> call Q.receive_isr q vlocal
-    v <- deref vlocal
-    i <- assign (toIx v)
-    return (s, i)
+  removeArea :: MemArea (Stored (Ix n))
+  removeArea = area (unique "remove") (Just (ival 0))
+  remove = addrOf removeArea
 
-  putIx :: Ctx -> QueueHandle -> Ix n -> Ivory eff ()
-  putIx ctx q i = case ctx of
-    User -> call_ Q.send     q (safeCast i) 0 -- should never block
-    ISR  -> call_ Q.send_isr q (safeCast i)
+  emit :: (GetAlloc eff ~ Scope cs) => ConstRef s area -> Ivory eff IBool
+  emit v = call emitProc v
 
-  emit :: (GetAlloc eff ~ Scope cs) => Ctx -> ConstRef s area -> Ivory eff IBool
-  emit ctx v = call (emitProc ctx) v
+  emit_ :: (GetAlloc eff ~ Scope cs) => ConstRef s area -> Ivory eff ()
+  emit_ v = call_ emitProc v
 
-  emit_ :: (GetAlloc eff ~ Scope cs) => Ctx -> ConstRef s area -> Ivory eff ()
-  emit_ ctx v = call_ (emitProc ctx) v
+  emitProc :: Def ('[ConstRef s area] :-> IBool)
+  emitProc = proc (unique "emit") $ \v -> body $ do
+    success <- local (ival true)
+    noReturn $ A.atomic_block $ do
+      rmv <- deref remove
+      ins <- deref insert
+      ifte_ ((ins + 1) ==? rmv) (store success false) $ do
+        refCopy (ringBuffer ! ins) v
+        store insert (ins + 1)
+    deref success >>= ret
 
-  emitProc :: Ctx -> Def ('[ConstRef s area] :-> IBool)
-  emitProc ctx = proc (unique ("emitFrom" ++ (show ctx))) $ \v -> body $ do
-    (got, i) <- getIx ctx freeQueue 0
-    when got $ do
-      refCopy (eventHeap ! i) v
-      putIx ctx pendingQueue i
-    ret got
+  receive :: (GetAlloc eff ~ Scope cs) => Ref s area -> Ivory eff IBool
+  receive v = call receiveProc v
 
-  receive :: (GetAlloc eff ~ Scope cs) => Ctx -> Ref s area -> Ivory eff IBool
-  receive ctx v = call (receiveProc ctx) v
-
-  receiveProc :: Ctx -> Def ('[Ref s area] :-> IBool)
-  receiveProc ctx =
-    proc (unique ("receiveFrom" ++ (show ctx))) $ \v -> body $ do
-      (got, i) <- getIx ctx pendingQueue 0
-      when got $ do
-        refCopy v (constRef (eventHeap ! i))
-        putIx ctx freeQueue i
-      ret got
+  receiveProc :: Def ('[Ref s area] :-> IBool)
+  receiveProc = proc (unique "receive") $ \v -> body $ do
+    success <- local (ival true)
+    noReturn $ A.atomic_block $ do
+      rmv <- deref remove
+      ins <- deref insert
+      ifte_ (ins ==? rmv) (store success false) $ do
+        refCopy v (constRef (ringBuffer ! rmv))
+        store remove (rmv + 1)
+    deref success >>= ret
 
   initName = unique "freertos_eventQueue_init"
 
   initDef :: Def ('[] :-> ())
   initDef = proc initName $ body $ do
-    let len :: Uint32
-        len = fromInteger (fromSing (sing :: Sing n))
-    call_ Q.create pendingQueue len
-    call_ Q.create freeQueue    len
-    for (toIx len :: Ix n) $ \i ->
-      call_ Q.send freeQueue (safeCast i) 0 -- should not bock
+    return ()
 
   mdef = do
     incl initDef
-    incl (emitProc User)
-    incl (emitProc ISR)
-    incl (receiveProc User)
-    incl (receiveProc ISR)
+    incl emitProc
+    incl receiveProc
     private $ do
-      defMemArea eventHeapArea
-      defMemArea pendingQueueArea
-      defMemArea freeQueueArea
+      defMemArea ringBufArea
+      defMemArea insertArea
+      defMemArea removeArea
 

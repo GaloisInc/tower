@@ -26,6 +26,7 @@ semaphoreWrapperHeader = "freertos_semaphore_wrapper.h"
 create :: Def ('[ SemaphoreHandle ] :-> ())
 create = importProc "ivory_freertos_semaphore_create" semaphoreWrapperHeader
 
+-- semaphore handle, maximum count, initial count
 create_counting :: Def ('[ SemaphoreHandle, Uint32, Uint32 ] :-> ())
 create_counting =
   importProc "ivory_freertos_semaphore_create_counting" semaphoreWrapperHeader

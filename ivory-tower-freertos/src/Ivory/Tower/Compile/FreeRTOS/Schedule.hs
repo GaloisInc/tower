@@ -55,7 +55,7 @@ mkEmitter tnodes snodes ctx emitter ref = do
     --   monad that calls emit on each one, noting failure if it occurs
     f <- local (ival false)
     forM_ endEmitters $ \fch -> do
-      s <- fch_emit fch ctx ref
+      s <- fch_emit fch ref
       unless s (store f true)
     --   then calls notify on each of the appropriate guards
     forM_ endGuards $ \g -> guard_notify g ctx
@@ -89,8 +89,8 @@ mkReceiver :: forall n s eff cs area i
            -> ChannelReceiver n area  -- receiving channel
            -> Ref s area
            -> Ivory eff IBool
-mkReceiver _tnodes _snodes ctx noderx chrx ref =
-  fch_receive fch ctx ref
+mkReceiver _tnodes _snodes _ctx noderx chrx ref =
+  fch_receive fch ref
   where
   fch = eventQueue (cr_chid chrx) (sing :: Sing n) noderx
 

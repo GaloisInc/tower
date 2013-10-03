@@ -40,7 +40,7 @@ stateMachine name machine = do
   aux :: String
       -> OSGetTimeMillis
       -> Event (Stored Uint32)
-      -> ChannelEmitter 1 (Stored Uint32)
+      -> ChannelEmitter 2 (Stored Uint32)
       -> Event (Stored Uint32)
       -> Task p Runnable
   aux freshn millis tick newstate_emitter newstate_evt = do

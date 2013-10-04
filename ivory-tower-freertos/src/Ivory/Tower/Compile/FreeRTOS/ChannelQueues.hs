@@ -11,7 +11,6 @@ import GHC.TypeLits
 import Text.Printf
 
 import Ivory.Language
-import Ivory.Stdlib
 import qualified Ivory.OS.FreeRTOS.Semaphore as S
 import qualified Ivory.OS.FreeRTOS.Atomic as A
 

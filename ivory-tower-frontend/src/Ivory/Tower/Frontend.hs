@@ -5,9 +5,9 @@ module Ivory.Tower.Frontend
   , defaultBuildConf
   , searchPathConf
   , compile
-
   , Twr(..)
   , compilePlatforms
+  , compilePlatforms' -- ^ No getArgs call.
   ) where
 
 import Data.Maybe (catMaybes)
@@ -55,8 +55,14 @@ compile bc t = do
   towerCompile (ivoryCompile bc c_opts) t_opts t
 
 compilePlatforms :: BuildConf -> [(String, Twr)] -> IO ()
-compilePlatforms bc table =  do
-  (c_opts, t_opts) <- parseOptions =<< getArgs
+compilePlatforms bc table = compilePlatforms' bc table =<< getArgs
+
+compilePlatforms' :: BuildConf
+                  -> [(String, Twr)]
+                  -> [String]
+                  -> IO ()
+compilePlatforms' bc table opts =  do
+  (c_opts, t_opts) <- parseOptions opts
   case lookup (T.conf_platform t_opts) table of
     Just (Twr t) -> towerCompile (ivoryCompile bc c_opts) t_opts t
     Nothing -> die (msg (T.conf_platform t_opts))
@@ -65,7 +71,7 @@ compilePlatforms bc table =  do
     (" the following platforms are supported:"):(map fst table)
 
 ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO ()
-ivoryCompile bc copts ms platformspecific_sp = 
+ivoryCompile bc copts ms platformspecific_sp =
   C.runCompilerWith szmap spath ms copts
   where
   szmap = bc_sizemap bc
@@ -129,27 +135,29 @@ writeAADLDoc conf d = do
   where fname = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
-parseOptions s = case (e1, e2) of
-  ([],[]) -> case tfunmatched ++ cfunmatched ++ cfunrecog of
-    [] -> case (mconcat cfs, mconcat tfs) of
-      (C.Success cf, C.Success tf) -> do
-        let c_opts = cf C.initialOpts
-            t_opts = tf T.initialOpts
-        toconf <- T.optsToConfig t_opts c_opts
-        case toconf of
-          Right t_conf -> return (c_opts, t_conf)
-          Left e -> die [e]
-      _ -> die ["impossible failure concatinating parsed options"]
-    unmatched -> die ("Unknown options:":unmatched)
-  _ -> die (e1 ++ e2)
+parseOptions s =
+  case err1 ++ err2 of
+    -- No errors
+    []   -> case (mconcat cfs, mconcat tfs) of
+              (C.Success cf, C.Success tf) -> do
+                let c_opts = cf C.initialOpts
+                let t_opts = tf T.initialOpts
+                toconf <- T.optsToConfig t_opts c_opts
+                case toconf of
+                  Right t_conf -> return (c_opts, t_conf)
+                  Left e       -> die [e]
+              _ -> die [ "Tower-compile: impossible failure concatinating "
+                      ++ "parsed options" ]
+    errs -> die errs
   where
-  (tfs,tfunmatched,tfunrecog,e1) = getOpt' Permute T.options s
-  (cfs,cfunmatched,cfunrecog,e2) = getOpt' Permute C.options tfunrecog
+  (tfs, _, tfunrecog,  err1) = getOpt' Permute T.options s
+  (cfs, _, pcfunrecog, err2) = getOpt' Permute C.options tfunrecog
 
 die :: [String] -> IO a
 die errs = do
   prog <- getProgName
-  let banner = unlines (errs ++ ["", "Usage: " ++ prog ++ " [OPTIONS]"])
+  let banner = unlines (errs ++ [ "", "Tower compile usage: " ++ prog
+                               ++ " [OPTIONS]" ])
   putStrLn (usageInfo banner T.options)
   putStrLn (usageInfo "" C.options)
   exitFailure

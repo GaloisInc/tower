@@ -126,6 +126,11 @@ eventQueue channelid sizeSing dest = if size < 2 then err else fch
   removeArea = area (unique "remove") (Just (ival 0))
   remove = addrOf removeArea
 
+  ovfArea :: MemArea (Stored Uint32)
+  ovfArea = area (unique "ovf") (Just (ival 0))
+  ovf = addrOf ovfArea
+  incOvf = deref ovf >>= \o -> store ovf (o+1)
+
   emit :: (GetAlloc eff ~ Scope cs) => ConstRef s area -> Ivory eff IBool
   emit v = call emitProc v
 
@@ -138,7 +143,7 @@ eventQueue channelid sizeSing dest = if size < 2 then err else fch
     noReturn $ A.atomic_block $ do
       rmv <- deref remove
       ins <- deref insert
-      ifte_ ((ins + 1) ==? rmv) (store success false) $ do
+      ifte_ ((ins + 1) ==? rmv) (store success false >> incOvf) $ do
         refCopy (ringBuffer ! ins) v
         store insert (ins + 1)
     deref success >>= ret
@@ -171,4 +176,5 @@ eventQueue channelid sizeSing dest = if size < 2 then err else fch
       defMemArea ringBufArea
       defMemArea insertArea
       defMemArea removeArea
+      defMemArea ovfArea
 

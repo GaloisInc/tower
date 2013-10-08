@@ -137,15 +137,18 @@ eventQueue channelid sizeSing dest = if size < 2 then err else fch
   emit_ :: (GetAlloc eff ~ Scope cs) => ConstRef s area -> Ivory eff ()
   emit_ v = call_ emitProc v
 
+  incr x = toIx ((fromIx x + 1) .% fromIntegral size)
+
   emitProc :: Def ('[ConstRef s area] :-> IBool)
   emitProc = proc (unique "emit") $ \v -> body $ do
     success <- local (ival true)
     noReturn $ A.atomic_block $ do
-      rmv <- deref remove
-      ins <- deref insert
-      ifte_ ((ins + 1) ==? rmv) (store success false >> incOvf) $ do
+      rmv  <- deref remove
+      ins  <- deref insert
+      ins' <- assign (incr ins)
+      ifte_ (ins' ==? rmv) (store success false >> incOvf) $ do
         refCopy (ringBuffer ! ins) v
-        store insert (ins + 1)
+        store insert ins'
     deref success >>= ret
 
   receive :: (GetAlloc eff ~ Scope cs) => Ref s area -> Ivory eff IBool
@@ -155,11 +158,12 @@ eventQueue channelid sizeSing dest = if size < 2 then err else fch
   receiveProc = proc (unique "receive") $ \v -> body $ do
     success <- local (ival true)
     noReturn $ A.atomic_block $ do
-      rmv <- deref remove
-      ins <- deref insert
+      rmv  <- deref remove
+      rmv' <- assign (incr rmv)
+      ins  <- deref insert
       ifte_ (ins ==? rmv) (store success false) $ do
         refCopy v (constRef (ringBuffer ! rmv))
-        store remove (rmv + 1)
+        store remove rmv'
     deref success >>= ret
 
   initName = unique "freertos_eventQueue_init"

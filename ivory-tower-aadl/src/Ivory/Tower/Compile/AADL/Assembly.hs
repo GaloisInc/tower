@@ -6,7 +6,7 @@ module Ivory.Tower.Compile.AADL.Assembly
 import System.FilePath
 import Debug.Trace
 
-import Data.List (sortBy, groupBy, find)
+import Data.List (sortBy, groupBy)
 import Data.Maybe (catMaybes)
 
 import Ivory.Language
@@ -20,8 +20,9 @@ import Ivory.Compile.AADL.Gen (mkType)
 assemblyDoc :: String -> [Module] -> Assembly -> Document
 assemblyDoc name mods asm = runCompile mods virtMod $ do
   writeImport "SMACCM_SYS"
-  mapM_ taskDef   (asm_tasks asm)
-  mapM_ signalDef (asm_sigs  asm)
+  let (prioritizedTasks, highest) = taskPriority (asm_tasks asm) 0
+  mapM_ taskDef   prioritizedTasks
+  mapM_ signalDef (zip (asm_sigs  asm) [highest..])
   writeProcessDefinition (processDef name asm)
   where
   virtMod = package name $ do
@@ -33,19 +34,21 @@ threadProp k v = ThreadProperty k (PropString v)
 smaccmProp :: String -> String -> ThreadProperty
 smaccmProp k v = threadProp ("SMACCM_SYS::" ++ k) v
 
-taskDef :: AssembledNode TaskSt -> CompileM ()
-taskDef asmtask = do
+taskDef :: (AssembledNode TaskSt, Int) -> CompileM ()
+taskDef (asmtask, priority) = do
   features <- featuresDef asmtask (loopsource <.> "h") channelevts
   writeThreadDefinition (ThreadDef n features props)
   where
   nodest = an_nodest asmtask
   n = nodest_name nodest
-  edges = nodest_edges nodest
   taskst = nodest_impl nodest
   loopsource = "tower_task_loop_" ++ n
   usersource = "tower_task_usercode_" ++ n
   props = [ ThreadProperty "Source_Text"
-              (PropList [ PropString (usersource <.> "c") ]) ]
+              (PropList [ PropString (usersource <.> "c") ])
+          , ThreadProperty "Priority"
+              (PropInteger (fromIntegral priority))
+          ]
         ++ initprop
         ++ periodprops
   initprop = case an_init asmtask of
@@ -85,25 +88,20 @@ taskDef asmtask = do
     cbprop = PropList (map PropString callbacks)
 
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
-  eportname chid = case find p (nodees_receivers edges) of
-    Just e -> lbl_user e
-    Nothing -> error msg
-    where
-    p e = unLabeled e == chid
-    msg = "impossible: could not find chid " ++ (show (chan_id chid))
-        ++ " in taskDef " ++ n
 
-signalDef :: AssembledNode SignalSt -> CompileM ()
-signalDef asmsig = do
+signalDef :: (AssembledNode SignalSt, Int) -> CompileM ()
+signalDef (asmsig, priority) = do
   features <- featuresDef asmsig (commsource <.> "h") []
   writeThreadDefinition (ThreadDef n features props)
   where
   n = nodest_name (an_nodest asmsig)
-  commsource = "tower_signal_comm_" ++ n 
+  commsource = "tower_signal_comm_" ++ n
   usersource = "tower_signal_usercode_" ++ n
   props = [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Sporadic")
           , ThreadProperty "Source_Text"
               (PropList [ PropString (usersource <.> "c") ])
+          , ThreadProperty "Priority"
+              (PropInteger (fromIntegral priority))
           ] ++ isrprop ++ initprop
   isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
     Just signame -> [ smaccmProp "Signal_Name" signame ]
@@ -223,3 +221,13 @@ mkConn n1 p1 n2 p2 = ProcessConnection (port n1 p1) (port n2 p2)
           where nn = identifier (threadInstance n)
                 pp = identifier (lbl_user p)
 
+
+taskPriority :: [AssembledNode TaskSt]
+             -> Int
+             -> ([(AssembledNode TaskSt, Int)], Int)
+taskPriority tasks basepriority = (zip sortedTasks [basepriority..], highest)
+  where
+  sortedTasks = sortBy cmp tasks
+  task_pri    = taskst_priority . nodest_impl . an_nodest
+  cmp a b     = compare (task_pri a) (task_pri b)
+  highest     = basepriority + (length tasks)

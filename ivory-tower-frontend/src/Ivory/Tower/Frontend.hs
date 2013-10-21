@@ -119,7 +119,7 @@ compileAADLStructDefs :: T.Config -> [Module] -> IO ()
 compileAADLStructDefs conf mods =
   when (T.conf_mkmeta conf) $ mapM_ (writeAADLDoc conf) aadlDocs
   where
-  aadlDocs = A.ivoryTypesDoc : (catMaybes ( map compileWithCtx mods))
+  aadlDocs = (catMaybes ( map compileWithCtx mods))
   compileWithCtx = A.compileModule mods
 
 compileAADLAssembly :: T.Config -> [Module] -> Assembly -> IO ()

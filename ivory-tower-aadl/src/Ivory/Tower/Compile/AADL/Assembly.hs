@@ -23,7 +23,7 @@ assemblyDoc name mods asm = runCompile mods virtMod $ do
   let (prioritizedTasks, highest) = taskPriority (asm_tasks asm) 0
   mapM_ taskDef   prioritizedTasks
   mapM_ signalDef (zip (asm_sigs  asm) [highest..])
-  writeProcessDefinition (processDef name asm)
+  writeProcessDefinition =<< (processDef name asm)
   where
   virtMod = package name $ do
     mapM_ depend mods
@@ -76,7 +76,8 @@ taskDef (asmtask, priority) = do
               $ catMaybes
               $ map aux (taskst_evt_handlers taskst)
     where
-    aux (Action (ChannelEvent chid) cname _) = Just (chid, cname)
+    aux (Action (ChannelEvent chid) cname _) =
+      Just (chid, escapeReserved cname)
     aux _ = Nothing
 
   mkPeriodProperty interval callbacks =
@@ -88,6 +89,12 @@ taskDef (asmtask, priority) = do
     cbprop = PropList (map PropString callbacks)
 
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
+
+escapeReserved :: String -> String
+escapeReserved "mode"  = "xMode"
+escapeReserved "port"  = "xPort"
+escapeReserved "group" = "xGroup"
+escapeReserved a       = a
 
 signalDef :: (AssembledNode SignalSt, Int) -> CompileM ()
 signalDef (asmsig, priority) = do
@@ -132,7 +139,7 @@ featuresDef an headername channelevts = do
   emitterDef :: Labeled ChannelId -> CompileM ThreadFeature
   emitterDef lc = do
     chtype <- channelTypename ch
-    return $ ThreadFeaturePort portname PortKindEvent Out chtype ps
+    return $ ThreadFeatureEventPort portname Out chtype ps
     where
     ch = unLabeled lc
     portname = identifier (lbl_user lc)
@@ -141,7 +148,7 @@ featuresDef an headername channelevts = do
   receiverDef :: Labeled ChannelId -> CompileM ThreadFeature
   receiverDef lc = do
     chtype <- channelTypename ch
-    return $ ThreadFeaturePort portname PortKindEvent In chtype (ps ++ cs)
+    return $ ThreadFeatureEventPort portname In chtype (ps ++ cs)
     where
     ch = unLabeled lc
     portname = identifier (lbl_user lc)
@@ -155,12 +162,16 @@ featuresDef an headername channelevts = do
   dataWriterDef :: Labeled DataportId -> CompileM ThreadFeature
   dataWriterDef (Labeled e n c) = do
     t <- dataportTypename e
-    return $ ThreadFeaturePort (identifier n) PortKindData Out t (props c)
+    return $ ThreadFeatureDataPort (identifier n) t (writable:(props c))
+    where
+    writable = ThreadProperty "Access_Right" (PropLiteral "write_only")
 
   dataReaderDef :: Labeled DataportId -> CompileM ThreadFeature
   dataReaderDef (Labeled e n c) = do
     t <- dataportTypename e
-    return $ ThreadFeaturePort (identifier n) PortKindData In t (props c)
+    return $ ThreadFeatureDataPort (identifier n) t (readable:(props c))
+    where
+    readable = ThreadProperty "Access_Right" (PropLiteral "write_only")
 
 channelTypename :: ChannelId -> CompileM TypeName
 channelTypename chid = do
@@ -182,18 +193,28 @@ implNonBaseTypes t = case t of
 threadInstance :: String -> String
 threadInstance threadtypename = threadtypename ++ "_inst"
 
-processDef :: String -> Assembly -> ProcessDef
-processDef nodename asm = ProcessDef name components connections
+processDef :: String -> Assembly -> CompileM ProcessDef
+processDef nodename asm = do
+  dpcomps <- mapM dataportComponent (towerst_dataports (asm_towerst asm))
+  let components = tcomps ++ dpcomps
+  return $ ProcessDef name components connections
   where
   name = identifier (nodename ++ "_process")
-  components = [ pc t | t <- asm_tasks asm ]
-            ++ [ pc s | s <- asm_sigs asm ]
-  pc an = ProcessComponent (threadInstance n) n
+  tcomps = [ pc t | t <- asm_tasks asm ]
+        ++ [ pc s | s <- asm_sigs asm ]
+  pc an = ProcessThread (threadInstance n) n
     where n = identifier (nodest_name (an_nodest an))
 
   edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
        ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
   connections = chanConns edges ++ dataConns edges
+
+dataportComponent :: DataportId -> CompileM ProcessComponent
+dataportComponent dpid = do
+  t <- mkType (dp_ityp dpid)
+  return $ ProcessData n t
+  where
+  n = "dataport" ++ (show (dp_id dpid))
 
 chanConns :: [NodeEdges] -> [ProcessConnection]
 chanConns edges =
@@ -204,22 +225,31 @@ chanConns edges =
   , bport <- nodees_receivers bnode
   , unLabeled aport == unLabeled bport
   ]
+  where
+  mkConn :: String -> Labeled a -> String -> Labeled a -> ProcessConnection
+  mkConn n1 p1 n2 p2 = EventConnection c1 c2
+    where
+    c1 = port (escapeReserved n1) p1
+    c2 = port (escapeReserved n2) p2
+    port n p = ProcessPort nn pp
+        where nn = identifier (threadInstance n)
+              pp = identifier (lbl_user p)
 
 dataConns :: [NodeEdges] -> [ProcessConnection]
 dataConns edges =
-  [ mkConn (nodees_name anode) aport (nodees_name bnode) bport
-  | anode <- edges
-  , aport <- nodees_datawriters anode
-  , bnode <- edges
-  , bport <- nodees_datareaders bnode
-  , unLabeled aport == unLabeled bport
+  [ mkConn (nodees_name node) port
+  | node <- edges
+  , port <- (nodees_datawriters node) ++ (nodees_datareaders node)
   ]
+  where
+  mkConn :: String -> Labeled DataportId -> ProcessConnection
+  mkConn n p = DataConnection dpname port
+    where
+    dpname = "dataport" ++ (show (dp_id (unLabeled p)))
+    port = ProcessPort nn pp
+    nn = identifier (threadInstance (escapeReserved n))
+    pp = identifier (escapeReserved (lbl_user p))
 
-mkConn :: String -> Labeled a -> String -> Labeled a -> ProcessConnection
-mkConn n1 p1 n2 p2 = ProcessConnection (port n1 p1) (port n2 p2)
-  where port n p = ProcessPort nn pp
-          where nn = identifier (threadInstance n)
-                pp = identifier (lbl_user p)
 
 
 taskPriority :: [AssembledNode TaskSt]

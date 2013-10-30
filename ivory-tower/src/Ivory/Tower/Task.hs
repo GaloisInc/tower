@@ -139,11 +139,7 @@ taskDependency = do
 withStackSize :: Integer -> Task p ()
 withStackSize stacksize = do
   s <- getTaskSt
-  case taskst_stacksize s of
-    Nothing -> setTaskSt $ s { taskst_stacksize = Just stacksize }
-    Just _  -> getNodeName >>= \name ->
-               fail ("Cannot use withStackSize more than once in task named "
-                  ++  name)
+  setTaskSt $ s { taskst_stacksize = stacksize }
 
 -- | Specify an OS priority level of the 'Ivory.Tower.Tower.taskBody' created in
 --   the 'Ivory.Tower.Types.Task' context. Implementation at the backend

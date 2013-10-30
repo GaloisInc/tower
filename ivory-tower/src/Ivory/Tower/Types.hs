@@ -234,7 +234,7 @@ emptyNodeSt n impl = NodeSt
 data TaskSt =
   TaskSt
     { taskst_periods       :: [Integer]
-    , taskst_stacksize     :: Maybe Integer
+    , taskst_stacksize     :: Integer
     , taskst_priority      :: Maybe Integer
     , taskst_moddef        :: TaskSchedule -> ModuleDef
     , taskst_moddef_user   :: ModuleDef
@@ -247,7 +247,7 @@ data TaskSt =
 emptyTaskSt :: TaskSt
 emptyTaskSt = TaskSt
   { taskst_periods       = []
-  , taskst_stacksize     = Nothing
+  , taskst_stacksize     = 256
   , taskst_priority      = Nothing
   , taskst_moddef        = const (return ())
   , taskst_moddef_user   = return ()

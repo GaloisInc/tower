@@ -89,8 +89,7 @@ taskNode n = mkNode (text "task") (periods ++ prior ++ ssize) n
     Nothing -> []
 
   ssize = case taskst_stacksize t of
-    Just s -> [ text ("stack size " ++ (show s)) ]
-    Nothing -> []
+    s -> [ text ("stack size " ++ (show s)) ]
 
 
 sigNode :: SigNode -> Doc

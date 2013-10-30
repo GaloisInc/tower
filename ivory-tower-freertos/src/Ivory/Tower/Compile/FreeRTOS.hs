@@ -101,7 +101,7 @@ taskCreate a = call_ Task.create pointer stacksize priority
   where
   taskst    = nodest_impl (an_nodest a)
   pointer   = procPtr (an_entry a)
-  stacksize = maybe defaultstacksize fromIntegral (taskst_stacksize taskst)
+  stacksize = fromIntegral (taskst_stacksize taskst)
   priority  = defaulttaskpriority + (maybe 0 fromIntegral (taskst_priority taskst))
 
 os :: OS
@@ -159,9 +159,6 @@ mkPeriodic p n = (Period tick time p, initDef, mDef)
     ret ticked
   tick = call tickDef
   time = call Task.getTimeMillis
-
-defaultstacksize :: Uint32
-defaultstacksize = 256
 
 defaulttaskpriority :: Uint8
 defaulttaskpriority = 1

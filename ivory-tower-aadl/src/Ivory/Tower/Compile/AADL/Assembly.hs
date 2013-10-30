@@ -15,7 +15,7 @@ import Ivory.Tower.Types
 import Ivory.Compile.AADL.AST
 import Ivory.Compile.AADL.Identifier
 import Ivory.Compile.AADL.Monad
-import Ivory.Compile.AADL.Gen (mkType)
+import Ivory.Compile.AADL.Gen (mkType, typeImpl)
 
 assemblyDoc :: String -> [Module] -> Assembly -> Document
 assemblyDoc name mods asm = runCompile mods virtMod $ do
@@ -48,6 +48,8 @@ taskDef (asmtask, priority) = do
               (PropList [ PropString (usersource <.> "c") ])
           , ThreadProperty "Priority"
               (PropInteger (fromIntegral priority))
+          , ThreadProperty "Source_Stack_Size"
+              (PropUnit (fromIntegral (taskst_stacksize taskst)) "bytes")
           ]
         ++ initprop
         ++ periodprops
@@ -206,7 +208,7 @@ processDef nodename asm = do
 dataportComponent :: DataportId -> CompileM ProcessComponent
 dataportComponent dpid = do
   t <- mkType (dp_ityp dpid)
-  return $ ProcessData n t
+  return $ ProcessData n (typeImpl t)
   where
   n = "dataport" ++ (show (dp_id dpid))
 

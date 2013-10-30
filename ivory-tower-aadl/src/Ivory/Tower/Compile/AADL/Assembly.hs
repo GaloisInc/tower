@@ -83,18 +83,12 @@ taskDef (asmtask, priority) = do
   mkPeriodProperty interval callbacks =
     [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Hybrid")
     , ThreadProperty "Period" (PropUnit interval "ms")
-    , ThreadProperty "Compute_Entrypoint_Source_Text" cbprop
+    , ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text" cbprop
     ]
     where
     cbprop = PropList (map PropString callbacks)
 
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
-
-escapeReserved :: String -> String
-escapeReserved "mode"  = "xMode"
-escapeReserved "port"  = "xPort"
-escapeReserved "group" = "xGroup"
-escapeReserved a       = a
 
 signalDef :: (AssembledNode SignalSt, Int) -> CompileM ()
 signalDef (asmsig, priority) = do
@@ -156,7 +150,7 @@ featuresDef an headername channelevts = do
     cs = case lookup (unLabeled lc) channelevts of
       Nothing -> []
       Just cbs  -> tp (PropList (map PropString cbs))
-    tp prop = [ThreadProperty "Compute_Entrypoint_Source_Text" prop]
+    tp prop = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text" prop]
 
 
   dataWriterDef :: Labeled DataportId -> CompileM ThreadFeature

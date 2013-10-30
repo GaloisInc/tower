@@ -167,7 +167,7 @@ featuresDef an headername channelevts = do
     t <- dataportTypename e
     return $ ThreadFeatureDataPort (identifier n) t (readable:(props c))
     where
-    readable = ThreadProperty "Access_Right" (PropLiteral "write_only")
+    readable = ThreadProperty "Access_Right" (PropLiteral "read_only")
 
 channelTypename :: ChannelId -> CompileM TypeName
 channelTypename chid = do

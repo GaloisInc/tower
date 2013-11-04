@@ -167,16 +167,14 @@ defaulttaskpriority = 1
 
 commprim_headers :: [FilePath]
 commprim_headers =
-  [ "freertos_queue_wrapper.h"
-  , "freertos_semaphore_wrapper.h"
+  [ "freertos_semaphore_wrapper.h"
   , "freertos_task_wrapper.h"
   , "freertos_atomic_wrapper.h"
   ]
 
 commprim_sources :: [FilePath]
 commprim_sources =
-  [ "freertos_queue_wrapper.c"
-  , "freertos_semaphore_wrapper.c"
+  [ "freertos_semaphore_wrapper.c"
   , "freertos_task_wrapper.c"
   , "freertos_atomic_wrapper.c"
   ]

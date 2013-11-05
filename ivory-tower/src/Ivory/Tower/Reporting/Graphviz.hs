@@ -1,5 +1,5 @@
 
-module Ivory.Tower.Graphviz
+module Ivory.Tower.Reporting.Graphviz
   ( graphvizDoc
   , graphvizToFile
   ) where

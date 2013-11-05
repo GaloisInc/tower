@@ -20,7 +20,8 @@ library
                         Ivory.Tower.StateMachine.Types,
                         Ivory.Tower.StateMachine.Compile,
 
-                        Ivory.Tower.Graphviz,
+                        Ivory.Tower.Reporting.Graphviz,
+                        Ivory.Tower.Reporting.Entrypoints,
 
                         Ivory.Tower.Test.FooBarSimple,
                         Ivory.Tower.Test.FooBarSignals,

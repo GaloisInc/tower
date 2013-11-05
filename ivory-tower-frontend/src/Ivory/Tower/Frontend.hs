@@ -27,10 +27,11 @@ import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 import qualified Ivory.Compile.AADL as A
 
-import qualified Ivory.Tower.Graphviz         as T
-import qualified Ivory.Tower.Frontend.Options as T
-import qualified Ivory.Tower.Compile.FreeRTOS as FreeRTOS
-import qualified Ivory.Tower.Compile.AADL     as AADL
+import qualified Ivory.Tower.Reporting.Graphviz    as T
+import qualified Ivory.Tower.Reporting.Entrypoints as T
+import qualified Ivory.Tower.Frontend.Options      as T
+import qualified Ivory.Tower.Compile.FreeRTOS      as FreeRTOS
+import qualified Ivory.Tower.Compile.AADL          as AADL
 
 data BuildConf =
   BuildConf
@@ -96,6 +97,7 @@ compileFreeRTOS compiler conf t = do
   let (asm, objs) = FreeRTOS.compile t
   compiler objs [FreeRTOS.searchDir]
   compileDot conf asm
+  compileEntrypointList conf asm
 
 compileAADL :: ([Module] -> [IO FilePath] -> IO ())
             -> T.Config
@@ -114,6 +116,12 @@ compileDot :: T.Config -> Assembly -> IO ()
 compileDot conf asm =
   when (T.conf_mkdot conf) $ T.graphvizToFile f asm
   where f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
+
+compileEntrypointList :: T.Config -> Assembly -> IO ()
+compileEntrypointList conf asm =
+  when (T.conf_mkdot conf) $ T.entrypointsToFile f asm
+  where
+  f = (T.conf_outdir conf) </> ((T.conf_name conf) ++ "_entrypoints") <.> "txt"
 
 compileAADLStructDefs :: T.Config -> [Module] -> IO ()
 compileAADLStructDefs conf mods =

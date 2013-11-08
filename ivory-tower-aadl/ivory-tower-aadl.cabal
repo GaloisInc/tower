@@ -7,12 +7,15 @@ build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
+data-files: ivory-aadl-headers/tower_gettimemillis.h
+
 library
   exposed-modules:      Ivory.Tower.Compile.AADL,
                         Ivory.Tower.Compile.AADL.Assembly,
                         Ivory.Tower.Compile.AADL.Modules,
-                        Ivory.Tower.Compile.AADL.OS
-
+                        Ivory.Tower.Compile.AADL.OS,
+                        Ivory.Tower.Compile.AADL.SearchDir
+  other-modules:        Paths_ivory_tower_aadl
   build-depends:        base >= 4.6,
                         template-haskell >= 2.8,
                         filepath,

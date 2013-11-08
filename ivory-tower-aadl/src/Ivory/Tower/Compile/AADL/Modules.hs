@@ -16,12 +16,18 @@ buildModules asm = ms
   ms = tower_tasks
     ++ towerst_modules towerst
     ++ concatMap (taskst_extern_mods . nodest_impl . an_nodest) tasks
+    ++ [tower_primitives]
+
+  tower_primitives = package "tower_primitives" $ do
+    inclHeader "tower_gettimemillis.h"
+    sourceDep  "tower_gettimemillis.h"
 
   nodeModules :: AssembledNode a -> [Module]
   nodeModules n = an_modules n systemDeps
 
   systemDeps :: ModuleDef
   systemDeps = do
+    depend tower_primitives
     mapM_ depend (towerst_depends towerst)
 
   tower_tasks :: [Module]

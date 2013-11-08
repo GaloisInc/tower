@@ -7,12 +7,14 @@
 module Ivory.Tower.Compile.AADL
   ( compile
   , assemblyDoc
+  , searchDir
   ) where
 
 import Ivory.Language
 import Ivory.Tower.Types
 import Ivory.Tower.Tower (assembleTower)
 
+import Ivory.Tower.Compile.AADL.SearchDir (searchDir)
 import Ivory.Tower.Compile.AADL.OS (os)
 import Ivory.Tower.Compile.AADL.Modules (buildModules)
 import Ivory.Tower.Compile.AADL.Assembly (assemblyDoc)

@@ -43,6 +43,7 @@ assembleTask tnodes snodes tnode = AssembledNode
 
   taskLoopMod sysdeps = package (taskst_pkgname_loop tnode ) $ do
     taskst_moddef taskst schedule
+    sysdeps
     depend (taskUserCodeMod sysdeps)
   schedule = mkTaskSchedule tnodes snodes tnode
 

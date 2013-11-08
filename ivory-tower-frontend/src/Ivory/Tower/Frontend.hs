@@ -105,12 +105,10 @@ compileAADL :: ([Module] -> [IO FilePath] -> IO ())
             -> IO ()
 compileAADL compiler conf t = do
   let (asm, objs) = AADL.compile t
-  compiler objs searchpath
+  compiler objs [AADL.searchDir]
   compileDot            conf      asm
   compileAADLStructDefs conf objs
   compileAADLAssembly   conf objs asm
-  where
-  searchpath = []
 
 compileDot :: T.Config -> Assembly -> IO ()
 compileDot conf asm =

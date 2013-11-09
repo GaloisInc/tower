@@ -7,7 +7,6 @@ module Ivory.Tower.Reporting.Entrypoints
 import Ivory.Tower.Types
 
 -- We'll be inspecting the Ivory AST, which can be unsafe.
-import Ivory.Language
 import qualified Ivory.Language.Proc as P
 import qualified Ivory.Language.Syntax.AST as AST
 

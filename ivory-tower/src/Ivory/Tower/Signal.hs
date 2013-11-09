@@ -23,9 +23,9 @@ signalChannelEmitter :: forall n area p
                      -> Node SignalSt p (ChannelEmitter n area, String)
 signalChannelEmitter chsrc = do
   nodename <- getNodeName
-  unique   <- freshname -- May not be needed.
+  uniqueID <- fresh
   let chid = unChannelSource chsrc
-      emitName = printf "emitFromSig_%s_chan%d%s" nodename (chan_id chid) unique
+      emitName = printf "emitFromSig_%s_chan%d_%d" nodename (chan_id chid) uniqueID
       externEmit :: Def ('[ConstRef s area] :-> IBool)
       externEmit = externProc emitName
       procEmit :: SigSchedule -> Def ('[ConstRef s area] :-> IBool)
@@ -50,9 +50,9 @@ signalChannelReceiver :: forall n area p
                       -> Node SignalSt p (ChannelReceiver n area, String)
 signalChannelReceiver chsnk = do
   nodename <- getNodeName
-  unique   <- freshname -- May not be needed.
+  uniqueID <- fresh
   let chid = unChannelSink chsnk
-      rxName = printf "receiveFromSig_%s_chan%d%s" nodename (chan_id chid) unique
+      rxName = printf "receiveFromSig_%s_chan%d_%d" nodename (chan_id chid) uniqueID
       externRx :: Def ('[Ref s area] :-> IBool)
       externRx = externProc rxName
       procRx :: SigSchedule -> Def ('[Ref s area] :-> IBool)
@@ -102,7 +102,7 @@ signalLocalInit n i = siglocalAux n (Just i)
 siglocalAux :: (IvoryArea area) => Name -> Maybe (Init area) -> Signal p (Ref Global area)
 siglocalAux n i = do
   f <- freshname
-  let m = area (n ++ f) i
+  let m = area (showUnique (f n)) i
   sigStAddModuleDef (const (defMemArea m))
   return (addrOf m)
 

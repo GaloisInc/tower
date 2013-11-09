@@ -32,43 +32,41 @@ runTower twr = do
 
 runTask :: Name -> Task p () -> Tower p TaskNode
 runTask name t = do
-  n <- freshname
-  let uniquename = name ++ n
-  (_, tnode) <- runStateT (emptyNodeSt uniquename emptyTaskSt) (unNode t)
+  uniq <- freshname
+  (_, tnode) <- runStateT (emptyNodeSt (uniq name) emptyTaskSt) (unNode t)
   return $ tnode
 
 runSignal :: Name -> Signal p () -> Tower p SigNode
 runSignal name s = do
-  n <- freshname
-  let uniquename = name ++ n
-  (_, snode) <- runStateT (emptyNodeSt uniquename emptySignalSt) (unNode s)
+  uniq <- freshname
+  (_, snode) <- runStateT (emptyNodeSt (uniq name) emptySignalSt) (unNode s)
   return $ snode
 
 -- Node Transformers----------------------------------------------------------
 
-nodeStAddReceiver :: ChannelId -> String -> String -> Node i p ()
-nodeStAddReceiver r l1 l2 = do
+nodeStAddReceiver :: ChannelId -> Unique -> SymbolName -> Node i p ()
+nodeStAddReceiver r u s = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_receivers = (Labeled r l1 l2)
+  setNodeEdges $ n { nodees_receivers = (r, u, s)
                : (nodees_receivers n)}
 
-nodeStAddEmitter :: ChannelId -> String -> String -> Node i p ()
-nodeStAddEmitter r l1 l2 = do
+nodeStAddEmitter :: ChannelId -> Unique -> SymbolName -> Node i p ()
+nodeStAddEmitter r u s = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_emitters = (Labeled r l1 l2)
+  setNodeEdges $ n { nodees_emitters = (r, u, s)
                : (nodees_emitters n)}
 
-nodeStAddDataReader :: DataportId -> String -> String -> Node i p ()
-nodeStAddDataReader cc l1 l2 = do
+nodeStAddDataReader :: DataportId -> Unique -> SymbolName -> Node i p ()
+nodeStAddDataReader cc u s = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_datareaders = Labeled cc l1 l2
+  setNodeEdges $ n { nodees_datareaders = (cc, u, s)
                                         : nodees_datareaders n
                    }
 
-nodeStAddDataWriter :: DataportId -> String -> String -> Node i p ()
-nodeStAddDataWriter cc l1 l2 = do
+nodeStAddDataWriter :: DataportId -> Unique -> SymbolName -> Node i p ()
+nodeStAddDataWriter cc u s = do
   n <- getNodeEdges
-  setNodeEdges $ n { nodees_datawriters = Labeled cc l1 l2
+  setNodeEdges $ n { nodees_datawriters = (cc, u, s)
                                         : nodees_datawriters n
                    }
 
@@ -91,10 +89,10 @@ setNodeEdges e = do
   n <- getNode
   setNode $ n { nodest_edges = e }
 
-getNodeName:: Node i p Name
+getNodeName:: Node i p String
 getNodeName = do
   n <- getNodeEdges
-  return (nodees_name n)
+  return (showUnique (nodees_name n))
 
 
 -- Task Getters/Setters --------------------------------------------------------

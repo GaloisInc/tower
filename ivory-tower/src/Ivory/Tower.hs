@@ -35,7 +35,7 @@ module Ivory.Tower
 
   , OSGetTimeMillis()
 
-  , freshname
+  , fresh
   -- Tower exports:
   , task
   , signal

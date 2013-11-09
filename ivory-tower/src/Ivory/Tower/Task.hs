@@ -22,12 +22,12 @@ instance Channelable TaskSt where
   nodeChannelReceiver = taskChannelReceiver
 
 taskChannelEmitter :: forall n area p . (SingI n, IvoryArea area)
-        => ChannelSource n area -> Node TaskSt p (ChannelEmitter n area, String)
+        => ChannelSource n area -> Node TaskSt p (ChannelEmitter n area, SymbolName)
 taskChannelEmitter chsrc = do
   nodename <- getNodeName
-  unique   <- freshname -- May not be needed.
-  let chid    = unChannelSource chsrc
-      emitName = printf "emitFromTask_%s_chan%d%s" nodename (chan_id chid) unique
+  uniqueID <- fresh
+  let chid     = unChannelSource chsrc
+      emitName = printf "emitFromTask_%s_chan%d_%d" nodename (chan_id chid) uniqueID
       externEmit :: Def ('[ConstRef s area] :-> IBool)
       externEmit = externProc emitName
       procEmit :: TaskSchedule -> Def ('[ConstRef s area] :-> IBool)
@@ -49,12 +49,12 @@ taskChannelEmitter chsrc = do
 taskChannelReceiver :: forall n area p
                      . (SingI n, IvoryArea area, IvoryZero area)
                     => ChannelSink n area
-                    -> Node TaskSt p (ChannelReceiver n area, String)
+                    -> Node TaskSt p (ChannelReceiver n area, SymbolName)
 taskChannelReceiver chsnk = do
   nodename <- getNodeName
-  unique   <- freshname -- May not be needed.
+  uniqueID <- fresh
   let chid = unChannelSink chsnk
-      rxName = printf "receiveFromTask_%s_chan%d%s" nodename (chan_id chid) unique
+      rxName = printf "receiveFromTask_%s_chan%d_%d" nodename (chan_id chid) uniqueID
       externRx :: Def ('[Ref s area] :-> IBool)
       externRx = externProc rxName
       procRx :: TaskSchedule -> Def ('[Ref s area] :-> IBool)
@@ -76,12 +76,12 @@ instance DataPortable TaskSt where
   nodeDataWriter = taskDataWriter
 
 taskDataReader :: forall area p . (IvoryArea area)
-               => DataSink area -> Node TaskSt p (DataReader area, String)
+               => DataSink area -> Node TaskSt p (DataReader area, SymbolName)
 taskDataReader dsnk = do
   nodename <- getNodeName
-  unique   <- freshname -- May not be needed.
+  uniqueID <- fresh
   let dpid = unDataSink dsnk
-      readerName = printf "read_%s_dataport%d%s" nodename (dp_id dpid) unique
+      readerName = printf "read_%s_dataport%d_%d" nodename (dp_id dpid) uniqueID
       externReader :: Def ('[Ref s area] :-> ())
       externReader = externProc readerName
       procReader :: TaskSchedule -> Def ('[Ref s area] :-> ())
@@ -96,12 +96,12 @@ taskDataReader dsnk = do
   return (reader, readerName)
 
 taskDataWriter :: forall area p . (IvoryArea area)
-               => DataSource area -> Node TaskSt p (DataWriter area, String)
+               => DataSource area -> Node TaskSt p (DataWriter area, SymbolName)
 taskDataWriter dsrc = do
   nodename <- getNodeName
-  unique   <- freshname -- May not be needed.
+  uniqueID <- fresh
   let dpid = unDataSource dsrc
-      writerName = printf "write_%s_dataport%d%s" nodename (dp_id dpid) unique
+      writerName = printf "write_%s_dataport%d_%d" nodename (dp_id dpid) uniqueID
       externWriter :: Def ('[ConstRef s area] :-> ())
       externWriter = externProc writerName
       procWriter :: TaskSchedule -> Def ('[ConstRef s area] :-> ())
@@ -184,7 +184,7 @@ tlocalAux :: (IvoryArea area)
           -> Task p (Ref Global area)
 tlocalAux n i writer = do
   f <- freshname
-  let m = area (n ++ f) i
+  let m = area (showUnique (f n)) i
   writer (defMemArea m)
   return (addrOf m)
 
@@ -249,9 +249,9 @@ onEventAux  :: forall area p
             -> Task p ()
 onEventAux evt username mkproc = do
   n <- getNodeName
-  f <- freshname
-  let name = printf "eventhandler_%s_%s%s%s" n evtname user f
-      user = maybe [] (\n -> '_':n) username
+  f <- fresh
+  let name = printf "eventhandler_%s_%s%s_%d" n evtname user f
+      user = maybe [] (\s -> '_':s) username
       callback :: Def ('[ConstRef s area] :-> ())
       callback = mkproc name
   taskStAddModuleDefUser $ incl callback
@@ -314,8 +314,8 @@ mkPeriod per = do
   st <- getTaskSt
   setTaskSt $ st { taskst_periods = per : (taskst_periods st)}
   os <- getOS
-  n <- freshname
-  let (p, initdef, mdef) = os_mkPeriodic os per n
+  n <- fresh
+  let (p, initdef, mdef) = os_mkPeriodic os per ("_" ++ (show n))
   nodeStAddCodegen initdef mdef
   return p
 

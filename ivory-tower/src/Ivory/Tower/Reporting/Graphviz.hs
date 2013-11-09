@@ -29,7 +29,7 @@ connectedChannels es chs =
   ]
   where
   -- the labeled channelids in an edge are labeled with per-node description
-  hasCh edgeChs ch = ch `elem` (map unLabeled edgeChs)
+  hasCh edgeChs ch = ch `elem` (map (\(a, _, _) -> a) edgeChs)
 
 -- | Render a Tower 'Assembly' as a 'Text.PrettyPrint.Leijen.Doc'
 graphvizDoc :: Assembly -> Doc
@@ -113,14 +113,14 @@ mkNode title auxfields n = name <+> brackets attrs <> semi
   edge_field nm d1 d2 =
     angles (text nm) <+> text d1 <+> text d2
 
-  emitter_field (Labeled chid descr _) =
-    edge_field (chanName chid)  descr "emitter"
-  receiver_field (Labeled chid descr _) =
-    edge_field (chanName chid) descr "receiver"
-  reader_field (Labeled dpid descr _) =
-    edge_field (dataportName  dpid) descr "reader"
-  writer_field (Labeled dpid descr _) =
-    edge_field (dataportName dpid) descr "writer"
+  emitter_field (Labeled chid descr) =
+    edge_field (chanName chid) (unique_userprovided descr) "emitter"
+  receiver_field (Labeled chid descr) =
+    edge_field (chanName chid) (unique_userprovided descr) "receiver"
+  reader_field (Labeled dpid descr) =
+    edge_field (dataportName  dpid) (unique_userprovided descr) "reader"
+  writer_field (Labeled dpid descr) =
+    edge_field (dataportName dpid) (unique_userprovided descr) "writer"
 
 -- Dataport, Channel Nodes -----------------------------------------------------
 
@@ -132,16 +132,6 @@ dataportNode d = name <+> brackets attrs <> semi
   contents = escapeQuotes (drop 2 tyname) -- drop Ty prefix
   tyname = show (dp_ityp d)
 
-channelNode :: ChannelId -> Doc
-channelNode c =
-  name <+> brackets (text "label=" <> dquotes contents) <> semi
-  where
-  contents = title <+> size <+> text ("|{<source>Source|<sink>Sink}")
-  name = text $ chanName c
-  size = text "|Size" <+> text (show (chan_size c))
-  title = text "Channel ::" <+> escapeQuotes (drop 2 tyname) -- drop Ty prefix
-  tyname = show (chan_ityp c)
-
 -- Edges -----------------------------------------------------------------------
 
 channelEdge :: NodeEdges -> NodeEdges -> ChannelId -> Doc
@@ -149,32 +139,22 @@ channelEdge fro to chan = arrow f t <+> brackets desc <> semi
   where
   desc = text "label =" <> dquotes lbl <+> text "style=bold"
   lbl = escapeQuotes (drop 2 tyname) -- drop Ty prefix
-  f = qual (nodees_name fro) (chanName chan)
-  t = qual (nodees_name to)  (chanName chan)
+  f = qual (showUnique (nodees_name fro)) (chanName chan)
+  t = qual (showUnique (nodees_name to))  (chanName chan)
   tyname = show (chan_ityp chan)
 
-emitterEdge :: NodeSt a -> Labeled ChannelId -> Doc
-emitterEdge node (Labeled chan _ _) = arrow tnode cnode <+> semi
-  where
-  tnode = qual (nodest_name node) (chanName chan)
-  cnode = qual (chanName chan) "source"
-
-receiverEdge :: NodeSt a -> Labeled ChannelId -> Doc
-receiverEdge node (Labeled chan _ _) = arrow cnode tnode <+> semi
-  where
-  cnode = qual (chanName chan) "sink"
-  tnode = qual (nodest_name node) (chanName chan)
-
 writerEdge :: NodeSt a -> Labeled DataportId -> Doc
-writerEdge node (Labeled dp _ _) = arrow tnode dnode <+> brackets desc <> semi
+writerEdge node ldp = arrow tnode dnode <+> brackets desc <> semi
   where
+  dp = unLabeled ldp
   desc = text "style=dashed"
   tnode = qual (nodest_name node) (dataportName dp)
   dnode = text (dataportName dp)
 
 readerEdge :: NodeSt a -> Labeled DataportId -> Doc
-readerEdge node (Labeled dp _ _) = arrow dnode tnode <+> brackets desc <> semi
+readerEdge node ldp = arrow dnode tnode <+> brackets desc <> semi
   where
+  dp = unLabeled ldp
   desc = text "style=dashed"
   dnode = text (dataportName dp)
   tnode = qual (nodest_name node) (dataportName dp)

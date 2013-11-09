@@ -11,8 +11,10 @@ import Ivory.Tower.StateMachine.Types
 
 import Ivory.Language
 import Ivory.Tower
+import Ivory.Tower.Types
 import Ivory.Stdlib
 import Ivory.Tower.Node (nodeChannel)
+import Ivory.Tower.Types (UniqueBuilder, showUnique)
 
 data Runnable =
   Runnable
@@ -28,27 +30,27 @@ active r = call (runnable_active r)
 
 stateMachine :: String -> MachineM StateLabel -> Task p Runnable
 stateMachine name machine = do
-  n <- freshname
+  uniq <- freshname
   m <- withGetTimeMillis
   p <- withPeriodicEvent 1
   newstate <- nodeChannel
   newstate_emitter <- withChannelEmitter (src newstate) "newstateEmitter"
   newstate_receiver <- withChannelEvent (snk newstate) "newstateEvent"
-  aux (name ++ n) m p newstate_emitter newstate_receiver
+  aux uniq m p newstate_emitter newstate_receiver
   where
   (istate, states) = runMachineM machine
-  aux :: String
+  aux :: UniqueBuilder
       -> OSGetTimeMillis
       -> Event (Stored Uint32)
       -> ChannelEmitter 2 (Stored Uint32)
       -> Event (Stored Uint32)
       -> Task p Runnable
-  aux freshn millis tick newstate_emitter newstate_evt = do
+  aux uniq millis tick newstate_emitter newstate_evt = do
     mapM_ mkState states
     taskModuleDef moddef
     return runner
     where
-    unique n = n ++ "_machine_" ++ freshn
+    unique n = showUnique (uniq (n ++ "_machine_" ++ name))
     runner = Runnable
       { runnable_begin = begin_proc
       , runnable_active = active_proc

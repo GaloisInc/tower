@@ -17,7 +17,7 @@ import Ivory.Compile.AADL.Identifier
 import Ivory.Compile.AADL.Monad
 import Ivory.Compile.AADL.Gen (mkType, typeImpl)
 
-assemblyDoc :: String -> [Module] -> Assembly -> Document
+assemblyDoc :: String -> [Module] -> Assembly -> (Document, [Warning])
 assemblyDoc name mods asm = runCompile mods virtMod $ do
   writeImport "SMACCM_SYS"
   let (prioritizedTasks, highest) = taskPriority (asm_tasks asm) 0
@@ -114,6 +114,10 @@ signalDef (asmsig, priority) = do
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
+-- XXX DO THIS RIGHT WITH THE SCOPE STUFF
+uniqueIdentifier :: Unique -> CompileM String
+uniqueIdentifier u = return (identifier (showUnique u))
+
 featuresDef :: AssembledNode a -> FilePath -> [(ChannelId,[String])]
             -> CompileM [ThreadFeature]
 featuresDef an headername channelevts = do
@@ -132,40 +136,40 @@ featuresDef an headername channelevts = do
   channelprops sourcetext len = qp : props sourcetext
    where qp = ThreadProperty "Queue_Size" (PropInteger (fromIntegral len))
 
-  emitterDef :: Labeled ChannelId -> CompileM ThreadFeature
-  emitterDef lc = do
-    chtype <- channelTypename ch
+  emitterDef :: (ChannelId, Unique, SymbolName) -> CompileM ThreadFeature
+  emitterDef (chid, uname, symname) = do
+    chtype <- channelTypename chid
+    portname <- uniqueIdentifier uname
     return $ ThreadFeatureEventPort portname Out chtype ps
     where
-    ch = unLabeled lc
-    portname = identifier (lbl_user lc)
-    ps = channelprops (lbl_code lc) (chan_size ch)
+    ps = channelprops symname (chan_size chid)
 
-  receiverDef :: Labeled ChannelId -> CompileM ThreadFeature
-  receiverDef lc = do
-    chtype <- channelTypename ch
+  receiverDef :: (ChannelId, Unique, SymbolName) -> CompileM ThreadFeature
+  receiverDef (chid, uname, symname) = do
+    chtype <- channelTypename chid
+    portname <- uniqueIdentifier uname
     return $ ThreadFeatureEventPort portname In chtype (ps ++ cs)
     where
-    ch = unLabeled lc
-    portname = identifier (lbl_user lc)
-    ps = channelprops (lbl_code lc) (chan_size ch)
-    cs = case lookup (unLabeled lc) channelevts of
+    ps = channelprops symname (chan_size chid)
+    cs = case lookup chid channelevts of
       Nothing -> []
       Just cbs  -> tp (PropList (map PropString cbs))
     tp prop = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text" prop]
 
 
-  dataWriterDef :: Labeled DataportId -> CompileM ThreadFeature
-  dataWriterDef (Labeled e n c) = do
-    t <- dataportTypename e
-    return $ ThreadFeatureDataPort (identifier n) t (writable:(props c))
+  dataWriterDef :: (DataportId, Unique, SymbolName) -> CompileM ThreadFeature
+  dataWriterDef (dpid, uniq, symname) = do
+    t <- dataportTypename dpid
+    ident <- uniqueIdentifier uniq
+    return $ ThreadFeatureDataPort ident t (writable:(props symname))
     where
     writable = ThreadProperty "Access_Right" (PropLiteral "write_only")
 
-  dataReaderDef :: Labeled DataportId -> CompileM ThreadFeature
-  dataReaderDef (Labeled e n c) = do
-    t <- dataportTypename e
-    return $ ThreadFeatureDataPort (identifier n) t (readable:(props c))
+  dataReaderDef :: (DataportId, Unique, SymbolName) -> CompileM ThreadFeature
+  dataReaderDef (dpid, uniq, symname) = do
+    t <- dataportTypename dpid
+    ident <- uniqueIdentifier uniq
+    return $ ThreadFeatureDataPort ident t (readable:(props symname))
     where
     readable = ThreadProperty "Access_Right" (PropLiteral "read_only")
 
@@ -193,17 +197,17 @@ processDef :: String -> Assembly -> CompileM ProcessDef
 processDef nodename asm = do
   dpcomps <- mapM dataportComponent (towerst_dataports (asm_towerst asm))
   let components = tcomps ++ dpcomps
-  return $ ProcessDef name components connections
+  chanconns <- chanConns edges
+  dataconns <- dataConns edges
+  return $ ProcessDef name components (chanconns ++ dataconns)
   where
   name = identifier (nodename ++ "_process")
   tcomps = [ pc t | t <- asm_tasks asm ]
         ++ [ pc s | s <- asm_sigs asm ]
   pc an = ProcessThread (threadInstance n) n
     where n = identifier (nodest_name (an_nodest an))
-
   edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
        ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
-  connections = chanConns edges ++ dataConns edges
 
 dataportComponent :: DataportId -> CompileM ProcessComponent
 dataportComponent dpid = do
@@ -212,40 +216,51 @@ dataportComponent dpid = do
   where
   n = "dataport" ++ (show (dp_id dpid))
 
-chanConns :: [NodeEdges] -> [ProcessConnection]
-chanConns edges =
+chanConns :: [NodeEdges] -> CompileM [ProcessConnection]
+chanConns edges = sequence
   [ mkConn (nodees_name anode) aport (nodees_name bnode) bport
   | anode <- edges
   , aport <- nodees_emitters anode
   , bnode <- edges
   , bport <- nodees_receivers bnode
-  , unLabeled aport == unLabeled bport
+  , ci aport == ci bport
   ]
   where
-  mkConn :: String -> Labeled a -> String -> Labeled a -> ProcessConnection
-  mkConn n1 p1 n2 p2 = EventConnection c1 c2
+  ci (a, _, _) = a
+  -- XXX PROBLEMATIC: HOW DO WE KNOW THE ASSIGNMENT FROM UNIQUE TO STRING IN
+  -- THE OWNER THREAD"S SCOPE? NEED TO CHANGE THE WAY WE KEEP TRACK OF NAMES &
+  -- SCOPES...
+  mkConn :: Unique -> (ChannelId, Unique, SymbolName)
+         -> Unique -> (ChannelId, Unique, SymbolName)
+         -> CompileM ProcessConnection
+  mkConn n1 (_,p1,_) n2 (_,p2,_) = do
+    c1 <- processPort n1 p1
+    c2 <- processPort n2 p2
+    return $ EventConnection c1 c2
     where
-    c1 = port (escapeReserved n1) p1
-    c2 = port (escapeReserved n2) p2
-    port n p = ProcessPort nn pp
-        where nn = identifier (threadInstance n)
-              pp = identifier (lbl_user p)
+    processPort n p = do
+      nn <- uniqueIdentifier n
+      pp <- uniqueIdentifier p
+      return $ ProcessPort (threadInstance nn) pp
 
-dataConns :: [NodeEdges] -> [ProcessConnection]
-dataConns edges =
+dataConns :: [NodeEdges] -> CompileM [ProcessConnection]
+dataConns edges = sequence
   [ mkConn (nodees_name node) port
   | node <- edges
   , port <- (nodees_datawriters node) ++ (nodees_datareaders node)
   ]
   where
-  mkConn :: String -> Labeled DataportId -> ProcessConnection
-  mkConn n p = DataConnection dpname port
+  -- XXX PROBLEMATIC SEE ABOVE
+  mkConn :: Unique
+         -> (DataportId, Unique, SymbolName)
+         -> CompileM ProcessConnection
+  mkConn nodename (dpid,portname,_) = do
+    nn <- uniqueIdentifier nodename
+    pp <- uniqueIdentifier portname
+    let port = ProcessPort (threadInstance nn) pp
+    return $ DataConnection dpname port
     where
-    dpname = "dataport" ++ (show (dp_id (unLabeled p)))
-    port = ProcessPort nn pp
-    nn = identifier (threadInstance (escapeReserved n))
-    pp = identifier (escapeReserved (lbl_user p))
-
+    dpname = "dataport" ++ (show (dp_id dpid))
 
 
 taskPriority :: [AssembledNode TaskSt]

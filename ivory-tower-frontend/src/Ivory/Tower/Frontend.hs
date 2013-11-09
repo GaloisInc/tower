@@ -125,14 +125,14 @@ compileAADLStructDefs :: T.Config -> [Module] -> IO ()
 compileAADLStructDefs conf mods =
   when (T.conf_mkmeta conf) $ mapM_ (writeAADLDoc conf) aadlDocs
   where
-  aadlDocs = (catMaybes ( map compileWithCtx mods))
+  (aadlDocs, warnss) = unzip (catMaybes (map compileWithCtx mods))
   compileWithCtx = A.compileModule mods
 
 compileAADLAssembly :: T.Config -> [Module] -> Assembly -> IO ()
 compileAADLAssembly conf mods asm =
   when (T.conf_mkmeta conf) $ writeAADLDoc conf d
   where
-  d = AADL.assemblyDoc (T.conf_name conf) mods asm
+  (d, ws) = AADL.assemblyDoc (T.conf_name conf) mods asm
 
 writeAADLDoc :: T.Config -> A.Document -> IO ()
 writeAADLDoc conf d = A.documentToFile fname d

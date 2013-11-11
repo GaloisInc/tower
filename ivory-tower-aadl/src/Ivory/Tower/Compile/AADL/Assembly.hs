@@ -17,7 +17,7 @@ import Ivory.Compile.AADL.Identifier
 import Ivory.Compile.AADL.Monad
 import Ivory.Compile.AADL.Gen (mkType, typeImpl)
 
-assemblyDoc :: String -> [Module] -> Assembly -> (Document, [Warning])
+assemblyDoc :: String -> [Module] -> Assembly -> TypeCtxM (Document, [Warning])
 assemblyDoc name mods asm = runCompile mods virtMod $ do
   writeImport "SMACCM_SYS"
   let (prioritizedTasks, highest) = taskPriority (asm_tasks asm) 0

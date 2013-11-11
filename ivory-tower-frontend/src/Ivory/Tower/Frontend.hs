@@ -107,8 +107,7 @@ compileAADL compiler conf t = do
   let (asm, objs) = AADL.compile t
   compiler objs [AADL.searchDir]
   compileDot            conf      asm
-  compileAADLStructDefs conf objs
-  compileAADLAssembly   conf objs asm
+  compileAADLDocuments  conf objs asm
 
 compileDot :: T.Config -> Assembly -> IO ()
 compileDot conf asm =
@@ -121,18 +120,15 @@ compileEntrypointList conf asm =
   where
   f = (T.conf_outdir conf) </> ((T.conf_name conf) ++ "_entrypoints") <.> "txt"
 
-compileAADLStructDefs :: T.Config -> [Module] -> IO ()
-compileAADLStructDefs conf mods =
-  when (T.conf_mkmeta conf) $ mapM_ (writeAADLDoc conf) aadlDocs
+compileAADLDocuments :: T.Config -> [Module] -> Assembly -> IO ()
+compileAADLDocuments conf mods asm =
+  when (T.conf_mkmeta conf) $ mapM_ (writeAADLDoc conf) (typedoc : docs)
   where
-  (aadlDocs, warnss) = unzip (catMaybes (map compileWithCtx mods))
-  compileWithCtx = A.compileModule mods
-
-compileAADLAssembly :: T.Config -> [Module] -> Assembly -> IO ()
-compileAADLAssembly conf mods asm =
-  when (T.conf_mkmeta conf) $ writeAADLDoc conf d
-  where
-  (d, ws) = AADL.assemblyDoc (T.conf_name conf) mods asm
+  compile = A.compileModule mods
+  ((docs, ws),typedoc) = A.compileTypeCtx $ do
+    (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compile mods)
+    (asmdoc, asmws) <- AADL.assemblyDoc (T.conf_name conf) mods asm
+    return (asmdoc:moddocs, asmws:modwss)
 
 writeAADLDoc :: T.Config -> A.Document -> IO ()
 writeAADLDoc conf d = A.documentToFile fname d

@@ -160,19 +160,21 @@ data Action =
   Action
     { act_evt      :: EventImpl
     , act_callname :: String
-    , act_code     :: forall cs . Ivory (AllocEffects cs) ()
+    , act_code     :: forall cs . Ref (Stack cs) (Stored Uint32)
+                               -> Ivory (AllocEffects cs) ()
     }
 
 
 -- Period ----------------------------------------------------------------------
 -- | Wrapper type for periodic schedule, created using
 -- 'Ivory.Tower.Tower.withPeriod'. Internal fields: per_tick indicates when
--- period has gone off since last call. per_tnow indicates the current time.
+-- period has gone off since last call, and updates the time passed as an
+-- argument with the time next due. per_tnow indicates the current time.
 
 data Period =
   Period { per_tick :: forall eff cs
                       . (GetAlloc eff ~ Scope cs)
-                     => Ivory eff IBool
+                     => Ref (Stack cs) (Stored Uint32) -> Ivory eff IBool
          , per_tnow  :: forall eff cs
                       . (GetAlloc eff ~ Scope cs)
                      => Ivory eff Uint32

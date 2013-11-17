@@ -139,27 +139,34 @@ mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)
 mkPeriodic p n = (Period tick time p, initDef, mDef)
   where
   unique i = i ++ n
-  lastTimeArea = area (unique "periodicLastTime") Nothing
-  lastTime = addrOf lastTimeArea
+  lastPeriodArea = area (unique "periodicLastPeriod") Nothing
+  lastPeriodStart = addrOf lastPeriodArea
   mDef = do
     incl initDef
     incl tickDef
-    private $ defMemArea lastTimeArea
+    private $ defMemArea lastPeriodArea
   initDef = proc (unique "initPeriodic") $ body $ do
     initTime <- call Task.getTimeMillis
-    store lastTime initTime
-  tickDef :: Def ('[]:->IBool)
-  tickDef = proc (unique "tickPeriodic") $ body $ do
-    now  <- call Task.getTimeMillis
-    prev <- deref lastTime
-    assume (now >=? prev) -- The abstract clock should be monotonic.
-    ticked <- assign (now >=? (prev + fromInteger p))
-    when ticked $
-      store lastTime now
-    ret ticked
+    store lastPeriodStart initTime
+  tickDef :: Def ('[Ref s (Stored Uint32)]:->IBool)
+  tickDef = proc (unique "tickPeriodic") $ 
+    \nextDue -> body $ do
+      now <- call Task.getTimeMillis
+      lp  <- deref lastPeriodStart
+      assume (now >=? lp) -- The abstract clock should be monotonic.
+      -- the time of the start of the current period. (now / per) rounds down.
+      thisPeriodStart <- assign ((now `iDiv` per) * per)
+      -- only tick if we've entered the next period.
+      ticked <- assign (thisPeriodStart >? lp)
+      when ticked $
+        store lastPeriodStart thisPeriodStart
+      due <- assign ((thisPeriodStart) + per)
+      nd <- deref nextDue
+      when (due <? nd) (store nextDue due)
+      ret ticked
   tick = call tickDef
   time = call Task.getTimeMillis
-
+  per = fromInteger p
 defaulttaskpriority :: Uint8
 defaulttaskpriority = 1
 

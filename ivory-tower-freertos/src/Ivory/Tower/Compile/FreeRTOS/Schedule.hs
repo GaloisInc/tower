@@ -169,6 +169,7 @@ assembleTask tnodes snodes tnode = AssembledNode
   entry = proc ((taskst_pkgname_loop tnode) ++ "_proc") $ body $ noReturn $ do
     -- Initialize a variable for when the task finishes computation.
     timeExitGuard <- local izero
+    timeNextDue <- local izero
     updateTime timeExitGuard
     forever $ noBreak $ do
       -- Get the current time.
@@ -176,32 +177,34 @@ assembleTask tnodes snodes tnode = AssembledNode
       tExitG <- deref timeExitGuard
       dt <- assign (timeEnterGuard - tExitG)
       assert (dt >=? 0)
-      -- Subtract the duration of the task from the (GCD of the) period.
-      perRemaining <- assign (period_gcd - (safeCast dt))
-      -- If there is time remaining in the period, block for it.
-      when (perRemaining >=? 0) $ do
-        -- Cast back down to an unsigned time
-        r <- assign  (castWith 0 perRemaining)
-        -- Block for the remaining time in the period.
-        guard_block (eventGuard tnode) r
 
-      -- It is possible that a handler overran the task's periodic time,
-      -- in which case we record an error to notify the programmer.
-      unless (perRemaining >=? 0) $ do
-        store (addrOf overrun_area) tExitG
+      tnd <- deref timeNextDue
+      rem <- timeRemaining tnd timeEnterGuard
+      guard_block (eventGuard tnode) rem
 
       -- Update our finish time variable.
       updateTime timeExitGuard
-      -- Pull events off the channels/timers
-      mapM_ act_code (taskst_evt_rxers taskst)
-      -- Run event handlers
-      mapM_ act_code (taskst_evt_handlers taskst)
+
+      store timeNextDue uint32_max
+      -- Pull events off the channels/timers. Timers will update the timeNextDue
+      -- if they are due before the value there.
+      mapM_ (\a -> act_code a timeNextDue) (taskst_evt_rxers taskst)
+      -- Run event handlers. These shouldn't need access to timeNextDue
+      garbageTime <- local izero
+      mapM_ (\a -> act_code a garbageTime) (taskst_evt_handlers taskst)
+
     where
+    uint32_max :: Uint32
+    uint32_max = fromIntegral ((2^32)-1)
     updateTime = resultInto (call Task.getTimeMillis)
-    period_gcd :: Sint64
-    period_gcd = safeCast $ case taskst_periods taskst of
-                    [] -> Q.maxWait
-                    ps -> fromInteger (foldl1 gcd ps)
+    timeRemaining :: Uint32 -> Uint32 -> Ivory eff Uint32
+    timeRemaining nextdue now = do
+      (nextdue' :: Sint64)  <- assign (safeCast nextdue)
+      (now'     :: Sint64)  <- assign (safeCast now)
+      remaining             <- assign (nextdue' - now')
+      when (remaining <? 0) $ store (addrOf overrun_area) now
+      return ((remaining >? 0) ? (castWith 0 remaining, 0))
+
 
 assembleSignal :: [TaskNode] -> [SigNode] -> SigNode -> AssembledNode SignalSt
 assembleSignal tnodes snodes snode = AssembledNode

@@ -130,7 +130,7 @@ mkPeriodic :: Integer -> Name -> (Period, Def('[]:->()), ModuleDef)
 mkPeriodic p _ = (period, externProc "mkPeriodic_unneeded", return ())
   where
   period = Period
-    { per_tick = call per_tick_proc
+    { per_tick = const $ call per_tick_proc
     , per_tnow = call getTimeMillis
     , per_interval = p
     }

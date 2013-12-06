@@ -3,6 +3,7 @@ module Ivory.Tower.Compile.AADL.Assembly
   ( assemblyDoc
   ) where
 
+
 import System.FilePath
 import Debug.Trace
 
@@ -34,10 +35,11 @@ threadProp k v = ThreadProperty k (PropString v)
 smaccmProp :: String -> String -> ThreadProperty
 smaccmProp k v = threadProp ("SMACCM_SYS::" ++ k) v
 
-taskDef :: (AssembledNode TaskSt, Int) -> CompileM ()
+taskDef :: (AssembledNode TaskSt, Int) -> CompileM Unique ()
 taskDef (asmtask, priority) = do
+  threadname <- introduceUnique (nodees_name (nodest_edges nodest))
   features <- featuresDef asmtask (loopsource <.> "h") channelevts
-  writeThreadDefinition (ThreadDef n features props)
+  writeThreadDefinition (ThreadDef threadname features props)
   where
   nodest = an_nodest asmtask
   n = nodest_name nodest
@@ -92,10 +94,11 @@ taskDef (asmtask, priority) = do
 
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
-signalDef :: (AssembledNode SignalSt, Int) -> CompileM ()
+signalDef :: (AssembledNode SignalSt, Int) -> CompileM Unique ()
 signalDef (asmsig, priority) = do
+  signame <- introduceUnique (nodees_name (nodest_edges (an_nodest asmsig)))
   features <- featuresDef asmsig (commsource <.> "h") []
-  writeThreadDefinition (ThreadDef n features props)
+  writeThreadDefinition (ThreadDef signame features props)
   where
   n = nodest_name (an_nodest asmsig)
   commsource = "tower_signal_comm_" ++ n
@@ -114,12 +117,40 @@ signalDef (asmsig, priority) = do
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
--- XXX DO THIS RIGHT WITH THE SCOPE STUFF
-uniqueIdentifier :: Unique -> CompileM String
-uniqueIdentifier u = return (identifier (showUnique u))
+introduceUnique :: Unique -> CompileM Unique String
+introduceUnique u = do
+  m <- getIdentifierMap
+  case elem up (map snd m) of
+    False -> do
+      setIdentifierMap ((u,up):m)
+      return up
+    True -> do
+      uniquenessWarning warning
+      notUnique m (showUnique u)
+  where
+  up = unique_userprovided u
+  warning = "User provided identifier " ++ up
+         ++ " is not unique in tower-aadl Assembly."
+  notUnique m r = case elem r (map snd m) of
+    True -> do
+      uniquenessWarning (r ++ " insufficiently unique, expanding")
+      notUnique m (r ++ "_1")
+    False -> do
+      setIdentifierMap ((u,r):m)
+      return r
+
+uniqueIdentifier :: Unique -> String -> CompileM Unique String
+uniqueIdentifier u ctx = do
+  m <- getIdentifierMap
+  -- If this lookup fails, its because the CompileM code that should have used
+  -- introduceUnique to create names was not implemented correctly.
+  case lookup u m of
+    Just n -> return n
+    Nothing -> error ("Failed to find unique identifier " ++ (showUnique u)
+                      ++ " in " ++ ctx ++ " context.\nName Map Dump\n" ++ (show m))
 
 featuresDef :: AssembledNode a -> FilePath -> [(ChannelId,[String])]
-            -> CompileM [ThreadFeature]
+            -> CompileM Unique [ThreadFeature]
 featuresDef an headername channelevts = do
   ems <- mapM emitterDef    (nodees_emitters    edges)
   rxs <- mapM receiverDef   (nodees_receivers   edges)
@@ -136,18 +167,18 @@ featuresDef an headername channelevts = do
   channelprops sourcetext len = qp : props sourcetext
    where qp = ThreadProperty "Queue_Size" (PropInteger (fromIntegral len))
 
-  emitterDef :: (ChannelId, Unique, SymbolName) -> CompileM ThreadFeature
+  emitterDef :: (ChannelId, Unique, SymbolName) -> CompileM Unique ThreadFeature
   emitterDef (chid, uname, symname) = do
     chtype <- channelTypename chid
-    portname <- uniqueIdentifier uname
+    portname <- introduceUnique uname
     return $ ThreadFeatureEventPort portname Out chtype ps
     where
     ps = channelprops symname (chan_size chid)
 
-  receiverDef :: (ChannelId, Unique, SymbolName) -> CompileM ThreadFeature
+  receiverDef :: (ChannelId, Unique, SymbolName) -> CompileM Unique ThreadFeature
   receiverDef (chid, uname, symname) = do
     chtype <- channelTypename chid
-    portname <- uniqueIdentifier uname
+    portname <- introduceUnique uname
     return $ ThreadFeatureEventPort portname In chtype (ps ++ cs)
     where
     ps = channelprops symname (chan_size chid)
@@ -157,28 +188,28 @@ featuresDef an headername channelevts = do
     tp prop = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text" prop]
 
 
-  dataWriterDef :: (DataportId, Unique, SymbolName) -> CompileM ThreadFeature
+  dataWriterDef :: (DataportId, Unique, SymbolName) -> CompileM Unique ThreadFeature
   dataWriterDef (dpid, uniq, symname) = do
     t <- dataportTypename dpid
-    ident <- uniqueIdentifier uniq
+    ident <- introduceUnique uniq
     return $ ThreadFeatureDataPort ident t (writable:(props symname))
     where
     writable = ThreadProperty "Access_Right" (PropLiteral "write_only")
 
-  dataReaderDef :: (DataportId, Unique, SymbolName) -> CompileM ThreadFeature
+  dataReaderDef :: (DataportId, Unique, SymbolName) -> CompileM Unique ThreadFeature
   dataReaderDef (dpid, uniq, symname) = do
     t <- dataportTypename dpid
-    ident <- uniqueIdentifier uniq
+    ident <- introduceUnique uniq
     return $ ThreadFeatureDataPort ident t (readable:(props symname))
     where
     readable = ThreadProperty "Access_Right" (PropLiteral "read_only")
 
-channelTypename :: ChannelId -> CompileM TypeName
+channelTypename :: ChannelId -> CompileM Unique TypeName
 channelTypename chid = do
   t <- mkType (chan_ityp chid)
   return $ implNonBaseTypes t
 
-dataportTypename :: DataportId -> CompileM TypeName
+dataportTypename :: DataportId -> CompileM Unique TypeName
 dataportTypename dpid = do
   t <- mkType (dp_ityp dpid)
   return $ implNonBaseTypes t
@@ -193,7 +224,7 @@ implNonBaseTypes t = case t of
 threadInstance :: String -> String
 threadInstance threadtypename = threadtypename ++ "_inst"
 
-processDef :: String -> Assembly -> CompileM ProcessDef
+processDef :: String -> Assembly -> CompileM Unique ProcessDef
 processDef nodename asm = do
   dpcomps <- mapM dataportComponent (towerst_dataports (asm_towerst asm))
   let components = tcomps ++ dpcomps
@@ -209,14 +240,14 @@ processDef nodename asm = do
   edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
        ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
 
-dataportComponent :: DataportId -> CompileM ProcessComponent
+dataportComponent :: DataportId -> CompileM Unique ProcessComponent
 dataportComponent dpid = do
   t <- mkType (dp_ityp dpid)
   return $ ProcessData n (typeImpl t)
   where
   n = "dataport" ++ (show (dp_id dpid))
 
-chanConns :: [NodeEdges] -> CompileM [ProcessConnection]
+chanConns :: [NodeEdges] -> CompileM Unique [ProcessConnection]
 chanConns edges = sequence
   [ mkConn (nodees_name anode) aport (nodees_name bnode) bport
   | anode <- edges
@@ -227,36 +258,32 @@ chanConns edges = sequence
   ]
   where
   ci (a, _, _) = a
-  -- XXX PROBLEMATIC: HOW DO WE KNOW THE ASSIGNMENT FROM UNIQUE TO STRING IN
-  -- THE OWNER THREAD"S SCOPE? NEED TO CHANGE THE WAY WE KEEP TRACK OF NAMES &
-  -- SCOPES...
   mkConn :: Unique -> (ChannelId, Unique, SymbolName)
          -> Unique -> (ChannelId, Unique, SymbolName)
-         -> CompileM ProcessConnection
+         -> CompileM Unique ProcessConnection
   mkConn n1 (_,p1,_) n2 (_,p2,_) = do
     c1 <- processPort n1 p1
     c2 <- processPort n2 p2
     return $ EventConnection c1 c2
     where
     processPort n p = do
-      nn <- uniqueIdentifier n
-      pp <- uniqueIdentifier p
+      nn <- uniqueIdentifier n "chanConns mkConn node name"
+      pp <- uniqueIdentifier p "chanConns mkConn node port"
       return $ ProcessPort (threadInstance nn) pp
 
-dataConns :: [NodeEdges] -> CompileM [ProcessConnection]
+dataConns :: [NodeEdges] -> CompileM Unique [ProcessConnection]
 dataConns edges = sequence
   [ mkConn (nodees_name node) port
   | node <- edges
   , port <- (nodees_datawriters node) ++ (nodees_datareaders node)
   ]
   where
-  -- XXX PROBLEMATIC SEE ABOVE
   mkConn :: Unique
          -> (DataportId, Unique, SymbolName)
-         -> CompileM ProcessConnection
+         -> CompileM Unique ProcessConnection
   mkConn nodename (dpid,portname,_) = do
-    nn <- uniqueIdentifier nodename
-    pp <- uniqueIdentifier portname
+    nn <- uniqueIdentifier nodename "dataConns node name"
+    pp <- uniqueIdentifier portname "dataConns port name"
     let port = ProcessPort (threadInstance nn) pp
     return $ DataConnection dpname port
     where

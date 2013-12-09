@@ -18,6 +18,8 @@ import Ivory.Compile.AADL.Identifier
 import Ivory.Compile.AADL.Monad
 import Ivory.Compile.AADL.Gen (mkType, typeImpl)
 
+type CompileAADL = CompileM (Unique,[String])
+
 assemblyDoc :: String -> [Module] -> Assembly -> TypeCtxM (Document, [Warning])
 assemblyDoc name mods asm = runCompile mods virtMod $ do
   writeImport "SMACCM_SYS"
@@ -35,10 +37,10 @@ threadProp k v = ThreadProperty k (PropString v)
 smaccmProp :: String -> String -> ThreadProperty
 smaccmProp k v = threadProp ("SMACCM_SYS::" ++ k) v
 
-taskDef :: (AssembledNode TaskSt, Int) -> CompileM Unique ()
+taskDef :: (AssembledNode TaskSt, Int) -> CompileAADL ()
 taskDef (asmtask, priority) = do
-  threadname <- introduceUnique (nodees_name (nodest_edges nodest))
-  features <- featuresDef asmtask (loopsource <.> "h") channelevts
+  threadname <- introduceUnique (nodees_name (nodest_edges nodest)) []
+  features <- featuresDef threadname asmtask (loopsource <.> "h") channelevts
   writeThreadDefinition (ThreadDef threadname features props)
   where
   nodest = an_nodest asmtask
@@ -94,10 +96,10 @@ taskDef (asmtask, priority) = do
 
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
-signalDef :: (AssembledNode SignalSt, Int) -> CompileM Unique ()
+signalDef :: (AssembledNode SignalSt, Int) -> CompileAADL ()
 signalDef (asmsig, priority) = do
-  signame <- introduceUnique (nodees_name (nodest_edges (an_nodest asmsig)))
-  features <- featuresDef asmsig (commsource <.> "h") []
+  signame <- introduceUnique (nodees_name (nodest_edges (an_nodest asmsig))) []
+  features <- featuresDef signame asmsig (commsource <.> "h") []
   writeThreadDefinition (ThreadDef signame features props)
   where
   n = nodest_name (an_nodest asmsig)
@@ -117,41 +119,42 @@ signalDef (asmsig, priority) = do
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
 
-introduceUnique :: Unique -> CompileM Unique String
-introduceUnique u = do
+introduceUnique :: Unique -> [String] -> CompileAADL String
+introduceUnique u scope = do
   m <- getIdentifierMap
-  case elem up (map snd m) of
+  let mm = filter ((== scope) . snd . fst) m
+  case elem up (map snd mm)  of
     False -> do
-      setIdentifierMap ((u,up):m)
+      setIdentifierMap (((u,scope),up):m)
       return up
     True -> do
       uniquenessWarning warning
-      notUnique m (showUnique u)
+      let up' = notUnique mm (showUnique u)
+      setIdentifierMap (((u,scope),up'):m)
+      return up'
   where
   up = unique_userprovided u
   warning = "User provided identifier " ++ up
          ++ " is not unique in tower-aadl Assembly."
   notUnique m r = case elem r (map snd m) of
-    True -> do
-      uniquenessWarning (r ++ " insufficiently unique, expanding")
-      notUnique m (r ++ "_1")
-    False -> do
-      setIdentifierMap ((u,r):m)
-      return r
+    True -> notUnique m (r ++ "_1")
+    False -> r
 
-uniqueIdentifier :: Unique -> String -> CompileM Unique String
+uniqueIdentifier :: Unique -> String -> CompileAADL String
 uniqueIdentifier u ctx = do
   m <- getIdentifierMap
   -- If this lookup fails, its because the CompileM code that should have used
   -- introduceUnique to create names was not implemented correctly.
-  case lookup u m of
+  case lookup u (map withoutScope m) of
     Just n -> return n
     Nothing -> error ("Failed to find unique identifier " ++ (showUnique u)
                       ++ " in " ++ ctx ++ " context.\nName Map Dump\n" ++ (show m))
+  where
+  withoutScope ((k,_s),v) = (k,v)
 
-featuresDef :: AssembledNode a -> FilePath -> [(ChannelId,[String])]
-            -> CompileM Unique [ThreadFeature]
-featuresDef an headername channelevts = do
+featuresDef :: String -> AssembledNode a -> FilePath -> [(ChannelId,[String])]
+            -> CompileAADL [ThreadFeature]
+featuresDef scope an headername channelevts = do
   ems <- mapM emitterDef    (nodees_emitters    edges)
   rxs <- mapM receiverDef   (nodees_receivers   edges)
   wrs <- mapM dataWriterDef (nodees_datawriters edges)
@@ -167,18 +170,18 @@ featuresDef an headername channelevts = do
   channelprops sourcetext len = qp : props sourcetext
    where qp = ThreadProperty "Queue_Size" (PropInteger (fromIntegral len))
 
-  emitterDef :: (ChannelId, Unique, SymbolName) -> CompileM Unique ThreadFeature
+  emitterDef :: (ChannelId, Unique, SymbolName) -> CompileAADL ThreadFeature
   emitterDef (chid, uname, symname) = do
     chtype <- channelTypename chid
-    portname <- introduceUnique uname
+    portname <- introduceUnique uname [scope]
     return $ ThreadFeatureEventPort portname Out chtype ps
     where
     ps = channelprops symname (chan_size chid)
 
-  receiverDef :: (ChannelId, Unique, SymbolName) -> CompileM Unique ThreadFeature
+  receiverDef :: (ChannelId, Unique, SymbolName) -> CompileAADL ThreadFeature
   receiverDef (chid, uname, symname) = do
     chtype <- channelTypename chid
-    portname <- introduceUnique uname
+    portname <- introduceUnique uname [scope]
     return $ ThreadFeatureEventPort portname In chtype (ps ++ cs)
     where
     ps = channelprops symname (chan_size chid)
@@ -188,28 +191,28 @@ featuresDef an headername channelevts = do
     tp prop = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text" prop]
 
 
-  dataWriterDef :: (DataportId, Unique, SymbolName) -> CompileM Unique ThreadFeature
+  dataWriterDef :: (DataportId, Unique, SymbolName) -> CompileAADL ThreadFeature
   dataWriterDef (dpid, uniq, symname) = do
     t <- dataportTypename dpid
-    ident <- introduceUnique uniq
+    ident <- introduceUnique uniq [scope]
     return $ ThreadFeatureDataPort ident t (writable:(props symname))
     where
     writable = ThreadProperty "Access_Right" (PropLiteral "write_only")
 
-  dataReaderDef :: (DataportId, Unique, SymbolName) -> CompileM Unique ThreadFeature
+  dataReaderDef :: (DataportId, Unique, SymbolName) -> CompileAADL ThreadFeature
   dataReaderDef (dpid, uniq, symname) = do
     t <- dataportTypename dpid
-    ident <- introduceUnique uniq
+    ident <- introduceUnique uniq [scope]
     return $ ThreadFeatureDataPort ident t (readable:(props symname))
     where
     readable = ThreadProperty "Access_Right" (PropLiteral "read_only")
 
-channelTypename :: ChannelId -> CompileM Unique TypeName
+channelTypename :: ChannelId -> CompileAADL TypeName
 channelTypename chid = do
   t <- mkType (chan_ityp chid)
   return $ implNonBaseTypes t
 
-dataportTypename :: DataportId -> CompileM Unique TypeName
+dataportTypename :: DataportId -> CompileAADL TypeName
 dataportTypename dpid = do
   t <- mkType (dp_ityp dpid)
   return $ implNonBaseTypes t
@@ -224,30 +227,32 @@ implNonBaseTypes t = case t of
 threadInstance :: String -> String
 threadInstance threadtypename = threadtypename ++ "_inst"
 
-processDef :: String -> Assembly -> CompileM Unique ProcessDef
+processDef :: String -> Assembly -> CompileAADL ProcessDef
 processDef nodename asm = do
-  dpcomps <- mapM dataportComponent (towerst_dataports (asm_towerst asm))
-  let components = tcomps ++ dpcomps
+  dpcomps   <- mapM dataportComponent (towerst_dataports (asm_towerst asm))
+  proccomps <- mapM processComponent  (map nodees_name edges)
+  let components = dpcomps ++ proccomps
   chanconns <- chanConns edges
   dataconns <- dataConns edges
   return $ ProcessDef name components (chanconns ++ dataconns)
   where
   name = identifier (nodename ++ "_process")
-  tcomps = [ pc t | t <- asm_tasks asm ]
-        ++ [ pc s | s <- asm_sigs asm ]
-  pc an = ProcessThread (threadInstance n) n
-    where n = identifier (nodest_name (an_nodest an))
   edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
        ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
 
-dataportComponent :: DataportId -> CompileM Unique ProcessComponent
+processComponent :: Unique -> CompileAADL ProcessComponent
+processComponent uid = do
+  name <- uniqueIdentifier uid "processComponent"
+  return (ProcessThread (threadInstance name) name)
+
+dataportComponent :: DataportId -> CompileAADL ProcessComponent
 dataportComponent dpid = do
   t <- mkType (dp_ityp dpid)
   return $ ProcessData n (typeImpl t)
   where
   n = "dataport" ++ (show (dp_id dpid))
 
-chanConns :: [NodeEdges] -> CompileM Unique [ProcessConnection]
+chanConns :: [NodeEdges] -> CompileAADL [ProcessConnection]
 chanConns edges = sequence
   [ mkConn (nodees_name anode) aport (nodees_name bnode) bport
   | anode <- edges
@@ -260,7 +265,7 @@ chanConns edges = sequence
   ci (a, _, _) = a
   mkConn :: Unique -> (ChannelId, Unique, SymbolName)
          -> Unique -> (ChannelId, Unique, SymbolName)
-         -> CompileM Unique ProcessConnection
+         -> CompileAADL ProcessConnection
   mkConn n1 (_,p1,_) n2 (_,p2,_) = do
     c1 <- processPort n1 p1
     c2 <- processPort n2 p2
@@ -271,7 +276,7 @@ chanConns edges = sequence
       pp <- uniqueIdentifier p "chanConns mkConn node port"
       return $ ProcessPort (threadInstance nn) pp
 
-dataConns :: [NodeEdges] -> CompileM Unique [ProcessConnection]
+dataConns :: [NodeEdges] -> CompileAADL [ProcessConnection]
 dataConns edges = sequence
   [ mkConn (nodees_name node) port
   | node <- edges
@@ -280,7 +285,7 @@ dataConns edges = sequence
   where
   mkConn :: Unique
          -> (DataportId, Unique, SymbolName)
-         -> CompileM Unique ProcessConnection
+         -> CompileAADL ProcessConnection
   mkConn nodename (dpid,portname,_) = do
     nn <- uniqueIdentifier nodename "dataConns node name"
     pp <- uniqueIdentifier portname "dataConns port name"

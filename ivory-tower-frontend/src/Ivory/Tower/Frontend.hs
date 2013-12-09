@@ -122,13 +122,16 @@ compileEntrypointList conf asm =
 
 compileAADLDocuments :: T.Config -> [Module] -> Assembly -> IO ()
 compileAADLDocuments conf mods asm =
-  when (T.conf_mkmeta conf) $ mapM_ (writeAADLDoc conf) (typedoc : docs)
+  when (T.conf_mkmeta conf) $ do
+    mapM_ (writeAADLDoc conf) (typedoc : docs)
+    A.warningsToFile warningfname (concat ws)
   where
   compile = A.compileModule mods
-  ((docs, ws),typedoc) = A.compileTypeCtx $ do
+  ((docs, ws, dname),typedoc) = A.compileTypeCtx $ do
     (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compile mods)
     (asmdoc, asmws) <- AADL.assemblyDoc (T.conf_name conf) mods asm
-    return (asmdoc:moddocs, asmws:modwss)
+    return (asmdoc:moddocs, asmws:modwss, A.doc_name asmdoc)
+  warningfname = (T.conf_outdir conf) </> dname ++ "_warnings" <.> "txt"
 
 writeAADLDoc :: T.Config -> A.Document -> IO ()
 writeAADLDoc conf d = A.documentToFile fname d

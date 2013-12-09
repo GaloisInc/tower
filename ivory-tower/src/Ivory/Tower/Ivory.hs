@@ -79,10 +79,10 @@ receive rxer ref = cr_extern_rx rxer ref
 --   Written entirely with public API.
 
 stateProxy :: (SingI n, IvoryArea area, IvoryZero area)
-           => ChannelSink n area -> Tower p (DataSink area)
-stateProxy chsink = do
+           => String -> ChannelSink n area -> Tower p (DataSink area)
+stateProxy name chsink = do
   (src_data, snk_data) <- dataport
-  task "stateProxy" $ do
+  task name $ do
     data_writer <- withDataWriter src_data "proxyData"
     onChannel chsink "proxyEvent" $ \val -> writeData data_writer val
   return snk_data

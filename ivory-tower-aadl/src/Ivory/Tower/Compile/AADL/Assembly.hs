@@ -54,6 +54,7 @@ taskDef (asmtask, priority) = do
               (PropInteger (fromIntegral priority))
           , ThreadProperty "Source_Stack_Size"
               (PropUnit (fromIntegral (taskst_stacksize taskst)) "bytes")
+          , ThreadProperty "SMACCM_SYS::Language" (PropString "Ivory")
           ]
         ++ initprop
         ++ periodprops
@@ -110,6 +111,7 @@ signalDef (asmsig, priority) = do
               (PropList [ PropString (usersource <.> "c") ])
           , ThreadProperty "Priority"
               (PropInteger (fromIntegral priority))
+          , ThreadProperty "SMACCM_SYS::Language" (PropString "Ivory")
           ] ++ isrprop ++ initprop
   isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
     Just signame -> [ smaccmProp "Signal_Name" signame ]
@@ -234,11 +236,14 @@ processDef nodename asm = do
   let components = dpcomps ++ proccomps
   chanconns <- chanConns edges
   dataconns <- dataConns edges
-  return $ ProcessDef name components (chanconns ++ dataconns)
+  -- John requested that we give each connection a throwaway but unique name
+  let namedconns = zipWith namec [1..] (chanconns ++ dataconns)
+  return $ ProcessDef name components namedconns
   where
   name = identifier (nodename ++ "_process")
   edges = [ nodest_edges (an_nodest at) | at <- asm_tasks asm ]
        ++ [ nodest_edges (an_nodest as) | as <- asm_sigs asm ]
+  namec n c = NamedConnection ("conn_" ++ show n) c
 
 processComponent :: Unique -> CompileAADL ProcessComponent
 processComponent uid = do

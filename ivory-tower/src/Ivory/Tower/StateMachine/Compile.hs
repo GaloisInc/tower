@@ -14,7 +14,6 @@ import Ivory.Tower
 import Ivory.Tower.Types
 import Ivory.Stdlib
 import Ivory.Tower.Node (nodeChannel)
-import Ivory.Tower.Types (UniqueBuilder, showUnique)
 
 data Runnable =
   Runnable

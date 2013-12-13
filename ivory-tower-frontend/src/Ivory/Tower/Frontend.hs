@@ -116,9 +116,10 @@ compileDot conf asm =
 
 compileEntrypointList :: T.Config -> Assembly -> IO ()
 compileEntrypointList conf asm =
-  when (T.conf_mkdot conf) $ T.entrypointsToFile f asm
+  when (T.conf_mkdot conf) $ T.entrypointsToFile f nm asm
   where
-  f = (T.conf_outdir conf) </> ((T.conf_name conf) ++ "_entrypoints") <.> "txt"
+  f = T.conf_outdir conf </> (nm ++ "_entrypoints") <.> "mk"
+  nm = T.conf_name conf
 
 compileAADLDocuments :: T.Config -> [Module] -> Assembly -> IO ()
 compileAADLDocuments conf mods asm =

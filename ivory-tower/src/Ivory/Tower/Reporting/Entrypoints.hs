@@ -23,19 +23,22 @@ entrypointsToFile f nm asm = withFile f WriteMode write
   w = 1000000 -- don't wrap lines
   rendered = renderPretty 1.0 w $ entrypointsDoc nm asm
 
+-- | Write out a .mk file with Makefile variables assigned the task entry
+-- points.
 entrypointsDoc :: String -> Assembly -> Doc
 entrypointsDoc nm asm = vsep
-  [ mkVar "TASKS"
-  , pts (asm_tasks asm)
+  [ pts "TASKS" (asm_tasks asm)
   , linebreak
-  , mkVar "SIGNALS"
-  , pts (asm_sigs asm)
+  , pts "SIGNALS" (asm_sigs asm)
   ]
   where
-  mkVar kind = text (map toUpper nm) <> char '_' <> text kind <+> equals <+> backslash
-  pts nodes =
+  mkVar kind = text nm <> char '_'
+            <> text kind <+> equals <+> backslash
+  pts _var []    = empty
+  pts  var nodes =
     let names = map entryname nodes in
-    indent 2 $ vsep (punctuate (empty <+> backslash) $ map text names)
+    mkVar var <$$> $ indent 2
+      $ vsep (punctuate (empty <+> backslash) $ map text names)
 
 entryname :: AssembledNode a -> String
 entryname n = case an_entry n of

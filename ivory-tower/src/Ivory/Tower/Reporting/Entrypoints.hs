@@ -37,8 +37,8 @@ entrypointsDoc nm asm = vsep
   pts _var []    = empty
   pts  var nodes =
     let names = map entryname nodes in
-    mkVar var <$$> $ indent 2
-      $ vsep (punctuate (empty <+> backslash) $ map text names)
+    mkVar var <$$> indent 2
+      (vsep (punctuate (empty <+> backslash) $ map text names))
 
 entryname :: AssembledNode a -> String
 entryname n = case an_entry n of

@@ -114,12 +114,23 @@ signalDef (asmsig, priority) = do
           , ThreadProperty "SMACCM_SYS::Language" (PropString "Ivory")
           ] ++ isrprop ++ initprop
   isrprop = case signalst_cname (nodest_impl (an_nodest asmsig)) of
-    Just signame -> [ smaccmProp "Signal_Name" signame ]
+    Just handlername -> [ smaccmProp "Signal_Name" (signame handlername)
+                        , smaccmProp "ISR_Handler" handlername
+                        ]
     Nothing -> []
   initprop = case an_init asmsig of
     Just _ -> [ threadProp "Initialize_Source_Text" initdefname ]
     Nothing -> []
   initdefname = "nodeInit_" ++ n -- magic: see Ivory.Tower.Node.nodeInit
+
+  -- Signal name is a trivial transformation from the handler name, under our
+  -- current stm32f4 headers / startup code
+  -- UART4_IRQHandler becomes UART4_IRQn
+  signame :: String -> String
+  signame "_IRQHandler" = "_IRQn"
+  signame (n:ns)        = n : signame ns
+  signame []            = []
+
 
 introduceUnique :: Unique -> [String] -> CompileAADL String
 introduceUnique u scope = do

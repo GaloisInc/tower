@@ -99,9 +99,9 @@ taskDef (asmtask, priority) = do
 
 signalDef :: (AssembledNode SignalSt, Int) -> CompileAADL ()
 signalDef (asmsig, priority) = do
-  signame <- introduceUnique (nodees_name (nodest_edges (an_nodest asmsig))) []
-  features <- featuresDef signame asmsig (commsource <.> "h") []
-  writeThreadDefinition (ThreadDef signame features props)
+  signame' <- introduceUnique (nodees_name (nodest_edges (an_nodest asmsig))) []
+  features <- featuresDef signame' asmsig (commsource <.> "h") []
+  writeThreadDefinition (ThreadDef signame' features props)
   where
   n = nodest_name (an_nodest asmsig)
   commsource = "tower_signal_comm_" ++ n
@@ -128,7 +128,7 @@ signalDef (asmsig, priority) = do
   -- UART4_IRQHandler becomes UART4_IRQn
   signame :: String -> String
   signame "_IRQHandler" = "_IRQn"
-  signame (n:ns)        = n : signame ns
+  signame (nm:ns)       = nm : signame ns
   signame []            = []
 
 

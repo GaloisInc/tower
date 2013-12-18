@@ -7,6 +7,7 @@
 
 module Ivory.Tower.Compile.FreeRTOS.Schedule where
 
+import Prelude hiding (rem)
 import GHC.TypeLits
 import Control.Monad (forM_)
 
@@ -14,7 +15,6 @@ import Ivory.Language
 import Ivory.Stdlib
 import Ivory.Tower.Types
 
-import qualified Ivory.OS.FreeRTOS.Queue as Q
 import qualified Ivory.OS.FreeRTOS.Task  as Task
 
 import Ivory.Tower.Compile.FreeRTOS.ChannelQueues
@@ -195,7 +195,7 @@ assembleTask tnodes snodes tnode = AssembledNode
 
     where
     uint32_max :: Uint32
-    uint32_max = fromIntegral ((2^32)-1)
+    uint32_max = maxBound
     updateTime = resultInto (call Task.getTimeMillis)
     timeRemaining :: Uint32 -> Uint32 -> Ivory eff Uint32
     timeRemaining nextdue now = do

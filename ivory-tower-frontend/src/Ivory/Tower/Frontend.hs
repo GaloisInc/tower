@@ -127,9 +127,9 @@ compileAADLDocuments conf mods asm =
     mapM_ (writeAADLDoc conf) (typedoc : docs)
     A.warningsToFile warningfname (concat ws)
   where
-  compile = A.compileModule mods
+  compile' = A.compileModule mods
   ((docs, ws, dname),typedoc) = A.compileTypeCtx $ do
-    (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compile mods)
+    (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compile' mods)
     (asmdoc, asmws) <- AADL.assemblyDoc (T.conf_name conf) mods asm
     return (asmdoc:moddocs, asmws:modwss, A.doc_name asmdoc)
   warningfname = (T.conf_outdir conf) </> dname ++ "_warnings" <.> "txt"
@@ -154,8 +154,8 @@ parseOptions s =
                       ++ "parsed options" ]
     errs -> die errs
   where
-  (tfs, _, tfunrecog,  err1) = getOpt' Permute T.options s
-  (cfs, _, pcfunrecog, err2) = getOpt' Permute C.options tfunrecog
+  (tfs, _,  tfunrecog,  err1) = getOpt' Permute T.options s
+  (cfs, _, _pcfunrecog, err2) = getOpt' Permute C.options tfunrecog
 
 die :: [String] -> IO a
 die errs = do

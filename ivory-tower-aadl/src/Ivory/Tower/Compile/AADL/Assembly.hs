@@ -248,7 +248,7 @@ processDef nodename asm = do
   chanconns <- chanConns edges
   dataconns <- dataConns edges
   -- John requested that we give each connection a throwaway but unique name
-  let namedconns = zipWith namec [1..] (chanconns ++ dataconns)
+  let namedconns = zipWith namec [1::Integer ..] (chanconns ++ dataconns)
   return $ ProcessDef name components namedconns
   where
   name = identifier (nodename ++ "_process")

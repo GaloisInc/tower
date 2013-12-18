@@ -9,6 +9,10 @@ license:             BSD3
 
 data-files: ivory-aadl-headers/tower_gettimemillis.h
 
+flag werror
+  default:              False
+  description:          Pass -Werror to GHC.
+
 library
   exposed-modules:      Ivory.Tower.Compile.AADL,
                         Ivory.Tower.Compile.AADL.Assembly,
@@ -26,5 +30,8 @@ library
 
   hs-source-dirs:       src
   default-language:     Haskell2010
-  ghc-options:          -Wall
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall
 

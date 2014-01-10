@@ -98,6 +98,7 @@ compileFreeRTOS compiler conf t = do
   compiler objs [FreeRTOS.searchDir]
   compileDot conf asm
   compileEntrypointList conf asm
+  compileXMLEntrypointList conf asm
 
 compileAADL :: ([Module] -> [IO FilePath] -> IO ())
             -> T.Config
@@ -115,10 +116,16 @@ compileDot conf asm =
   where f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
 
 compileEntrypointList :: T.Config -> Assembly -> IO ()
-compileEntrypointList conf asm =
-  when (T.conf_mkdot conf) $ T.entrypointsToFile f nm asm
+compileEntrypointList conf asm = T.entrypointsToFile f nm asm
   where
   f = T.conf_outdir conf </> (nm ++ "_entrypoints") <.> "mk"
+  nm = T.conf_name conf
+
+-- XML output with stack tasks name, stack size, and priority
+compileXMLEntrypointList :: T.Config -> Assembly -> IO ()
+compileXMLEntrypointList conf asm = T.entrypointsToXML f asm
+  where
+  f = T.conf_outdir conf </> (nm ++ "_entrypoints") <.> "xml"
   nm = T.conf_name conf
 
 compileAADLDocuments :: T.Config -> [Module] -> Assembly -> IO ()

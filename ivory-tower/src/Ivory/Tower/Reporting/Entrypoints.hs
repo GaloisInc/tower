@@ -1,6 +1,7 @@
 module Ivory.Tower.Reporting.Entrypoints
   ( entrypointsDoc
   , entrypointsToFile
+  , entrypointsToXML
   ) where
 
 import Ivory.Tower.Types
@@ -9,9 +10,10 @@ import Ivory.Tower.Types
 import qualified Ivory.Language.Proc as P
 import qualified Ivory.Language.Syntax.AST as AST
 
-import System.IO
-import Text.PrettyPrint.Leijen
-import Data.Char
+import           Data.Maybe
+import           System.IO
+import           Text.PrettyPrint.Leijen
+import qualified Text.XML.Light as X
 
 --------------------------------------------------------------------------------
 
@@ -46,4 +48,26 @@ entryname n = case an_entry n of
   P.DefExtern p -> AST.externSym p
   P.DefImport p -> AST.importSym p
 
+--------------------------------------------------------------------------------
 
+entrypointsToXML :: FilePath -> Assembly -> IO ()
+entrypointsToXML f asm = writeFile f (unlines xmlOut)
+  where
+  xmlOut = map mkXML (asm_tasks asm)
+  mkXML node = X.ppcElement X.defaultConfigPP $ X.node (mkName "taskdata") rst
+    where
+    rst :: [X.Attr]
+    rst = [ X.Attr (mkName "taskname")
+                   (entryname node)
+          , X.Attr (mkName "stacksize")
+                   (show $ taskst_stacksize taskSt)
+          , X.Attr (mkName "priority")
+                   (show $ fromMaybe 0 $ taskst_priority taskSt)
+          ]
+
+    taskSt = nodest_impl (an_nodest node)
+
+    mkName :: String -> X.QName
+    mkName nm = X.QName nm Nothing Nothing
+
+--------------------------------------------------------------------------------

@@ -38,7 +38,8 @@ library
                         wl-pprint,
                         monadLib,
                         ivory,
-                        ivory-stdlib
+                        ivory-stdlib,
+                        xml
 
   hs-source-dirs:       src
   default-language:     Haskell2010

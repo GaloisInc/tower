@@ -32,6 +32,7 @@ import qualified Ivory.Tower.Reporting.Entrypoints as T
 import qualified Ivory.Tower.Frontend.Options      as T
 import qualified Ivory.Tower.Compile.FreeRTOS      as FreeRTOS
 import qualified Ivory.Tower.Compile.AADL          as AADL
+import qualified Ivory.Tower.Compile.EChronos      as EChronos
 
 data BuildConf =
   BuildConf
@@ -86,8 +87,9 @@ towerCompile compiler conf t = do
   case T.conf_os conf of
     "freertos" -> compileFreeRTOS compiler conf t
     "aadl"     -> compileAADL     compiler conf t
+    "echronos" -> compileEChronos compiler conf t
     o -> die [ "unsupported operating system " ++ o
-             , "tower frontend supports: freertos, aadl"]
+             , "tower frontend supports: freertos, aadl, echronos"]
 
 compileFreeRTOS :: ([Module] -> [IO FilePath] -> IO ())
                 -> T.Config
@@ -109,6 +111,18 @@ compileAADL compiler conf t = do
   compiler objs [AADL.searchDir]
   compileDot            conf      asm
   compileAADLDocuments  conf objs asm
+
+compileEChronos :: ([Module] -> [IO FilePath] -> IO ())
+                -> T.Config
+                -> Tower p ()
+                -> IO ()
+compileEChronos compiler conf t = do
+  let (asm, objs) = EChronos.compile t
+  compiler objs [EChronos.searchDir]
+  compileDot conf asm
+  compileEntrypointList conf asm
+  compileXMLEntrypointList conf asm
+
 
 compileDot :: T.Config -> Assembly -> IO ()
 compileDot conf asm =

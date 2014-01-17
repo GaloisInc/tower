@@ -32,6 +32,7 @@ library
                         ivory-stdlib,
                         ivory-tower,
                         ivory-tower-freertos,
+                        ivory-tower-echronos,
                         ivory-tower-aadl
 
   hs-source-dirs:       src
@@ -52,6 +53,7 @@ executable tower-example-simple
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos,
+                       ivory-tower-echronos,
                        ivory-tower-aadl,
                        ivory-tower-frontend
   if flag(werror)
@@ -70,6 +72,7 @@ executable tower-example-signals
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos,
+                       ivory-tower-echronos,
                        ivory-tower-aadl,
                        ivory-tower-frontend
   if flag(werror)
@@ -88,6 +91,7 @@ executable tower-example-statemachine
                        ivory-backend-c,
                        ivory-tower,
                        ivory-tower-freertos,
+                       ivory-tower-echronos,
                        ivory-tower-aadl,
                        ivory-tower-frontend
   if flag(werror)

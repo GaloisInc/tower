@@ -9,15 +9,17 @@ license:             BSD3
 
 library
   exposed-modules:      Ivory.Tower,
+                        Ivory.Tower.AST,
+                        Ivory.Tower.AST.ATree,
+                        Ivory.Tower.AST.ChanReader,
+                        Ivory.Tower.AST.Chan,
+                        Ivory.Tower.AST.EventHandler,
+                        Ivory.Tower.AST.Event,
+                        Ivory.Tower.AST.System,
+                        Ivory.Tower.AST.Task,
+                        Ivory.Tower.AST.Timer,
                         Ivory.Tower.Types,
-                        Ivory.Tower.Types.ATree,
-                        Ivory.Tower.Types.Chan,
-                        Ivory.Tower.Types.Event,
-                        Ivory.Tower.Types.EventHandler,
-                        Ivory.Tower.Types.System,
-                        Ivory.Tower.Types.Task,
                         Ivory.Tower.Types.Time,
-                        Ivory.Tower.Types.Timer,
                         Ivory.Tower.Types.Unique,
                         Ivory.Tower.Test.TaskTest
 

@@ -1,5 +1,5 @@
 
-module Ivory.Tower.Types.Chan
+module Ivory.Tower.AST.Chan
   ( Chan(..)
   ) where
 

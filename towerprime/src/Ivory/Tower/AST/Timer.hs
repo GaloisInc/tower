@@ -1,5 +1,5 @@
 
-module Ivory.Tower.Types.Timer
+module Ivory.Tower.AST.Timer
   ( Timer(..)
   ) where
 

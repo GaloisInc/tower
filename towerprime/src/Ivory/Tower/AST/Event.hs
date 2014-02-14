@@ -1,10 +1,10 @@
 
-module Ivory.Tower.Types.Event
+module Ivory.Tower.AST.Event
   ( Event(..)
   ) where
 
-import Ivory.Tower.Types.Chan
-import Ivory.Tower.Types.Timer
+import Ivory.Tower.AST.Chan
+import Ivory.Tower.AST.Timer
 
 data Event
   = ChanEvt   Chan

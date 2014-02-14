@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 
-module Ivory.Tower.Types.ATree
+module Ivory.Tower.AST.ATree
   ( ATree(..)
   ) where
 

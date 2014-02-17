@@ -13,7 +13,6 @@ data Task =
     { task_evt_emitters :: [Chan]
     , task_evt_handlers :: [EventHandler]
     , task_chan_readers :: [ChanReader]
-    , task_usercode     :: ModuleDef
-    , task_commprims    :: ModuleDef
+    , task_priority     :: Integer
     }
 

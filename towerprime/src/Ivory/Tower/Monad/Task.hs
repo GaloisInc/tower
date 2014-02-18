@@ -54,6 +54,9 @@ runTask t = do
     , AST.task_priority     = 0
     }
 
+instance BaseUtils Task where
+  getOS = Task $ lift $ TaskCodegen $ lift getOS
+  fresh = Task $ lift $ TaskCodegen $ lift fresh
 -- Internal API to TaskCodeGen
 
 getTaskCode :: Task (AST.System -> TaskCode)

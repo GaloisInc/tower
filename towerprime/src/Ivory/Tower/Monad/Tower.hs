@@ -7,20 +7,24 @@ module Ivory.Tower.Monad.Tower
 
   , putTaskCode
   , putSysModdef
+  , putChan
+  , putTask
+
+  , group
   ) where
 
 import MonadLib
 import Control.Applicative (Applicative)
 
-import Ivory.Language
+import Ivory.Language hiding (local)
 import qualified Ivory.Tower.AST as AST
-import qualified Ivory.Tower.AST.ATree as ATree
+import qualified Ivory.Tower.AST.Directory as D
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Task
 
 newtype Tower a = Tower
-  { unTower :: StateT (AST.System) SystemCodegen a
+  { unTower :: StateT (AST.System) (ReaderT [Unique] SystemCodegen) a
   } deriving (Functor, Monad, Applicative)
 
 newtype SystemCodegen a = SystemCodegen
@@ -34,16 +38,34 @@ data SystemCode =
     }
 
 runTower :: Tower () -> Base (AST.System, SystemCode)
-runTower = undefined
+runTower t = do
+  ((_,s),c) <- runCodegen $ runSystem $ unTower t
+  return (s, c s)
+  where
+  runSystem m = runReaderT [] $ runStateT emptysys m
+  runCodegen g = runStateT (const emptycode) (unSystemCodegen g)
+  emptycode :: SystemCode
+  emptycode = SystemCode
+    { systemcode_tasks = []
+    , systemcode_moddef = return ()
+    }
+  emptysys :: AST.System
+  emptysys = AST.System
+    { AST.system_channels = []
+    , AST.system_tasks = D.empty
+    }
 
+instance BaseUtils Tower where
+  getOS = Tower $ lift $ lift $ SystemCodegen $ lift getOS
+  fresh = Tower $ lift $ lift $ SystemCodegen $ lift fresh
 
 -- Internal API to SystemCodegen
 
 getSystemCode :: Tower (AST.System -> SystemCode)
-getSystemCode = Tower (lift $ SystemCodegen get)
+getSystemCode = Tower (lift $ lift $ SystemCodegen get)
 
 setSystemCode :: (AST.System -> SystemCode) -> Tower ()
-setSystemCode c = Tower (lift $ SystemCodegen $ set c)
+setSystemCode c = Tower (lift $ lift $ SystemCodegen $ set c)
 
 putTaskCode :: (AST.System -> TaskCode) -> Tower ()
 putTaskCode t = do
@@ -65,6 +87,12 @@ getAST = Tower get
 setAST :: AST.System -> Tower ()
 setAST a = Tower $ set a
 
+getScope :: Tower [Unique]
+getScope = Tower ask
+
+localScope :: [Unique] -> Tower a -> Tower a
+localScope s t = Tower $ local s (unTower t)
+
 putChan :: AST.Chan -> Tower ()
 putChan c = do
   a <- getAST
@@ -73,6 +101,15 @@ putChan c = do
 putTask :: Unique -> AST.Task -> Tower ()
 putTask name t = do
   a <- getAST
-  setAST $ a { AST.system_tasks = ATree.insert name t (AST.system_tasks a) }
+  scope <- getScope
+  setAST $ a { AST.system_tasks =
+                D.insert (scope ++ [name]) t (AST.system_tasks a) }
 
--- XXX IMPLEMENT SCOPE as environment monad in Tower
+group :: String -> Tower a -> Tower a
+group name t = do
+  s <- getScope
+  g <- freshname name
+  localScope (s ++ [g]) t
+
+
+

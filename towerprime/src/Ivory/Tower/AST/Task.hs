@@ -3,7 +3,6 @@ module Ivory.Tower.AST.Task
   ( Task(..)
   ) where
 
-import Ivory.Language
 import Ivory.Tower.AST.Chan
 import Ivory.Tower.AST.EventHandler
 import Ivory.Tower.AST.ChanReader

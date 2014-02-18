@@ -1,4 +1,4 @@
-name:                ivory-tower2
+name:                towerprime
 version:             0.7.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
@@ -10,9 +10,9 @@ license:             BSD3
 library
   exposed-modules:      Ivory.Tower,
                         Ivory.Tower.AST,
-                        Ivory.Tower.AST.ATree,
                         Ivory.Tower.AST.ChanReader,
                         Ivory.Tower.AST.Chan,
+                        Ivory.Tower.AST.Directory,
                         Ivory.Tower.AST.EventHandler,
                         Ivory.Tower.AST.Event,
                         Ivory.Tower.AST.System,

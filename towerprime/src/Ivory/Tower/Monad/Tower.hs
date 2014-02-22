@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Ivory.Tower.Monad.Tower
@@ -7,6 +8,7 @@ module Ivory.Tower.Monad.Tower
 
   , putTaskCode
   , putSysModdef
+  , putSysCommInitializer
   , putChan
   , putTask
 
@@ -35,6 +37,7 @@ data SystemCode =
   SystemCode
     { systemcode_tasks :: [TaskCode]
     , systemcode_moddef :: ModuleDef
+    , systemcode_comm_initializers :: forall s . Ivory (AllocEffects s) ()
     }
 
 runTower :: Tower () -> Base (AST.System, SystemCode)
@@ -48,6 +51,7 @@ runTower t = do
   emptycode = SystemCode
     { systemcode_tasks = []
     , systemcode_moddef = return ()
+    , systemcode_comm_initializers = return ()
     }
   emptysys :: AST.System
   emptysys = AST.System
@@ -79,6 +83,12 @@ putSysModdef m = do
   setSystemCode $ \sys -> (c sys) { systemcode_moddef =
                                       m sys >> systemcode_moddef (c sys) }
 
+putSysCommInitializer :: (forall s . AST.System -> Ivory (AllocEffects s) ())
+                      -> Tower ()
+putSysCommInitializer i = do
+  c <- getSystemCode
+  setSystemCode $ \sys -> (c sys) { systemcode_comm_initializers =
+                    i sys >> systemcode_comm_initializers (c sys) }
 -- Internal API to AST
 
 getAST :: Tower AST.System

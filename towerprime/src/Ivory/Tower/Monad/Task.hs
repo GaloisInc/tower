@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Ivory.Tower.Monad.Task
@@ -9,6 +10,7 @@ module Ivory.Tower.Monad.Task
   , putEvtEmitter
   , putEvtHandler
   , putChanReader
+  , putEventLoop
   , putPriority
   ) where
 
@@ -25,26 +27,27 @@ newtype Task a = Task
 
 
 newtype TaskCodegen a = TaskCodegen
-  { unTaskCodegen :: StateT (AST.System -> TaskCode) Base a
+  { unTaskCodegen :: StateT (AST.System -> AST.Task -> TaskCode) Base a
   } deriving (Functor, Monad, Applicative) 
 
 data TaskCode =
   TaskCode
-    { taskcode_commprim :: ModuleDef
-    , taskcode_usercode :: ModuleDef
+    { taskcode_commprim  :: ModuleDef
+    , taskcode_usercode  :: ModuleDef
+    , taskcode_eventloop :: forall s . Ivory (AllocEffects s) ()
     }
 
-runTask :: Task () -> Base (AST.Task, (AST.System -> TaskCode))
+runTask :: Task () -> Base (AST.Task, (AST.System -> AST.Task -> TaskCode))
 runTask t = do
   ((_,a),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
   return (a,c)
   where
-  runTaskCodegen :: TaskCodegen a -> Base (a, AST.System -> TaskCode)
-  runTaskCodegen g = runStateT (const emptycode) (unTaskCodegen g)
+  runTaskCodegen g = runStateT (\_ _ -> emptycode) (unTaskCodegen g)
   emptycode :: TaskCode
   emptycode = TaskCode
-    { taskcode_commprim = return ()
-    , taskcode_usercode = return ()
+    { taskcode_commprim  = return ()
+    , taskcode_usercode  = return ()
+    , taskcode_eventloop = return ()
     }
   emptyast :: AST.Task
   emptyast = AST.Task
@@ -59,23 +62,32 @@ instance BaseUtils Task where
   fresh = Task $ lift $ TaskCodegen $ lift fresh
 -- Internal API to TaskCodeGen
 
-getTaskCode :: Task (AST.System -> TaskCode)
+getTaskCode :: Task (AST.System -> AST.Task -> TaskCode)
 getTaskCode = Task (lift $ TaskCodegen get)
 
-setTaskCode :: (AST.System -> TaskCode) -> Task ()
+setTaskCode :: (AST.System -> AST.Task -> TaskCode) -> Task ()
 setTaskCode c = Task (lift $ TaskCodegen $ set c)
 
-putCommprim :: (AST.System -> ModuleDef) -> Task ()
+putCommprim :: (AST.System -> AST.Task -> ModuleDef) -> Task ()
 putCommprim p = do
   c <- getTaskCode
-  setTaskCode $ \sys -> (c sys) { taskcode_commprim =
-                                    p sys >> taskcode_commprim (c sys) }
+  setTaskCode $ \sys t -> (c sys t) { taskcode_commprim =
+                                    p sys t >> taskcode_commprim (c sys t) }
 
-putUsercode :: (AST.System -> ModuleDef) -> Task ()
+-- XXX - do we even need to expose the continuation here? Shouldn't this only
+-- ever be "constant" usercode?
+putUsercode :: (AST.System -> AST.Task -> ModuleDef) -> Task ()
 putUsercode p = do
   c <- getTaskCode
-  setTaskCode $ \sys -> (c sys) { taskcode_usercode =
-                                    p sys >> taskcode_usercode (c sys) }
+  setTaskCode $ \sys t -> (c sys t) { taskcode_usercode =
+                                    p sys t >> taskcode_usercode (c sys t) }
+
+putEventLoop :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ()) -> Task ()
+putEventLoop e = do
+  c <- getTaskCode
+  setTaskCode $ \sys t -> (c sys t) { taskcode_eventloop =
+                                    e sys t >> taskcode_eventloop (c sys t) }
+
 
 -- Internal API to AST
 

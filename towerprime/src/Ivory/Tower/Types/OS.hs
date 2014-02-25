@@ -7,7 +7,6 @@ module Ivory.Tower.Types.OS
   ) where
 
 import Ivory.Language
-import Ivory.Tower.Types.Unique
 
 import qualified Ivory.Tower.AST as AST
 
@@ -34,13 +33,5 @@ data OS =
                    -> AST.Chan
                    -> Ref s area
                    -> Ivory eff IBool
-
-    , get_reader :: forall area s eff
-                  . (IvoryArea area, IvoryZero area)
-                 => AST.System
-                 -> AST.Task
-                 -> AST.Chan
-                 -> Ref s area
-                 -> Ivory eff ()
     }
 

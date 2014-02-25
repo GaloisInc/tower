@@ -3,15 +3,15 @@ module Ivory.Tower.AST.Task
   ( Task(..)
   ) where
 
-import Ivory.Tower.AST.Chan
+import Ivory.Tower.AST.ChanEmitter
+import Ivory.Tower.AST.ChanReceiver
 import Ivory.Tower.AST.EventHandler
-import Ivory.Tower.AST.ChanReader
 
 data Task =
   Task
-    { task_evt_emitters :: [Chan]
-    , task_evt_handlers :: [EventHandler]
-    , task_chan_readers :: [ChanReader]
-    , task_priority     :: Integer
+    { task_chan_emitters  :: [ChanEmitter]
+    , task_chan_receivers :: [ChanReceiver]
+    , task_evt_handlers   :: [EventHandler]
+    , task_priority       :: Integer
     }
 

@@ -7,9 +7,9 @@ module Ivory.Tower.Monad.Task
   , runTask
   , putCommprim
   , putUsercode
-  , putEvtEmitter
+  , putChanEmitter
+  , putChanReceiver
   , putEvtHandler
-  , putChanReader
   , putEventLoop
   , putPriority
   ) where
@@ -37,10 +37,10 @@ data TaskCode =
     , taskcode_eventloop :: forall s . Ivory (AllocEffects s) ()
     }
 
-runTask :: Task () -> Base (AST.Task, (AST.System -> AST.Task -> TaskCode))
+runTask :: Task () -> Base (AST.Task, (AST.System -> TaskCode))
 runTask t = do
-  ((_,a),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
-  return (a,c)
+  ((_,asttask),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
+  return (asttask,\sys -> c sys asttask)
   where
   runTaskCodegen g = runStateT (\_ _ -> emptycode) (unTaskCodegen g)
   emptycode :: TaskCode
@@ -51,10 +51,10 @@ runTask t = do
     }
   emptyast :: AST.Task
   emptyast = AST.Task
-    { AST.task_evt_emitters = []
-    , AST.task_evt_handlers = []
-    , AST.task_chan_readers = []
-    , AST.task_priority     = 0
+    { AST.task_chan_emitters  = []
+    , AST.task_chan_receivers = []
+    , AST.task_evt_handlers   = []
+    , AST.task_priority       = 0
     }
 
 instance BaseUtils Task where
@@ -97,20 +97,20 @@ getAST = Task get
 setAST :: AST.Task -> Task ()
 setAST a = Task $ set a
 
-putEvtEmitter :: AST.Chan -> Task ()
-putEvtEmitter c = do
+putChanEmitter :: AST.ChanEmitter -> Task ()
+putChanEmitter c = do
   a <- getAST
-  setAST $ a { AST.task_evt_emitters = c : AST.task_evt_emitters a }
+  setAST $ a { AST.task_chan_emitters = c : AST.task_chan_emitters a }
+
+putChanReceiver :: AST.ChanReceiver -> Task ()
+putChanReceiver c = do
+  a <- getAST
+  setAST $ a { AST.task_chan_receivers = c : AST.task_chan_receivers a }
 
 putEvtHandler :: AST.EventHandler -> Task ()
 putEvtHandler e = do
   a <- getAST
   setAST $ a { AST.task_evt_handlers = e : AST.task_evt_handlers a }
-
-putChanReader :: AST.ChanReader -> Task ()
-putChanReader c = do
-  a <- getAST
-  setAST $ a { AST.task_chan_readers = c : AST.task_chan_readers a }
 
 putPriority :: Integer -> Task ()
 putPriority p = do

@@ -11,6 +11,7 @@ module Ivory.Tower.Monad.Tower
   , putSysCommInitializer
   , putChan
   , putTask
+  , runTowerTask
 
   , group
   ) where
@@ -62,6 +63,11 @@ runTower t = do
 instance BaseUtils Tower where
   getOS = Tower $ lift $ lift $ SystemCodegen $ lift getOS
   fresh = Tower $ lift $ lift $ SystemCodegen $ lift fresh
+
+-- Lift of Task.runTask
+
+runTowerTask :: Task () -> Tower (AST.Task, (AST.System -> TaskCode))
+runTowerTask t = Tower $ lift $ lift $ SystemCodegen $ lift $ runTask t
 
 -- Internal API to SystemCodegen
 

@@ -24,11 +24,14 @@ library
                         Ivory.Tower.Monad.Task,
                         Ivory.Tower.Monad.Tower,
                         Ivory.Tower.Task,
+                        Ivory.Tower.Timer,
                         Ivory.Tower.Types,
                         Ivory.Tower.Types.Channels,
+                        Ivory.Tower.Types.Event,
                         Ivory.Tower.Types.OS,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique,
+
                         Ivory.Tower.Test.TaskTest
 
   build-depends:        base >= 4.6,

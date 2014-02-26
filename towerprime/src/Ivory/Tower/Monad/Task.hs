@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Ivory.Tower.Monad.Task
@@ -9,8 +10,10 @@ module Ivory.Tower.Monad.Task
   , putUsercode
   , putChanEmitter
   , putChanReceiver
-  , putEvtHandler
-  , putEventLoop
+  , putASTEvent
+  , putASTEventHandler
+  , putEventReceiverCode
+  , putEventLoopCode
   , putPriority
   ) where
 
@@ -20,6 +23,7 @@ import Control.Applicative (Applicative)
 import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Monad.Base
+import Ivory.Tower.Types.Time
 
 newtype Task a = Task
   { unTask :: StateT (AST.Task) TaskCodegen a
@@ -34,6 +38,10 @@ data TaskCode =
   TaskCode
     { taskcode_commprim  :: ModuleDef
     , taskcode_usercode  :: ModuleDef
+    , taskcode_init      :: forall s . Ivory (AllocEffects s) ()
+    , taskcode_timer     :: forall s . Ref (Stack s) (Stored ITime)
+                                    -> Ivory (AllocEffects s) ()
+    , taskcode_eventrxer :: forall s . Ivory (AllocEffects s) ()
     , taskcode_eventloop :: forall s . Ivory (AllocEffects s) ()
     }
 
@@ -47,12 +55,16 @@ runTask t = do
   emptycode = TaskCode
     { taskcode_commprim  = return ()
     , taskcode_usercode  = return ()
+    , taskcode_init      = return ()
+    , taskcode_timer     = const (return ())
+    , taskcode_eventrxer = return ()
     , taskcode_eventloop = return ()
     }
   emptyast :: AST.Task
   emptyast = AST.Task
     { AST.task_chan_emitters  = []
     , AST.task_chan_receivers = []
+    , AST.task_evts           = []
     , AST.task_evt_handlers   = []
     , AST.task_priority       = 0
     }
@@ -82,11 +94,34 @@ putUsercode p = do
   setTaskCode $ \sys t -> (c sys t) { taskcode_usercode =
                                     p sys t >> taskcode_usercode (c sys t) }
 
-putEventLoop :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ()) -> Task ()
-putEventLoop e = do
+putInitCode :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ())
+            -> Task ()
+putInitCode e = do
+  c <- getTaskCode
+  setTaskCode $ \sys t -> (c sys t) { taskcode_init =
+                                    e sys t >> taskcode_init (c sys t) }
+
+putTimerCode :: (forall s . Ref (Stack s) (Stored ITime) -> Ivory (AllocEffects s) ())
+                 -> Task ()
+putTimerCode e = do
+  c <- getTaskCode
+  setTaskCode $ \sys tsk -> (c sys tsk) { taskcode_timer = \time ->
+                                    e time >> taskcode_timer (c sys tsk) time }
+
+putEventReceiverCode :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ())
+                 -> Task ()
+putEventReceiverCode e = do
+  c <- getTaskCode
+  setTaskCode $ \sys t -> (c sys t) { taskcode_eventrxer =
+                                    e sys t >> taskcode_eventrxer (c sys t) }
+
+putEventLoopCode :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ())
+                 -> Task ()
+putEventLoopCode e = do
   c <- getTaskCode
   setTaskCode $ \sys t -> (c sys t) { taskcode_eventloop =
                                     e sys t >> taskcode_eventloop (c sys t) }
+
 
 
 -- Internal API to AST
@@ -107,8 +142,13 @@ putChanReceiver c = do
   a <- getAST
   setAST $ a { AST.task_chan_receivers = c : AST.task_chan_receivers a }
 
-putEvtHandler :: AST.EventHandler -> Task ()
-putEvtHandler e = do
+putASTEvent :: AST.Event -> Task ()
+putASTEvent e = do
+  a <- getAST
+  setAST $ a { AST.task_evts = e : AST.task_evts a }
+
+putASTEventHandler :: AST.EventHandler -> Task ()
+putASTEventHandler e = do
   a <- getAST
   setAST $ a { AST.task_evt_handlers = e : AST.task_evt_handlers a }
 

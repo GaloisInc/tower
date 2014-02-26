@@ -4,22 +4,38 @@
 
 module Ivory.Tower.Types.Time
   ( Time
-  , fromMicroseconds
-  , fromMilliseconds
+  , Microseconds(..)
+  , Milliseconds(..)
   , toMicroseconds
+
+  , ITime
+  , fromIMicroseconds
+  , fromIMilliseconds
+  , toIMicroseconds
   ) where
 
 import Ivory.Language
 
-newtype Time = Time Sint64
+class Time a where
+  toMicroseconds :: a -> Integer
+
+newtype Microseconds = Microseconds Integer
+instance Time Microseconds where
+  toMicroseconds (Microseconds t) = t
+
+newtype Milliseconds = Milliseconds Integer
+instance Time Milliseconds where
+  toMicroseconds (Milliseconds t) = t * 1000
+
+newtype ITime = ITime Sint64
   deriving (Num, IvoryType, IvoryVar, IvoryExpr, IvoryEq, IvoryOrd, IvoryIntegral, IvoryStore, IvoryInit)
 
-fromMicroseconds :: (SafeCast a Sint64) => a -> Time
-fromMicroseconds = Time . safeCast
+fromIMicroseconds :: (SafeCast a Sint64) => a -> ITime
+fromIMicroseconds = ITime . safeCast
 
-fromMilliseconds :: (SafeCast a Sint64) => a -> Time
-fromMilliseconds = Time . (*1000) . safeCast
+fromIMilliseconds :: (SafeCast a Sint64) => a -> ITime
+fromIMilliseconds = ITime . (*1000) . safeCast
 
-toMicroseconds :: Time -> Sint64
-toMicroseconds (Time t) = t
+toIMicroseconds :: ITime -> Sint64
+toIMicroseconds (ITime t) = t
 

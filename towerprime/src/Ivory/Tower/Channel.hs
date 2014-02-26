@@ -12,6 +12,7 @@ module Ivory.Tower.Channel
 
 
 import Ivory.Language
+import Ivory.Language.Area (ivoryArea)
 
 import qualified Ivory.Tower.AST            as AST
 import qualified Ivory.Tower.Types.OS       as OS
@@ -29,7 +30,7 @@ channel = do
   os <- getOS
   let chan = AST.Chan { AST.chan_id = cid
                       , AST.chan_size = -1 -- XXX
-                      , AST.chan_ityp = undefined  -- XXX
+                      , AST.chan_ityp = ivoryArea (Proxy :: Proxy area)
                       }
       code astsys = OS.gen_channel os astsys chan (Proxy :: Proxy area)
   putChan               chan

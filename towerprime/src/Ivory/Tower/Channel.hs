@@ -4,6 +4,8 @@
 
 module Ivory.Tower.Channel
   ( channel
+  , src
+  , snk
   , withChannelEmitter
   , withChannelReceiver
 --  , withChannelEvent
@@ -21,6 +23,12 @@ import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
 import           Ivory.Tower.Monad.Task
+
+src :: (ChannelSource area, ChannelSink area) -> ChannelSource area
+src = fst
+
+snk :: (ChannelSource area, ChannelSink area) -> ChannelSink area
+snk = snd
 
 channel :: forall area
          . (IvoryArea area, IvoryZero area)
@@ -43,7 +51,7 @@ withChannelEmitter :: forall area
                    => ChannelSource area
                    -> String
                    -> Task (ChannelEmitter area)
-withChannelEmitter src annotation = do
+withChannelEmitter csrc annotation = do
   procname <- freshname pname
   putChanEmitter $ AST.ChanEmitter
     { AST.chanemitter_name = procname
@@ -63,7 +71,7 @@ withChannelEmitter src annotation = do
   return (ChannelEmitter (call_ mock_p))
 
   where
-  chan = unChannelSource src
+  chan = unChannelSource csrc
   pname = "emit_chan" ++ show (AST.chan_id chan)
   msg = "from Ivory.Tower.Channel.withChannelEmitter: "
      ++ "chan emit call should not be strict in OS-codegen argument"
@@ -73,7 +81,7 @@ withChannelReceiver :: forall area
                    => ChannelSink area
                    -> String
                    -> Task (ChannelReceiver area)
-withChannelReceiver snk annotation = do
+withChannelReceiver csnk annotation = do
   procname <- freshname pname
 
   putChanReceiver $ AST.ChanReceiver
@@ -94,7 +102,7 @@ withChannelReceiver snk annotation = do
 
   return (ChannelReceiver (call mock_p))
   where
-  chan = unChannelSink snk
+  chan = unChannelSink csnk
   pname = "receive_chan" ++ show (AST.chan_id chan)
   msg = "from Ivory.Tower.Channel.withChannelReceiver: "
      ++ "chan receive call should not be strict in OS-codegen argument"

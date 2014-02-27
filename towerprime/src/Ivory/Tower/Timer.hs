@@ -70,6 +70,9 @@ timerEvent period = do
       incl initDef
       incl tickDef
       defMemArea lastPeriodArea
+  putInitCode $ \_ _ ->
+    call_ initDef
+  putTimerCode $ call_ tickDef
 
   -- Return event check code:
   return $ Event

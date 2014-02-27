@@ -12,6 +12,8 @@ module Ivory.Tower.Monad.Task
   , putChanReceiver
   , putASTEvent
   , putASTEventHandler
+  , putInitCode
+  , putTimerCode
   , putEventReceiverCode
   , putEventLoopCode
   , putPriority

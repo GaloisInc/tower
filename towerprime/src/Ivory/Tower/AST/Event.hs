@@ -12,6 +12,7 @@ data Event
   | TimerEvt  Timer
   | ExternEvt String
 
+eventName :: Event -> String
 eventName (ChanEvt c)   = "chan" ++ (show (chan_id c))
 eventName (TimerEvt t)  = "timer" ++ (show (timer_id t))
                        ++ "_per" ++ (show (timer_per t))

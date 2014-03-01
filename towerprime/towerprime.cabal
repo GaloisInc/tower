@@ -27,11 +27,15 @@ library
                         Ivory.Tower.Task,
                         Ivory.Tower.Timer,
                         Ivory.Tower.Types,
+                        Ivory.Tower.Types.Assembly,
                         Ivory.Tower.Types.Channels,
                         Ivory.Tower.Types.Event,
                         Ivory.Tower.Types.OS,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique,
+
+                        Ivory.Tower.Reporting.Entrypoints,
+                        Ivory.Tower.Reporting.Graphviz,
 
                         Ivory.Tower.Test.TaskTest
 

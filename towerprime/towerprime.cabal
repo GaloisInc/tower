@@ -20,6 +20,7 @@ library
                         Ivory.Tower.AST.Task,
                         Ivory.Tower.AST.Timer,
                         Ivory.Tower.Channel,
+                        Ivory.Tower.Compile,
                         Ivory.Tower.Event,
                         Ivory.Tower.Monad.Base,
                         Ivory.Tower.Monad.Task,

@@ -26,6 +26,7 @@ import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Time
+import Ivory.Tower.Types.TaskCode
 
 newtype Task p a = Task
   { unTask :: StateT (AST.Task) TaskCodegen a
@@ -35,17 +36,6 @@ newtype Task p a = Task
 newtype TaskCodegen a = TaskCodegen
   { unTaskCodegen :: StateT (AST.System -> AST.Task -> TaskCode) Base a
   } deriving (Functor, Monad, Applicative) 
-
-data TaskCode =
-  TaskCode
-    { taskcode_commprim  :: ModuleDef
-    , taskcode_usercode  :: ModuleDef
-    , taskcode_init      :: forall s . Ivory (AllocEffects s) ()
-    , taskcode_timer     :: forall s . Ref (Stack s) (Stored ITime)
-                                    -> Ivory (AllocEffects s) ()
-    , taskcode_eventrxer :: forall s . Ivory (AllocEffects s) ()
-    , taskcode_eventloop :: forall s . Ivory (AllocEffects s) ()
-    }
 
 runTask :: Task p () -> Base (AST.Task, (AST.System -> TaskCode))
 runTask t = do

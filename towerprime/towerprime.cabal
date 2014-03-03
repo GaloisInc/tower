@@ -31,6 +31,8 @@ library
                         Ivory.Tower.Types.Channels,
                         Ivory.Tower.Types.Event,
                         Ivory.Tower.Types.OS,
+                        Ivory.Tower.Types.SystemCode,
+                        Ivory.Tower.Types.TaskCode,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique,
 

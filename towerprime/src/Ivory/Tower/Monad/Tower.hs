@@ -23,6 +23,7 @@ import Ivory.Language hiding (local)
 import qualified Ivory.Tower.AST as AST
 import qualified Ivory.Tower.AST.Directory as D
 import Ivory.Tower.Types.Unique
+import Ivory.Tower.Types.SystemCode
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Task
 
@@ -34,12 +35,6 @@ newtype SystemCodegen a = SystemCodegen
   { unSystemCodegen :: StateT (AST.System -> SystemCode) Base a
   } deriving (Functor, Monad, Applicative)
 
-data SystemCode =
-  SystemCode
-    { systemcode_tasks :: [TaskCode]
-    , systemcode_moddef :: ModuleDef
-    , systemcode_comm_initializers :: forall s . Ivory (AllocEffects s) ()
-    }
 
 runTower :: Tower p () -> Base (AST.System, SystemCode)
 runTower t = do

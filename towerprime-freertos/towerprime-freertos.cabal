@@ -7,9 +7,18 @@ build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
+data-files: ivory-freertos-wrapper/freertos_semaphore_wrapper.h,
+            ivory-freertos-wrapper/freertos_semaphore_wrapper.c,
+            ivory-freertos-wrapper/freertos_task_wrapper.h,
+            ivory-freertos-wrapper/freertos_task_wrapper.c,
+            ivory-freertos-wrapper/freertos_atomic_wrapper.h,
+            ivory-freertos-wrapper/freertos_atomic_wrapper.c
+
 library
   exposed-modules:      Ivory.Tower.Compile.FreeRTOS,
                         Ivory.Tower.Compile.FreeRTOS.SearchDir
+
+  other-modules:        Paths_towerprime_freertos
 
   build-depends:        base >= 4.6,
                         srcloc,

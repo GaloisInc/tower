@@ -15,17 +15,17 @@ import           Ivory.Tower.Monad.Tower
 import           Ivory.Tower.Monad.Task
 
 task :: String
-     -> Task ()
-     -> Tower ()
+     -> Task p ()
+     -> Tower p ()
 task name m = do
   u <- freshname name
   (taskast, codegen) <- runTowerTask m
   putTask u taskast
-  putTaskCode codegen
+  putTaskCode taskast codegen
 
 taskLocal :: (IvoryArea area, IvoryZero area)
           => String
-          -> Task (Ref Global area)
+          -> Task p (Ref Global area)
 taskLocal name = do
   u <- freshname name
   let memarea = area (showUnique u) (Just izero)
@@ -35,7 +35,7 @@ taskLocal name = do
 taskLocalInit :: (IvoryArea area)
               => String
               -> Init area
-              -> Task (Ref Global area)
+              -> Task p (Ref Global area)
 taskLocalInit name iv = do
   u <- freshname name
   let memarea = area (showUnique u) (Just iv)

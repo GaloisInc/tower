@@ -11,7 +11,7 @@ module Ivory.Tower.Test.TaskTest
 import Ivory.Language
 import Ivory.Tower
 
-task_simple_per :: Task ()
+task_simple_per :: Task p ()
 task_simple_per = do
   ctr <- taskLocal "counter"
   lasttime <- taskLocal "lasttime"
@@ -21,13 +21,13 @@ task_simple_per = do
     deref timeRef >>= store lasttime
     deref ctr >>= \(c :: Sint32) -> store ctr (c + 1)
 
-task_simple_per_emitter :: ChannelSource (Stored Sint32) -> Task ()
+task_simple_per_emitter :: ChannelSource (Stored Sint32) -> Task p ()
 task_simple_per_emitter c = return ()
 
-task_simple_per_reader :: ChannelSink (Stored Sint32) -> Task ()
+task_simple_per_reader :: ChannelSink (Stored Sint32) -> Task p ()
 task_simple_per_reader c = return ()
 
-tower_simple_per_tasks :: Tower ()
+tower_simple_per_tasks :: Tower p ()
 tower_simple_per_tasks = do
   task "simple_per" task_simple_per
   c <- channel

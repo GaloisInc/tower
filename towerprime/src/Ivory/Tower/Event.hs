@@ -15,12 +15,12 @@ import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Task
 
-handle :: forall area
+handle :: forall p area
         . (IvoryArea area, IvoryZero area)
        => Event area
        -> String
        -> (forall s eff . ConstRef s area -> Ivory (AllocEffects eff) ())
-       -> Task ()
+       -> Task p ()
 handle evt annotation k = do
   procname <- freshname pfix
   -- Write EventHandler into AST

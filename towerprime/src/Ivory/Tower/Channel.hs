@@ -30,9 +30,9 @@ src = fst
 snk :: (ChannelSource area, ChannelSink area) -> ChannelSink area
 snk = snd
 
-channel :: forall area
+channel :: forall p area
          . (IvoryArea area, IvoryZero area)
-        => Tower (ChannelSource area, ChannelSink area)
+        => Tower p (ChannelSource area, ChannelSink area)
 channel = do
   cid <- fresh
   os <- getOS
@@ -46,11 +46,11 @@ channel = do
   putSysModdef          (snd `fmap` code)
   return (ChannelSource chan, ChannelSink chan)
 
-withChannelEmitter :: forall area
+withChannelEmitter :: forall p area
                     . (IvoryArea area, IvoryZero area)
                    => ChannelSource area
                    -> String
-                   -> Task (ChannelEmitter area)
+                   -> Task p (ChannelEmitter area)
 withChannelEmitter csrc annotation = do
   procname <- freshname pname
   putChanEmitter $ AST.ChanEmitter
@@ -76,11 +76,11 @@ withChannelEmitter csrc annotation = do
   msg = "from Ivory.Tower.Channel.withChannelEmitter: "
      ++ "chan emit call should not be strict in OS-codegen argument"
 
-withChannelReceiver :: forall area
+withChannelReceiver :: forall p area
                     . (IvoryArea area, IvoryZero area)
                    => ChannelSink area
                    -> String
-                   -> Task (ChannelReceiver area)
+                   -> Task p (ChannelReceiver area)
 withChannelReceiver csnk annotation = do
   procname <- freshname pname
 
@@ -112,13 +112,13 @@ withChannelReceiver csnk annotation = do
 withChannelEvent :: forall area
                     . (IvoryArea area, IvoryZero area)
                    => ChannelSink area
-                   -> Task (ChannelEvent area)
+                   -> Task p (ChannelEvent area)
 withChannelEvent snk = undefined
 
 withChannelLatest :: forall area
                     . (IvoryArea area, IvoryZero area)
                    => ChannelSink area
-                   -> Task (ChannelLatest area)
+                   -> Task p (ChannelLatest area)
 withChannelLatest snk = undefined
 -}
 

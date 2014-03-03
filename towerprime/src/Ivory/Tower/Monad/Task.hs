@@ -27,7 +27,7 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Time
 
-newtype Task a = Task
+newtype Task p a = Task
   { unTask :: StateT (AST.Task) TaskCodegen a
   } deriving (Functor, Monad, Applicative)
 
@@ -47,7 +47,7 @@ data TaskCode =
     , taskcode_eventloop :: forall s . Ivory (AllocEffects s) ()
     }
 
-runTask :: Task () -> Base (AST.Task, (AST.System -> TaskCode))
+runTask :: Task p () -> Base (AST.Task, (AST.System -> TaskCode))
 runTask t = do
   ((_,asttask),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
   return (asttask,\sys -> c sys asttask)
@@ -71,18 +71,18 @@ runTask t = do
     , AST.task_priority       = 0
     }
 
-instance BaseUtils Task where
+instance BaseUtils (Task p) where
   getOS = Task $ lift $ TaskCodegen $ lift getOS
   fresh = Task $ lift $ TaskCodegen $ lift fresh
 -- Internal API to TaskCodeGen
 
-getTaskCode :: Task (AST.System -> AST.Task -> TaskCode)
+getTaskCode :: Task p (AST.System -> AST.Task -> TaskCode)
 getTaskCode = Task (lift $ TaskCodegen get)
 
-setTaskCode :: (AST.System -> AST.Task -> TaskCode) -> Task ()
+setTaskCode :: (AST.System -> AST.Task -> TaskCode) -> Task p ()
 setTaskCode c = Task (lift $ TaskCodegen $ set c)
 
-putCommprim :: (AST.System -> AST.Task -> ModuleDef) -> Task ()
+putCommprim :: (AST.System -> AST.Task -> ModuleDef) -> Task p ()
 putCommprim p = do
   c <- getTaskCode
   setTaskCode $ \sys t -> (c sys t) { taskcode_commprim =
@@ -90,35 +90,35 @@ putCommprim p = do
 
 -- XXX - do we even need to expose the continuation here? Shouldn't this only
 -- ever be "constant" usercode?
-putUsercode :: (AST.System -> AST.Task -> ModuleDef) -> Task ()
+putUsercode :: (AST.System -> AST.Task -> ModuleDef) -> Task p ()
 putUsercode p = do
   c <- getTaskCode
   setTaskCode $ \sys t -> (c sys t) { taskcode_usercode =
                                     p sys t >> taskcode_usercode (c sys t) }
 
 putInitCode :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ())
-            -> Task ()
+            -> Task p ()
 putInitCode e = do
   c <- getTaskCode
   setTaskCode $ \sys t -> (c sys t) { taskcode_init =
                                     e sys t >> taskcode_init (c sys t) }
 
 putTimerCode :: (forall s . Ref (Stack s) (Stored ITime) -> Ivory (AllocEffects s) ())
-                 -> Task ()
+                 -> Task p ()
 putTimerCode e = do
   c <- getTaskCode
   setTaskCode $ \sys tsk -> (c sys tsk) { taskcode_timer = \time ->
                                     e time >> taskcode_timer (c sys tsk) time }
 
 putEventReceiverCode :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ())
-                 -> Task ()
+                 -> Task p ()
 putEventReceiverCode e = do
   c <- getTaskCode
   setTaskCode $ \sys t -> (c sys t) { taskcode_eventrxer =
                                     e sys t >> taskcode_eventrxer (c sys t) }
 
 putEventLoopCode :: (forall s . AST.System -> AST.Task -> Ivory (AllocEffects s) ())
-                 -> Task ()
+                 -> Task p ()
 putEventLoopCode e = do
   c <- getTaskCode
   setTaskCode $ \sys t -> (c sys t) { taskcode_eventloop =
@@ -128,33 +128,33 @@ putEventLoopCode e = do
 
 -- Internal API to AST
 
-getAST :: Task AST.Task
+getAST :: Task p AST.Task
 getAST = Task get
 
-setAST :: AST.Task -> Task ()
+setAST :: AST.Task -> Task p ()
 setAST a = Task $ set a
 
-putChanEmitter :: AST.ChanEmitter -> Task ()
+putChanEmitter :: AST.ChanEmitter -> Task p ()
 putChanEmitter c = do
   a <- getAST
   setAST $ a { AST.task_chan_emitters = c : AST.task_chan_emitters a }
 
-putChanReceiver :: AST.ChanReceiver -> Task ()
+putChanReceiver :: AST.ChanReceiver -> Task p ()
 putChanReceiver c = do
   a <- getAST
   setAST $ a { AST.task_chan_receivers = c : AST.task_chan_receivers a }
 
-putASTEvent :: AST.Event -> Task ()
+putASTEvent :: AST.Event -> Task p ()
 putASTEvent e = do
   a <- getAST
   setAST $ a { AST.task_evts = e : AST.task_evts a }
 
-putASTEventHandler :: AST.EventHandler -> Task ()
+putASTEventHandler :: AST.EventHandler -> Task p ()
 putASTEventHandler e = do
   a <- getAST
   setAST $ a { AST.task_evt_handlers = e : AST.task_evt_handlers a }
 
-putPriority :: Integer -> Task ()
+putPriority :: Integer -> Task p ()
 putPriority p = do
   a <- getAST
   setAST $ a { AST.task_priority = p }

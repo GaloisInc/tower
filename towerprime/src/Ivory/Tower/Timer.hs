@@ -21,7 +21,7 @@ getTime = call p
   p :: Def('[] :-> ITime)
   p = externProc "getTimeMicros"
 
-timerEvent :: Time a => a -> Task (Event (Stored ITime))
+timerEvent :: Time a => a -> Task p (Event (Stored ITime))
 timerEvent period = do
   tid <- fresh
   let named n = "timerEvent_" ++ n ++ "_" ++ show tid

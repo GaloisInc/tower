@@ -18,9 +18,10 @@ import System.Environment
 import System.Exit
 import System.FilePath
 
-import Ivory.Language
-import Ivory.Tower
-import Ivory.Tower.Types.Assembly -- XXX
+import           Ivory.Language
+import           Ivory.Tower
+import qualified Ivory.Tower.Compile as Tower
+import           Ivory.Tower.Types.Assembly -- XXX REPLACE WITH AST.SYSTEM EVENTAULLY
 import qualified Ivory.Opts.CFG as CFG
 import qualified Ivory.Stdlib.SearchDir as Stdlib
 
@@ -97,11 +98,12 @@ compileFreeRTOS :: ([Module] -> [IO FilePath] -> IO ())
                 -> Tower p ()
                 -> IO ()
 compileFreeRTOS compiler conf t = do
-  let (asm, objs) = FreeRTOS.compile t
+  let (asm, objs) = Tower.compile t FreeRTOS.os
   compiler objs [FreeRTOS.searchDir]
-  compileDot conf asm
-  compileEntrypointList conf asm
-  compileXMLEntrypointList conf asm
+  --compileDot conf asm
+  --compileEntrypointList conf asm
+  --compileXMLEntrypointList conf asm
+
 {-
 compileAADL :: ([Module] -> [IO FilePath] -> IO ())
             -> T.Config

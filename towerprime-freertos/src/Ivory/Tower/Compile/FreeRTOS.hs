@@ -52,19 +52,64 @@ get_receiver sys task chan = garbage
   where
   garbage ref = return false
 
+
+time_mod :: Module
+time_mod = package "tower_freertos_time" $ do
+  incl time_proc
+
+time_proc :: Def('[]:->ITime)
+time_proc = proc "getTimeMicros" $ body $ ret 0 -- XXX
+
 codegen_task :: AST.System
              -> AST.Task
              -> TaskCode
              -> ([Module],ModuleDef)
-codegen_task sys task taskcode = garbage
+codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
   where
-  garbage = ([],return ())
+  deps = do
+    depend user_mod
+    depend loop_mod
+
+  next_due_area = area (named "time_next_due") Nothing
+  next_due_ref = addrOf next_due_area
+
+  loop_proc :: Def('[]:->())
+  loop_proc = proc (named "tower_task_loop") $ body $ noReturn $ do
+    inittime <- call time_proc
+    store next_due_ref inittime
+    taskcode_init taskcode
+    forever $ noBreak $ do
+      -- XXX delay until next due
+      taskcode_timer taskcode next_due_ref
+      taskcode_eventrxer taskcode
+      taskcode_eventloop taskcode
+
+
+  loop_mod = package (named "tower_task_loop") $ do
+    depend user_mod
+    depend time_mod
+    defMemArea next_due_area
+    taskcode_commprim taskcode
+    incl loop_proc
+
+  user_mod = package (named "tower_task_usercode") $ do
+    depend loop_mod
+    depend time_mod
+    taskcode_usercode taskcode
+
+  named n = n ++ "_" -- XXX
 
 codegen_sysinit :: AST.System
                 -> SystemCode
                 -> ModuleDef
                 -> [Module]
-codegen_sysinit sysast syscode taskmoddefs = garbage
+codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
   where
-  garbage = []
+  sys_mod = package "tower_system" $ do
+    taskmoddefs
+    incl init_proc
+  init_proc :: Def('[]:->())
+  init_proc = proc "tower_system_init" $ body $ do
+    noReturn $ systemcode_comm_initializers syscode
+    -- XXX launch tasks
 

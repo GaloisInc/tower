@@ -7,9 +7,9 @@ module Ivory.Tower.Compile.FreeRTOS
   ) where
 
 import           Ivory.Language
+import           Ivory.Stdlib
 import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
-import qualified Ivory.Tower.AST.Directory as Dir
 import qualified Ivory.Tower.Types.OS as OS
 import           Ivory.Tower.Types.TaskCode
 import           Ivory.Tower.Types.SystemCode
@@ -74,14 +74,35 @@ codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
 
   next_due_area = area (named "time_next_due") Nothing
   next_due_ref = addrOf next_due_area
+  exit_guard_area = area (named "time_exit_guard") Nothing
+  exit_guard_ref = addrOf exit_guard_area
+  overrun_area = area (named "time_overrun") (Just (ival minBound))
+  overrun_ref = addrOf overrun_area
+
+  timeRemaining :: ITime -> ITime -> Ivory eff ITime
+  timeRemaining nextdue now= do
+    remaining <- assign (nextdue - now)
+    when (remaining <? 0) $ store overrun_ref now
+    return ((remaining >? 0) ? (remaining, 0))
+
+  guardBlock :: ITime -> Ivory eff ()
+  guardBlock dt = return () -- XXX implement guard
 
   loop_proc :: Def('[]:->())
   loop_proc = proc (named "tower_task_loop") $ body $ noReturn $ do
-    inittime <- call time_proc
-    store next_due_ref inittime
-    taskcode_init taskcode
+    store next_due_ref 0
+    call time_proc >>= store exit_guard_ref
     forever $ noBreak $ do
-      -- XXX delay until next due
+      time_enter_guard <- call time_proc
+      time_exit_guard  <- deref exit_guard_ref
+      dt <- assign (time_enter_guard - time_exit_guard)
+      assert (dt >=? 0)
+
+      time_next_due <- deref next_due_ref
+      rem <- timeRemaining time_next_due time_enter_guard
+      guardBlock rem
+
+      store next_due_ref maxBound
       taskcode_timer taskcode next_due_ref
       taskcode_eventrxer taskcode
       taskcode_eventloop taskcode
@@ -91,6 +112,8 @@ codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
     depend user_mod
     depend time_mod
     defMemArea next_due_area
+    defMemArea exit_guard_area
+    defMemArea overrun_area
     taskcode_commprim taskcode
     incl loop_proc
 
@@ -111,7 +134,8 @@ codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
     taskmoddefs
     incl init_proc
   init_proc :: Def('[]:->())
-  init_proc = proc "tower_system_init" $ body $ do
-    noReturn $ systemcode_comm_initializers syscode
+  init_proc = proc "tower_system_init" $ body $ noReturn $ do
+    systemcode_comm_initializers syscode
+    mapM_ (taskcode_init . snd) (systemcode_tasks syscode)
     -- XXX launch tasks
 

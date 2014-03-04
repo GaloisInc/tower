@@ -8,15 +8,18 @@ module Ivory.Tower.AST.Directory
   , insert
   , flatten
   , lookup
+  , find
   ) where
 
 import Prelude hiding (lookup)
+import qualified Prelude as P (lookup)
+import Data.Tuple (swap)
 
 -- import Data.List (sort)
 -- import Test.QuickCheck
 
-data Dir s a = Dir [a] [Subdir s a]
-data Subdir s a = Subdir s (Dir s a)
+data Dir s a = Dir [a] [Subdir s a] deriving (Eq, Show)
+data Subdir s a = Subdir s (Dir s a) deriving (Eq, Show)
 
 flatten :: Dir s a -> [([s],a)]
 flatten a = auxD [] a
@@ -48,6 +51,9 @@ lookup (p:ps) (Dir _ ss) = case finddirectory p ss of
   (Just d, _) -> lookup ps d
   (Nothing,_) -> []
 lookup []     (Dir as _) = as
+
+find :: (Eq a) => a -> Dir s a -> Maybe [s]
+find a d = P.lookup a (map swap (flatten d))
 
 -- suprisingly enough, this code took me a little while to get correct.
 

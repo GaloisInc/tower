@@ -27,6 +27,7 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.TaskCode
+import Ivory.Tower.Types.Unique
 
 newtype Task p a = Task
   { unTask :: StateT (AST.Task) TaskCodegen a
@@ -37,8 +38,8 @@ newtype TaskCodegen a = TaskCodegen
   { unTaskCodegen :: StateT (AST.System -> AST.Task -> TaskCode) Base a
   } deriving (Functor, Monad, Applicative) 
 
-runTask :: Task p () -> Base (AST.Task, (AST.System -> TaskCode))
-runTask t = do
+runTask :: Task p () -> Unique -> Base (AST.Task, (AST.System -> TaskCode))
+runTask t n = do
   ((_,asttask),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
   return (asttask,\sys -> c sys asttask)
   where
@@ -54,7 +55,8 @@ runTask t = do
     }
   emptyast :: AST.Task
   emptyast = AST.Task
-    { AST.task_chan_emitters  = []
+    { AST.task_name           = n
+    , AST.task_chan_emitters  = []
     , AST.task_chan_receivers = []
     , AST.task_evts           = []
     , AST.task_evt_handlers   = []

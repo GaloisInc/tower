@@ -19,8 +19,8 @@ task :: String
      -> Tower p ()
 task name m = do
   u <- freshname name
-  (taskast, codegen) <- runTowerTask m
-  putTask u taskast
+  (taskast, codegen) <- runTowerTask m u
+  putTask taskast
   putTaskCode taskast codegen
 
 taskLocal :: (IvoryArea area, IvoryZero area)

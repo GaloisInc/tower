@@ -9,9 +9,11 @@ module Ivory.Tower.Compile.FreeRTOS
 import           Ivory.Language
 import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
+import qualified Ivory.Tower.AST.Directory as Dir
 import qualified Ivory.Tower.Types.OS as OS
 import           Ivory.Tower.Types.TaskCode
 import           Ivory.Tower.Types.SystemCode
+import           Ivory.Tower.Types.Unique
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir (searchDir)
 
@@ -97,7 +99,7 @@ codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
     depend time_mod
     taskcode_usercode taskcode
 
-  named n = n ++ "_" -- XXX
+  named n = n ++ "_" ++ (showUnique (AST.task_name task))
 
 codegen_sysinit :: AST.System
                 -> SystemCode

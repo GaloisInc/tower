@@ -11,6 +11,7 @@ data Event
   = ChanEvt   Chan
   | TimerEvt  Timer
   | ExternEvt String
+  deriving (Eq, Show)
 
 eventName :: Event -> String
 eventName (ChanEvt c)   = "chan" ++ (show (chan_id c))

@@ -61,8 +61,9 @@ instance BaseUtils (Tower p) where
 
 -- Lift of Task.runTask
 
-runTowerTask :: Task p () -> Tower p (AST.Task, (AST.System -> TaskCode))
-runTowerTask t = Tower $ lift $ lift $ SystemCodegen $ lift $ runTask t
+runTowerTask :: Task p () -> Unique
+             -> Tower p (AST.Task, (AST.System -> TaskCode))
+runTowerTask t n = Tower $ lift $ lift $ SystemCodegen $ lift $ runTask t n
 
 -- Internal API to SystemCodegen
 
@@ -109,12 +110,11 @@ putChan c = do
   a <- getAST
   setAST $ a { AST.system_channels = c : AST.system_channels a }
 
-putTask :: Unique -> AST.Task -> Tower p ()
-putTask name t = do
+putTask :: AST.Task -> Tower p ()
+putTask t = do
   a <- getAST
   scope <- getScope
-  setAST $ a { AST.system_tasks =
-                D.insert (scope ++ [name]) t (AST.system_tasks a) }
+  setAST $ a { AST.system_tasks = D.insert scope t (AST.system_tasks a) }
 
 group :: String -> Tower p a -> Tower p a
 group name t = do

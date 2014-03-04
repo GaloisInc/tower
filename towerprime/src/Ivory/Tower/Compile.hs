@@ -20,7 +20,8 @@ compile twr os = (sysast, objs)
 
   task_cgen (taskast, taskcode) = OS.codegen_task os sysast taskast taskcode
 
-  system_mods = OS.codegen_sysinit os sysast systemcode (foldl1 (>>) taskmdefs)
+  system_mods = OS.codegen_sysinit os sysast systemcode allmdefs
+  allmdefs = foldl (>>) (return ()) taskmdefs
 
 
 

@@ -13,5 +13,5 @@ data EventHandler
     { evthandler_name       :: Unique
     , evthandler_annotation :: String
     , evthandler_evt        :: Event
-    }
+    } deriving (Eq, Show)
 

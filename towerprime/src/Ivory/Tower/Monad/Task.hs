@@ -93,7 +93,7 @@ putInitCode e = do
   setTaskCode $ \sys t -> (c sys t) { taskcode_init =
                                     e sys t >> taskcode_init (c sys t) }
 
-putTimerCode :: (forall s . Ref (Stack s) (Stored ITime) -> Ivory (AllocEffects s) ())
+putTimerCode :: (forall s s2 . Ref s (Stored ITime) -> Ivory (AllocEffects s2) ())
                  -> Task p ()
 putTimerCode e = do
   c <- getTaskCode

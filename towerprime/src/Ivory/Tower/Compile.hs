@@ -23,5 +23,3 @@ compile twr os = (sysast, objs)
   system_mods = OS.codegen_sysinit os sysast systemcode allmdefs
   allmdefs = foldl (>>) (return ()) taskmdefs
 
-
-

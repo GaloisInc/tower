@@ -12,6 +12,7 @@ import           Ivory.Stdlib
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Time
 import           Ivory.Tower.Types.Event
+import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Task
 
@@ -24,7 +25,8 @@ getTime = call p
 timerEvent :: Time a => a -> Task p (Event (Stored ITime))
 timerEvent period = do
   tid <- fresh
-  let named n = "timerEvent_" ++ n ++ "_" ++ show tid
+  tname <- getTaskName
+  let named n = (showUnique tname) ++ "_timer_event_" ++ n ++ "_" ++ show tid
   -- Write timer to AST:
   let astevt = AST.TimerEvt $ AST.Timer
         { AST.timer_id = tid
@@ -66,8 +68,8 @@ timerEvent period = do
     public $ do
       defMemArea dueArea
       defMemArea dueTimeArea
-    private $ do
       incl initDef
+    private $ do
       incl tickDef
       defMemArea lastPeriodArea
   putInitCode $ \_ _ ->

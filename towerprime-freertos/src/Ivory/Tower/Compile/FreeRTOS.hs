@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
@@ -16,6 +17,7 @@ import           Ivory.Tower.Types.SystemCode
 import           Ivory.Tower.Types.Unique
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir (searchDir)
+import Ivory.Tower.Compile.FreeRTOS.MsgQueue
 
 os :: OS.OS
 os = OS.OS
@@ -26,14 +28,16 @@ os = OS.OS
   , OS.codegen_sysinit = codegen_sysinit
   }
 
-gen_channel :: (IvoryArea area, IvoryZero area)
+gen_channel :: forall area
+             . (IvoryArea area, IvoryZero area)
             => AST.System
             -> AST.Chan
             -> Proxy area
             -> (Def('[]:->()), ModuleDef)
-gen_channel sys chan proxy = garbage
+gen_channel sys chan _proxy = (mq_init q, mq_code q)
   where
-  garbage = (proc "garbage" $ body $ return (), return ())
+  q :: MsgQueue area
+  q = msgQueue sys chan
 
 get_emitter :: (IvoryArea area, IvoryZero area)
             => AST.System
@@ -130,11 +134,12 @@ codegen_sysinit :: AST.System
                 -> [Module]
 codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
   where
-  sys_mod = package "tower_system" $ do
+  sys_mod = package "tower" $ do
     taskmoddefs
+    systemcode_moddef syscode
     incl init_proc
   init_proc :: Def('[]:->())
-  init_proc = proc "tower_system_init" $ body $ noReturn $ do
+  init_proc = proc "tower_entry" $ body $ noReturn $ do
     systemcode_comm_initializers syscode
     mapM_ (taskcode_init . snd) (systemcode_tasks syscode)
     -- XXX launch tasks

@@ -6,6 +6,7 @@ module Ivory.Tower.Monad.Task
   ( Task
   , TaskCode(..)
   , runTask
+  , getTaskName
   , putCommprim
   , putUsercode
   , putChanEmitter
@@ -125,6 +126,11 @@ getAST = Task get
 
 setAST :: AST.Task -> Task p ()
 setAST a = Task $ set a
+
+getTaskName :: Task p Unique
+getTaskName = do
+  a <- getAST
+  return (AST.task_name a)
 
 putChanEmitter :: AST.ChanEmitter -> Task p ()
 putChanEmitter c = do

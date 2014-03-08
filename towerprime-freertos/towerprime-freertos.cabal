@@ -10,13 +10,16 @@ license:             BSD3
 data-files: ivory-freertos-wrapper/freertos_semaphore_wrapper.h,
             ivory-freertos-wrapper/freertos_semaphore_wrapper.c,
             ivory-freertos-wrapper/freertos_task_wrapper.h,
-            ivory-freertos-wrapper/freertos_task_wrapper.c,
-            ivory-freertos-wrapper/freertos_atomic_wrapper.h,
-            ivory-freertos-wrapper/freertos_atomic_wrapper.c
+            ivory-freertos-wrapper/freertos_task_wrapper.c
 
 library
   exposed-modules:      Ivory.Tower.Compile.FreeRTOS,
-                        Ivory.Tower.Compile.FreeRTOS.SearchDir
+                        Ivory.Tower.Compile.FreeRTOS.EventNotify,
+                        Ivory.Tower.Compile.FreeRTOS.MsgQueue,
+                        Ivory.Tower.Compile.FreeRTOS.SearchDir,
+                        Ivory.OS.FreeRTOS.Semaphore,
+                        Ivory.OS.FreeRTOS.Task,
+                        Ivory.OS.FreeRTOS.TaskArg
 
   other-modules:        Paths_towerprime_freertos
 

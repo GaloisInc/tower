@@ -1,11 +1,13 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Ivory.Tower.Types.OS
   ( OS(..)
   ) where
 
+import           GHC.TypeLits
 import           Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.SystemCode
@@ -14,10 +16,11 @@ import           Ivory.Tower.Types.TaskCode
 
 data OS =
   OS
-    { gen_channel :: forall area
-                   . (IvoryArea area, IvoryZero area)
+    { gen_channel :: forall (n :: Nat) area
+                   . (SingI n, IvoryArea area, IvoryZero area)
                   => AST.System
                   -> AST.Chan
+                  -> Proxy n
                   -> Proxy area
                   -> (Def ('[]:->()), ModuleDef)
 

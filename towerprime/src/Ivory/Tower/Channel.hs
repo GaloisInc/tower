@@ -1,17 +1,26 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.Channel
   ( channel
+  , channelWithSize
   , src
   , snk
   , withChannelEmitter
+  , emit_
+  , emitV_
   , withChannelReceiver
---  , withChannelEvent
---  , withChannelLatest
+  , receive
+  , receiveV
+
   ) where
 
+
+import GHC.TypeLits
 
 import Ivory.Language
 import Ivory.Language.Area (ivoryArea)
@@ -33,14 +42,20 @@ snk = snd
 channel :: forall p area
          . (IvoryArea area, IvoryZero area)
         => Tower p (ChannelSource area, ChannelSink area)
-channel = do
+channel = channelWithSize (Proxy :: Proxy 16)
+
+channelWithSize :: forall (n :: Nat) p area
+                 . (SingI n, IvoryArea area, IvoryZero area)
+                => Proxy n
+                -> Tower p (ChannelSource area, ChannelSink area)
+channelWithSize nn = do
   cid <- fresh
   os <- getOS
   let chan = AST.Chan { AST.chan_id = cid
-                      , AST.chan_size = -1 -- XXX
+                      , AST.chan_size = fromSing (sing :: Sing n)
                       , AST.chan_ityp = ivoryArea (Proxy :: Proxy area)
                       }
-      code astsys = OS.gen_channel os astsys chan (Proxy :: Proxy area)
+      code astsys = OS.gen_channel os astsys chan nn (Proxy :: Proxy area)
   putChan               chan
   putSysCommInitializer ((call_ . fst) `fmap` code)
   putSysModdef          (snd `fmap` code)
@@ -63,6 +78,7 @@ withChannelEmitter csrc annotation = do
   let p :: AST.System -> Def('[ConstRef s area] :-> ())
       p sys = proc (showUnique procname) $ \r -> body $ do
         OS.get_emitter os sys chan r
+      mock_p :: Def('[ConstRef s area] :-> ())
       mock_p = p (error msg)
 
   putCommprim $ \sys _tsk -> do
@@ -75,6 +91,15 @@ withChannelEmitter csrc annotation = do
   pname = "emit_chan" ++ show (AST.chan_id chan)
   msg = "from Ivory.Tower.Channel.withChannelEmitter: "
      ++ "chan emit call should not be strict in OS-codegen argument"
+
+emit_ :: ChannelEmitter area -> ConstRef s area -> Ivory eff ()
+emit_ = unChannelEmitter
+
+emitV_ :: (IvoryInit t, IvoryArea (Stored t), GetAlloc eff ~ Scope s)
+       => ChannelEmitter (Stored t) -> t -> Ivory eff ()
+emitV_ e v = do
+  l <- local (ival v)
+  emit_ e (constRef l)
 
 withChannelReceiver :: forall p area
                     . (IvoryArea area, IvoryZero area)
@@ -95,6 +120,7 @@ withChannelReceiver csnk annotation = do
       p sys tsk = proc (showUnique procname) $ \r -> body $ do
         success <- OS.get_receiver os sys tsk chan r
         ret success
+      mock_p :: Def('[Ref s area] :-> IBool)
       mock_p = p (error msg) (error msg)
 
   putCommprim $ \sys tsk -> do
@@ -107,6 +133,16 @@ withChannelReceiver csnk annotation = do
   msg = "from Ivory.Tower.Channel.withChannelReceiver: "
      ++ "chan receive call should not be strict in OS-codegen argument"
 
+receive :: ChannelReceiver area -> Ref s area -> Ivory eff IBool
+receive = unChannelReceiver
+
+receiveV :: (IvoryVar t, IvoryZero (Stored t), IvoryArea (Stored t), GetAlloc eff ~ Scope s)
+         => ChannelReceiver (Stored t) -> Ivory eff (IBool, t)
+receiveV rxer = do
+  l <- local izero
+  s <- receive rxer l
+  v <- deref l
+  return (s,v)
 
 {-
 withChannelEvent :: forall area

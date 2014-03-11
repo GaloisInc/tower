@@ -1,12 +1,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Ivory.Tower.Compile.FreeRTOS
   ( os
   , searchDir
   ) where
 
+import           GHC.TypeLits
 import           Ivory.Language
 import           Ivory.Stdlib
 import           Ivory.Tower
@@ -18,6 +20,7 @@ import           Ivory.Tower.Types.Unique
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir (searchDir)
 import Ivory.Tower.Compile.FreeRTOS.MsgQueue
+import Ivory.Tower.Compile.FreeRTOS.EventNotify
 
 os :: OS.OS
 os = OS.OS
@@ -28,36 +31,42 @@ os = OS.OS
   , OS.codegen_sysinit = codegen_sysinit
   }
 
-gen_channel :: forall area
-             . (IvoryArea area, IvoryZero area)
+gen_channel :: forall (n :: Nat) area
+             . (SingI n, IvoryArea area, IvoryZero area)
             => AST.System
             -> AST.Chan
+            -> Proxy n
             -> Proxy area
             -> (Def('[]:->()), ModuleDef)
-gen_channel sys chan _proxy = (mq_init q, mq_code q)
+gen_channel sys chan _ _ = (mq_init q, mq_code q)
   where
   q :: MsgQueue area
-  q = msgQueue sys chan
+  q = msgQueue sys chan (Proxy :: Proxy n)
 
-get_emitter :: (IvoryArea area, IvoryZero area)
+get_emitter :: forall area eff s
+             . (IvoryArea area, IvoryZero area)
             => AST.System
             -> AST.Chan
             -> ConstRef s area
             -> Ivory eff ()
-get_emitter sys chan = garbage
+get_emitter sys chan = mq_push q
   where
-  garbage ref = return ()
+  q :: MsgQueue area
+  -- Expect that size doesn't matter here.
+  q = msgQueue sys chan (Proxy :: Proxy 1)
 
-get_receiver :: (IvoryArea area, IvoryZero area)
+get_receiver :: forall area eff s
+              . (IvoryArea area, IvoryZero area)
              => AST.System
              -> AST.Task
              -> AST.Chan
              -> Ref s area
              -> Ivory eff IBool
-get_receiver sys task chan = garbage
+get_receiver sys tsk chan = mq_pop q tsk
   where
-  garbage ref = return false
-
+  q :: MsgQueue area
+  -- Expect that size doesn't matter here.
+  q = msgQueue sys chan (Proxy :: Proxy 1)
 
 time_mod :: Module
 time_mod = package "tower_freertos_time" $ do
@@ -70,7 +79,7 @@ codegen_task :: AST.System
              -> AST.Task
              -> TaskCode
              -> ([Module],ModuleDef)
-codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
+codegen_task _sys tsk taskcode = ([loop_mod, user_mod], deps)
   where
   deps = do
     depend user_mod
@@ -89,9 +98,6 @@ codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
     when (remaining <? 0) $ store overrun_ref now
     return ((remaining >? 0) ? (remaining, 0))
 
-  guardBlock :: ITime -> Ivory eff ()
-  guardBlock dt = return () -- XXX implement guard
-
   loop_proc :: Def('[]:->())
   loop_proc = proc (named "tower_task_loop") $ body $ noReturn $ do
     store next_due_ref 0
@@ -103,36 +109,40 @@ codegen_task sys task taskcode = ([loop_mod, user_mod], deps)
       assert (dt >=? 0)
 
       time_next_due <- deref next_due_ref
-      rem <- timeRemaining time_next_due time_enter_guard
-      guardBlock rem
+      trem <- timeRemaining time_next_due time_enter_guard
+      evtn_guard evt_notifier trem
 
       store next_due_ref maxBound
       taskcode_timer taskcode next_due_ref
       taskcode_eventrxer taskcode
       taskcode_eventloop taskcode
 
+  evt_notifier = taskEventNotify tsk
 
   loop_mod = package (named "tower_task_loop") $ do
     depend user_mod
     depend time_mod
+    depend (package "tower" (return ()))
     defMemArea next_due_area
     defMemArea exit_guard_area
     defMemArea overrun_area
     taskcode_commprim taskcode
     incl loop_proc
+    evtn_code evt_notifier
 
   user_mod = package (named "tower_task_usercode") $ do
     depend loop_mod
     depend time_mod
+    depend (package "tower" (return ()))
     taskcode_usercode taskcode
 
-  named n = n ++ "_" ++ (showUnique (AST.task_name task))
+  named n = n ++ "_" ++ (showUnique (AST.task_name tsk))
 
 codegen_sysinit :: AST.System
                 -> SystemCode
                 -> ModuleDef
                 -> [Module]
-codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
+codegen_sysinit _sysast syscode taskmoddefs = [time_mod, sys_mod]
   where
   sys_mod = package "tower" $ do
     taskmoddefs

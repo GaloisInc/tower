@@ -9,6 +9,10 @@ module Ivory.Tower
   , snk
   , withChannelEmitter
   , withChannelReceiver
+  , emit_
+  , emitV_
+  , receive
+  , receiveV
 
   -- Task API:
   , Task

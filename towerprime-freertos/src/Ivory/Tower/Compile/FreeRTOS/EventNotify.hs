@@ -49,6 +49,9 @@ taskEventNotify taskast = EventNotify
     call_ S.take sem_ref time_millis
 
   code = do
+    inclHeader "freertos_semaphore_wrapper.h"
+    sourceDep "freertos_semaphore_wrapper.h"
+    sourceDep "freertos_semaphore_wrapper.c"
     incl ini
     incl trigger
     incl guard

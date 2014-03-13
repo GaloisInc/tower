@@ -5,7 +5,7 @@
 #include <semphr.h>
 
 
-void ivory_freertos_semaphore_create(uint8_t **semhandle)
+void ivory_freertos_semaphore_create_mutex(uint8_t **semhandle)
 {
     *((xSemaphoreHandle*)semhandle) = xSemaphoreCreateMutex();
 }

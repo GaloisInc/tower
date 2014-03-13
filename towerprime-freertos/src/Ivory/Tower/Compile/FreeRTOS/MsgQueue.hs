@@ -16,7 +16,7 @@ import           Ivory.Stdlib
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Unique
 
-import qualified Ivory.OS.FreeRTOS.Semaphore as S
+import qualified Ivory.OS.FreeRTOS.Mutex as M
 
 data MsgQueue area =
   MsgQueue
@@ -43,19 +43,30 @@ msgQueue sysast chanast n = MsgQueue
 
   push :: Def('[ConstRef s area]:->())
   push = proc (named "push") $ \r -> body $ do
+    call_ M.take mutex_ref
     forM_ receiving_tasks $ \t -> ringbuffer_push (rb t) r
+    call_ M.give mutex_ref
 
   pop :: AST.Task -> Def('[Ref s area]:->IBool)
   pop t = proc (tasknamed t "pop") $ \r -> body $ do
+    call_ M.take mutex_ref
     success <- ringbuffer_pop (rb t) r
+    call_ M.give mutex_ref
     ret success
 
   init = proc (named "init") $ body $ do
+    call_ M.create mutex_ref
     forM_ receiving_tasks $ \t -> ringbuffer_init (rb t)
+
+  mutex_area :: MemArea (Stored M.Mutex)
+  mutex_area = area (named "mutex") Nothing
+  mutex_ref :: M.MutexHandle
+  mutex_ref = addrOf mutex_area
 
   code = do
     incl push
     incl init
+    defMemArea mutex_area
     forM_ receiving_tasks $ \t -> do
       incl (pop t)
       ringbuffer_moddef (rb t)

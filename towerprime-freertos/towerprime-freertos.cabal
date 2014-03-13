@@ -17,7 +17,8 @@ library
                         Ivory.Tower.Compile.FreeRTOS.EventNotify,
                         Ivory.Tower.Compile.FreeRTOS.MsgQueue,
                         Ivory.Tower.Compile.FreeRTOS.SearchDir,
-                        Ivory.OS.FreeRTOS.Semaphore,
+                        Ivory.OS.FreeRTOS.CountingSemaphore,
+                        Ivory.OS.FreeRTOS.Mutex,
                         Ivory.OS.FreeRTOS.Task,
                         Ivory.OS.FreeRTOS.TaskArg
 

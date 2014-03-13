@@ -3,7 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Ivory.OS.FreeRTOS.Semaphore where
+module Ivory.OS.FreeRTOS.CountingSemaphore where
 
 import Prelude hiding (take)
 import Ivory.Language
@@ -31,14 +31,6 @@ create =
 
 take :: Def ('[ CountingSemaphoreHandle, Uint32 ] :-> IBool)
 take = importProc "ivory_freertos_semaphore_take" semaphoreWrapperHeader
-
-takeBlocking :: Def ('[ CountingSemaphoreHandle ] :-> ())
-takeBlocking =
-  importProc "ivory_freertos_semaphore_takeblocking" semaphoreWrapperHeader
-
-takeNonblocking  :: Def ('[ CountingSemaphoreHandle ] :-> IBool)
-takeNonblocking =
-  importProc "ivory_freertos_semaphore_takenonblocking" semaphoreWrapperHeader
 
 give :: Def('[ CountingSemaphoreHandle ] :-> ())
 give = importProc "ivory_freertos_semaphore_give" semaphoreWrapperHeader

@@ -12,7 +12,7 @@ import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Types.Time
 
-import qualified Ivory.OS.FreeRTOS.Semaphore as S
+import qualified Ivory.OS.FreeRTOS.CountingSemaphore as S
 
 data EventNotify =
   EventNotify

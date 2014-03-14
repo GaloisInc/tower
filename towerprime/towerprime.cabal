@@ -38,9 +38,7 @@ library
                         Ivory.Tower.Types.Unique,
 
                         Ivory.Tower.Reporting.Entrypoints,
-                        Ivory.Tower.Reporting.Graphviz,
-
-                        Ivory.Tower.Test.TaskTest
+                        Ivory.Tower.Reporting.Graphviz
 
   build-depends:        base >= 4.6,
                         srcloc,

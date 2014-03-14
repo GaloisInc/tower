@@ -40,19 +40,3 @@ library
   else
     ghc-options:        -Wall
 
-executable towerprime-example-simple
-  main-is:             Simple.hs
-  hs-source-dirs:      examples
-  ghc-options:          -Wall
-  build-depends:       base >= 4.6,
-                       ivory-bitdata,
-                       ivory,
-                       ivory-stdlib,
-                       ivory-backend-c,
-                       towerprime,
-                       towerprime-freertos,
-                       towerprime-frontend
-  if flag(werror)
-    ghc-options:        -Wall -Werror
-  else
-    ghc-options:        -Wall

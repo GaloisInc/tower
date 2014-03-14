@@ -1,16 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Ivory.Tower.Test.TaskTest
-  ( task_simple_per
-  , task_simple_per_emitter
-  , task_simple_per_reader
-  , tower_simple_per_tasks
-  ) where
+module Main where
 
 import Ivory.Language
 import Ivory.Stdlib
 import Ivory.Tower
+import Ivory.Tower.Frontend
 
 task_simple_per :: Task p ()
 task_simple_per = do
@@ -49,4 +45,8 @@ tower_simple_per_tasks = do
   c <- channel
   task "simple_per_emitter" (task_simple_per_emitter (src c))
   task "simple_per_reader" (task_simple_per_reader (snk c))
+
+
+main :: IO ()
+main = compile defaultBuildConf tower_simple_per_tasks
 

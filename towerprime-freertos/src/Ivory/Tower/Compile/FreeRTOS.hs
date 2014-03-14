@@ -17,10 +17,14 @@ import qualified Ivory.Tower.Types.OS as OS
 import           Ivory.Tower.Types.TaskCode
 import           Ivory.Tower.Types.SystemCode
 import           Ivory.Tower.Types.Unique
+import           Ivory.Tower.Types.Time
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir (searchDir)
 import Ivory.Tower.Compile.FreeRTOS.MsgQueue
 import Ivory.Tower.Compile.FreeRTOS.EventNotify
+
+import qualified Ivory.OS.FreeRTOS.Task as Task
+import qualified Ivory.OS.FreeRTOS.Time as Time
 
 os :: OS.OS
 os = OS.OS
@@ -71,9 +75,13 @@ get_receiver sys tsk chan = mq_pop q tsk
 time_mod :: Module
 time_mod = package "tower_freertos_time" $ do
   incl time_proc
+  Time.moddef
 
 time_proc :: Def('[]:->ITime)
-time_proc = proc "getTimeMicros" $ body $ ret 0 -- XXX
+time_proc = proc "getTimeMicros" $ body $ do
+  ticks <- call Time.getTickCount
+  tickrate <- call Time.getTickRateMilliseconds
+  ret (fromIMilliseconds (ticks * tickrate))
 
 codegen_task :: AST.System
              -> AST.Task
@@ -87,6 +95,7 @@ codegen_task _sys tsk taskcode = ([loop_mod, user_mod], deps)
 
   next_due_area = area (named "time_next_due") Nothing
   next_due_ref = addrOf next_due_area
+
   exit_guard_area = area (named "time_exit_guard") Nothing
   exit_guard_ref = addrOf exit_guard_area
   overrun_area = area (named "time_overrun") (Just (ival minBound))
@@ -144,13 +153,34 @@ codegen_sysinit :: AST.System
                 -> [Module]
 codegen_sysinit _sysast syscode taskmoddefs = [time_mod, sys_mod]
   where
+  taskasts = map fst (systemcode_tasks syscode)
+  taskcodes = map snd (systemcode_tasks syscode)
   sys_mod = package "tower" $ do
     taskmoddefs
     systemcode_moddef syscode
     incl init_proc
+    mapM_ (incl . taskarg_proc) taskasts
+    Task.moddef
+
   init_proc :: Def('[]:->())
   init_proc = proc "tower_entry" $ body $ noReturn $ do
     systemcode_comm_initializers syscode
-    mapM_ (taskcode_init . snd) (systemcode_tasks syscode)
-    -- XXX launch tasks
+    mapM_ taskcode_init taskcodes
+    mapM_ launch taskasts
+
+  launch :: AST.Task -> Ivory eff ()
+  launch taskast = call_ Task.begin tproc stacksize priority
+    where
+    tproc = Task.taskProc (taskarg_proc taskast)
+    stacksize = 1024 -- XXX
+    priority = 1 -- XXX
+
+  taskarg_proc :: AST.Task -> Def('[Ref Global (Struct "taskarg")]:->())
+  taskarg_proc taskast = proc (named "tower_task_entry") $ \_ -> body $ do
+    call_ loop_proc
+    -- loop_proc should never exit.
+    where
+    loop_proc :: Def('[]:->())
+    loop_proc = proc (named "tower_task_loop") $ body $ undefined
+    named n = n ++ "_" ++ (showUnique (AST.task_name taskast))
 

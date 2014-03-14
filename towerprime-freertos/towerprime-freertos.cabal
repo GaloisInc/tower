@@ -10,7 +10,9 @@ license:             BSD3
 data-files: ivory-freertos-wrapper/freertos_semaphore_wrapper.h,
             ivory-freertos-wrapper/freertos_semaphore_wrapper.c,
             ivory-freertos-wrapper/freertos_task_wrapper.h,
-            ivory-freertos-wrapper/freertos_task_wrapper.c
+            ivory-freertos-wrapper/freertos_task_wrapper.c,
+            ivory-freertos-wrapper/freertos_time_wrapper.h,
+            ivory-freertos-wrapper/freertos_time_wrapper.c
 
 library
   exposed-modules:      Ivory.Tower.Compile.FreeRTOS,
@@ -20,7 +22,8 @@ library
                         Ivory.OS.FreeRTOS.CountingSemaphore,
                         Ivory.OS.FreeRTOS.Mutex,
                         Ivory.OS.FreeRTOS.Task,
-                        Ivory.OS.FreeRTOS.TaskArg
+                        Ivory.OS.FreeRTOS.TaskArg,
+                        Ivory.OS.FreeRTOS.Time
 
   other-modules:        Paths_towerprime_freertos
 

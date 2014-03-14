@@ -4,14 +4,13 @@
 
 #include <stdint.h>
 
-void ivory_freertos_task_delay(uint32_t time_ms);
+void ivory_freertos_time_delay(uint32_t ticks);
 
-void ivory_freertos_task_delayuntil(uint32_t *lastwaketime, uint32_t dt);
+void ivory_freertos_time_delayuntil(uint32_t *lastwaketicks, uint32_t ticks);
 
-uint32_t ivory_freertos_task_getmilliscount(void);
+uint32_t ivory_freertos_time_gettickcount(void);
 
-uint32_t ivory_freertos_task_gettickcount(void);
+uint32_t ivory_freertos_time_gettickrate_ms(void);
 
-uint32_t ivory_freertos_millistoticks(uint32_t ms);
 
 #endif // __IVORY_FREERTOS_TIME_WRAPPER_H__

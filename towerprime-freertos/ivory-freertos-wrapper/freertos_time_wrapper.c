@@ -4,24 +4,21 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
-void ivory_freertos_task_delay(uint32_t time_ms)
-{   vTaskDelay(time_ms);
+void ivory_freertos_time_delay(uint32_t ticks)
+{   vTaskDelay(ticks);
 }
 
-void ivory_freertos_task_delayuntil(uint32_t *lastwaketime, uint32_t dt)
+void ivory_freertos_time_delayuntil(uint32_t *lastwaketicks, uint32_t ticks)
 {
-    vTaskDelayUntil(lastwaketime, dt);
+    vTaskDelayUntil(lastwaketicks, ticks);
 }
 
-uint32_t ivory_freertos_task_getmilliscount(void) {
-    return xTaskGetTickCount() / portTICK_RATE_MS;
-}
-
-uint32_t ivory_freertos_task_gettickcount(void) {
+uint32_t ivory_freertos_time_gettickcount(void) {
     return xTaskGetTickCount();
 }
 
-uint32_t ivory_freertos_millistoticks(uint32_t ms)
+uint32_t ivory_freertos_time_gettickrate_ms(void)
 {
-  return ms * portTICK_RATE_MS;
+  return portTICK_RATE_MS;
 }
+

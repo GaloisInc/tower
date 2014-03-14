@@ -4,28 +4,34 @@
 module Ivory.OS.FreeRTOS.Time
   ( delay
   , delayUntil
-  , getTimeMillis
-  , getTimeTick
-  , millisToTicks
+  , getTickCount
+  , getTickRateMilliseconds
+  , moddef
   ) where
 
 import Ivory.Language
 
+moddef :: ModuleDef
+moddef = do
+  inclHeader timeWrapperHeader
+  sourceDep timeWrapperHeader
+  sourceDep "freertos_time_wrapper.c"
+
 timeWrapperHeader :: String
 timeWrapperHeader = "freertos_time_wrapper.h"
 
-delay :: Def ('[ Uint32 ] :->())
+type Ticks = Uint32
+
+delay :: Def ('[ Ticks ] :->())
 delay = importProc "ivory_freertos_time_delay" timeWrapperHeader
 
-delayUntil :: Def ('[ Ref s (Stored Uint32), Uint32 ] :->())
+delayUntil :: Def ('[ Ref s (Stored Ticks), Ticks ] :->())
 delayUntil = importProc "ivory_freertos_time_delayuntil" timeWrapperHeader
 
-getTimeMillis :: Def ('[] :-> Uint32)
-getTimeMillis =
-  importProc "ivory_freertos_time_getmilliscount" timeWrapperHeader
+getTickCount:: Def ('[] :-> Ticks)
+getTickCount =
+  importProc "ivory_freertos_time_gettickcount" timeWrapperHeader
 
-getTimeTick :: Def ('[] :-> Uint32)
-getTimeTick = importProc "ivory_freertos_time_gettickcount" timeWrapperHeader
-
-millisToTicks :: Def ('[Uint32] :-> Uint32)
-millisToTicks = importProc "ivory_freertos_time_millistoticks" timeWrapperHeader
+getTickRateMilliseconds :: Def ('[] :-> Uint32)
+getTickRateMilliseconds =
+  importProc "ivory_freertos_time_gettickrate_ms" timeWrapperHeader

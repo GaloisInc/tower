@@ -64,7 +64,7 @@ timerEvent period = do
           due <- assign (thisPeriodStart + per)
           tnd <- deref tasksNextDue
           when (due <? tnd) (store tasksNextDue due)
-  putCommprim $ \_ _ -> do
+  putCommprim $ \_ -> do
     public $ do
       defMemArea dueArea
       defMemArea dueTimeArea
@@ -72,7 +72,7 @@ timerEvent period = do
     private $ do
       incl tickDef
       defMemArea lastPeriodArea
-  putInitCode $ \_ _ ->
+  putInitCode $ \_ ->
     call_ initDef
   putTimerCode $ call_ tickDef
 

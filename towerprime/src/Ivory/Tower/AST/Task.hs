@@ -11,11 +11,12 @@ import Ivory.Tower.AST.EventHandler
 
 data Task =
   Task
-    { task_name           :: Unique
-    , task_chan_emitters  :: [ChanEmitter]
-    , task_chan_receivers :: [ChanReceiver]
-    , task_evts           :: [Event]
-    , task_evt_handlers   :: [EventHandler]
-    , task_priority       :: Integer
+    { task_name                 :: Unique
+    , task_chan_emitters        :: [ChanEmitter]
+    , task_chan_poll_receivers  :: [ChanReceiver]
+    , task_chan_event_receivers :: [ChanReceiver]
+    , task_evts                 :: [Event]
+    , task_evt_handlers         :: [EventHandler]
+    , task_priority             :: Integer
     } deriving (Eq, Show)
 

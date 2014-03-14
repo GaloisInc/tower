@@ -34,10 +34,10 @@ handle evt annotation k = do
   -- Package handler into a procedure in usercode
   let handler_proc :: Def('[ConstRef s area]:->())
       handler_proc = proc (showUnique procname) $ \r -> body $ noReturn $ k r
-  putUsercode $ \_ _ -> do
+  putUsercode $  do
     incl handler_proc
   -- Check for event and call handler from eventloop
-  putEventLoopCode $ \_ _ -> do
+  putEventLoopCode $ \_ -> do
     r <- local izero
     got <- evt_get evt r
     ifte_ got (call_ handler_proc (constRef r))

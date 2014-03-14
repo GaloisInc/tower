@@ -6,6 +6,7 @@ module Ivory.Tower.Task
   , task
   , taskLocal
   , taskLocalInit
+  , taskModuleDef
   ) where
 
 import           Ivory.Language
@@ -29,7 +30,7 @@ taskLocal :: (IvoryArea area, IvoryZero area)
 taskLocal name = do
   u <- freshname name
   let memarea = area (showUnique u) (Just izero)
-  putUsercode $ \_ _ -> defMemArea memarea
+  putUsercode $ defMemArea memarea
   return (addrOf memarea)
 
 taskLocalInit :: (IvoryArea area)
@@ -39,6 +40,8 @@ taskLocalInit :: (IvoryArea area)
 taskLocalInit name iv = do
   u <- freshname name
   let memarea = area (showUnique u) (Just iv)
-  putUsercode $ \_ _ -> defMemArea memarea
+  putUsercode $ defMemArea memarea
   return (addrOf memarea)
 
+taskModuleDef :: ModuleDef -> Task p ()
+taskModuleDef = putUsercode

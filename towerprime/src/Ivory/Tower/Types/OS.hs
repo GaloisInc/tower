@@ -34,8 +34,7 @@ data OS =
     , get_receiver :: forall area s eff
                     . (IvoryArea area, IvoryZero area)
                    => AST.System
-                   -> AST.Task
-                   -> AST.Chan
+                   -> AST.ChanReceiver
                    -> Ref s area
                    -> Ivory eff IBool
 

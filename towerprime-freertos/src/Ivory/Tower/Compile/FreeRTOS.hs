@@ -42,10 +42,10 @@ gen_channel :: forall (n :: Nat) area
             -> Proxy n
             -> Proxy area
             -> (Def('[]:->()), ModuleDef)
-gen_channel sys chan _ _ = (mq_init q, mq_code q)
+gen_channel sys chan n _ = (mq_init q, mq_code q)
   where
   q :: MsgQueue area
-  q = msgQueue sys chan (Proxy :: Proxy n)
+  q = msgQueue sys chan n
 
 get_emitter :: forall area eff s
              . (IvoryArea area, IvoryZero area)
@@ -62,15 +62,14 @@ get_emitter sys chan = mq_push q
 get_receiver :: forall area eff s
               . (IvoryArea area, IvoryZero area)
              => AST.System
-             -> AST.Task
-             -> AST.Chan
+             -> AST.ChanReceiver
              -> Ref s area
              -> Ivory eff IBool
-get_receiver sys tsk chan = mq_pop q tsk
+get_receiver sys chanrxer = mq_pop q chanrxer
   where
   q :: MsgQueue area
   -- Expect that size doesn't matter here.
-  q = msgQueue sys chan (Proxy :: Proxy 1)
+  q = msgQueue sys (AST.chanreceiver_chan chanrxer) (Proxy :: Proxy 1)
 
 time_mod :: Module
 time_mod = package "tower_freertos_time" $ do

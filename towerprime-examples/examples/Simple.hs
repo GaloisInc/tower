@@ -39,12 +39,22 @@ task_simple_per_reader c = do
     store lastgood s
     when s $ store lastgot v
 
+task_simple_event_reader :: ChannelSink (Stored Sint32) -> Task p ()
+task_simple_event_reader c = do
+  evt <- withChannelEvent c "chan_event"
+  good <- taskLocalInit "good" (ival false)
+  got  <- taskLocal "got"
+  handle evt "rx_at_event" $ \msg -> do
+    store good true
+    refCopy got msg
+
 tower_simple_per_tasks :: Tower p ()
 tower_simple_per_tasks = do
-  task "simple_per" task_simple_per
+  task "per_trivial" task_simple_per
   c <- channel
-  task "simple_per_emitter" (task_simple_per_emitter (src c))
-  task "simple_per_reader" (task_simple_per_reader (snk c))
+  task "per_emitter" (task_simple_per_emitter (src c))
+  task "per_reader" (task_simple_per_reader (snk c))
+  task "event_reader" (task_simple_event_reader (snk c))
 
 
 main :: IO ()

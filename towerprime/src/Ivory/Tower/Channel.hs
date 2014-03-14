@@ -16,7 +16,7 @@ module Ivory.Tower.Channel
   , withChannelReceiver
   , receive
   , receiveV
-
+  , withChannelEvent
   ) where
 
 
@@ -26,6 +26,7 @@ import Ivory.Language
 import Ivory.Language.Area (ivoryArea)
 
 import qualified Ivory.Tower.AST            as AST
+import           Ivory.Tower.Types.Event
 import qualified Ivory.Tower.Types.OS       as OS
 import           Ivory.Tower.Types.Channels
 import           Ivory.Tower.Types.Unique
@@ -81,7 +82,7 @@ withChannelEmitter csrc annotation = do
       mock_p :: Def('[ConstRef s area] :-> ())
       mock_p = p (error msg)
 
-  putCommprim $ \sys _tsk -> do
+  putCommprim $ \sys -> do
     incl (p sys)
 
   return (ChannelEmitter (call_ mock_p))
@@ -109,22 +110,23 @@ withChannelReceiver :: forall p area
 withChannelReceiver csnk annotation = do
   procname <- freshname pname
 
-  putChanReceiver $ AST.ChanReceiver
-    { AST.chanreceiver_name = procname
-    , AST.chanreceiver_annotation = annotation
-    , AST.chanreceiver_chan = chan
-    }
+  let chanrxer = AST.ChanReceiver
+        { AST.chanreceiver_name = procname
+        , AST.chanreceiver_annotation = annotation
+        , AST.chanreceiver_chan = chan
+        }
+  putChanPollReceiver chanrxer
 
   os <- getOS
-  let p :: AST.System -> AST.Task -> Def('[Ref s area] :-> IBool)
-      p sys tsk = proc (showUnique procname) $ \r -> body $ do
-        success <- OS.get_receiver os sys tsk chan r
+  let p :: AST.System -> Def('[Ref s area] :-> IBool)
+      p sys = proc (showUnique procname) $ \r -> body $ do
+        success <- OS.get_receiver os sys chanrxer r
         ret success
       mock_p :: Def('[Ref s area] :-> IBool)
-      mock_p = p (error msg) (error msg)
+      mock_p = p (error msg)
 
-  putCommprim $ \sys tsk -> do
-    incl (p sys tsk)
+  putCommprim $ \sys -> do
+    incl (p sys)
 
   return (ChannelReceiver (call mock_p))
   where
@@ -136,7 +138,8 @@ withChannelReceiver csnk annotation = do
 receive :: ChannelReceiver area -> Ref s area -> Ivory eff IBool
 receive = unChannelReceiver
 
-receiveV :: (IvoryVar t, IvoryZero (Stored t), IvoryArea (Stored t), GetAlloc eff ~ Scope s)
+receiveV :: ( IvoryVar t, IvoryZero (Stored t), IvoryArea (Stored t)
+            , GetAlloc eff ~ Scope s)
          => ChannelReceiver (Stored t) -> Ivory eff (IBool, t)
 receiveV rxer = do
   l <- local izero
@@ -144,17 +147,56 @@ receiveV rxer = do
   v <- deref l
   return (s,v)
 
-{-
-withChannelEvent :: forall area
-                    . (IvoryArea area, IvoryZero area)
-                   => ChannelSink area
-                   -> Task p (ChannelEvent area)
-withChannelEvent snk = undefined
+withChannelEvent :: forall area p
+                  . (IvoryArea area, IvoryZero area)
+                 => ChannelSink area
+                 -> String
+                 -> Task p (Event area)
+withChannelEvent sink annotation = do
+  tname <- getTaskName
+  pname <- freshname (basename tname)
+  let named n = (showUnique pname) ++ "_" ++ n
 
-withChannelLatest :: forall area
-                    . (IvoryArea area, IvoryZero area)
-                   => ChannelSink area
-                   -> Task p (ChannelLatest area)
-withChannelLatest snk = undefined
--}
+  let chanrxer = AST.ChanReceiver
+        { AST.chanreceiver_name = pname
+        , AST.chanreceiver_annotation = annotation
+        , AST.chanreceiver_chan = chan
+        }
+  -- Write event receiver to AST:
+  putChanEventReceiver chanrxer
 
+  -- Write channel event to AST:
+  let astevt = AST.ChanEvt chan chanrxer
+  putASTEvent astevt
+
+  -- Generate Receiver code:
+  os <- getOS
+  let p :: AST.System -> Def('[Ref s area] :-> IBool)
+      p sys = proc (showUnique pname) $ \r -> body $ do
+        success <- OS.get_receiver os sys chanrxer r
+        ret success
+      ready_area :: MemArea (Stored IBool)
+      ready_area = area (named "ready") Nothing
+      latest_area :: MemArea area
+      latest_area = area (named "message") Nothing
+  putCommprim $ \sys -> do
+    incl (p sys)
+    defMemArea ready_area
+    defMemArea latest_area
+  putInitCode $ \_ ->
+    store (addrOf ready_area) false
+  putEventReceiverCode $ \sys -> do
+    success <- call (p sys) (addrOf latest_area)
+    store (addrOf ready_area) success
+  -- Return event getter code:
+  return $ Event
+    { evt_get = \ref -> do
+        ready <- deref (addrOf ready_area)
+        ifte_ ready (refCopy ref (addrOf latest_area)) (return ())
+        return ready
+    , evt_ast = astevt
+    }
+  where
+  chan = unChannelSink sink
+  basename t = (showUnique t) ++ "_chan_"
+            ++ (show (AST.chan_id chan)) ++ "_event"

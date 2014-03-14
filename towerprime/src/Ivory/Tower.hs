@@ -13,12 +13,14 @@ module Ivory.Tower
   , emitV_
   , receive
   , receiveV
+  , withChannelEvent
 
   -- Task API:
   , Task
   , task
   , taskLocal
   , taskLocalInit
+  , taskModuleDef
 
   -- Tower API:
   , Tower

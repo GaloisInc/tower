@@ -21,7 +21,7 @@ import qualified Ivory.OS.FreeRTOS.Mutex as M
 data MsgQueue area =
   MsgQueue
     { mq_push :: forall eff s . ConstRef s area -> Ivory eff ()
-    , mq_pop  :: forall eff s . AST.Task -> Ref s area -> Ivory eff IBool
+    , mq_pop  :: forall eff s . AST.ChanReceiver -> Ref s area -> Ivory eff IBool
     , mq_init :: Def('[]:->())
     , mq_code :: ModuleDef
     }
@@ -31,24 +31,26 @@ msgQueue :: forall (n :: Nat) area
          => AST.System -> AST.Chan -> Proxy n -> MsgQueue area
 msgQueue sysast chanast n = MsgQueue
   { mq_push = call_ push
-  , mq_pop  = \rxertask -> call (pop rxertask)
+  , mq_pop  = \chanrxer -> call (pop chanrxer)
   , mq_init = init
   , mq_code = code
   }
   where
-  receiving_tasks = AST.tasks_receiving sysast chanast
+  event_receivers = AST.event_receivers sysast chanast
+  poll_receivers = AST.poll_receivers sysast chanast
+  all_receivers  = event_receivers ++ poll_receivers
 
-  rb :: AST.Task -> RingBuffer area
-  rb t = ringBuffer n (tasknamed t)
+  rb :: AST.ChanReceiver -> RingBuffer area
+  rb t = ringBuffer n (rxernamed t)
 
   push :: Def('[ConstRef s area]:->())
   push = proc (named "push") $ \r -> body $ do
     call_ M.take mutex_ref
-    forM_ receiving_tasks $ \t -> ringbuffer_push (rb t) r
+    forM_ all_receivers $ \(rxer, _) -> ringbuffer_push (rb rxer) r
     call_ M.give mutex_ref
 
-  pop :: AST.Task -> Def('[Ref s area]:->IBool)
-  pop t = proc (tasknamed t "pop") $ \r -> body $ do
+  pop :: AST.ChanReceiver -> Def('[Ref s area]:->IBool)
+  pop t = proc (rxernamed t "pop") $ \r -> body $ do
     call_ M.take mutex_ref
     success <- ringbuffer_pop (rb t) r
     call_ M.give mutex_ref
@@ -56,7 +58,7 @@ msgQueue sysast chanast n = MsgQueue
 
   init = proc (named "init") $ body $ do
     call_ M.create mutex_ref
-    forM_ receiving_tasks $ \t -> ringbuffer_init (rb t)
+    forM_ all_receivers $ \(rxer, _) -> ringbuffer_init (rb rxer)
 
   mutex_area :: MemArea (Stored M.Mutex)
   mutex_area = area (named "mutex") Nothing
@@ -67,12 +69,12 @@ msgQueue sysast chanast n = MsgQueue
     incl push
     incl init
     defMemArea mutex_area
-    forM_ receiving_tasks $ \t -> do
-      incl (pop t)
-      ringbuffer_moddef (rb t)
+    forM_ all_receivers $ \(rxer, _) -> do
+      incl (pop rxer)
+      ringbuffer_moddef (rb rxer)
 
   named n = "chan_" ++ (show (AST.chan_id chanast)) ++ "_" ++ n
-  tasknamed t n = named (showUnique (AST.task_name t) ++ "_" ++ n)
+  rxernamed rx n = named (showUnique (AST.chanreceiver_name rx) ++ "_" ++ n)
 
 
 data RingBuffer area =

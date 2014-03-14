@@ -165,6 +165,7 @@ codegen_sysinit _sysast syscode taskmoddefs = [time_mod, sys_mod]
   init_proc :: Def('[]:->())
   init_proc = proc "tower_entry" $ body $ noReturn $ do
     systemcode_comm_initializers syscode
+    mapM_ (evtn_init . taskEventNotify) taskasts
     mapM_ taskcode_init taskcodes
     mapM_ launch taskasts
 

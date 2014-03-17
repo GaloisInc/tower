@@ -20,13 +20,28 @@ data System =
     } deriving (Eq, Show)
 
 event_emitters :: System -> Chan -> [(ChanEmitter, Task)]
-event_emitters sys chan = error "Tower.AST.System.event_emitters undefined" -- XXX
+event_emitters sys chan =
+    concat (map (\t -> zip (matchingemitters t) (repeat t)) ts)
+    where
+    matchingemitters t = filter p (task_chan_emitters t)
+    p ce = chanemitter_chan ce == chan
+    ts = map snd (D.flatten (system_tasks sys))
 
 poll_receivers :: System -> Chan -> [(ChanReceiver, Task)]
-poll_receivers sys chan = error "Tower.AST.System.poll_receivers undefined" -- XXX
+poll_receivers sys chan =
+    concat (map (\t -> zip (matchingrxers t) (repeat t)) ts)
+    where
+    matchingrxers t = filter p (task_chan_poll_receivers t)
+    p cr = chanreceiver_chan cr == chan
+    ts = map snd (D.flatten (system_tasks sys))
 
 event_receivers :: System -> Chan -> [(ChanReceiver, Task)]
-event_receivers sys chan = error "Tower.AST.System.event_receivers undefined" -- XXX
+event_receivers sys chan =
+    concat (map (\t -> zip (matchingrxers t) (repeat t)) ts)
+    where
+    matchingrxers t = filter p (task_chan_event_receivers t)
+    p cr = chanreceiver_chan cr == chan
+    ts = map snd (D.flatten (system_tasks sys))
 
 {- GARBAGE:
 tasks_emitting :: System -> Chan -> [Task]

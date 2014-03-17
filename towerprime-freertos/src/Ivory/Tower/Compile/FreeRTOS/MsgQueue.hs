@@ -16,6 +16,7 @@ import           Ivory.Stdlib
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Unique
 
+import           Ivory.Tower.Compile.FreeRTOS.EventNotify
 import qualified Ivory.OS.FreeRTOS.Mutex as M
 
 data MsgQueue area =
@@ -46,8 +47,11 @@ msgQueue sysast chanast n = MsgQueue
   push :: Def('[ConstRef s area]:->())
   push = proc (named "push") $ \r -> body $ do
     call_ M.take mutex_ref
-    forM_ all_receivers $ \(rxer, _) -> ringbuffer_push (rb rxer) r
+    forM_ all_receivers $ \(rxer, _) ->
+      ringbuffer_push (rb rxer) r
     call_ M.give mutex_ref
+    forM_ event_receivers $ \(_, taskast) ->
+      evtn_trigger (taskEventNotify taskast)
 
   pop :: AST.ChanReceiver -> Def('[Ref s area]:->IBool)
   pop t = proc (rxernamed t "pop") $ \r -> body $ do

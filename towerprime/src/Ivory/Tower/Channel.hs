@@ -108,10 +108,11 @@ withChannelReceiver :: forall p area
                    -> String
                    -> Task p (ChannelReceiver area)
 withChannelReceiver csnk annotation = do
-  procname <- freshname pname
+  tname <- getTaskName
+  pname <- freshname (basename tname)
 
   let chanrxer = AST.ChanReceiver
-        { AST.chanreceiver_name = procname
+        { AST.chanreceiver_name = pname
         , AST.chanreceiver_annotation = annotation
         , AST.chanreceiver_chan = chan
         }
@@ -119,7 +120,7 @@ withChannelReceiver csnk annotation = do
 
   os <- getOS
   let p :: AST.System -> Def('[Ref s area] :-> IBool)
-      p sys = proc (showUnique procname) $ \r -> body $ do
+      p sys = proc (showUnique pname) $ \r -> body $ do
         success <- OS.get_receiver os sys chanrxer r
         ret success
       mock_p :: Def('[Ref s area] :-> IBool)
@@ -131,9 +132,10 @@ withChannelReceiver csnk annotation = do
   return (ChannelReceiver (call mock_p))
   where
   chan = unChannelSink csnk
-  pname = "receive_chan" ++ show (AST.chan_id chan)
   msg = "from Ivory.Tower.Channel.withChannelReceiver: "
      ++ "chan receive call should not be strict in OS-codegen argument"
+  basename t = (showUnique t) ++ "_chan_"
+            ++ (show (AST.chan_id chan)) ++ "_receiver"
 
 receive :: ChannelReceiver area -> Ref s area -> Ivory eff IBool
 receive = unChannelReceiver

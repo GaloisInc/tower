@@ -32,15 +32,17 @@ import Ivory.Tower.Types.TaskCode
 import Ivory.Tower.Types.Unique
 
 newtype Task p a = Task
-  { unTask :: StateT (AST.Task) TaskCodegen a
+  { unTask :: StateT (AST.Task p) (TaskCodegen p) a
   } deriving (Functor, Monad, Applicative)
 
 
-newtype TaskCodegen a = TaskCodegen
-  { unTaskCodegen :: StateT (AST.System -> TaskCode) Base a
+newtype TaskCodegen p a = TaskCodegen
+  { unTaskCodegen :: StateT (AST.System p -> TaskCode) Base a
   } deriving (Functor, Monad, Applicative) 
 
-runTask :: Task p () -> Unique -> Base (AST.Task, (AST.System -> TaskCode))
+runTask :: Task p ()
+        -> Unique
+        -> Base (AST.Task p, (AST.System p -> TaskCode))
 runTask t n = do
   ((_,asttask),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
   return (asttask, c)
@@ -48,19 +50,21 @@ runTask t n = do
   runTaskCodegen g = runStateT (\_ -> emptycode) (unTaskCodegen g)
   emptycode :: TaskCode
   emptycode = TaskCode
-    { taskcode_commprim  = return ()
+    { taskcode_taskname  = n
+    , taskcode_commprim  = return ()
     , taskcode_usercode  = return ()
     , taskcode_init      = return ()
     , taskcode_timer     = const (return ())
     , taskcode_eventrxer = return ()
     , taskcode_eventloop = return ()
     }
-  emptyast :: AST.Task
+  emptyast :: AST.Task p
   emptyast = AST.Task
     { AST.task_name                 = n
     , AST.task_chan_emitters        = []
     , AST.task_chan_poll_receivers  = []
     , AST.task_chan_event_receivers = []
+    , AST.task_signal_receivers     = []
     , AST.task_evts                 = []
     , AST.task_evt_handlers         = []
     , AST.task_priority             = 0
@@ -69,15 +73,16 @@ runTask t n = do
 instance BaseUtils (Task p) where
   getOS = Task $ lift $ TaskCodegen $ lift getOS
   fresh = Task $ lift $ TaskCodegen $ lift fresh
+
 -- Internal API to TaskCodeGen
 
-getTaskCode :: Task p (AST.System -> TaskCode)
+getTaskCode :: Task p (AST.System p -> TaskCode)
 getTaskCode = Task (lift $ TaskCodegen get)
 
-setTaskCode :: (AST.System -> TaskCode) -> Task p ()
+setTaskCode :: (AST.System p -> TaskCode) -> Task p ()
 setTaskCode c = Task (lift $ TaskCodegen $ set c)
 
-putCommprim :: (AST.System -> ModuleDef) -> Task p ()
+putCommprim :: (AST.System p -> ModuleDef) -> Task p ()
 putCommprim p = do
   c <- getTaskCode
   setTaskCode $ \sys -> (c sys) { taskcode_commprim =
@@ -89,7 +94,7 @@ putUsercode p = do
   setTaskCode $ \sys -> (c sys) { taskcode_usercode =
                                     p >> taskcode_usercode (c sys) }
 
-putInitCode :: (forall s . AST.System -> Ivory (AllocEffects s) ())
+putInitCode :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
             -> Task p ()
 putInitCode e = do
   c <- getTaskCode
@@ -103,14 +108,14 @@ putTimerCode e = do
   setTaskCode $ \sys -> (c sys) { taskcode_timer = \time ->
                                     e time >> taskcode_timer (c sys) time }
 
-putEventReceiverCode :: (forall s . AST.System -> Ivory (AllocEffects s) ())
+putEventReceiverCode :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
                  -> Task p ()
 putEventReceiverCode e = do
   c <- getTaskCode
   setTaskCode $ \sys -> (c sys) { taskcode_eventrxer =
                                     e sys >> taskcode_eventrxer (c sys) }
 
-putEventLoopCode :: (forall s . AST.System -> Ivory (AllocEffects s) ())
+putEventLoopCode :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
                  -> Task p ()
 putEventLoopCode e = do
   c <- getTaskCode
@@ -121,10 +126,10 @@ putEventLoopCode e = do
 
 -- Internal API to AST
 
-getAST :: Task p AST.Task
+getAST :: Task p (AST.Task p)
 getAST = Task get
 
-setAST :: AST.Task -> Task p ()
+setAST :: AST.Task p -> Task p ()
 setAST a = Task $ set a
 
 getTaskName :: Task p Unique

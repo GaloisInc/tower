@@ -16,34 +16,35 @@ import           Ivory.Tower.Types.TaskCode
 
 data OS =
   OS
-    { gen_channel :: forall (n :: Nat) area
+    { gen_channel :: forall (n :: Nat) area p
                    . (SingI n, IvoryArea area, IvoryZero area)
-                  => AST.System
+                  => AST.System p
                   -> AST.Chan
                   -> Proxy n
                   -> Proxy area
                   -> (Def ('[]:->()), ModuleDef)
 
-    , get_emitter :: forall area s eff
+    , get_emitter :: forall area s eff p
                    . (IvoryArea area, IvoryZero area)
-                  => AST.System
+                  => AST.System p
                   -> AST.Chan
                   -> ConstRef s area
                   -> Ivory eff ()
 
-    , get_receiver :: forall area s eff
+    , get_receiver :: forall area s eff p
                     . (IvoryArea area, IvoryZero area)
-                   => AST.System
+                   => AST.System p
                    -> AST.ChanReceiver
                    -> Ref s area
                    -> Ivory eff IBool
 
-    , codegen_task :: AST.System
-                   -> AST.Task
+    , codegen_task :: forall p
+                    . AST.System p
                    -> TaskCode
                    -> ([Module],ModuleDef)
 
-    , codegen_sysinit :: AST.System
+    , codegen_sysinit :: forall p
+                       . AST.System p
                       -> SystemCode
                       -> ModuleDef -- Collected task moduledefs (appended for each codegen_task)
                       -> [Module]

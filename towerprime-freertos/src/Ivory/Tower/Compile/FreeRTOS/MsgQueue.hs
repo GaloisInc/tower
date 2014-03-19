@@ -27,13 +27,13 @@ data MsgQueue area =
     , mq_code :: ModuleDef
     }
 
-msgQueue :: forall (n :: Nat) area
+msgQueue :: forall (n :: Nat) area p
           . (SingI n, IvoryArea area)
-         => AST.System -> AST.Chan -> Proxy n -> MsgQueue area
+         => AST.System p -> AST.Chan -> Proxy n -> MsgQueue area
 msgQueue sysast chanast n = MsgQueue
   { mq_push = call_ push
   , mq_pop  = \chanrxer -> call (pop chanrxer)
-  , mq_init = init
+  , mq_init = ini
   , mq_code = code
   }
   where
@@ -51,7 +51,7 @@ msgQueue sysast chanast n = MsgQueue
       ringbuffer_push (rb rxer) r
     call_ M.give mutex_ref
     forM_ event_receivers $ \(_, taskast) ->
-      evtn_trigger (taskEventNotify taskast)
+      evtn_trigger (taskEventNotify (AST.task_name taskast))
 
   pop :: AST.ChanReceiver -> Def('[Ref s area]:->IBool)
   pop t = proc (rxernamed t "pop") $ \r -> body $ do
@@ -60,7 +60,7 @@ msgQueue sysast chanast n = MsgQueue
     call_ M.give mutex_ref
     ret success
 
-  init = proc (named "init") $ body $ do
+  ini = proc (named "init") $ body $ do
     call_ M.create mutex_ref
     forM_ all_receivers $ \(rxer, _) -> ringbuffer_init (rb rxer)
 
@@ -71,14 +71,14 @@ msgQueue sysast chanast n = MsgQueue
 
   code = do
     incl push
-    incl init
+    incl ini
     defMemArea mutex_area
     forM_ all_receivers $ \(rxer, _) -> do
       incl (pop rxer)
       ringbuffer_moddef (rb rxer)
 
-  named n = "chan_" ++ (show (AST.chan_id chanast)) ++ "_" ++ n
-  rxernamed rx n = named (showUnique (AST.chanreceiver_name rx) ++ "_" ++ n)
+  named nn = "chan_" ++ (show (AST.chan_id chanast)) ++ "_" ++ nn
+  rxernamed rx nn = named (showUnique (AST.chanreceiver_name rx) ++ "_" ++ nn)
 
 
 data RingBuffer area =
@@ -95,7 +95,7 @@ ringBuffer :: forall (n :: Nat) area
            -> (String -> String)
            -> RingBuffer area
 ringBuffer _ named = RingBuffer
-  { ringbuffer_init   = init
+  { ringbuffer_init   = ini
   , ringbuffer_push   = push
   , ringbuffer_pop    = pop
   , ringbuffer_moddef = moddef
@@ -137,7 +137,7 @@ ringBuffer _ named = RingBuffer
       store remove rmv'
     return nonempty
 
-  init = do
+  ini = do
     store insert 0
     store remove 0
 

@@ -8,7 +8,6 @@ module Ivory.Tower.Compile.FreeRTOS.EventNotify
   ) where
 
 import           Ivory.Language
-import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Types.Time
 
@@ -22,8 +21,8 @@ data EventNotify =
     , evtn_code    :: ModuleDef
     }
 
-taskEventNotify :: AST.Task -> EventNotify
-taskEventNotify taskast = EventNotify
+taskEventNotify :: Unique -> EventNotify
+taskEventNotify taskname = EventNotify
   { evtn_trigger = call_ trigger
   , evtn_guard   = call_ guard
   , evtn_init    = call_ ini
@@ -58,6 +57,6 @@ taskEventNotify taskast = EventNotify
     defMemArea sem_area
 
   named n = "eventnotify_" ++ n ++ "_" ++ tn
-  tn = showUnique (AST.task_name taskast)
+  tn = showUnique taskname
 
 

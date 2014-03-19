@@ -76,16 +76,16 @@ withChannelEmitter csrc annotation = do
     }
 
   os <- getOS
-  let p :: AST.System -> Def('[ConstRef s area] :-> ())
-      p sys = proc (showUnique procname) $ \r -> body $ do
+  let pr :: AST.System p -> Def('[ConstRef s area] :-> ())
+      pr sys = proc (showUnique procname) $ \r -> body $ do
         OS.get_emitter os sys chan r
-      mock_p :: Def('[ConstRef s area] :-> ())
-      mock_p = p (error msg)
+      mock_pr :: Def('[ConstRef s area] :-> ())
+      mock_pr = pr (error msg)
 
   putCommprim $ \sys -> do
-    incl (p sys)
+    incl (pr sys)
 
-  return (ChannelEmitter (call_ mock_p))
+  return (ChannelEmitter (call_ mock_pr))
 
   where
   chan = unChannelSource csrc
@@ -119,17 +119,17 @@ withChannelReceiver csnk annotation = do
   putChanPollReceiver chanrxer
 
   os <- getOS
-  let p :: AST.System -> Def('[Ref s area] :-> IBool)
-      p sys = proc (showUnique pname) $ \r -> body $ do
+  let pr :: AST.System p -> Def('[Ref s area] :-> IBool)
+      pr sys = proc (showUnique pname) $ \r -> body $ do
         success <- OS.get_receiver os sys chanrxer r
         ret success
-      mock_p :: Def('[Ref s area] :-> IBool)
-      mock_p = p (error msg)
+      mock_pr :: Def('[Ref s area] :-> IBool)
+      mock_pr = pr (error msg)
 
   putCommprim $ \sys -> do
-    incl (p sys)
+    incl (pr sys)
 
-  return (ChannelReceiver (call mock_p))
+  return (ChannelReceiver (call mock_pr))
   where
   chan = unChannelSink csnk
   msg = "from Ivory.Tower.Channel.withChannelReceiver: "
@@ -173,8 +173,8 @@ withChannelEvent sink annotation = do
 
   -- Generate Receiver code:
   os <- getOS
-  let p :: AST.System -> Def('[Ref s area] :-> IBool)
-      p sys = proc (showUnique pname) $ \r -> body $ do
+  let pr :: AST.System p -> Def('[Ref s area] :-> IBool)
+      pr sys = proc (showUnique pname) $ \r -> body $ do
         success <- OS.get_receiver os sys chanrxer r
         ret success
       ready_area :: MemArea (Stored IBool)
@@ -182,13 +182,13 @@ withChannelEvent sink annotation = do
       latest_area :: MemArea area
       latest_area = area (named "message") Nothing
   putCommprim $ \sys -> do
-    incl (p sys)
+    incl (pr sys)
     defMemArea ready_area
     defMemArea latest_area
   putInitCode $ \_ ->
     store (addrOf ready_area) false
   putEventReceiverCode $ \sys -> do
-    success <- call (p sys) (addrOf latest_area)
+    success <- call (pr sys) (addrOf latest_area)
     store (addrOf ready_area) success
   -- Return event getter code:
   return $ Event

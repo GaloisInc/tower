@@ -28,15 +28,15 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Task
 
 newtype Tower p a = Tower
-  { unTower :: StateT (AST.System) (ReaderT [Unique] SystemCodegen) a
+  { unTower :: StateT (AST.System p) (ReaderT [Unique] (SystemCodegen p)) a
   } deriving (Functor, Monad, Applicative)
 
-newtype SystemCodegen a = SystemCodegen
-  { unSystemCodegen :: StateT (AST.System -> SystemCode) Base a
+newtype SystemCodegen p a = SystemCodegen
+  { unSystemCodegen :: StateT (AST.System p -> SystemCode) Base a
   } deriving (Functor, Monad, Applicative)
 
 
-runTower :: Tower p () -> Base (AST.System, SystemCode)
+runTower :: Tower p () -> Base (AST.System p, SystemCode)
 runTower t = do
   ((_,s),c) <- runCodegen $ runSystem $ unTower t
   return (s, c s)
@@ -49,7 +49,7 @@ runTower t = do
     , systemcode_moddef = return ()
     , systemcode_comm_initializers = return ()
     }
-  emptysys :: AST.System
+  emptysys :: AST.System p
   emptysys = AST.System
     { AST.system_channels = []
     , AST.system_tasks = D.empty
@@ -62,41 +62,42 @@ instance BaseUtils (Tower p) where
 -- Lift of Task.runTask
 
 runTowerTask :: Task p () -> Unique
-             -> Tower p (AST.Task, (AST.System -> TaskCode))
+             -> Tower p (AST.Task p, (AST.System p -> TaskCode))
 runTowerTask t n = Tower $ lift $ lift $ SystemCodegen $ lift $ runTask t n
 
 -- Internal API to SystemCodegen
 
-getSystemCode :: Tower p (AST.System -> SystemCode)
+getSystemCode :: Tower p (AST.System p -> SystemCode)
 getSystemCode = Tower (lift $ lift $ SystemCodegen get)
 
-setSystemCode :: (AST.System -> SystemCode) -> Tower p ()
+setSystemCode :: (AST.System p -> SystemCode) -> Tower p ()
 setSystemCode c = Tower (lift $ lift $ SystemCodegen $ set c)
 
-putTaskCode :: AST.Task -> (AST.System -> TaskCode) -> Tower p ()
-putTaskCode t cgen = do
+putTaskCode :: (AST.System p -> TaskCode) -> Tower p ()
+putTaskCode cgen = do
   c <- getSystemCode
   setSystemCode $ \sys -> (c sys) { systemcode_tasks =
-                                      (t, cgen sys) : systemcode_tasks (c sys) }
+                                      (cgen sys) : systemcode_tasks (c sys) }
 
-putSysModdef :: (AST.System -> ModuleDef) -> Tower p ()
+putSysModdef :: (AST.System p -> ModuleDef) -> Tower p ()
 putSysModdef m = do
   c <- getSystemCode
   setSystemCode $ \sys -> (c sys) { systemcode_moddef =
                                       m sys >> systemcode_moddef (c sys) }
 
-putSysCommInitializer :: (forall s . AST.System -> Ivory (AllocEffects s) ())
+putSysCommInitializer :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
                       -> Tower p ()
 putSysCommInitializer i = do
   c <- getSystemCode
   setSystemCode $ \sys -> (c sys) { systemcode_comm_initializers =
                     i sys >> systemcode_comm_initializers (c sys) }
+
 -- Internal API to AST
 
-getAST :: Tower p AST.System
+getAST :: Tower p (AST.System p)
 getAST = Tower get
 
-setAST :: AST.System -> Tower p ()
+setAST :: AST.System p -> Tower p ()
 setAST a = Tower $ set a
 
 getScope :: Tower p [Unique]
@@ -110,7 +111,7 @@ putChan c = do
   a <- getAST
   setAST $ a { AST.system_channels = c : AST.system_channels a }
 
-putTask :: AST.Task -> Tower p ()
+putTask :: AST.Task p -> Tower p ()
 putTask t = do
   a <- getAST
   scope <- getScope

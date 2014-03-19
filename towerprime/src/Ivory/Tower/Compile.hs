@@ -10,15 +10,14 @@ import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Types.OS (OS)
 import qualified Ivory.Tower.Types.OS as OS
 
-compile :: Tower p () -> OS -> (AST.System, [Module])
+compile :: Tower p () -> OS -> (AST.System p, [Module])
 compile twr os = (sysast, objs)
   where
   (sysast, systemcode) = runBase (runTower twr) os
   objs = system_mods ++ (concat taskmods)
 
-  (taskmods, taskmdefs) = unzip (map task_cgen (systemcode_tasks systemcode))
-
-  task_cgen (taskast, taskcode) = OS.codegen_task os sysast taskast taskcode
+  (taskmods, taskmdefs) = unzip (map (OS.codegen_task os sysast)
+                                     (systemcode_tasks systemcode))
 
   system_mods = OS.codegen_sysinit os sysast systemcode allmdefs
   allmdefs = foldl (>>) (return ()) taskmdefs

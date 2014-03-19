@@ -35,9 +35,9 @@ os = OS.OS
   , OS.codegen_sysinit = codegen_sysinit
   }
 
-gen_channel :: forall (n :: Nat) area
+gen_channel :: forall (n :: Nat) area p
              . (SingI n, IvoryArea area, IvoryZero area)
-            => AST.System
+            => AST.System p
             -> AST.Chan
             -> Proxy n
             -> Proxy area
@@ -47,9 +47,9 @@ gen_channel sys chan n _ = (mq_init q, mq_code q)
   q :: MsgQueue area
   q = msgQueue sys chan n
 
-get_emitter :: forall area eff s
+get_emitter :: forall area eff s p
              . (IvoryArea area, IvoryZero area)
-            => AST.System
+            => AST.System p
             -> AST.Chan
             -> ConstRef s area
             -> Ivory eff ()
@@ -59,9 +59,9 @@ get_emitter sys chan = mq_push q
   -- Expect that size doesn't matter here.
   q = msgQueue sys chan (Proxy :: Proxy 1)
 
-get_receiver :: forall area eff s
+get_receiver :: forall p area eff s
               . (IvoryArea area, IvoryZero area)
-             => AST.System
+             => AST.System p
              -> AST.ChanReceiver
              -> Ref s area
              -> Ivory eff IBool
@@ -82,11 +82,10 @@ time_proc = proc "getTimeMicros" $ body $ do
   tickrate <- call Time.getTickRateMilliseconds
   ret (fromIMilliseconds (ticks * tickrate))
 
-codegen_task :: AST.System
-             -> AST.Task
+codegen_task :: AST.System p
              -> TaskCode
              -> ([Module],ModuleDef)
-codegen_task _sys tsk taskcode = ([loop_mod, user_mod], deps)
+codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
   where
   deps = do
     depend user_mod
@@ -125,7 +124,7 @@ codegen_task _sys tsk taskcode = ([loop_mod, user_mod], deps)
       taskcode_eventrxer taskcode
       taskcode_eventloop taskcode
 
-  evt_notifier = taskEventNotify tsk
+  evt_notifier = taskEventNotify (taskcode_taskname taskcode)
 
   loop_mod = package (named "tower_task_loop") $ do
     depend user_mod
@@ -144,16 +143,16 @@ codegen_task _sys tsk taskcode = ([loop_mod, user_mod], deps)
     depend (package "tower" (return ()))
     taskcode_usercode taskcode
 
-  named n = n ++ "_" ++ (showUnique (AST.task_name tsk))
+  named n = n ++ "_" ++ (showUnique (taskcode_taskname taskcode))
 
-codegen_sysinit :: AST.System
+codegen_sysinit :: AST.System p
                 -> SystemCode
                 -> ModuleDef
                 -> [Module]
-codegen_sysinit _sysast syscode taskmoddefs = [time_mod, sys_mod]
+codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
   where
-  taskasts = map fst (systemcode_tasks syscode)
-  taskcodes = map snd (systemcode_tasks syscode)
+  taskasts  = AST.system_task_list sysast
+  taskcodes = systemcode_tasks syscode
   sys_mod = package "tower" $ do
     taskmoddefs
     systemcode_moddef syscode
@@ -164,18 +163,18 @@ codegen_sysinit _sysast syscode taskmoddefs = [time_mod, sys_mod]
   init_proc :: Def('[]:->())
   init_proc = proc "tower_entry" $ body $ noReturn $ do
     systemcode_comm_initializers syscode
-    mapM_ (evtn_init . taskEventNotify) taskasts
+    mapM_ (evtn_init . taskEventNotify . AST.task_name) taskasts
     mapM_ taskcode_init taskcodes
     mapM_ launch taskasts
 
-  launch :: AST.Task -> Ivory eff ()
+  launch :: AST.Task p -> Ivory eff ()
   launch taskast = call_ Task.begin tproc stacksize priority
     where
     tproc = Task.taskProc (taskarg_proc taskast)
     stacksize = 1024 -- XXX
     priority = 1 -- XXX
 
-  taskarg_proc :: AST.Task -> Def('[Ref Global (Struct "taskarg")]:->())
+  taskarg_proc :: AST.Task p -> Def('[Ref Global (Struct "taskarg")]:->())
   taskarg_proc taskast = proc (named "tower_task_entry") $ \_ -> body $ do
     call_ loop_proc
     -- loop_proc should never exit.

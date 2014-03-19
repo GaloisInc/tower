@@ -7,10 +7,12 @@ module Ivory.Tower.Types.TaskCode
 
 import Ivory.Language
 import Ivory.Tower.Types.Time
+import Ivory.Tower.Types.Unique
 
 data TaskCode =
   TaskCode
-    { taskcode_commprim  :: ModuleDef
+    { taskcode_taskname  :: Unique
+    , taskcode_commprim  :: ModuleDef
     , taskcode_usercode  :: ModuleDef
     , taskcode_init      :: forall s . Ivory (AllocEffects s) ()
     , taskcode_timer     :: forall s s2 . Ref s (Stored ITime)

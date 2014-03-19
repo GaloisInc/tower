@@ -12,6 +12,7 @@ import           Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.SystemCode
 import           Ivory.Tower.Types.TaskCode
+import           Ivory.Tower.Types.Signalable
 
 
 data OS =
@@ -37,6 +38,18 @@ data OS =
                    -> AST.ChanReceiver
                    -> Ref s area
                    -> Ivory eff IBool
+
+    , gen_signal :: forall p
+                  . (Signalable p)
+                 => AST.System p
+                 -> SignalType p
+                 -> (Def ('[]:->()), ModuleDef)
+
+    , get_sigreceiver :: forall eff p
+                       . (Signalable p)
+                      => AST.System p
+                      -> AST.SignalReceiver (SignalType p)
+                      -> Ivory eff IBool
 
     , codegen_task :: forall p
                     . AST.System p

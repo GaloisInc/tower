@@ -7,8 +7,8 @@ module Ivory.Tower.AST.Task
   ( Task(..)
   ) where
 
+import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Unique
-import Ivory.Tower.Types.Configuration
 import Ivory.Tower.AST.ChanEmitter
 import Ivory.Tower.AST.ChanReceiver
 import Ivory.Tower.AST.Event

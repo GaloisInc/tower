@@ -15,9 +15,9 @@ import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
 import qualified Ivory.Tower.Types.OS as OS
 import           Ivory.Tower.Types.TaskCode
+import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.SystemCode
 import           Ivory.Tower.Types.Unique
-import           Ivory.Tower.Types.Time
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir (searchDir)
 import Ivory.Tower.Compile.FreeRTOS.MsgQueue
@@ -31,6 +31,8 @@ os = OS.OS
   { OS.gen_channel     = gen_channel
   , OS.get_emitter     = get_emitter
   , OS.get_receiver    = get_receiver
+  , OS.gen_signal      = gen_signal
+  , OS.get_sigreceiver = get_sigreceiver
   , OS.codegen_task    = codegen_task
   , OS.codegen_sysinit = codegen_sysinit
   }
@@ -70,6 +72,21 @@ get_receiver sys chanrxer = mq_pop q chanrxer
   q :: MsgQueue area
   -- Expect that size doesn't matter here.
   q = msgQueue sys (AST.chanreceiver_chan chanrxer) (Proxy :: Proxy 1)
+
+
+gen_signal :: (Signalable p)
+           => AST.System p
+           -> SignalType p
+           -> (Def('[]:->()), ModuleDef)
+gen_signal _ _ = (sig, incl sig)
+  where
+  sig = proc "freertos_gen_signal_is_broken" $ body $ return () -- XXX
+
+get_sigreceiver :: (Signalable p)
+                => AST.System p
+                -> AST.SignalReceiver (SignalType p)
+                -> Ivory eff IBool
+get_sigreceiver _ _ = return false -- XXX
 
 time_mod :: Module
 time_mod = package "tower_freertos_time" $ do

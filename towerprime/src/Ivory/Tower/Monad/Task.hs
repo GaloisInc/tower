@@ -11,6 +11,7 @@ module Ivory.Tower.Monad.Task
   , putUsercode
   , putChanEmitter
   , putChanEventReceiver
+  , putSignalReceiver
   , putChanPollReceiver
   , putASTEvent
   , putASTEventHandler
@@ -29,6 +30,7 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.TaskCode
+import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Unique
 
 newtype Task p a = Task
@@ -151,6 +153,11 @@ putChanEventReceiver :: AST.ChanReceiver -> Task p ()
 putChanEventReceiver c = do
   a <- getAST
   setAST $ a { AST.task_chan_event_receivers = c : AST.task_chan_event_receivers a }
+
+putSignalReceiver :: AST.SignalReceiver (SignalType p) -> Task p ()
+putSignalReceiver s = do
+  a <- getAST
+  setAST $ a { AST.task_signal_receivers = s : AST.task_signal_receivers a }
 
 putASTEvent :: AST.Event -> Task p ()
 putASTEvent e = do

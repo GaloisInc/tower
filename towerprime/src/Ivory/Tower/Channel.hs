@@ -29,6 +29,7 @@ import qualified Ivory.Tower.AST            as AST
 import           Ivory.Tower.Types.Event
 import qualified Ivory.Tower.Types.OS       as OS
 import           Ivory.Tower.Types.Channels
+import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
@@ -159,16 +160,17 @@ withChannelEvent sink annotation = do
   pname <- freshname (basename tname)
   let named n = (showUnique pname) ++ "_" ++ n
 
+  -- Write event receiver to AST:
   let chanrxer = AST.ChanReceiver
         { AST.chanreceiver_name = pname
         , AST.chanreceiver_annotation = annotation
         , AST.chanreceiver_chan = chan
         }
-  -- Write event receiver to AST:
   putChanEventReceiver chanrxer
 
   -- Write channel event to AST:
-  let astevt = AST.ChanEvt chan chanrxer
+  let astevt :: AST.Event
+      astevt = AST.ChanEvt chan chanrxer
   putASTEvent astevt
 
   -- Generate Receiver code:

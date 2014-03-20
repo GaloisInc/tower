@@ -39,11 +39,11 @@ data OS =
                    -> Ref s area
                    -> Ivory eff IBool
 
-    , gen_signal :: forall p
+    , gen_signal :: forall eff p
                   . (Signalable p)
                  => AST.System p
                  -> SignalType p
-                 -> (Def ('[]:->()), ModuleDef)
+                 -> (Ivory eff (), ModuleDef)
 
     , get_sigreceiver :: forall eff p
                        . (Signalable p)

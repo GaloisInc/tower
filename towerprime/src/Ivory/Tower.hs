@@ -33,6 +33,9 @@ module Ivory.Tower
   , getTime
   , timerEvent
 
+  -- Signal API:
+  , Signalable(..)
+  , withSignalEvent
   ) where
 
 import Ivory.Tower.Types.Channels
@@ -47,3 +50,5 @@ import Ivory.Tower.Event
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Timer
 
+import Ivory.Tower.Types.Signalable
+import Ivory.Tower.Signal

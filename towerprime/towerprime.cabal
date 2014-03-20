@@ -26,6 +26,7 @@ library
                         Ivory.Tower.Monad.Base,
                         Ivory.Tower.Monad.Task,
                         Ivory.Tower.Monad.Tower,
+                        Ivory.Tower.Signal,
                         Ivory.Tower.Task,
                         Ivory.Tower.Timer,
                         Ivory.Tower.Types,

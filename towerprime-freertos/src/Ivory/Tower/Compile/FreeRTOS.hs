@@ -77,10 +77,11 @@ get_receiver sys chanrxer = mq_pop q chanrxer
 gen_signal :: (Signalable p)
            => AST.System p
            -> SignalType p
-           -> (Def('[]:->()), ModuleDef)
-gen_signal _ _ = (sig, incl sig)
+           -> (Ivory eff (), ModuleDef)
+gen_signal _ _ = (call_ sig, incl sig)
   where
-  sig = proc "freertos_gen_signal_is_broken" $ body $ return () -- XXX
+  sig :: Def('[]:->())
+  sig = proc "freertos_gen_signal_is_broken_init" $ body $ return () -- XXX
 
 get_sigreceiver :: (Signalable p)
                 => AST.System p

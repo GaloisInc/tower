@@ -27,3 +27,20 @@ executable towerprime-example-simple
     ghc-options:        -Wall -Werror
   else
     ghc-options:        -Wall
+
+executable towerprime-example-simplesignal
+  main-is:             SimpleSignal.hs
+  hs-source-dirs:      examples
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory-bitdata,
+                       ivory,
+                       ivory-stdlib,
+                       ivory-backend-c,
+                       towerprime,
+                       towerprime-freertos,
+                       towerprime-frontend
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall

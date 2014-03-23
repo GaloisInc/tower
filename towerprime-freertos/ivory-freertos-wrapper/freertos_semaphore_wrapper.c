@@ -15,6 +15,12 @@ void ivory_freertos_semaphore_create_counting(uint8_t **semhandle, uint32_t max,
     *((xSemaphoreHandle*)semhandle) = xSemaphoreCreateCounting(max,init);
 }
 
+void ivory_freertos_semaphore_create_binary(uint8_t **semhandle)
+{
+    xSemaphoreHandle sem = *((xSemaphoreHandle*)semhandle);
+    vSemaphoreCreateBinary(sem);
+}
+
 bool ivory_freertos_semaphore_take(uint8_t **semhandle, uint32_t max_delay)
 {
     xSemaphoreHandle sem = *((xSemaphoreHandle*)semhandle);
@@ -41,7 +47,7 @@ void ivory_freertos_semaphore_give(uint8_t **semhandle)
     xSemaphoreGive(sem);
 }
 
-void ivory_freertos_semaphore_give_isr(uint8_t **semhandle)
+void ivory_freertos_semaphore_give_from_isr(uint8_t **semhandle)
 {
     xSemaphoreHandle sem = *((xSemaphoreHandle*)semhandle);
     portBASE_TYPE higherPriorityTaskWoken;

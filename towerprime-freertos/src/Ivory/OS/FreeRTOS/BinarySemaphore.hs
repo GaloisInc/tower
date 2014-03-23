@@ -3,7 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Ivory.OS.FreeRTOS.CountingSemaphore where
+module Ivory.OS.FreeRTOS.BinarySemaphore where
 
 import Prelude hiding (take)
 import Ivory.Language
@@ -16,25 +16,24 @@ import Ivory.Language
 -- the wrapper functions will deref the argument onceand cast the remaining
 -- uint8_t* to a xSemaphoreHandle to use it.
 
-newtype CountingSemaphore =
-  CountingSemaphore (Ptr Global (Stored Uint8))
+newtype BinarySemaphore =
+  BinarySemaphore (Ptr Global (Stored Uint8))
   deriving (IvoryType, IvoryVar, IvoryStore)
-type CountingSemaphoreHandle = Ref Global (Stored CountingSemaphore)
+type BinarySemaphoreHandle = Ref Global (Stored BinarySemaphore)
 
 semaphoreWrapperHeader :: String
 semaphoreWrapperHeader = "freertos_semaphore_wrapper.h"
 
--- semaphore handle, maximum count, initial count
-create :: Def ('[ CountingSemaphoreHandle, Uint32, Uint32 ] :-> ())
+create :: Def ('[ BinarySemaphoreHandle ] :-> ())
 create =
-  importProc "ivory_freertos_semaphore_create_counting" semaphoreWrapperHeader
+  importProc "ivory_freertos_semaphore_create_binary" semaphoreWrapperHeader
 
-take :: Def ('[ CountingSemaphoreHandle, Uint32 ] :-> IBool)
+take :: Def ('[ BinarySemaphoreHandle, Uint32 ] :-> IBool)
 take = importProc "ivory_freertos_semaphore_take" semaphoreWrapperHeader
 
-give :: Def('[ CountingSemaphoreHandle ] :-> ())
+give :: Def('[ BinarySemaphoreHandle ] :-> ())
 give = importProc "ivory_freertos_semaphore_give" semaphoreWrapperHeader
 
-giveFromISR :: Def('[ CountingSemaphoreHandle ] :-> ())
+giveFromISR :: Def('[ BinarySemaphoreHandle ] :-> ())
 giveFromISR = importProc "ivory_freertos_semaphore_give_from_isr" semaphoreWrapperHeader
 

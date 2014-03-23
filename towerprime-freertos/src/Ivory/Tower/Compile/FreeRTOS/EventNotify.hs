@@ -15,18 +15,20 @@ import qualified Ivory.OS.FreeRTOS.CountingSemaphore as S
 
 data EventNotify =
   EventNotify
-    { evtn_trigger :: forall eff . Ivory eff ()
-    , evtn_guard   :: forall eff . ITime -> Ivory eff ()
-    , evtn_init    :: forall eff . Ivory eff ()
-    , evtn_code    :: ModuleDef
+    { evtn_trigger           :: forall eff . Ivory eff ()
+    , evtn_trigger_from_isr  :: forall eff . Ivory eff ()
+    , evtn_guard             :: forall eff . ITime -> Ivory eff ()
+    , evtn_init              :: forall eff . Ivory eff ()
+    , evtn_code              :: ModuleDef
     }
 
 taskEventNotify :: Unique -> EventNotify
 taskEventNotify taskname = EventNotify
-  { evtn_trigger = call_ trigger
-  , evtn_guard   = call_ guard
-  , evtn_init    = call_ ini
-  , evtn_code    = code
+  { evtn_trigger           = call_ trigger
+  , evtn_trigger_from_isr  = call_ trigger_from_isr
+  , evtn_guard             = call_ guard
+  , evtn_init              = call_ ini
+  , evtn_code              = code
   }
   where
   sem_area = area (named "semaphore") Nothing
@@ -41,6 +43,10 @@ taskEventNotify taskname = EventNotify
   trigger = proc (named "trigger") $ body $ do
     call_ S.give sem_ref
 
+  trigger_from_isr :: Def('[]:->())
+  trigger_from_isr  = proc (named "trigger_from_isr") $ body $ do
+    call_ S.giveFromISR sem_ref
+
   guard :: Def('[ITime]:->())
   guard = proc (named "guard") $ \time -> body $ do
     let time_micros = toIMicroseconds time
@@ -53,6 +59,7 @@ taskEventNotify taskname = EventNotify
     sourceDep "freertos_semaphore_wrapper.c"
     incl ini
     incl trigger
+    incl trigger_from_isr
     incl guard
     defMemArea sem_area
 

@@ -1,0 +1,78 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+
+module Ivory.Tower.Compile.FreeRTOS.ISR
+  ( gen_signal
+  , get_sigreceiver
+  ) where
+
+import           Data.List (find)
+import           Ivory.Language
+import           Ivory.Tower
+import qualified Ivory.Tower.AST as AST
+import           Ivory.Tower.Types.Unique
+
+import qualified Ivory.OS.FreeRTOS.BinarySemaphore as S
+import           Ivory.Tower.Compile.FreeRTOS.EventNotify
+
+gen_signal :: (Signalable p)
+           => AST.System p
+           -> SignalType p
+           -> (Ivory eff (), ModuleDef)
+gen_signal sys sig = (mapM_ isrsignal_init isrsigs, code)
+  where
+  handlerproc :: Def('[]:->())
+  handlerproc = proc (signalName sig) $ body $ do
+                  mapM_ isrsignal_send isrsigs
+  code = mapM_ isrsignal_codegen isrsigs >> incl handlerproc
+  isrsigs = map (uncurry isrSignal) (AST.signal_receivers sys sig)
+
+get_sigreceiver :: (Signalable p)
+                => AST.System p
+                -> AST.SignalReceiver (SignalType p)
+                -> Ivory eff IBool
+get_sigreceiver sys sigrxer = isrsignal_check (isrSignal sigrxer rxingtask)
+  where
+  rxingtask = snd . maybe (error "impossible get_sigreceiver") id $
+              find (\(rxer, _) -> eqrxers rxer sigrxer)
+                   (AST.signal_receivers sys (unrxer sigrxer))
+  eqrxers a b = signalName (unrxer a) == signalName (unrxer b)
+  unrxer = AST.signalreceiver_signal
+
+data ISRSignal =
+  ISRSignal
+    { isrsignal_codegen :: ModuleDef
+    , isrsignal_init    :: forall eff . Ivory eff ()
+    , isrsignal_send    :: forall eff . Ivory eff ()
+    , isrsignal_check   :: forall eff . Ivory eff IBool
+    }
+
+isrSignal :: (Signalable p)
+          => AST.SignalReceiver (SignalType p)
+          -> AST.Task p
+          -> ISRSignal
+isrSignal sigrxer receivingtask = ISRSignal
+  { isrsignal_codegen = moddef
+  , isrsignal_init    = ini
+  , isrsignal_send    = send
+  , isrsignal_check   = check
+  }
+  where
+  named n = n ++ "_" ++  showUnique (AST.signalreceiver_name sigrxer)
+  ready_area :: MemArea (Stored S.BinarySemaphore)
+  ready_area = area (named "ready") Nothing
+  ready = addrOf ready_area
+
+  ini = call_ S.create ready
+
+  check = call S.take ready 0
+
+  send = do
+    call_ S.giveFromISR ready
+    evtn_trigger_from_isr (taskEventNotify (AST.task_name receivingtask))
+
+  moddef = do
+    defMemArea ready_area
+

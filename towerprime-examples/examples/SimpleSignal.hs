@@ -17,6 +17,7 @@ instance Signalable ExamplePlatform where
   signals = [ExampleSignal1, ExampleSignal2]
   signalName = show
   signalFromName = read
+  signalArtifacts = const []
   signalSources = const []
   signalHeaders = const []
   signalSearchDir = const (return [])

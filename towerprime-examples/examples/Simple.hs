@@ -48,7 +48,7 @@ task_simple_event_reader c = do
     store good true
     refCopy got msg
 
-tower_simple_per_tasks :: Tower p ()
+tower_simple_per_tasks :: Tower NoSignals ()
 tower_simple_per_tasks = do
   task "per_trivial" task_simple_per
   c <- channel

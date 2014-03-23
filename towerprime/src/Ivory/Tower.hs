@@ -24,6 +24,10 @@ module Ivory.Tower
 
   -- Tower API:
   , Tower
+  , towerArtifact
+  , towerModule
+  , towerDepends
+  , towerGroup
 
   -- Event API:
   , handle
@@ -35,7 +39,11 @@ module Ivory.Tower
 
   -- Signal API:
   , Signalable(..)
+  , NoSignals
   , withSignalEvent
+
+  -- Artifact API:
+  , Artifact(..)
   ) where
 
 import Ivory.Tower.Types.Channels
@@ -43,7 +51,7 @@ import Ivory.Tower.Channel
 
 import Ivory.Tower.Task
 
-import Ivory.Tower.Monad.Tower (Tower)
+import Ivory.Tower.Tower
 
 import Ivory.Tower.Event
 
@@ -52,3 +60,6 @@ import Ivory.Tower.Timer
 
 import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Signal
+
+import Ivory.Tower.Types.Artifact
+

@@ -9,11 +9,18 @@ module Ivory.Tower.Monad.Tower
   , putTaskCode
   , putSysModdef
   , putSysCommInitializer
+  , putArtifact
+  , putModule
   , putChan
   , putTask
   , runTowerTask
 
   , group
+
+  -- Internal only!
+  , getSystemCode
+  , setSystemCode
+
   ) where
 
 import MonadLib
@@ -22,6 +29,7 @@ import Control.Applicative (Applicative)
 import Ivory.Language hiding (local)
 import qualified Ivory.Tower.AST as AST
 import qualified Ivory.Tower.AST.Directory as D
+import Ivory.Tower.Types.Artifact
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.SystemCode
 import Ivory.Tower.Monad.Base
@@ -48,6 +56,8 @@ runTower t = do
     { systemcode_tasks = []
     , systemcode_moddef = return ()
     , systemcode_comm_initializers = return ()
+    , systemcode_modules  = []
+    , systemcode_artifacts = []
     }
   emptysys :: AST.System p
   emptysys = AST.System
@@ -91,6 +101,18 @@ putSysCommInitializer i = do
   c <- getSystemCode
   setSystemCode $ \sys -> (c sys) { systemcode_comm_initializers =
                     i sys >> systemcode_comm_initializers (c sys) }
+
+putModule :: Module -> Tower p ()
+putModule m = do
+  c <- getSystemCode
+  setSystemCode $ \sys -> (c sys) { systemcode_modules =
+                    m : systemcode_modules (c sys) }
+
+putArtifact :: Artifact -> Tower p ()
+putArtifact a = do
+  c <- getSystemCode
+  setSystemCode $ \sys -> (c sys) { systemcode_artifacts =
+                    a : systemcode_artifacts (c sys) }
 
 -- Internal API to AST
 

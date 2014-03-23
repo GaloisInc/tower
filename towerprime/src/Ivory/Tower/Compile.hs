@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Compile
   ( compile
@@ -9,12 +10,19 @@ import           Ivory.Tower.Monad.Tower
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Types.OS (OS)
 import qualified Ivory.Tower.Types.OS as OS
+import           Ivory.Tower.Types.Artifact
+import           Ivory.Tower.Types.Signalable
 
-compile :: Tower p () -> OS -> (AST.System p, [Module])
-compile twr os = (sysast, objs)
+compile :: forall p
+         . (Signalable p)
+        => Tower p ()
+        -> OS
+        -> (AST.System p, [Module], [Artifact])
+compile twr os = (sysast, objs, systemcode_artifacts systemcode)
   where
-  (sysast, systemcode) = runBase (runTower twr) os
-  objs = system_mods ++ (concat taskmods)
+  twr' = twr >> mapM_ putArtifact (signalArtifacts (Proxy :: Proxy p))
+  (sysast, systemcode) = runBase (runTower twr') os
+  objs = system_mods ++ (concat taskmods) ++ (systemcode_modules systemcode)
 
   (taskmods, taskmdefs) = unzip (map (OS.codegen_task os sysast)
                                      (systemcode_tasks systemcode))

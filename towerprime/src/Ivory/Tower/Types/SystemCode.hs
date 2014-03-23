@@ -7,10 +7,13 @@ module Ivory.Tower.Types.SystemCode
 
 import           Ivory.Language
 import           Ivory.Tower.Types.TaskCode
+import           Ivory.Tower.Types.Artifact
 
 data SystemCode =
   SystemCode
-    { systemcode_tasks :: [TaskCode]
-    , systemcode_moddef :: ModuleDef
+    { systemcode_tasks     :: [TaskCode]
+    , systemcode_moddef    :: ModuleDef
     , systemcode_comm_initializers :: forall s . Ivory (AllocEffects s) ()
+    , systemcode_modules   :: [Module]
+    , systemcode_artifacts :: [Artifact]
     }

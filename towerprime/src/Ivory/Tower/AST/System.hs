@@ -9,6 +9,7 @@ module Ivory.Tower.AST.System
   , event_emitters
   , poll_receivers
   , event_receivers
+  , signal_receivers
   ) where
 
 import Ivory.Tower.AST.Chan
@@ -16,6 +17,8 @@ import qualified Ivory.Tower.AST.Directory as D
 import Ivory.Tower.AST.Task
 import Ivory.Tower.AST.ChanEmitter
 import Ivory.Tower.AST.ChanReceiver
+import Ivory.Tower.AST.SignalReceiver
+import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Unique
 
 data System p =
@@ -52,5 +55,16 @@ event_receivers sys chan =
     where
     matchingrxers t = filter p (task_chan_event_receivers t)
     p cr = chanreceiver_chan cr == chan
+    ts = map snd (D.flatten (system_tasks sys))
+
+signal_receivers :: (Signalable p)
+                 => System p
+                 -> SignalType p
+                 -> [(SignalReceiver (SignalType p), Task p)]
+signal_receivers sys sig =
+    concat (map (\t -> zip (matchingrxers t) (repeat t)) ts)
+    where
+    matchingrxers t = filter p (task_signal_receivers t)
+    p sr = (signalName (signalreceiver_signal sr)) == (signalName sig)
     ts = map snd (D.flatten (system_tasks sys))
 

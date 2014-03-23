@@ -42,7 +42,7 @@ data BuildConf =
     , bc_searchpath :: [IO FilePath]
     }
 
-data Twr = forall p . Twr (Tower p ())
+data Twr = forall p . (Signalable p) => Twr (Tower p ())
 
 defaultBuildConf :: BuildConf
 defaultBuildConf = BuildConf
@@ -53,7 +53,7 @@ defaultBuildConf = BuildConf
 searchPathConf :: [IO FilePath] -> BuildConf
 searchPathConf p = defaultBuildConf { bc_searchpath = p }
 
-compile :: BuildConf -> Tower p () -> IO ()
+compile :: (Signalable p) => BuildConf -> Tower p () -> IO ()
 compile bc t = do
   (c_opts, t_opts) <- parseOptions =<< getArgs
   towerCompile (ivoryCompile bc c_opts) t_opts t
@@ -81,7 +81,8 @@ ivoryCompile bc copts ms platformspecific_sp =
   szmap = bc_sizemap bc
   spath = Just $ bc_searchpath bc ++ platformspecific_sp
 
-towerCompile :: ([Module] -> [IO FilePath] -> IO ())
+towerCompile :: Signalable p
+             => ([Module] -> [IO FilePath] -> IO ())
              -> T.Config
              -> Tower p ()
              -> IO ()
@@ -93,13 +94,15 @@ towerCompile compiler conf t = do
     o -> die [ "unsupported operating system " ++ o
              , "tower frontend supports: freertos, aadl, echronos"]
 
-compileFreeRTOS :: ([Module] -> [IO FilePath] -> IO ())
+compileFreeRTOS :: Signalable p
+                => ([Module] -> [IO FilePath] -> IO ())
                 -> T.Config
                 -> Tower p ()
                 -> IO ()
 compileFreeRTOS compiler conf t = do
-  let (asm, objs) = Tower.compile t FreeRTOS.os
+  let (sysast, objs, artifacts) = Tower.compile t FreeRTOS.os
   compiler objs [FreeRTOS.searchDir]
+  writeArtifacts conf artifacts
   --compileDot conf asm
   --compileEntrypointList conf asm
   --compileXMLEntrypointList conf asm
@@ -126,6 +129,14 @@ compileEChronos compiler conf t = do
   compileEntrypointList conf asm
   compileXMLEntrypointList conf asm
 -}
+
+writeArtifacts :: T.Config -> [Artifact] -> IO ()
+writeArtifacts conf as =
+  when (T.conf_mkdot conf) $ mapM_ wf as
+  where
+  wf a = writeFile path (artifact_contents a)
+    where
+    path = (T.conf_outdir conf) </> (artifact_filepath a)
 
 compileDot :: T.Config -> Assembly -> IO ()
 compileDot conf asm =

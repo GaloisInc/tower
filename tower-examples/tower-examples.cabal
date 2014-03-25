@@ -1,5 +1,5 @@
-name:                towerprime-examples
-version:             0.0.1.0
+name:                tower-examples
+version:             0.8.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language
@@ -11,7 +11,7 @@ flag werror
   default:              False
   description:          Pass -Werror to GHC.
 
-executable towerprime-example-simple
+executable tower-example-simple
   main-is:             Simple.hs
   hs-source-dirs:      examples
   ghc-options:          -Wall
@@ -20,15 +20,15 @@ executable towerprime-example-simple
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
-                       towerprime,
-                       towerprime-freertos,
-                       towerprime-frontend
+                       tower >= 0.8,
+                       tower-freertos >= 0.8,
+                       tower-frontend >= 0.8
   if flag(werror)
     ghc-options:        -Wall -Werror
   else
     ghc-options:        -Wall
 
-executable towerprime-example-simplesignal
+executable tower-example-simplesignal
   main-is:             SimpleSignal.hs
   hs-source-dirs:      examples
   ghc-options:          -Wall
@@ -37,15 +37,15 @@ executable towerprime-example-simplesignal
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
-                       towerprime,
-                       towerprime-freertos,
-                       towerprime-frontend
+                       tower >= 0.8,
+                       tower-freertos >= 0.8,
+                       tower-frontend >= 0.8
   if flag(werror)
     ghc-options:        -Wall -Werror
   else
     ghc-options:        -Wall
 
-executable towerprime-example-stm32f4signals
+executable tower-example-stm32f4signals
   main-is:             App.hs
   other-modules:       ATIM18,
                        ATIM18.RegTypes,
@@ -72,9 +72,9 @@ executable towerprime-example-stm32f4signals
                        ivory-backend-c,
                        ivory-hw,
                        ivory-bitdata,
-                       towerprime,
-                       towerprime-freertos,
-                       towerprime-frontend
+                       tower >= 0.8,
+                       tower-freertos >= 0.8,
+                       tower-frontend >= 0.8
   if flag(werror)
     ghc-options:        -Wall -Werror
   else

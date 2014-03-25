@@ -1,5 +1,5 @@
-name:                towerprime-freertos
-version:             0.1.0.0
+name:                tower-freertos
+version:             0.8.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language
@@ -27,7 +27,7 @@ library
                         Ivory.OS.FreeRTOS.TaskArg,
                         Ivory.OS.FreeRTOS.Time
 
-  other-modules:        Paths_towerprime_freertos
+  other-modules:        Paths_tower_freertos
 
   build-depends:        base >= 4.6,
                         srcloc,
@@ -42,7 +42,7 @@ library
                         xml,
                         ivory,
                         ivory-stdlib,
-                        towerprime
+                        tower >= 0.8
 
   hs-source-dirs:       src
   default-language:     Haskell2010

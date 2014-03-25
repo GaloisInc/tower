@@ -25,8 +25,7 @@ semaphoreWrapperHeader :: String
 semaphoreWrapperHeader = "freertos_semaphore_wrapper.h"
 
 create :: Def ('[ BinarySemaphoreHandle ] :-> ())
-create =
-  importProc "ivory_freertos_semaphore_create_binary" semaphoreWrapperHeader
+create = importProc "ivory_freertos_semaphore_create_binary" semaphoreWrapperHeader
 
 take :: Def ('[ BinarySemaphoreHandle, Uint32 ] :-> IBool)
 take = importProc "ivory_freertos_semaphore_take" semaphoreWrapperHeader

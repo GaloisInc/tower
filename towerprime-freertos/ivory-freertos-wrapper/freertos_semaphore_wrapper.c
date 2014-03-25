@@ -17,8 +17,7 @@ void ivory_freertos_semaphore_create_counting(uint8_t **semhandle, uint32_t max,
 
 void ivory_freertos_semaphore_create_binary(uint8_t **semhandle)
 {
-    xSemaphoreHandle sem = *((xSemaphoreHandle*)semhandle);
-    vSemaphoreCreateBinary(sem);
+    vSemaphoreCreateBinary(*semhandle);
 }
 
 bool ivory_freertos_semaphore_take(uint8_t **semhandle, uint32_t max_delay)

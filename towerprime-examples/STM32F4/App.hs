@@ -7,9 +7,14 @@ import Data.List (find)
 import Ivory.Language
 import Ivory.Tower
 import Ivory.Tower.Frontend
+import Ivory.BitData
+import Ivory.HW
+import Ivory.HW.Module (hw_moduledef)
+import qualified Ivory.HW.SearchDir as HW
 
 import Interrupt
-import Artifacts
+import ATIM18
+--import Artifacts
 
 data STM32F4Platform = STM32F4Platform
 instance Signalable STM32F4Platform where
@@ -22,16 +27,7 @@ instance Signalable STM32F4Platform where
   signalName (STM32F4Signal (Interrupt i)) = isrInterrupt i
   signalFromName n = maybe (error "invalid arg to signalFromName") id
                    $ find (\s -> signalName s == n) signals
-
-  signalArtifacts = const $
-    [ Artifact { artifact_filepath = "stm32f4_flash.lds.S"
-               , artifact_contents = linker_script
-               }
-    , Artifact { artifact_filepath = "stm42f4_vectors.s"
-               , artifact_contents = vector_table
-               }
-    ]
-
+  signalArtifacts = const []
   signalSources = const []
   signalHeaders = const []
   signalSearchDir = const (return [])
@@ -46,18 +42,32 @@ task_simple_per = do
     deref timeRef >>= store lasttime
     deref ctr >>= \(c :: Sint32) -> store ctr (c + 1)
 
-wwdg_counter :: Task STM32F4Platform ()
-wwdg_counter = do
+tim1_counter :: Task STM32F4Platform ()
+tim1_counter = do
   ctr <- taskLocal "counter"
-  wwdg <- withSignalEvent (STM32F4Signal (Interrupt WWDG)) "wwdg"
-  handle wwdg "wwdg" $ \_ -> do
+  taskModuleDef $ hw_moduledef
+
+  let max_syscall_priority = 12
+
+  taskInit $ do
+    atimRCCEnable tim1
+    modifyReg (atimRegDIER tim1) $ setBit atim_dier_uie
+    setReg    (atimRegPSC  tim1) $ setField atim_psc_psc (fromRep 167)
+    setReg    (atimRegARR  tim1) $ setField atim_16_data (fromRep 0xFFFF)
+    interrupt_set_priority TIM1_UP_TIM10 max_syscall_priority
+    interrupt_enable       TIM1_UP_TIM10
+
+  tim1_up <- withSignalEvent (STM32F4Signal (Interrupt TIM1_UP_TIM10)) "tim1_up_irq"
+  handle tim1_up "tim1_up_handler" $ \_ -> do
+    modifyReg (atimRegSR tim1) $ clearBit atim_sr_uif
     deref ctr >>= \(c :: Sint32) -> store ctr (c + 1)
 
 tower_stm32f4test:: Tower STM32F4Platform ()
 tower_stm32f4test = do
   task "per_trivial" task_simple_per
-  task "wwdg_counter" wwdg_counter
+  task "tim1_counter" tim1_counter
 
 main :: IO ()
-main = compile defaultBuildConf tower_stm32f4test
+main = compile conf tower_stm32f4test
+  where conf = searchPathConf [HW.searchDir]
 

@@ -188,3 +188,13 @@ vector_table = unlines $
   entry e = "\t.word " ++ e
   weakdef handler = "\t.weak " ++ handler ++ "\n\t.thumb_set " ++ handler ++ ",isrDefaultExceptionHandler\n"
 
+{- DEPRECATED - should fix this later
+  signalArtifacts = const $
+    [ Artifact { artifact_filepath = "stm32f4_flash.lds.S"
+               , artifact_contents = linker_script
+               }
+    , Artifact { artifact_filepath = "stm42f4_vectors.s"
+               , artifact_contents = vector_table
+               }
+    ]
+-}

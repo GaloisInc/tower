@@ -20,8 +20,7 @@ compile :: forall p
         -> (AST.System p, [Module], [Artifact])
 compile twr os = (sysast, objs, systemcode_artifacts systemcode)
   where
-  twr' = twr >> mapM_ putArtifact (signalArtifacts (Proxy :: Proxy p))
-  (sysast, systemcode) = runBase (runTower twr') os
+  (sysast, systemcode) = runBase (runTower twr) os
   objs = system_mods ++ (concat taskmods) ++ (systemcode_modules systemcode)
 
   (taskmods, taskmdefs) = unzip (map (OS.codegen_task os sysast)

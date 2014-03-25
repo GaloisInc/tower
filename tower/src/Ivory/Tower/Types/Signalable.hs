@@ -5,9 +5,6 @@ module Ivory.Tower.Types.Signalable
   , NoSignals(..)
   ) where
 
-import Ivory.Language (Proxy)
-import Ivory.Tower.Types.Artifact
-
 class Signalable p where
   data SignalType p
   signals         :: [SignalType p]
@@ -17,12 +14,6 @@ class Signalable p where
   -- signalFromName is partial, user is burdened with only giving valid names
   -- (i.e. those produced by signalName)
   signalFromName  :: String -> SignalType p
-  -- For code generation, external sources, headers, and searchdir which
-  -- implement the signal (vector tables, etc)
-  signalArtifacts :: Proxy p -> [Artifact]
-  signalSources   :: Proxy p -> [FilePath]
-  signalHeaders   :: Proxy p -> [FilePath]
-  signalSearchDir :: Proxy p -> IO [FilePath]
 
 -- Utility class XXX
 data NoSignals = NoSignals
@@ -31,8 +22,4 @@ instance Signalable NoSignals where
   signals = [NoSignal]
   signalFromName = const NoSignal
   signalName = show
-  signalArtifacts = const []
-  signalSources = const []
-  signalHeaders = const []
-  signalSearchDir = const (return [])
 

@@ -1,9 +1,11 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Task
   ( Task
   , task
+  , taskInit
   , taskLocal
   , taskLocalInit
   , taskModuleDef
@@ -23,6 +25,9 @@ task name m = do
   (taskast, codegen) <- runTowerTask m u
   putTask taskast
   putTaskCode codegen
+
+taskInit :: (forall s . Ivory (AllocEffects s) ()) -> Task p ()
+taskInit c = putUserInitCode (const c)
 
 taskLocal :: (IvoryArea area, IvoryZero area)
           => String

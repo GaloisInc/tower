@@ -72,7 +72,7 @@ timerEvent period = do
     private $ do
       incl tickDef
       defMemArea lastPeriodArea
-  putInitCode $ \_ ->
+  putSysInitCode $ \_ ->
     call_ initDef
   putTimerCode $ call_ tickDef
 

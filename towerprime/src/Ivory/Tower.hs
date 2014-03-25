@@ -18,6 +18,7 @@ module Ivory.Tower
   -- Task API:
   , Task
   , task
+  , taskInit
   , taskLocal
   , taskLocalInit
   , taskModuleDef

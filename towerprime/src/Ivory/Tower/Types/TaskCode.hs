@@ -14,7 +14,8 @@ data TaskCode =
     { taskcode_taskname  :: Unique
     , taskcode_commprim  :: ModuleDef
     , taskcode_usercode  :: ModuleDef
-    , taskcode_init      :: forall s . Ivory (AllocEffects s) ()
+    , taskcode_sys_init  :: forall s . Ivory (AllocEffects s) ()
+    , taskcode_user_init :: forall s . Ivory (AllocEffects s) ()
     , taskcode_timer     :: forall s s2 . Ref s (Stored ITime)
                                     -> Ivory (AllocEffects s2) ()
     , taskcode_eventrxer :: forall s . Ivory (AllocEffects s) ()

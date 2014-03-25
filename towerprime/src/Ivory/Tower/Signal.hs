@@ -11,11 +11,9 @@ import           Ivory.Language
 import qualified Ivory.Tower.AST            as AST
 import           Ivory.Tower.Types.Event
 import qualified Ivory.Tower.Types.OS       as OS
-import           Ivory.Tower.Types.Channels
 import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
-import           Ivory.Tower.Monad.Tower
 import           Ivory.Tower.Monad.Task
 
 withSignalEvent :: forall p
@@ -48,7 +46,7 @@ withSignalEvent sig annotation = do
   putCommprim $ \sys -> do
     snd (OS.gen_signal os sys sig)
     defMemArea ready_area
-  putInitCode $ \sys -> do
+  putSysInitCode $ \sys -> do
     fst (OS.gen_signal os sys sig)
     store (addrOf ready_area) false
 

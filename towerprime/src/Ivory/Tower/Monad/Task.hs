@@ -15,7 +15,8 @@ module Ivory.Tower.Monad.Task
   , putChanPollReceiver
   , putASTEvent
   , putASTEventHandler
-  , putInitCode
+  , putUserInitCode
+  , putSysInitCode
   , putTimerCode
   , putEventReceiverCode
   , putEventLoopCode
@@ -55,7 +56,8 @@ runTask t n = do
     { taskcode_taskname  = n
     , taskcode_commprim  = return ()
     , taskcode_usercode  = return ()
-    , taskcode_init      = return ()
+    , taskcode_user_init = return ()
+    , taskcode_sys_init = return ()
     , taskcode_timer     = const (return ())
     , taskcode_eventrxer = return ()
     , taskcode_eventloop = return ()
@@ -96,12 +98,19 @@ putUsercode p = do
   setTaskCode $ \sys -> (c sys) { taskcode_usercode =
                                     p >> taskcode_usercode (c sys) }
 
-putInitCode :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
+putUserInitCode :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
             -> Task p ()
-putInitCode e = do
+putUserInitCode e = do
   c <- getTaskCode
-  setTaskCode $ \sys -> (c sys) { taskcode_init =
-                                    e sys >> taskcode_init (c sys) }
+  setTaskCode $ \sys -> (c sys) { taskcode_user_init =
+                                    taskcode_user_init (c sys) >> e sys }
+
+putSysInitCode :: (forall s . AST.System p -> Ivory (AllocEffects s) ())
+            -> Task p ()
+putSysInitCode e = do
+  c <- getTaskCode
+  setTaskCode $ \sys -> (c sys) { taskcode_sys_init =
+                                    taskcode_sys_init (c sys) >> e sys }
 
 putTimerCode :: (forall s s2 . Ref s (Stored ITime) -> Ivory (AllocEffects s2) ())
                  -> Task p ()

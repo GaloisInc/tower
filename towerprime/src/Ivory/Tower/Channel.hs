@@ -29,7 +29,6 @@ import qualified Ivory.Tower.AST            as AST
 import           Ivory.Tower.Types.Event
 import qualified Ivory.Tower.Types.OS       as OS
 import           Ivory.Tower.Types.Channels
-import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
@@ -187,7 +186,7 @@ withChannelEvent sink annotation = do
     incl (pr sys)
     defMemArea ready_area
     defMemArea latest_area
-  putInitCode $ \_ ->
+  putSysInitCode $ \_ ->
     store (addrOf ready_area) false
   putEventReceiverCode $ \sys -> do
     success <- call (pr sys) (addrOf latest_area)

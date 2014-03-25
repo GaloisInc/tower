@@ -15,7 +15,6 @@ import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
 import qualified Ivory.Tower.Types.OS as OS
 import           Ivory.Tower.Types.TaskCode
-import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.SystemCode
 import           Ivory.Tower.Types.Unique
 
@@ -145,9 +144,23 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
     depend loop_mod
     depend time_mod
     depend (package "tower" (return ()))
+    incl (taskSysInitProc taskcode)
+    incl (taskUserInitProc taskcode)
     taskcode_usercode taskcode
 
   named n = n ++ "_" ++ (showUnique (taskcode_taskname taskcode))
+
+taskUserInitProc :: TaskCode -> Def('[]:->())
+taskUserInitProc tc = proc (named "user_init") $ body $
+  noReturn $ taskcode_user_init tc
+  where
+  named n = n ++ "_" ++ (showUnique (taskcode_taskname tc))
+
+taskSysInitProc :: TaskCode -> Def('[]:->())
+taskSysInitProc tc = proc (named "sys_init") $ body $
+  noReturn $ taskcode_sys_init tc
+  where
+  named n = n ++ "_" ++ (showUnique (taskcode_taskname tc))
 
 codegen_sysinit :: AST.System p
                 -> SystemCode
@@ -168,7 +181,8 @@ codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
   init_proc = proc "tower_entry" $ body $ noReturn $ do
     systemcode_comm_initializers syscode
     mapM_ (evtn_init . taskEventNotify . AST.task_name) taskasts
-    mapM_ taskcode_init taskcodes
+    mapM_ (call_ . taskSysInitProc) taskcodes
+    mapM_ (call_ . taskUserInitProc) taskcodes
     mapM_ launch taskasts
 
   launch :: AST.Task p -> Ivory eff ()

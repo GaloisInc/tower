@@ -4,7 +4,6 @@ module Ivory.Tower
   , ChannelSink
   , ChannelEmitter
   , ChannelReceiver
-  , channel
   , src
   , snk
   , withChannelEmitter
@@ -29,6 +28,8 @@ module Ivory.Tower
   , towerModule
   , towerDepends
   , towerGroup
+  , channel
+  , channelWithSize
 
   -- Event API:
   , handle

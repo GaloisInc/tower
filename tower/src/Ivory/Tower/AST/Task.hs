@@ -10,6 +10,7 @@ module Ivory.Tower.AST.Task
 import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.AST.ChanEmitter
+import Ivory.Tower.AST.ChanReader
 import Ivory.Tower.AST.ChanReceiver
 import Ivory.Tower.AST.Event
 import Ivory.Tower.AST.EventHandler
@@ -21,6 +22,7 @@ data Task p =
     , task_chan_emitters        :: [ChanEmitter]
     , task_chan_poll_receivers  :: [ChanReceiver]
     , task_chan_event_receivers :: [ChanReceiver]
+    , task_chan_readers         :: [ChanReader]
     , task_signal_receivers     :: [SignalReceiver (SignalType p)]
     , task_evts                 :: [Event]
     , task_evt_handlers         :: [EventHandler]

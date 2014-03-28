@@ -39,6 +39,14 @@ data OS =
                    -> Ref s area
                    -> Ivory eff IBool
 
+
+    , get_reader  :: forall area s eff p
+                    . (IvoryArea area, IvoryZero area)
+                   => AST.System p
+                   -> AST.ChanReader
+                   -> Ref s area
+                   -> Ivory eff IBool
+
     , gen_signal :: forall p
                   . (Signalable p)
                  => SignalType p

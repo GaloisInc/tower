@@ -12,6 +12,7 @@ library
                         Ivory.Tower.AST,
                         Ivory.Tower.AST.Chan,
                         Ivory.Tower.AST.ChanEmitter,
+                        Ivory.Tower.AST.ChanReader,
                         Ivory.Tower.AST.ChanReceiver,
                         Ivory.Tower.AST.Directory,
                         Ivory.Tower.AST.Event,

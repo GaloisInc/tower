@@ -7,6 +7,7 @@ module Ivory.Tower.Types.Channels
   , ChannelSink(..)
   , ChannelEmitter(..)
   , ChannelReceiver(..)
+  , ChannelReader(..)
   ) where
 
 import Ivory.Language
@@ -25,3 +26,7 @@ newtype ChannelEmitter (area :: Area *) =
 newtype ChannelReceiver (area :: Area *) =
   ChannelReceiver
     { unChannelReceiver :: forall eff s . Ref s area -> Ivory eff IBool }
+
+newtype ChannelReader (area :: Area *) =
+  ChannelReader
+    { unChannelReader :: forall eff s . Ref s area -> Ivory eff IBool }

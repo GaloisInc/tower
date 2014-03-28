@@ -13,6 +13,9 @@ module Ivory.Tower
   , receive
   , receiveV
   , withChannelEvent
+  , withChannelReader
+  , chanRead
+  , chanReadV
 
   -- Task API:
   , Task

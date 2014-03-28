@@ -11,6 +11,7 @@ module Ivory.Tower.Monad.Task
   , putUsercode
   , putChanEmitter
   , putChanEventReceiver
+  , putChanReader
   , putSignalReceiver
   , putChanPollReceiver
   , putASTEvent
@@ -70,6 +71,7 @@ runTask t n = do
     , AST.task_chan_emitters        = []
     , AST.task_chan_poll_receivers  = []
     , AST.task_chan_event_receivers = []
+    , AST.task_chan_readers         = []
     , AST.task_signal_receivers     = []
     , AST.task_evts                 = []
     , AST.task_evt_handlers         = []
@@ -167,6 +169,11 @@ putChanEventReceiver :: AST.ChanReceiver -> Task p ()
 putChanEventReceiver c = do
   a <- getAST
   setAST $ a { AST.task_chan_event_receivers = c : AST.task_chan_event_receivers a }
+
+putChanReader :: AST.ChanReader -> Task p ()
+putChanReader c = do
+  a <- getAST
+  setAST $ a { AST.task_chan_readers = c : AST.task_chan_readers a }
 
 putSignalReceiver :: AST.SignalReceiver (SignalType p) -> Task p ()
 putSignalReceiver s = do

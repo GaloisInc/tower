@@ -17,6 +17,9 @@ module Ivory.Tower.Channel
   , receive
   , receiveV
   , withChannelEvent
+  , withChannelReader
+  , chanRead
+  , chanReadV
   ) where
 
 
@@ -203,3 +206,52 @@ withChannelEvent sink annotation = do
   chan = unChannelSink sink
   basename t = (showUnique t) ++ "_chan_"
             ++ (show (AST.chan_id chan)) ++ "_event"
+
+
+withChannelReader :: forall p area
+                    . (IvoryArea area, IvoryZero area)
+                   => ChannelSink area
+                   -> String
+                   -> Task p (ChannelReader area)
+withChannelReader csnk annotation = do
+  tname <- getTaskName
+  pname <- freshname (basename tname)
+
+  let chanreader = AST.ChanReader
+        { AST.chanreader_name = pname
+        , AST.chanreader_annotation = annotation
+        , AST.chanreader_chan = chan
+        }
+  putChanReader chanreader
+
+  os <- getOS
+  let pr :: AST.System p -> Def('[Ref s area] :-> IBool)
+      pr sys = proc (showUnique pname) $ \r -> body $ do
+        success <- OS.get_reader os sys chanreader r
+        ret success
+      mock_pr :: Def('[Ref s area] :-> IBool)
+      mock_pr = pr (error msg)
+
+  putCommprim $ \sys -> do
+    incl (pr sys)
+
+  return (ChannelReader (call mock_pr))
+  where
+  chan = unChannelSink csnk
+  msg = "from Ivory.Tower.Channel.withChannelReader: "
+     ++ "chan read call should not be strict in OS-codegen argument"
+  basename t = (showUnique t) ++ "_chan_"
+            ++ (show (AST.chan_id chan)) ++ "_reader"
+
+chanRead :: ChannelReader area -> Ref s area -> Ivory eff IBool
+chanRead = unChannelReader
+
+chanReadV :: ( IvoryVar t, IvoryZero (Stored t), IvoryArea (Stored t)
+            , GetAlloc eff ~ Scope s)
+         => ChannelReader (Stored t) -> Ivory eff (IBool, t)
+chanReadV reader = do
+  l <- local izero
+  s <- chanRead reader l
+  v <- deref l
+  return (s,v)
+

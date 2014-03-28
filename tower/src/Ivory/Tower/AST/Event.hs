@@ -6,7 +6,6 @@ module Ivory.Tower.AST.Event
 
 import Ivory.Tower.AST.ChanReceiver
 import Ivory.Tower.AST.Chan
-import Ivory.Tower.AST.SignalReceiver
 import Ivory.Tower.AST.Timer
 
 data Event

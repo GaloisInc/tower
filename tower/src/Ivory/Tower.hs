@@ -32,6 +32,7 @@ module Ivory.Tower
   , channelWithSize
 
   -- Event API:
+  , Event
   , handle
 
   -- Time API:

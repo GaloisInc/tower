@@ -34,7 +34,7 @@ instance Time Milliseconds where
 
 newtype ITime = ITime Sint64
   deriving ( Num, IvoryType, IvoryVar, IvoryExpr, IvoryEq, IvoryOrd
-           , IvoryIntegral, IvoryStore, IvoryInit, Bounded)
+           , IvoryIntegral, IvoryStore, IvoryInit, IvoryZeroVal, Bounded)
 
 fromIMicroseconds :: (SafeCast a Sint64) => a -> ITime
 fromIMicroseconds = ITime . safeCast

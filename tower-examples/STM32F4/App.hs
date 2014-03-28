@@ -27,10 +27,6 @@ instance Signalable STM32F4Platform where
   signalName (STM32F4Signal (Interrupt i)) = isrInterrupt i
   signalFromName n = maybe (error "invalid arg to signalFromName") id
                    $ find (\s -> signalName s == n) signals
-  signalArtifacts = const []
-  signalSources = const []
-  signalHeaders = const []
-  signalSearchDir = const (return [])
 
 task_simple_per :: Task p ()
 task_simple_per = do

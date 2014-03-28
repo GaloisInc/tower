@@ -21,6 +21,8 @@ module Ivory.Tower
   , taskLocal
   , taskLocalInit
   , taskModuleDef
+  , taskChannel
+  , taskChannelWithSize
 
   -- Tower API:
   , Tower

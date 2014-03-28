@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Ivory.Tower.Task
   ( Task
@@ -9,13 +10,20 @@ module Ivory.Tower.Task
   , taskLocal
   , taskLocalInit
   , taskModuleDef
+  , taskChannel
+  , taskChannelWithSize
   ) where
+
+import GHC.TypeLits
 
 import           Ivory.Language
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
 import           Ivory.Tower.Monad.Task
+
+import           Ivory.Tower.Types.Channels
+import           Ivory.Tower.Channel
 
 task :: String
      -> Task p ()
@@ -50,3 +58,13 @@ taskLocalInit name iv = do
 
 taskModuleDef :: ModuleDef -> Task p ()
 taskModuleDef = putUsercode
+
+taskChannel :: (IvoryArea area, IvoryZero area)
+            => Task p (ChannelSource area, ChannelSink area)
+taskChannel = taskLiftTower channel
+
+taskChannelWithSize :: forall (n :: Nat) p area
+                     . (SingI n, IvoryArea area, IvoryZero area)
+                    => Proxy n
+                    -> Task p (ChannelSource area, ChannelSink area)
+taskChannelWithSize = taskLiftTower . channelWithSize

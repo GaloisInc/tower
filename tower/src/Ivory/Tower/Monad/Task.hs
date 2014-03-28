@@ -21,6 +21,7 @@ module Ivory.Tower.Monad.Task
   , putEventReceiverCode
   , putEventLoopCode
   , putPriority
+  , taskLiftTower
   ) where
 
 import MonadLib

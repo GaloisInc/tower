@@ -13,9 +13,6 @@ import Ivory.Language
 import Ivory.Tower
 import Ivory.Stdlib
 
-nodeChannel :: Task p (ChannelSource area, ChannelSink area)
-nodeChannel = undefined "nodechannel nope"
-
 data Runnable =
   Runnable
     { runnable_begin  :: Def ('[]:->())
@@ -32,7 +29,7 @@ stateMachine :: String -> MachineM StateLabel -> Task p Runnable
 stateMachine name machine = do
   uniq <- freshname ("machine_" ++ name)
   tick <- timerEvent (Milliseconds 1)
-  newstate <- nodeChannel -- XXX XXX DOES NOT EXIST
+  newstate <- taskChannelWithSize (Proxy :: Proxy 2)
   newstate_emitter <- withChannelEmitter (src newstate) "newstateEmitter"
   newstate_receiver <- withChannelEvent (snk newstate) "newstateEvent"
   aux uniq tick newstate_emitter newstate_receiver

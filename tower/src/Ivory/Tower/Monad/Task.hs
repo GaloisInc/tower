@@ -29,6 +29,7 @@ import Control.Applicative (Applicative)
 import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Monad.Base
+import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.TaskCode
 import Ivory.Tower.Types.Signalable
@@ -40,12 +41,12 @@ newtype Task p a = Task
 
 
 newtype TaskCodegen p a = TaskCodegen
-  { unTaskCodegen :: StateT (AST.System p -> TaskCode) Base a
+  { unTaskCodegen :: StateT (AST.System p -> TaskCode) (Tower p) a
   } deriving (Functor, Monad, Applicative) 
 
 runTask :: Task p ()
         -> Unique
-        -> Base (AST.Task p, (AST.System p -> TaskCode))
+        -> Tower p (AST.Task p, (AST.System p -> TaskCode))
 runTask t n = do
   ((_,asttask),c) <- runTaskCodegen $ runStateT emptyast (unTask t)
   return (asttask, c)
@@ -75,8 +76,11 @@ runTask t n = do
     }
 
 instance BaseUtils (Task p) where
-  getOS = Task $ lift $ TaskCodegen $ lift getOS
-  fresh = Task $ lift $ TaskCodegen $ lift fresh
+  getOS = taskLiftTower getOS
+  fresh = taskLiftTower fresh
+
+taskLiftTower :: Tower p a -> Task p a
+taskLiftTower k = Task $ lift $ TaskCodegen $ lift k
 
 -- Internal API to TaskCodeGen
 

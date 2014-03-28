@@ -22,7 +22,7 @@ task :: String
      -> Tower p ()
 task name m = do
   u <- freshname name
-  (taskast, codegen) <- towerLiftBase (runTask m u)
+  (taskast, codegen) <- runTask m u
   putTask taskast
   putTaskCode codegen
 

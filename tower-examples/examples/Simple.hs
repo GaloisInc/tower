@@ -28,8 +28,8 @@ task_simple_per_emitter c = do
     emitV_ e time
 
 
-task_simple_per_reader :: ChannelSink (Stored Sint32) -> Task p ()
-task_simple_per_reader c = do
+task_simple_per_receiver :: ChannelSink (Stored Sint32) -> Task p ()
+task_simple_per_receiver c = do
   r <- withChannelReceiver c "simple_receiver"
   p <- timerEvent (Milliseconds 20)
   lastgood <- taskLocalInit "lastgood" (ival false)
@@ -39,8 +39,8 @@ task_simple_per_reader c = do
     store lastgood s
     when s $ store lastgot v
 
-task_simple_event_reader :: ChannelSink (Stored Sint32) -> Task p ()
-task_simple_event_reader c = do
+task_simple_event_handler :: ChannelSink (Stored Sint32) -> Task p ()
+task_simple_event_handler c = do
   evt <- withChannelEvent c "chan_event"
   good <- taskLocalInit "good" (ival false)
   got  <- taskLocal "got"
@@ -48,13 +48,25 @@ task_simple_event_reader c = do
     store good true
     refCopy got msg
 
+task_simple_per_reader :: ChannelSink (Stored Sint32) -> Task p ()
+task_simple_per_reader c = do
+  reader <- withChannelReader c "chan_reader"
+  good <- taskLocalInit "good" (ival false)
+  got  <- taskLocal "got"
+  p <- timerEvent (Milliseconds 20)
+  handle p "read_at_periodic" $ \_ -> do
+    s <- chanRead reader got
+    store good s
+
 tower_simple_per_tasks :: Tower NoSignals ()
 tower_simple_per_tasks = do
   task "per_trivial" task_simple_per
   c <- channel
   task "per_emitter" (task_simple_per_emitter (src c))
-  task "per_reader" (task_simple_per_reader (snk c))
-  task "event_reader" (task_simple_event_reader (snk c))
+  task "per_receiver" (task_simple_per_receiver (snk c))
+  task "event_handler" (task_simple_event_handler(snk c))
+
+  task "per_reader" (task_simple_per_reader  (snk c))
 
 
 main :: IO ()

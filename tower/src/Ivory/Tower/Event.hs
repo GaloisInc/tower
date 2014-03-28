@@ -19,7 +19,7 @@ handle :: forall p area
         . (IvoryArea area, IvoryZero area)
        => Event area
        -> String
-       -> (forall s eff . ConstRef s area -> Ivory (AllocEffects eff) ())
+       -> (forall s eff . ConstRef s area -> Ivory (ProcEffects eff ()) ())
        -> Task p ()
 handle evt annotation k = do
   procname <- freshname pfix
@@ -33,7 +33,7 @@ handle evt annotation k = do
 
   -- Package handler into a procedure in usercode
   let handler_proc :: Def('[ConstRef s area]:->())
-      handler_proc = proc (showUnique procname) $ \r -> body $ noReturn $ k r
+      handler_proc = proc (showUnique procname) $ \r -> body $ k r
   putUsercode $  do
     incl handler_proc
   -- Check for event and call handler from eventloop

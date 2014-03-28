@@ -7,7 +7,7 @@
 
 module Ivory.Tower.Channel
   ( channel
-  , channelWithSize
+  , channel'
   , src
   , snk
   , withChannelEmitter
@@ -46,20 +46,22 @@ snk = snd
 channel :: forall p area
          . (IvoryArea area, IvoryZero area)
         => Tower p (ChannelSource area, ChannelSink area)
-channel = channelWithSize (Proxy :: Proxy 16)
+channel = channel' (Proxy :: Proxy 16) Nothing
 
-channelWithSize :: forall (n :: Nat) p area
+channel' :: forall (n :: Nat) p area
                  . (SingI n, IvoryArea area, IvoryZero area)
                 => Proxy n
+                -> Maybe (Init area)
                 -> Tower p (ChannelSource area, ChannelSink area)
-channelWithSize nn = do
+channel' sizenat initval = do
   cid <- fresh
   os <- getOS
   let chan = AST.Chan { AST.chan_id = cid
                       , AST.chan_size = fromSing (sing :: Sing n)
                       , AST.chan_ityp = ivoryArea (Proxy :: Proxy area)
                       }
-      code astsys = OS.gen_channel os astsys chan nn (Proxy :: Proxy area)
+      code astsys =
+        OS.gen_channel os astsys chan sizenat (Proxy :: Proxy area) initval
   putChan               chan
   putSysCommInitializer ((call_ . fst) `fmap` code)
   putSysModdef          (snd `fmap` code)

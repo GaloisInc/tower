@@ -23,6 +23,7 @@ data OS =
                   -> AST.Chan
                   -> Proxy n
                   -> Proxy area
+                  -> Maybe (Init area)
                   -> (Def ('[]:->()), ModuleDef)
 
     , get_emitter :: forall area s eff p

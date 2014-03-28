@@ -11,7 +11,7 @@ module Ivory.Tower.Task
   , taskLocalInit
   , taskModuleDef
   , taskChannel
-  , taskChannelWithSize
+  , taskChannel'
   ) where
 
 import GHC.TypeLits
@@ -63,8 +63,9 @@ taskChannel :: (IvoryArea area, IvoryZero area)
             => Task p (ChannelSource area, ChannelSink area)
 taskChannel = taskLiftTower channel
 
-taskChannelWithSize :: forall (n :: Nat) p area
-                     . (SingI n, IvoryArea area, IvoryZero area)
-                    => Proxy n
-                    -> Task p (ChannelSource area, ChannelSink area)
-taskChannelWithSize = taskLiftTower . channelWithSize
+taskChannel' :: forall (n :: Nat) p area
+              . (SingI n, IvoryArea area, IvoryZero area)
+             => Proxy n
+             -> Maybe (Init area)
+             -> Task p (ChannelSource area, ChannelSink area)
+taskChannel' p i = taskLiftTower $ channel' p i

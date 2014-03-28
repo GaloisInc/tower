@@ -30,8 +30,9 @@ data MsgQueue area =
 
 msgQueue :: forall (n :: Nat) area p
           . (SingI n, IvoryArea area)
-         => AST.System p -> AST.Chan -> Proxy n -> MsgQueue area
-msgQueue sysast chanast n = MsgQueue
+         => AST.System p -> AST.Chan -> Proxy n -> Maybe (Init area)
+         -> MsgQueue area
+msgQueue sysast chanast n initval = MsgQueue
   { mq_push = call_ push
   , mq_pop  = \chanrxer -> call (pop chanrxer)
   , mq_read = call mread
@@ -73,14 +74,14 @@ msgQueue sysast chanast n = MsgQueue
     ret valid
 
   read_buffer_area :: MemArea area
-  read_buffer_area = area (named "read_buffer") Nothing
+  read_buffer_area = area (named "read_buffer") initval
   read_buffer = addrOf read_buffer_area
   read_valid_area :: MemArea (Stored IBool)
   read_valid_area = area (named "read_valid") Nothing
   read_valid = addrOf read_valid_area
 
   ini = proc (named "init") $ body $ do
-    store read_valid false
+    store read_valid (maybe false (const true) initval)
     call_ M.create mutex_ref
     forM_ all_receivers $ \(rxer, _) -> ringbuffer_init (rb rxer)
 

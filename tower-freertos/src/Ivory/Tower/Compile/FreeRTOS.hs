@@ -42,11 +42,12 @@ gen_channel :: forall (n :: Nat) area p
             -> AST.Chan
             -> Proxy n
             -> Proxy area
+            -> Maybe (Init area)
             -> (Def('[]:->()), ModuleDef)
-gen_channel sys chan n _ = (mq_init q, mq_code q)
+gen_channel sys chan n _ i = (mq_init q, mq_code q)
   where
   q :: MsgQueue area
-  q = msgQueue sys chan n
+  q = msgQueue sys chan n i
 
 get_emitter :: forall area eff s p
              . (IvoryArea area, IvoryZero area)
@@ -57,8 +58,8 @@ get_emitter :: forall area eff s p
 get_emitter sys chan = mq_push q
   where
   q :: MsgQueue area
-  -- Expect that size doesn't matter here.
-  q = msgQueue sys chan (Proxy :: Proxy 1)
+  -- Expect that size and ival doesn't matter here.
+  q = msgQueue sys chan (Proxy :: Proxy 1) Nothing
 
 get_receiver :: forall p area eff s
               . (IvoryArea area, IvoryZero area)
@@ -70,7 +71,7 @@ get_receiver sys chanrxer = mq_pop q chanrxer
   where
   q :: MsgQueue area
   -- Expect that size doesn't matter here.
-  q = msgQueue sys (AST.chanreceiver_chan chanrxer) (Proxy :: Proxy 1)
+  q = msgQueue sys (AST.chanreceiver_chan chanrxer) (Proxy :: Proxy 1) Nothing
 
 get_reader :: forall p area eff s
             . (IvoryArea area, IvoryZero area)
@@ -82,7 +83,7 @@ get_reader sys chanreader = mq_read q
   where
   q :: MsgQueue area
   -- Expect that size doesn't matter here.
-  q = msgQueue sys (AST.chanreader_chan chanreader) (Proxy :: Proxy 1)
+  q = msgQueue sys (AST.chanreader_chan chanreader) (Proxy :: Proxy 1) Nothing
 
 
 time_mod :: Module

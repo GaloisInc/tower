@@ -25,7 +25,7 @@ module Ivory.Tower
   , taskLocalInit
   , taskModuleDef
   , taskChannel
-  , taskChannelWithSize
+  , taskChannel'
 
   -- Tower API:
   , Tower
@@ -34,7 +34,7 @@ module Ivory.Tower
   , towerDepends
   , towerGroup
   , channel
-  , channelWithSize
+  , channel'
 
   -- Event API:
   , Event

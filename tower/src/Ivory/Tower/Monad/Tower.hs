@@ -13,11 +13,11 @@ module Ivory.Tower.Monad.Tower
   , putModule
   , putChan
   , putTask
-  , runTowerTask
 
   , group
 
   -- Internal only!
+  , towerLiftBase
   , getSystemCode
   , setSystemCode
 
@@ -32,8 +32,8 @@ import qualified Ivory.Tower.AST.Directory as D
 import Ivory.Tower.Types.Artifact
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.SystemCode
+import Ivory.Tower.Types.TaskCode
 import Ivory.Tower.Monad.Base
-import Ivory.Tower.Monad.Task
 
 newtype Tower p a = Tower
   { unTower :: StateT (AST.System p) (ReaderT [Unique] (SystemCodegen p)) a
@@ -66,14 +66,13 @@ runTower t = do
     }
 
 instance BaseUtils (Tower p) where
-  getOS = Tower $ lift $ lift $ SystemCodegen $ lift getOS
-  fresh = Tower $ lift $ lift $ SystemCodegen $ lift fresh
+  getOS = towerLiftBase getOS
+  fresh = towerLiftBase fresh
 
--- Lift of Task.runTask
 
-runTowerTask :: Task p () -> Unique
-             -> Tower p (AST.Task p, (AST.System p -> TaskCode))
-runTowerTask t n = Tower $ lift $ lift $ SystemCodegen $ lift $ runTask t n
+towerLiftBase :: Base a
+              -> Tower p a
+towerLiftBase t = Tower $ lift $ lift $ SystemCodegen $ lift t
 
 -- Internal API to SystemCodegen
 

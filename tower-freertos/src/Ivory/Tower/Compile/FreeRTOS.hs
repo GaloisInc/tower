@@ -32,7 +32,6 @@ os = OS.OS
   , OS.get_emitter     = get_emitter
   , OS.get_receiver    = get_receiver
   , OS.gen_signal      = gen_signal
-  , OS.get_sigreceiver = get_sigreceiver
   , OS.codegen_task    = codegen_task
   , OS.codegen_sysinit = codegen_sysinit
   }

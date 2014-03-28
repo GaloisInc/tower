@@ -13,23 +13,35 @@ import           Ivory.Language
 import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Unique
+import           Ivory.Tower.Types.SignalCode
 
 import qualified Ivory.OS.FreeRTOS.BinarySemaphore as S
 import           Ivory.Tower.Compile.FreeRTOS.EventNotify
 
-gen_signal :: (Signalable p)
-           => AST.System p
-           -> SignalType p
-           -> (Ivory eff (), ModuleDef)
-gen_signal sys sig = (mapM_ isrsignal_init isrsigs, code)
+gen_signal :: forall p
+            . (Signalable p)
+           => SignalType p
+           -> (forall eff . Ivory eff ())
+           -> SignalCode p
+gen_signal sig callback = SignalCode
+  { signalcode_init = \sys -> mapM_ isrsignal_init (isrsigs sys)
+  , signalcode_moddef = code
+  , signalcode_receiver = get_sigreceiver
+  }
   where
-  handlerproc :: Def('[]:->())
-  handlerproc = proc (signalName sig) $ body $ do
-                  mapM_ isrsignal_send isrsigs
-  code = mapM_ isrsignal_codegen isrsigs >> incl handlerproc
-  isrsigs = map (uncurry isrSignal) (AST.signal_receivers sys sig)
+  signame = signalName sig
+  handlerproc :: AST.System p -> Def('[]:->())
+  handlerproc sys = proc signame $ body $ do
+    callback
+    mapM_ isrsignal_send (isrsigs sys)
+  code sys = do
+    mapM_ isrsignal_codegen (isrsigs sys)
+    incl (handlerproc sys)
 
-get_sigreceiver :: (Signalable p)
+  isrsigs sys = map (uncurry isrSignal) (AST.signal_receivers sys sig)
+
+get_sigreceiver :: forall p eff
+                 . (Signalable p)
                 => AST.System p
                 -> AST.SignalReceiver (SignalType p)
                 -> Ivory eff IBool

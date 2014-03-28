@@ -30,6 +30,7 @@ os = OS.OS
   { OS.gen_channel     = gen_channel
   , OS.get_emitter     = get_emitter
   , OS.get_receiver    = get_receiver
+  , OS.get_reader      = get_reader
   , OS.gen_signal      = gen_signal
   , OS.codegen_task    = codegen_task
   , OS.codegen_sysinit = codegen_sysinit
@@ -70,6 +71,18 @@ get_receiver sys chanrxer = mq_pop q chanrxer
   q :: MsgQueue area
   -- Expect that size doesn't matter here.
   q = msgQueue sys (AST.chanreceiver_chan chanrxer) (Proxy :: Proxy 1)
+
+get_reader :: forall p area eff s
+            . (IvoryArea area, IvoryZero area)
+           => AST.System p
+           -> AST.ChanReader
+           -> Ref s area
+           -> Ivory eff IBool
+get_reader sys chanreader = mq_read q
+  where
+  q :: MsgQueue area
+  -- Expect that size doesn't matter here.
+  q = msgQueue sys (AST.chanreader_chan chanreader) (Proxy :: Proxy 1)
 
 
 time_mod :: Module

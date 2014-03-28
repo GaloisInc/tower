@@ -23,6 +23,7 @@ data MsgQueue area =
   MsgQueue
     { mq_push :: forall eff s . ConstRef s area -> Ivory eff ()
     , mq_pop  :: forall eff s . AST.ChanReceiver -> Ref s area -> Ivory eff IBool
+    , mq_read :: forall eff s . Ref s area -> Ivory eff IBool
     , mq_init :: Def('[]:->())
     , mq_code :: ModuleDef
     }
@@ -33,6 +34,7 @@ msgQueue :: forall (n :: Nat) area p
 msgQueue sysast chanast n = MsgQueue
   { mq_push = call_ push
   , mq_pop  = \chanrxer -> call (pop chanrxer)
+  , mq_read = call mread
   , mq_init = ini
   , mq_code = code
   }
@@ -49,6 +51,8 @@ msgQueue sysast chanast n = MsgQueue
     call_ M.take mutex_ref
     forM_ all_receivers $ \(rxer, _) ->
       ringbuffer_push (rb rxer) r
+    refCopy read_buffer r
+    store read_valid true
     call_ M.give mutex_ref
     forM_ event_receivers $ \(_, taskast) ->
       evtn_trigger (taskEventNotify (AST.task_name taskast))
@@ -60,7 +64,23 @@ msgQueue sysast chanast n = MsgQueue
     call_ M.give mutex_ref
     ret success
 
+  mread :: Def('[Ref s area]:->IBool)
+  mread = proc (named "read") $ \r -> body $ do
+    call_ M.take mutex_ref
+    valid <- deref read_valid
+    when valid $ refCopy r read_buffer
+    call_ M.give mutex_ref
+    ret valid
+
+  read_buffer_area :: MemArea area
+  read_buffer_area = area (named "read_buffer") Nothing
+  read_buffer = addrOf read_buffer_area
+  read_valid_area :: MemArea (Stored IBool)
+  read_valid_area = area (named "read_valid") Nothing
+  read_valid = addrOf read_valid_area
+
   ini = proc (named "init") $ body $ do
+    store read_valid false
     call_ M.create mutex_ref
     forM_ all_receivers $ \(rxer, _) -> ringbuffer_init (rb rxer)
 
@@ -72,7 +92,10 @@ msgQueue sysast chanast n = MsgQueue
   code = do
     incl push
     incl ini
+    incl mread
     defMemArea mutex_area
+    defMemArea read_buffer_area
+    defMemArea read_valid_area
     forM_ all_receivers $ \(rxer, _) -> do
       incl (pop rxer)
       ringbuffer_moddef (rb rxer)

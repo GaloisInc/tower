@@ -12,7 +12,6 @@ import           Data.List (find)
 import           Ivory.Language
 import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
-import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Types.SignalCode
 
 import qualified Ivory.OS.FreeRTOS.BinarySemaphore as S

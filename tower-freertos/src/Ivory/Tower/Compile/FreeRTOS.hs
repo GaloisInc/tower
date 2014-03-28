@@ -16,7 +16,6 @@ import qualified Ivory.Tower.AST as AST
 import qualified Ivory.Tower.Types.OS as OS
 import           Ivory.Tower.Types.TaskCode
 import           Ivory.Tower.Types.SystemCode
-import           Ivory.Tower.Types.Unique
 
 import Ivory.Tower.Compile.FreeRTOS.SearchDir (searchDir)
 import Ivory.Tower.Compile.FreeRTOS.MsgQueue

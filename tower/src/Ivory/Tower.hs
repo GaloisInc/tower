@@ -4,6 +4,7 @@ module Ivory.Tower
   , ChannelSink
   , ChannelEmitter
   , ChannelReceiver
+  , ChannelReader
   , src
   , snk
   , withChannelEmitter

@@ -29,7 +29,7 @@ stateMachine :: String -> MachineM StateLabel -> Task p Runnable
 stateMachine name machine = do
   uniq <- freshname ("machine_" ++ name)
   tick <- timerEvent (Milliseconds 1)
-  newstate <- taskChannelWithSize (Proxy :: Proxy 2)
+  newstate <- taskChannel' (Proxy :: Proxy 2) Nothing
   newstate_emitter <- withChannelEmitter (src newstate) "newstateEmitter"
   newstate_receiver <- withChannelEvent (snk newstate) "newstateEvent"
   aux uniq tick newstate_emitter newstate_receiver

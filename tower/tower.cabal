@@ -39,6 +39,7 @@ library
                         Ivory.Tower.Types.Signalable,
                         Ivory.Tower.Types.SystemCode,
                         Ivory.Tower.Types.TaskCode,
+                        Ivory.Tower.Types.SignalCode,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique,
 

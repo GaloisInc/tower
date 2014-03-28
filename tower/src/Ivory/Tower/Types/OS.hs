@@ -10,10 +10,10 @@ module Ivory.Tower.Types.OS
 import           GHC.TypeLits
 import           Ivory.Language
 import qualified Ivory.Tower.AST as AST
+import           Ivory.Tower.Types.Signalable
+import           Ivory.Tower.Types.SignalCode
 import           Ivory.Tower.Types.SystemCode
 import           Ivory.Tower.Types.TaskCode
-import           Ivory.Tower.Types.Signalable
-
 
 data OS =
   OS
@@ -39,17 +39,11 @@ data OS =
                    -> Ref s area
                    -> Ivory eff IBool
 
-    , gen_signal :: forall eff p
+    , gen_signal :: forall p
                   . (Signalable p)
-                 => AST.System p
-                 -> SignalType p
-                 -> (Ivory eff (), ModuleDef)
-
-    , get_sigreceiver :: forall eff p
-                       . (Signalable p)
-                      => AST.System p
-                      -> AST.SignalReceiver (SignalType p)
-                      -> Ivory eff IBool
+                 => SignalType p
+                 -> (forall eff . Ivory eff ())
+                 -> SignalCode p
 
     , codegen_task :: forall p
                     . AST.System p

@@ -47,6 +47,11 @@ module Ivory.Tower
 
   -- Artifact API:
   , Artifact(..)
+
+  -- Naming utilities:
+  , Unique
+  , BaseUtils(fresh, freshname)
+  , showUnique
   ) where
 
 import Ivory.Tower.Types.Channels
@@ -66,3 +71,5 @@ import Ivory.Tower.Signal
 
 import Ivory.Tower.Types.Artifact
 
+import Ivory.Tower.Monad.Base
+import Ivory.Tower.Types.Unique

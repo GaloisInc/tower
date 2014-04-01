@@ -22,6 +22,7 @@ module Ivory.Tower.Monad.Task
   , putEventReceiverCode
   , putEventLoopCode
   , putPriority
+  , putStackSize
   , taskLiftTower
   ) where
 
@@ -76,6 +77,7 @@ runTask t n = do
     , AST.task_evts                 = []
     , AST.task_evt_handlers         = []
     , AST.task_priority             = 0
+    , AST.task_stack_size           = 512
     }
 
 instance BaseUtils (Task p) where
@@ -193,5 +195,10 @@ putASTEventHandler e = do
 putPriority :: Integer -> Task p ()
 putPriority p = do
   a <- getAST
-  setAST $ a { AST.task_priority = p }
+  setAST $ a { AST.task_priority = max p (AST.task_priority a) }
+
+putStackSize :: Integer -> Task p ()
+putStackSize p = do
+  a <- getAST
+  setAST $ a { AST.task_stack_size = max p (AST.task_stack_size a) }
 

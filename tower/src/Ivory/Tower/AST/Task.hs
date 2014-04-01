@@ -27,6 +27,7 @@ data Task p =
     , task_evts                 :: [Event]
     , task_evt_handlers         :: [EventHandler]
     , task_priority             :: Integer
+    , task_stack_size           :: Integer
     }
 
 deriving instance (Show (SignalType p)) => Show (Task p)

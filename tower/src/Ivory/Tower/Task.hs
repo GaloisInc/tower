@@ -12,6 +12,8 @@ module Ivory.Tower.Task
   , taskModuleDef
   , taskChannel
   , taskChannel'
+  , taskPriority
+  , taskStackSize
   ) where
 
 import GHC.TypeLits
@@ -69,3 +71,9 @@ taskChannel' :: forall (n :: Nat) p area
              -> Maybe (Init area)
              -> Task p (ChannelSource area, ChannelSink area)
 taskChannel' p i = taskLiftTower $ channel' p i
+
+taskPriority :: Integer -> Task p ()
+taskPriority = putPriority
+
+taskStackSize :: Integer -> Task p ()
+taskStackSize = putStackSize

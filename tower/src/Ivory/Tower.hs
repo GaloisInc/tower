@@ -30,6 +30,8 @@ module Ivory.Tower
   , taskModuleDef
   , taskChannel
   , taskChannel'
+  , taskPriority
+  , taskStackSize
 
   -- Tower API:
   , Tower

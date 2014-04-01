@@ -77,7 +77,7 @@ runTask t n = do
     , AST.task_evts                 = []
     , AST.task_evt_handlers         = []
     , AST.task_priority             = 0
-    , AST.task_stack_size           = 512
+    , AST.task_stack_size           = 1024
     }
 
 instance BaseUtils (Task p) where

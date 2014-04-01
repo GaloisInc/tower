@@ -19,9 +19,6 @@ import System.Exit
 import System.FilePath
 
 import           Ivory.Language
-import           Ivory.Tower
-import qualified Ivory.Tower.Compile as Tower
-import           Ivory.Tower.Types.Assembly -- XXX REPLACE WITH AST.SYSTEM EVENTAULLY
 import qualified Ivory.Opts.CFG as CFG
 import qualified Ivory.Stdlib.SearchDir as Stdlib
 
@@ -29,12 +26,18 @@ import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 import qualified Ivory.Compile.AADL as A
 
+import           Ivory.Tower
+import           Ivory.Tower.Types.OS (OS)
+import qualified Ivory.Tower.AST                   as AST
+import qualified Ivory.Tower.Compile               as Tower
+
+import qualified Ivory.Tower.Compile.FreeRTOS      as FreeRTOS
+import qualified Ivory.Tower.Compile.AADL          as AADL
+
 import qualified Ivory.Tower.Reporting.Graphviz    as T
 import qualified Ivory.Tower.Reporting.Entrypoints as T
+
 import qualified Ivory.Tower.Frontend.Options      as T
-import qualified Ivory.Tower.Compile.FreeRTOS      as FreeRTOS
---import qualified Ivory.Tower.Compile.AADL          as AADL
---import qualified Ivory.Tower.Compile.EChronos      as EChronos
 
 data BuildConf =
   BuildConf
@@ -87,48 +90,22 @@ towerCompile :: Signalable p
              -> Tower p ()
              -> IO ()
 towerCompile compiler conf t = do
-  case T.conf_os conf of
-    "freertos" -> compileFreeRTOS compiler conf t
-    --"aadl"     -> compileAADL     compiler conf t
-    --"echronos" -> compileEChronos compiler conf t
-    o -> die [ "unsupported operating system " ++ o
-             , "tower frontend supports: freertos, aadl, echronos"]
-
-compileFreeRTOS :: Signalable p
-                => ([Module] -> [IO FilePath] -> IO ())
-                -> T.Config
-                -> Tower p ()
-                -> IO ()
-compileFreeRTOS compiler conf t = do
-  let (sysast, objs, artifacts) = Tower.compile t FreeRTOS.os
+  os <- selectos
+  let (sysast, objs, artifacts) = Tower.compile t os
   compiler objs [FreeRTOS.searchDir]
   writeArtifacts conf artifacts
-  --compileDot conf asm
-  --compileEntrypointList conf asm
-  --compileXMLEntrypointList conf asm
+  compileDot conf sysast
+  compileEntrypointList conf sysast
+  when (T.conf_os conf == "aadl") $
+    compileAADLDocuments conf objs sysast
+  where
+  selectos :: IO OS
+  selectos = case T.conf_os conf of
+    "freertos" -> return FreeRTOS.os
+    "aadl"     -> return AADL.os
+    o -> die [ "unsupported operating system " ++ o
+             , "tower frontend supports: freertos, aadl"]
 
-{-
-compileAADL :: ([Module] -> [IO FilePath] -> IO ())
-            -> T.Config
-            -> Tower p ()
-            -> IO ()
-compileAADL compiler conf t = do
-  let (asm, objs) = AADL.compile t
-  compiler objs [AADL.searchDir]
-  compileDot            conf      asm
-  compileAADLDocuments  conf objs asm
-
-compileEChronos :: ([Module] -> [IO FilePath] -> IO ())
-                -> T.Config
-                -> Tower p ()
-                -> IO ()
-compileEChronos compiler conf t = do
-  let (asm, objs) = EChronos.compile t
-  compiler objs [EChronos.searchDir]
-  compileDot conf asm
-  compileEntrypointList conf asm
-  compileXMLEntrypointList conf asm
--}
 
 writeArtifacts :: T.Config -> [Artifact] -> IO ()
 writeArtifacts conf as =
@@ -138,27 +115,19 @@ writeArtifacts conf as =
     where
     path = (T.conf_outdir conf) </> (artifact_filepath a)
 
-compileDot :: T.Config -> Assembly -> IO ()
-compileDot conf asm =
-  when (T.conf_mkdot conf) $ T.graphvizToFile f asm
+compileDot :: T.Config -> AST.System p -> IO ()
+compileDot conf ast =
+  when (T.conf_mkdot conf) $ T.graphvizToFile f ast
   where f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
 
-compileEntrypointList :: T.Config -> Assembly -> IO ()
-compileEntrypointList conf asm = T.entrypointsToFile f nm asm
+compileEntrypointList :: T.Config -> AST.System p -> IO ()
+compileEntrypointList conf ast = T.entrypointsToFile f nm ast
   where
   f = T.conf_outdir conf </> (nm ++ "_entrypoints") <.> "mk"
   nm = T.conf_name conf
 
--- XML output with stack tasks name, stack size, and priority
-compileXMLEntrypointList :: T.Config -> Assembly -> IO ()
-compileXMLEntrypointList conf asm = T.entrypointsToXML f asm
-  where
-  f = T.conf_outdir conf </> (nm ++ "_entrypoints") <.> "xml"
-  nm = T.conf_name conf
-
-{-
-compileAADLDocuments :: T.Config -> [Module] -> Assembly -> IO ()
-compileAADLDocuments conf mods asm =
+compileAADLDocuments :: T.Config -> [Module] -> AST.System p -> IO ()
+compileAADLDocuments conf mods sysast =
   when (T.conf_mkmeta conf) $ do
     mapM_ (writeAADLDoc conf) (typedoc : docs)
     A.warningsToFile warningfname (concat ws)
@@ -166,14 +135,13 @@ compileAADLDocuments conf mods asm =
   compile' = A.compileModule mods
   ((docs, ws, dname),typedoc) = A.compileTypeCtx $ do
     (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compile' mods)
-    (asmdoc, asmws) <- AADL.assemblyDoc (T.conf_name conf) mods asm
-    return (asmdoc:moddocs, asmws:modwss, A.doc_name asmdoc)
+    (sysdoc, sysws) <- AADL.systemDoc (T.conf_name conf) mods sysast
+    return (sysdoc:moddocs, sysws:modwss, A.doc_name sysdoc)
   warningfname = (T.conf_outdir conf) </> dname ++ "_warnings" <.> "txt"
 
 writeAADLDoc :: T.Config -> A.Document -> IO ()
 writeAADLDoc conf d = A.documentToFile fname d
   where fname = (T.conf_outdir conf) </> (A.doc_name d) <.> "aadl"
--}
 
 parseOptions :: [String] -> IO (C.Opts, T.Config)
 parseOptions s =

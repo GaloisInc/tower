@@ -4,21 +4,21 @@ module Ivory.Tower.Reporting.Graphviz
   , graphvizToFile
   ) where
 
-import Ivory.Tower.Types.Assembly
+import qualified Ivory.Tower.AST as AST
 
 import System.IO
 import Text.PrettyPrint.Leijen
 
--- | Write a Tower 'Assembly' to a dot file
-graphvizToFile :: FilePath -> Assembly -> IO ()
+-- | Write a Tower system to a dot file
+graphvizToFile :: FilePath -> AST.System p -> IO ()
 graphvizToFile f asm = withFile f WriteMode $ \h -> displayIO h rendered
   where
   w = 1000000 -- don't wrap lines - dot doesnt handle multiline strings
   rendered = renderPretty 1.0 w $ graphvizDoc asm
 
 
--- | Render a Tower 'Assembly' as a 'Text.PrettyPrint.Leijen.Doc'
-graphvizDoc :: Assembly -> Doc
+-- | Render a Tower system as a 'Text.PrettyPrint.Leijen.Doc'
+graphvizDoc :: AST.System p -> Doc
 graphvizDoc a = vsep $
   [ text "digraph {"
   , indent 4 body

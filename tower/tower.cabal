@@ -32,7 +32,6 @@ library
                         Ivory.Tower.Timer,
                         Ivory.Tower.Tower,
                         Ivory.Tower.Types,
-                        Ivory.Tower.Types.Assembly,
                         Ivory.Tower.Types.Artifact,
                         Ivory.Tower.Types.Channels,
                         Ivory.Tower.Types.Event,

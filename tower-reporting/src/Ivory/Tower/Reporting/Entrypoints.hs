@@ -1,34 +1,32 @@
 module Ivory.Tower.Reporting.Entrypoints
   ( entrypointsDoc
   , entrypointsToFile
-  , entrypointsToXML
   ) where
 
-import Ivory.Tower.Types.Assembly
+import qualified Ivory.Tower.AST as AST
 
 -- We'll be inspecting the Ivory AST, which can be unsafe.
 import qualified Ivory.Language.Proc as P
-import qualified Ivory.Language.Syntax.AST as AST
+import qualified Ivory.Language.Syntax.AST as I
 
 import           Data.Maybe
 import           System.IO
 import           Text.PrettyPrint.Leijen
-import qualified Text.XML.Light as X
 
 --------------------------------------------------------------------------------
 
--- | Write task entrypoints from a Tower 'Assembly' to a txt file
-entrypointsToFile :: FilePath -> String -> Assembly -> IO ()
-entrypointsToFile f nm asm = withFile f WriteMode write
+-- | Write task entrypoints from a Tower system to a txt file
+entrypointsToFile :: FilePath -> String -> AST.System p -> IO ()
+entrypointsToFile f nm sysast = withFile f WriteMode write
   where
   write h = displayIO h rendered
   w = 1000000 -- don't wrap lines
-  rendered = renderPretty 1.0 w $ entrypointsDoc nm asm
+  rendered = renderPretty 1.0 w $ entrypointsDoc nm sysast
 
 -- | Write out a .mk file with Makefile variables assigned the task entry
 -- points.
-entrypointsDoc :: String -> Assembly -> Doc
-entrypointsDoc nm asm = empty 
+entrypointsDoc :: String -> AST.System p -> Doc
+entrypointsDoc nm sysast = empty
 
 {-
 - vsep
@@ -47,31 +45,9 @@ entrypointsDoc nm asm = empty
 
 entryname :: AssembledNode a -> String
 entryname n = case an_entry n of
-  P.DefProc   p -> AST.procSym   p
-  P.DefExtern p -> AST.externSym p
-  P.DefImport p -> AST.importSym p
+  P.DefProc   p -> I.procSym   p
+  P.DefExtern p -> I.externSym p
+  P.DefImport p -> I.importSym p
 -}
 --------------------------------------------------------------------------------
 
-entrypointsToXML :: FilePath -> Assembly -> IO ()
-entrypointsToXML f asm = writeFile f "garbage" 
-{- (unlines xmlOut)
-  where
-  xmlOut = map mkXML (asm_tasks asm)
-  mkXML node = X.ppcElement X.defaultConfigPP $ X.node (mkName "taskdata") rst
-    where
-    rst :: [X.Attr]
-    rst = [ X.Attr (mkName "taskname")
-                   (entryname node)
-          , X.Attr (mkName "stacksize")
-                   (show $ taskst_stacksize taskSt)
-          , X.Attr (mkName "priority")
-                   (show $ fromMaybe 0 $ taskst_priority taskSt)
-          ]
-
-    taskSt = nodest_impl (an_nodest node)
-
-    mkName :: String -> X.QName
-    mkName nm = X.QName nm Nothing Nothing
--}
---------------------------------------------------------------------------------

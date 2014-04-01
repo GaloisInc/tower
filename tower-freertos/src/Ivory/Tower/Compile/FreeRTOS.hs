@@ -201,8 +201,8 @@ codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
   launch taskast = call_ Task.begin tproc stacksize priority
     where
     tproc = Task.taskProc (taskarg_proc taskast)
-    stacksize = 1024 -- XXX
-    priority = 1 -- XXX
+    stacksize = fromIntegral $ AST.task_stack_size taskast
+    priority = fromIntegral $ AST.task_priority taskast
 
   taskarg_proc :: AST.Task p -> Def('[Ref Global (Struct "taskarg")]:->())
   taskarg_proc taskast = proc (named "tower_task_entry") $ \_ -> body $ do

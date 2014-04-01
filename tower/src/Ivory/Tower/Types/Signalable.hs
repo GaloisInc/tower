@@ -15,11 +15,11 @@ class Signalable p where
   -- (i.e. those produced by signalName)
   signalFromName  :: String -> SignalType p
 
--- Utility class XXX
+-- Utility class
 data NoSignals = NoSignals
 instance Signalable NoSignals where
   data SignalType NoSignals = NoSignal deriving (Show)
   signals = [NoSignal]
-  signalFromName = const NoSignal
   signalName = show
+  signalFromName = const NoSignal
 

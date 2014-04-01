@@ -29,8 +29,21 @@ import ATIM18.RegTypes
 |]
 
 [bitdata|
- bitdata ATIM_CR2 :: Bits 32 = atim_cr2 -- XXX FIXME LATER
-  { _             :: Bits 32
+ bitdata ATIM_CR2  :: Bits 32 = atim_cr2
+  { _              :: Bits 17
+  , atim_cr2_ois4  :: Bit
+  , atim_cr2_ois3n :: Bit
+  , atim_cr2_ois3  :: Bit
+  , atim_cr2_ois2n :: Bit
+  , atim_cr2_ois2  :: Bit
+  , atim_cr2_ois1n :: Bit
+  , atim_cr2_ois1  :: Bit
+  , atim_cr2_ti1s  :: Bit
+  , atim_cr2_mms   :: CR2MMS
+  , atim_cr2_ccds  :: Bit
+  , atim_cr2_ccus  :: Bit
+  , _              :: Bit
+  , atim_cr2_ccpc  :: Bit
   }
 |]
 
@@ -179,8 +192,16 @@ import ATIM18.RegTypes
 |]
 
 [bitdata|
- bitdata ATIM_BDTR :: Bits 32 = atim_bdtr -- XXX FIXME LATER
-  { _             :: Bits 32
+ bitdata ATIM_BDTR :: Bits 32 = atim_bdtr
+  { _              :: Bits 16
+  , atim_bdtr_moe  :: Bit
+  , atim_bdtr_aoe  :: Bit
+  , atim_bdtr_bkp  :: Bit
+  , atim_bdtr_bke  :: Bit
+  , atim_bdtr_ossr :: Bit
+  , atim_bdtr_ossi :: Bit
+  , atim_bdtr_lock :: Bits 2
+  , atim_bdtr_dtg  :: Bits 8
   }
 |]
 

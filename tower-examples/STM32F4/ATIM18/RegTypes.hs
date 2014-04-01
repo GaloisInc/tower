@@ -34,3 +34,16 @@ import Ivory.BitData
    | ccs_mode_intrc as 3
 |]
 
+-- CR2 Master Mode Selection field definitions:
+[bitdata|
+ bitdata CR2MMS  :: Bits 3
+   = cr2_mms_reset          as 0
+   | cr2_mms_enable         as 1
+   | cr2_mms_update         as 2
+   | cr2_mms_compare_pulse  as 3
+   | cr2_mms_compare_oc1ref as 4
+   | cr2_mms_compare_oc2ref as 5
+   | cr2_mms_compare_oc3ref as 6
+   | cr2_mms_compare_oc4ref as 7
+|]
+

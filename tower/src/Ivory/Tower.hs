@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
+
 module Ivory.Tower
   -- Channel API:
   ( ChannelSource
@@ -58,6 +61,9 @@ module Ivory.Tower
   , Unique
   , BaseUtils(fresh, freshname)
   , showUnique
+
+  -- Utility functions for legacy support:
+  , onPeriod
   ) where
 
 import Ivory.Tower.Types.Channels
@@ -79,3 +85,15 @@ import Ivory.Tower.Types.Artifact
 
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Unique
+
+import Ivory.Language
+
+onPeriod :: (Time a)
+         => a
+         -> (forall s . ITime -> Ivory (ProcEffects s ()) ())
+         -> Task p ()
+onPeriod per k = do
+  evt <- timerEvent per
+  handleV evt "periodic" k
+
+

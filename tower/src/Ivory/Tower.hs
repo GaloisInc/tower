@@ -43,6 +43,7 @@ module Ivory.Tower
   -- Event API:
   , Event
   , handle
+  , handleV
 
   -- Time API:
   , module Ivory.Tower.Types.Time

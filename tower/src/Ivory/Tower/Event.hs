@@ -2,10 +2,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Ivory.Tower.Event
   ( Event
   , handle
+  , handleV
   ) where
 
 import           Ivory.Language
@@ -14,6 +16,16 @@ import           Ivory.Tower.Types.Event
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Task
+
+handleV :: forall p a
+        . (IvoryVar a, IvoryArea (Stored a), IvoryZero (Stored a))
+       => Event (Stored a)
+       -> String
+       -> (forall eff . a -> Ivory (ProcEffects eff ()) ())
+       -> Task p ()
+handleV evt annotation k = handle evt annotation $ \ref -> do
+  v <- deref ref
+  k v
 
 handle :: forall p area
         . (IvoryArea area, IvoryZero area)

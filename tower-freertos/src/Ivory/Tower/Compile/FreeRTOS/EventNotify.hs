@@ -37,7 +37,9 @@ taskEventNotify taskname = EventNotify
 
   ini :: Def('[]:->())
   ini = proc (named "init") $ body $ do
-    call_ S.create sem_ref maxBound 0 -- XXX may want to limit max count?
+    -- currently use maxBound for count maximum, but perhaps we
+    -- may want to limit it?
+    call_ S.create sem_ref maxBound 0
 
   trigger :: Def('[]:->())
   trigger = proc (named "trigger") $ body $ do

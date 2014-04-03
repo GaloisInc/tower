@@ -9,6 +9,7 @@ module Ivory.Tower.Compile.FreeRTOS
   ) where
 
 import           GHC.TypeLits
+import           Data.String (fromString)
 import           Ivory.Language
 import           Ivory.Stdlib
 import           Ivory.Tower
@@ -198,11 +199,12 @@ codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
     mapM_ launch taskasts
 
   launch :: AST.Task p -> Ivory eff ()
-  launch taskast = call_ Task.begin tproc stacksize priority
+  launch taskast = call_ Task.begin tproc stacksize priority name
     where
     tproc = Task.taskProc (taskarg_proc taskast)
     stacksize = fromIntegral $ AST.task_stack_size taskast
     priority = fromIntegral $ AST.task_priority taskast
+    name = fromString (showUnique (AST.task_name taskast))
 
   taskarg_proc :: AST.Task p -> Def('[Ref Global (Struct "taskarg")]:->())
   taskarg_proc taskast = proc (named "tower_task_entry") $ \_ -> body $ do

@@ -28,8 +28,8 @@ moddef = do
 taskWrapperHeader :: String
 taskWrapperHeader = "freertos_task_wrapper.h"
 
---                         Stack size, Priority
-begin :: Def ('[ TaskProc, Uint32, Uint8 ] :->())
+--                         Stack size, Priority, Debugging Name
+begin :: Def ('[ TaskProc, Uint32, Uint8, IString] :->())
 begin = importProc "ivory_freertos_task_create" taskWrapperHeader
 
 taskProc :: Def('[Ref Global (Struct "taskarg")]:->()) -> TaskProc

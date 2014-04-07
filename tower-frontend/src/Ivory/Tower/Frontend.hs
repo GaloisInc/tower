@@ -5,6 +5,7 @@ module Ivory.Tower.Frontend
   , defaultBuildConf
   , searchPathConf
   , compile
+  , compile'
   , Twr(..)
   , compilePlatforms
   , compilePlatforms' -- ^ No getArgs call.
@@ -59,6 +60,10 @@ searchPathConf p = defaultBuildConf { bc_searchpath = p }
 compile :: (Signalable p) => BuildConf -> Tower p () -> IO ()
 compile bc t = do
   (c_opts, t_opts) <- parseOptions =<< getArgs
+  compile' bc t_opts c_opts t
+
+compile' :: Signalable p => BuildConf -> T.Config -> C.Opts -> Tower p () -> IO ()
+compile' bc t_opts c_opts t =
   towerCompile (ivoryCompile bc c_opts) t_opts t
 
 compilePlatforms :: BuildConf -> [(String, Twr)] -> IO ()
@@ -132,9 +137,9 @@ compileAADLDocuments conf mods sysast =
     mapM_ (writeAADLDoc conf) (typedoc : docs)
     A.warningsToFile warningfname (concat ws)
   where
-  compile' = A.compileModule mods
+  compilectx = A.compileModule mods
   ((docs, ws, dname),typedoc) = A.compileTypeCtx $ do
-    (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compile' mods)
+    (moddocs, modwss) <- (unzip . catMaybes) `fmap` (mapM compilectx mods)
     (sysdoc, sysws) <- AADL.systemDoc (T.conf_name conf) mods sysast
     return (sysdoc:moddocs, sysws:modwss, A.doc_name sysdoc)
   warningfname = (T.conf_outdir conf) </> dname ++ "_warnings" <.> "txt"

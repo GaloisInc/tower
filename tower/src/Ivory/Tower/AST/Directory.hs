@@ -3,7 +3,8 @@
 {-# LANGUAGE DeriveTraversable #-}
 
 module Ivory.Tower.AST.Directory
-  ( Dir
+  ( Dir(..)
+  , Subdir(..)
   , empty
   , insert
   , flatten

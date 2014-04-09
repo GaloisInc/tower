@@ -14,7 +14,7 @@ import           Ivory.Tower
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.SignalCode
 
-import qualified Ivory.OS.FreeRTOS.BinarySemaphore as S
+import qualified Ivory.OS.FreeRTOS.Atomic as A
 import           Ivory.Tower.Compile.FreeRTOS.EventNotify
 
 gen_signal :: forall p
@@ -72,18 +72,24 @@ isrSignal sigrxer receivingtask = ISRSignal
   }
   where
   named n = n ++ "_" ++  showUnique (AST.signalreceiver_name sigrxer)
-  ready_area :: MemArea (Stored S.BinarySemaphore)
+  ready_area :: MemArea (Stored IBool)
   ready_area = area (named "ready") Nothing
   ready = addrOf ready_area
 
-  ini = call_ S.create ready
+  ini = store ready false
 
-  check = call S.take ready 0
+  check = do
+    call_ A.enter
+    r <- deref ready
+    store ready false
+    call_ A.exit
+    return r
 
   send = do
-    call_ S.giveFromISR ready
+    store ready true
     evtn_trigger_from_isr (taskEventNotify (AST.task_name receivingtask))
 
   moddef = do
+    A.moddef
     defMemArea ready_area
 

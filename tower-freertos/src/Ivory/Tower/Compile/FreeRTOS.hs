@@ -24,6 +24,7 @@ import Ivory.Tower.Compile.FreeRTOS.EventNotify
 import Ivory.Tower.Compile.FreeRTOS.ISR
 
 import qualified Ivory.OS.FreeRTOS.Task as Task
+import qualified Ivory.OS.FreeRTOS.Atomic as Atomic
 import qualified Ivory.OS.FreeRTOS.Time as Time
 
 os :: OS.OS
@@ -189,6 +190,7 @@ codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
     incl init_proc
     mapM_ (incl . taskarg_proc) taskasts
     Task.moddef
+    Atomic.moddef
 
   init_proc :: Def('[]:->())
   init_proc = proc "tower_entry" $ body $ noReturn $ do

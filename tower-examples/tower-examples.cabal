@@ -1,0 +1,81 @@
+name:                tower-examples
+version:             0.8.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+flag werror
+  default:              False
+  description:          Pass -Werror to GHC.
+
+executable tower-example-simple
+  main-is:             Simple.hs
+  hs-source-dirs:      examples
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory-bitdata,
+                       ivory,
+                       ivory-stdlib,
+                       ivory-backend-c,
+                       tower >= 0.8,
+                       tower-freertos >= 0.8,
+                       tower-frontend >= 0.8
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall
+
+executable tower-example-simplesignal
+  main-is:             SimpleSignal.hs
+  hs-source-dirs:      examples
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory-bitdata,
+                       ivory,
+                       ivory-stdlib,
+                       ivory-backend-c,
+                       tower >= 0.8,
+                       tower-freertos >= 0.8,
+                       tower-frontend >= 0.8
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall
+
+executable tower-example-stm32f4signals
+  main-is:             App.hs
+  other-modules:       ATIM18,
+                       ATIM18.RegTypes,
+                       ATIM18.Regs,
+                       ATIM18.Peripheral,
+                       Interrupt,
+                       Interrupt.API,
+                       Interrupt.Regs,
+                       Interrupt.Types,
+                       MemoryMap,
+                       RCC,
+                       RCC.Class,
+                       RCC.GetFreq,
+                       RCC.Regs,
+                       RCC.RegTypes
+
+
+  hs-source-dirs:      STM32F4
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory-bitdata,
+                       ivory,
+                       ivory-stdlib,
+                       ivory-backend-c,
+                       ivory-hw,
+                       ivory-bitdata,
+                       tower >= 0.8,
+                       tower-freertos >= 0.8,
+                       tower-frontend >= 0.8
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall

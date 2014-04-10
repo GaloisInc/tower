@@ -6,9 +6,9 @@ module Ivory.Tower.Compile.AADL.SystemDoc
 import System.FilePath
 
 import           Ivory.Compile.AADL.AST
-import           Ivory.Compile.AADL.Identifier
+--import           Ivory.Compile.AADL.Identifier
 import           Ivory.Compile.AADL.Monad
-import           Ivory.Compile.AADL.Gen (mkType, typeImpl)
+--import           Ivory.Compile.AADL.Gen (mkType, typeImpl)
 
 import           Ivory.Language
 import           Ivory.Tower
@@ -63,8 +63,8 @@ threadDef t = do
   usersource = "tower_task_loop_" ++ (showUnique (AST.task_name t))
 
 featuresDef :: String -> AST.Task p -> FilePath -> CompileAADL [ThreadFeature]
-featuresDef scope taskast headername = do
-  return []
+featuresDef _scope _taskast _headername = do
+  return [] -- XXX
 
 -- Uniqueness managment -------------------------------------------------------
 
@@ -89,8 +89,8 @@ introduceUnique u scope = do
     True -> notUnique m (r ++ "_1")
     False -> r
 
-uniqueIdentifier :: Unique -> String -> CompileAADL String
-uniqueIdentifier u ctx = do
+_uniqueIdentifier :: Unique -> String -> CompileAADL String
+_uniqueIdentifier u ctx = do
   m <- getIdentifierMap
   -- If this lookup fails, its because the CompileM code that should have used
   -- introduceUnique to create names was not implemented correctly.
@@ -100,3 +100,4 @@ uniqueIdentifier u ctx = do
                       ++ " in " ++ ctx ++ " context.\nName Map Dump\n" ++ (show m))
   where
   withoutScope ((k,_s),v) = (k,v)
+

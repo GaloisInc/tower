@@ -50,7 +50,7 @@ module Ivory.Tower
   -- Time API:
   , module Ivory.Tower.Types.Time
   , getTime
-  , timerEvent
+  , withPeriodicEvent
 
   -- Signal API:
   , Signalable(..)
@@ -96,7 +96,7 @@ onPeriod :: (Time a)
          -> (forall s . ITime -> Ivory (ProcEffects s ()) ())
          -> Task p ()
 onPeriod per k = do
-  evt <- timerEvent per
+  evt <- withPeriodicEvent per
   handleV evt "periodic" k
 
 

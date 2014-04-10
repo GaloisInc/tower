@@ -4,7 +4,7 @@
 
 module Ivory.Tower.Timer
   ( getTime
-  , timerEvent
+  , withPeriodicEvent
   ) where
 
 import           Ivory.Language
@@ -22,8 +22,8 @@ getTime = call p
   p :: Def('[] :-> ITime)
   p = externProc "getTimeMicros"
 
-timerEvent :: Time a => a -> Task p (Event (Stored ITime))
-timerEvent period = do
+withPeriodicEvent :: Time a => a -> Task p (Event (Stored ITime))
+withPeriodicEvent period = do
   tid <- fresh
   tname <- getTaskName
   let named n = (showUnique tname) ++ "_timer_event_" ++ n ++ "_" ++ show tid

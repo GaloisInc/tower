@@ -22,7 +22,7 @@ task_simple_per :: Task p ()
 task_simple_per = do
   ctr <- taskLocal "counter"
   lasttime <- taskLocal "lasttime"
-  p <- timerEvent (Milliseconds 100)
+  p <- withPeriodicEvent (Milliseconds 100)
 
   handle p "periodic" $ \timeRef -> do
     deref timeRef >>= store lasttime
@@ -40,7 +40,8 @@ tower_simple_per_tasks = do
   task "per_trivial" task_simple_per
   task "sig_trivial" task_simple_sig
 
-
 main :: IO ()
 main = compile defaultBuildConf tower_simple_per_tasks
 
+test :: IO ()
+test = compile' defaultBuildConf undefined undefined tower_simple_per_tasks

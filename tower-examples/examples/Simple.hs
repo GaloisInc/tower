@@ -12,7 +12,7 @@ task_simple_per :: Task p ()
 task_simple_per = do
   ctr <- taskLocal "counter"
   lasttime <- taskLocal "lasttime"
-  p <- timerEvent (Milliseconds 100)
+  p <- withPeriodicEvent (Milliseconds 100)
 
   handle p "periodic" $ \timeRef -> do
     deref timeRef >>= store lasttime
@@ -21,7 +21,7 @@ task_simple_per = do
 task_simple_per_emitter :: ChannelSource (Stored Sint32) -> Task p ()
 task_simple_per_emitter c = do
   e <- withChannelEmitter c "simple_emitter"
-  p <- timerEvent (Milliseconds 20)
+  p <- withPeriodicEvent (Milliseconds 20)
   handle p "emit_at_periodic" $ \timeRef -> do
     itime <- deref timeRef
     time <- assign (castWith 0 (toIMicroseconds itime))
@@ -31,7 +31,7 @@ task_simple_per_emitter c = do
 task_simple_per_receiver :: ChannelSink (Stored Sint32) -> Task p ()
 task_simple_per_receiver c = do
   r <- withChannelReceiver c "simple_receiver"
-  p <- timerEvent (Milliseconds 20)
+  p <- withPeriodicEvent (Milliseconds 20)
   lastgood <- taskLocalInit "lastgood" (ival false)
   lastgot  <- taskLocal "lastgot"
   handle p "rx_at_periodic" $ \_ -> do
@@ -53,7 +53,7 @@ task_simple_per_reader c = do
   reader <- withChannelReader c "chan_reader"
   good <- taskLocalInit "good" (ival false)
   got  <- taskLocal "got"
-  p <- timerEvent (Milliseconds 20)
+  p <- withPeriodicEvent (Milliseconds 20)
   handle p "read_at_periodic" $ \_ -> do
     s <- chanRead reader got
     store good s

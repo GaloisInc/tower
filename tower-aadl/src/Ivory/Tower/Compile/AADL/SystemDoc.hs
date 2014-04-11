@@ -3,6 +3,7 @@ module Ivory.Tower.Compile.AADL.SystemDoc
   ( systemDoc
   ) where
 
+import Control.Applicative ((<$>))
 import Data.List (sortBy, groupBy)
 import Data.Maybe (catMaybes)
 import Debug.Trace (trace)
@@ -26,7 +27,9 @@ systemDoc :: String -> [Module] -> AST.System p
 systemDoc name ms sysast = runCompile ms virtMod $ do
   writeImport "SMACCM_SYS"
   tg <- threadGroup [] (AST.system_tasks sysast)
+  pd <- processDef name sysast
   writeThreadGroup tg
+  writeProcessDefinition pd
   where
   virtMod = package name $ do
     mapM_ depend ms
@@ -165,7 +168,64 @@ channelTypename chan = do
       DotTypeName _ _ -> t
       _ -> DotTypeName t "impl"
 
+processDef :: String -> AST.System p -> CompileAADL ProcessDef
+processDef name sys = do
+  pcs <- processComponents (AST.system_tasks sys)
+  conns <- chanConns (map snd (D.flatten (AST.system_tasks sys)))
+  -- Give each connection a meaningless but unique name
+  let namedconns = zipWith (\c i -> NamedConnection ("conn_" ++ show i) c)
+                           conns [1::Int ..]
+  return (ProcessDef name pcs namedconns)
+  where
+  processComponents :: D.Dir Unique (AST.Task p)
+                    -> CompileAADL [ProcessComponent]
+  processComponents (D.Dir ts subdirs) = do
+    as  <- mapM component ts
+    aas <- mapM recur subdirs
+    return (concat (as:aas))
+  component :: AST.Task p -> CompileAADL ProcessComponent
+  component t = do
+    name <- uniqueIdentifier (AST.task_name t) "processComponent"
+    return (ProcessThread (threadInstance name) name)
+  recur (D.Subdir _ d) = processComponents d -- Not treating grouping
 
+  chanConns :: [AST.Task p] -> CompileAADL [ProcessConnection]
+  chanConns ts = do
+    is <- concat <$> mapM inboundConns ts
+    os <- concat <$> mapM outboundConns ts
+    return [ EventConnection opc ipc
+           | (ichan, ipc) <- is
+           , (ochan, opc) <- os
+           , ichan == ochan
+           ]
+    where
+    inboundConns t = do
+      prs <- mapM (receiverEndpoint t) (AST.task_chan_poll_receivers t)
+      ers <- mapM (receiverEndpoint t) (AST.task_chan_event_receivers t)
+      rrs <- mapM (readerEndpoint t)   (AST.task_chan_readers t)
+      return (concat [prs, ers, rrs])
+    outboundConns t = mapM (emitterEndpoint t) (AST.task_chan_emitters t)
+
+  receiverEndpoint :: AST.Task p -> AST.ChanReceiver -> CompileAADL (AST.Chan ,ProcessPort)
+  receiverEndpoint t r = do
+    tt <- uniqueIdentifier (AST.task_name t) "receiverEndpoint task name"
+    rr <- uniqueIdentifier (AST.chanreceiver_name r) "receiverEndpoint receiver name"
+    return (AST.chanreceiver_chan r, (ProcessPort (threadInstance tt) rr))
+
+  readerEndpoint :: AST.Task p -> AST.ChanReader -> CompileAADL (AST.Chan, ProcessPort)
+  readerEndpoint t r = do
+    tt <- uniqueIdentifier (AST.task_name t) "readerEndpoint task name"
+    rr <- uniqueIdentifier (AST.chanreader_name r) "readerEndpoint reader name"
+    return (AST.chanreader_chan r, (ProcessPort (threadInstance tt) rr))
+
+  emitterEndpoint :: AST.Task p -> AST.ChanEmitter -> CompileAADL (AST.Chan, ProcessPort)
+  emitterEndpoint t e = do
+    tt <- uniqueIdentifier (AST.task_name t) "emitterEndpoint task name"
+    ee <- uniqueIdentifier (AST.chanemitter_name e) "emitterEndpoint emitter name"
+    return (AST.chanemitter_chan e, (ProcessPort (threadInstance tt) ee))
+
+threadInstance :: String -> String
+threadInstance t = t ++ "_inst"
 
 -- Uniqueness managment -------------------------------------------------------
 
@@ -186,8 +246,8 @@ introduceUnique s u scope = do
   warning = "User provided identifier \"" ++ s ++ "\" for " ++ us
          ++ " is not unique in tower-aadl Assembly."
 
-_uniqueIdentifier :: Unique -> String -> CompileAADL String
-_uniqueIdentifier u ctx = do
+uniqueIdentifier :: Unique -> String -> CompileAADL String
+uniqueIdentifier u ctx = do
   m <- getIdentifierMap
   -- If this lookup fails, its because the CompileM code that should have used
   -- introduceUnique to create names was not implemented correctly.

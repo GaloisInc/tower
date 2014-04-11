@@ -96,11 +96,18 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
     depend user_mod
     depend loop_mod
 
+  user_init :: Def('[]:->())
+  user_init = proc (named "task_init") $ body $ do
+    noReturn $ taskcode_user_init taskcode
+
   user_mod = package (named "tower_task_usercode") $ do
     depend loop_mod
+    incl user_init
+    taskcode_usercode taskcode
 
   loop_mod = package (named "tower_task_loop") $ do
     depend user_mod
+    taskcode_commprim taskcode
 
   named n = n ++ "_" ++ (showUnique (taskcode_taskname taskcode))
 

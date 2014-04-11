@@ -6,9 +6,9 @@ module Ivory.Tower.Compile.AADL.SystemDoc
 import System.FilePath
 
 import           Ivory.Compile.AADL.AST
---import           Ivory.Compile.AADL.Identifier
+import           Ivory.Compile.AADL.Identifier
 import           Ivory.Compile.AADL.Monad
---import           Ivory.Compile.AADL.Gen (mkType, typeImpl)
+import           Ivory.Compile.AADL.Gen (mkType, typeImpl)
 
 import           Ivory.Language
 import           Ivory.Tower
@@ -45,10 +45,13 @@ threadGroup path (D.Dir ts subdirs) = do
 
 threadDef :: AST.Task p -> CompileAADL ThreadDef
 threadDef t = do
-  threadname <- introduceUnique (AST.task_name t) []
+  threadname <- introduceUnique (unique_name (AST.task_name t))
+                                (AST.task_name t) []
   features <- featuresDef threadname t (loopsource <.> "h")
   let props = [ ThreadProperty "Source_Text"
                   (PropList [PropString (usersource <.> "c")])
+              , ThreadProperty "Initialize_Source_Text"
+                  (PropString ("task_init_" ++ (showUnique (AST.task_name t))))
               , ThreadProperty "Priority"
                   (PropInteger (AST.task_priority t))
               , ThreadProperty "Source_Stack_Size"
@@ -62,32 +65,83 @@ threadDef t = do
   loopsource = "tower_task_loop_" ++ (showUnique (AST.task_name t))
   usersource = "tower_task_loop_" ++ (showUnique (AST.task_name t))
 
+data RxType = Poll | Event
+
 featuresDef :: String -> AST.Task p -> FilePath -> CompileAADL [ThreadFeature]
-featuresDef _scope _taskast _headername = do
-  return [] -- XXX
+featuresDef scope taskast headername = do
+  es  <- mapM emitterDef          (AST.task_chan_emitters        taskast)
+  prs <- mapM (receiverDef Poll)  (AST.task_chan_poll_receivers  taskast)
+  ers <- mapM (receiverDef Event) (AST.task_chan_event_receivers taskast)
+  rs  <- mapM readerDef           (AST.task_chan_readers         taskast)
+  return $ concat [es, prs, ers, rs]
+  where
+  emitterDef :: AST.ChanEmitter -> CompileAADL ThreadFeature
+  emitterDef ce = do
+    chtype <- channelTypename (AST.chanemitter_chan ce)
+    portname <- introduceUnique (AST.chanemitter_annotation ce)
+                                (AST.chanemitter_name ce) [scope]
+    let ps = channelprops (AST.chanemitter_name ce)
+                          (AST.chan_size (AST.chanemitter_chan ce))
+    return $ ThreadFeatureEventPort portname Out chtype ps
+
+  receiverDef :: RxType -> AST.ChanReceiver -> CompileAADL ThreadFeature
+  receiverDef rxt cr = do
+    chtype <- channelTypename (AST.chanreceiver_chan cr)
+    portname <- introduceUnique (AST.chanreceiver_annotation cr)
+                                (AST.chanreceiver_name cr) [scope]
+    let ps = channelprops (AST.chanreceiver_name cr)
+                          (AST.chan_size (AST.chanreceiver_chan cr))
+    let p = case rxt of -- XXX hack for now
+              Poll -> ThreadProperty "ReceiverType" (PropString "Poll")
+              Event -> ThreadProperty "ReceiverType" (PropString "Event")
+    return $ ThreadFeatureEventPort portname In chtype (p:ps)
+
+  readerDef :: AST.ChanReader -> CompileAADL ThreadFeature
+  readerDef cr = do
+    chtype <- channelTypename (AST.chanreader_chan cr)
+    portname <- introduceUnique (AST.chanreader_annotation cr)
+                                (AST.chanreader_name cr) [scope]
+    return $ ThreadFeatureDataPort portname chtype []
+
+  channelprops :: Unique -> Integer -> [ThreadProperty]
+  channelprops usourcetext chansize =
+    [ ThreadProperty "Queue_Size" (PropInteger chansize)
+    , smaccmProp "CommPrim_Source_Header" headername
+    , smaccmProp "CommPrim_Source_Text"   (showUnique usourcetext) -- XXX fix once we do codegen
+    ]
+
+channelTypename :: AST.Chan -> CompileAADL TypeName
+channelTypename chan = do
+  t <- mkType (AST.chan_ityp chan)
+  return $ implNonBaseTypes t
+  where
+  -- HACK: user declared datatypes always need .impl appended
+  implNonBaseTypes :: TypeName -> TypeName
+  implNonBaseTypes t = case t of
+      QualTypeName "Base_Types" _ -> t
+      DotTypeName _ _ -> t
+      _ -> DotTypeName t "impl"
+
+
 
 -- Uniqueness managment -------------------------------------------------------
 
-introduceUnique :: Unique -> [String] -> CompileAADL String
-introduceUnique u scope = do
+introduceUnique :: String -> Unique -> [String] -> CompileAADL String
+introduceUnique s u scope = do
   m <- getIdentifierMap
   let mm = filter ((== scope) . snd . fst) m
-  case elem up (map snd mm)  of
+  case elem s (map snd mm)  of
     False -> do
-      setIdentifierMap (((u,scope),up):m)
-      return up
+      setIdentifierMap (((u,scope),s):m)
+      return s
     True -> do
       uniquenessWarning warning
-      let up' = notUnique mm (showUnique u)
-      setIdentifierMap (((u,scope),up'):m)
-      return up'
+      setIdentifierMap (((u,scope),us):m)
+      return us
   where
-  up = unique_name u
-  warning = "User provided identifier " ++ up
+  us = showUnique u
+  warning = "User provided identifier \"" ++ s ++ "\" for " ++ us
          ++ " is not unique in tower-aadl Assembly."
-  notUnique m r = case elem r (map snd m) of
-    True -> notUnique m (r ++ "_1")
-    False -> r
 
 _uniqueIdentifier :: Unique -> String -> CompileAADL String
 _uniqueIdentifier u ctx = do
@@ -100,4 +154,14 @@ _uniqueIdentifier u ctx = do
                       ++ " in " ++ ctx ++ " context.\nName Map Dump\n" ++ (show m))
   where
   withoutScope ((k,_s),v) = (k,v)
+
+-- Constructor Helper Functions -----------------------------------------------
+
+threadProp :: String -> String -> ThreadProperty
+threadProp k v = ThreadProperty k (PropString v)
+
+smaccmProp :: String -> String -> ThreadProperty
+smaccmProp k v = threadProp ("SMACCM_SYS::" ++ k) v
+
+
 

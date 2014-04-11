@@ -3,6 +3,9 @@ module Ivory.Tower.Compile.AADL.SystemDoc
   ( systemDoc
   ) where
 
+import Data.List (sortBy, groupBy)
+import Data.Maybe (catMaybes)
+import Debug.Trace (trace)
 import System.FilePath
 
 import           Ivory.Compile.AADL.AST
@@ -58,20 +61,44 @@ threadDef t = do
                   (PropUnit (AST.task_stack_size t) "bytes")
               , ThreadProperty "SMACCM_SYS::Language"
                   (PropString "Ivory")
-              ]
+              ] ++ periodprops
 
   return (ThreadDef threadname features props)
   where
   loopsource = "tower_task_loop_" ++ (showUnique (AST.task_name t))
   usersource = "tower_task_loop_" ++ (showUnique (AST.task_name t))
 
-data RxType = Poll | Event
+  periodprops = case uniqueperiods of
+    [(p, hs)] -> mkPeriodProperty p hs
+    [] -> [ThreadProperty "Dispatch_Protocol" (PropLiteral "Sporadic")]
+    _  -> trace warnmsg $ [UnprintableThreadProperty warnmsg]
+    where
+    warnmsg = "Warning: multiple periodic rates in a tower task named "
+              ++ (showUnique (AST.task_name t))
+              ++ " cannot be rendered into an AADL property."
+    uniqueperiods :: [(Integer, [AST.EventHandler])]
+    uniqueperiods = map (\xs -> (fst (head xs), map snd xs))
+      $ groupBy (\a b -> fst a == fst b)
+      $ sortBy  (\a b -> fst a `compare` fst b)
+      $ catMaybes
+      $ map aux (AST.task_evt_handlers t)
+    aux eh@(AST.EventHandler _ _ (AST.TimerEvt timer)) =
+                                          Just (AST.timer_per timer, eh)
+    aux _ = Nothing
+  mkPeriodProperty interval handlers =
+    [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Hybrid")
+    , ThreadProperty "Period" (PropUnit interval "us")
+    , ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text"
+        (PropList [ PropString (showUnique (AST.evthandler_name h))
+                  | h <- handlers])
+    ]
+
 
 featuresDef :: String -> AST.Task p -> FilePath -> CompileAADL [ThreadFeature]
 featuresDef scope taskast headername = do
   es  <- mapM emitterDef          (AST.task_chan_emitters        taskast)
-  prs <- mapM (receiverDef Poll)  (AST.task_chan_poll_receivers  taskast)
-  ers <- mapM (receiverDef Event) (AST.task_chan_event_receivers taskast)
+  prs <- mapM pollReceiverDef     (AST.task_chan_poll_receivers  taskast)
+  ers <- mapM eventReceiverDef    (AST.task_chan_event_receivers taskast)
   rs  <- mapM readerDef           (AST.task_chan_readers         taskast)
   return $ concat [es, prs, ers, rs]
   where
@@ -84,17 +111,33 @@ featuresDef scope taskast headername = do
                           (AST.chan_size (AST.chanemitter_chan ce))
     return $ ThreadFeatureEventPort portname Out chtype ps
 
-  receiverDef :: RxType -> AST.ChanReceiver -> CompileAADL ThreadFeature
-  receiverDef rxt cr = do
+  pollReceiverDef ::AST.ChanReceiver -> CompileAADL ThreadFeature
+  pollReceiverDef cr = do
     chtype <- channelTypename (AST.chanreceiver_chan cr)
     portname <- introduceUnique (AST.chanreceiver_annotation cr)
                                 (AST.chanreceiver_name cr) [scope]
     let ps = channelprops (AST.chanreceiver_name cr)
                           (AST.chan_size (AST.chanreceiver_chan cr))
-    let p = case rxt of -- XXX hack for now
-              Poll -> ThreadProperty "ReceiverType" (PropString "Poll")
-              Event -> ThreadProperty "ReceiverType" (PropString "Event")
+        p = ThreadProperty "ReceiverType" (PropString "Poll") -- XXX hack
     return $ ThreadFeatureEventPort portname In chtype (p:ps)
+
+  eventReceiverDef ::AST.ChanReceiver -> CompileAADL ThreadFeature
+  eventReceiverDef cr = do
+    chtype <- channelTypename (AST.chanreceiver_chan cr)
+    portname <- introduceUnique (AST.chanreceiver_annotation cr)
+                                (AST.chanreceiver_name cr) [scope]
+    let cps = channelprops (AST.chanreceiver_name cr)
+                           (AST.chan_size (AST.chanreceiver_chan cr))
+        rtyp = [ThreadProperty "ReceiverType" (PropString "Event")] -- XXX hack
+
+        handlers = map (PropString . showUnique . AST.evthandler_name)
+                 $ filter (\eh -> AST.evthandler_evt eh
+                              == AST.ChanEvt (AST.chanreceiver_chan cr) cr)
+                          (AST.task_evt_handlers taskast)
+        hps = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text"
+                              (PropList handlers)]
+        ps = concat [rtyp, cps, hps]
+    return $ ThreadFeatureEventPort portname In chtype ps
 
   readerDef :: AST.ChanReader -> CompileAADL ThreadFeature
   readerDef cr = do

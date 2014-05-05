@@ -16,6 +16,7 @@ module Ivory.Tower.StateMachine
 
   , MachineM
   , Stmt
+  , StateLabel
 
   , state
   , stateNamed
@@ -45,11 +46,13 @@ on e stmtM = writeHandler $ EventHandler e (ScopedStatements stmts)
 entry :: (forall s . StmtM s ()) -> StateM ()
 entry stmtM = writeHandler $ EntryHandler (ScopedStatements (const (runStmtM stmtM)))
 
-timeout :: Int -> (forall s . StmtM s ()) -> StateM ()
-timeout t stmtM = writeHandler $ TimeoutHandler t (ScopedStatements (const (runStmtM stmtM)))
+timeout :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
+timeout t stmtM = writeHandler $ TimeoutHandler (toMicroseconds t)
+                                    (ScopedStatements (const (runStmtM stmtM)))
 
-period :: Int -> (forall s . StmtM s ()) -> StateM ()
-period t stmtM = writeHandler $ PeriodHandler t (ScopedStatements (const (runStmtM stmtM)))
+period :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
+period t stmtM = writeHandler $ PeriodHandler (toMicroseconds t)
+                                    (ScopedStatements (const (runStmtM stmtM)))
 
 state :: StateM () -> Machine
 state sh = stateAux sh Nothing

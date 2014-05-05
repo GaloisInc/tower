@@ -51,10 +51,12 @@ runStmtM m = ss
 instance CFlowable (StmtM s) where
   cflow cf = writeStmt (Stmt (return (writeCFlow cf)))
 
+type Micros = Integer
+
 data Handler
   = EntryHandler (ScopedStatements (Stored ITime))
-  | TimeoutHandler Int (ScopedStatements (Stored ITime))
-  | PeriodHandler Int  (ScopedStatements (Stored ITime))
+  | TimeoutHandler Micros (ScopedStatements (Stored ITime))
+  | PeriodHandler Micros (ScopedStatements (Stored ITime))
   | forall a . (IvoryArea a, IvoryZero a)
      => EventHandler (Event a) (ScopedStatements a)
 

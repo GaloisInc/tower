@@ -4,6 +4,7 @@
 
 module Ivory.Tower.Types.Event
   ( Event(..)
+  , eventDescription
   ) where
 
 import Ivory.Language
@@ -16,3 +17,6 @@ data Event (area :: Area *) =
               -> Ivory (AllocEffects eff) IBool
     , evt_ast :: AST.Event
     }
+
+eventDescription :: Event a -> String
+eventDescription = AST.eventName . evt_ast

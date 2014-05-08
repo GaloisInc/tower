@@ -137,6 +137,10 @@ ringBuffer _ named = RingBuffer
   remove_area = area (named "remove") Nothing
   remove = addrOf remove_area
 
+  dropped_area :: MemArea (Stored Uint32)
+  dropped_area = area (named "dropped") Nothing
+  dropped = addrOf dropped_area
+
   size :: Integer
   size = fromSing (sing :: Sing n)
   incr x = toIx ((fromIx x + 1) .% fromIntegral size)
@@ -146,9 +150,10 @@ ringBuffer _ named = RingBuffer
     ins  <- deref insert
     ins' <- assign (incr ins)
     room <- assign (ins' /=? rmv)
-    when room $ do
-      refCopy (array ! ins) v
-      store insert ins'
+    ifte_ room
+      (do refCopy (array ! ins) v
+          store insert ins')
+      (dropped %= (+1))
     return room
 
   pop v = do
@@ -169,4 +174,5 @@ ringBuffer _ named = RingBuffer
     defMemArea array_area
     defMemArea insert_area
     defMemArea remove_area
+    defMemArea dropped_area
 

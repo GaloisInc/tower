@@ -6,11 +6,13 @@
 module Ivory.Tower.StateMachine.Compile where
 
 import Control.Monad (forM_)
+import Data.List (find)
 
 import Ivory.Tower.StateMachine.Monad
 
 import Ivory.Language
 import Ivory.Tower
+import Ivory.Tower.Types.Event (eventDescription)
 import Ivory.Stdlib
 
 data Runnable =
@@ -71,10 +73,18 @@ stateMachine name machine = do
     active_proc = proc (named "active") $ body $
       deref activeState >>= ret
 
+    statename :: StateLabel -> String
+    statename lbl = case find aux states of
+      Just (State _ (Just n) _) -> "state " ++ n
+      _ -> "unnamed state #" ++ show (unStateLabel lbl)
+      where
+      aux (State l _ _) = l == lbl
+
     nextstate :: StateLabel -> Ivory (AllocEffects s) ()
-    nextstate (StateLabel ns) = do
+    nextstate lbl@(StateLabel ns) = do
       -- The first use of nextstate in an event cycle will be the one to be
       -- accepted, since newstate_emitter comes from a channel of size 1.
+      comment ("newstate " ++ statename lbl)
       emitV_ newstate_emitter (fromIntegral ns)
 
     handleState :: StateLabel -> Ivory (AllocEffects s) () -> Ivory (ProcEffects s ()) ()
@@ -86,6 +96,7 @@ stateMachine name machine = do
     mkState (State s maybename handlers) = do
       ehs <- mapM mkHandler handlers
       handle newstate_evt nsname $ \newstref -> noReturn $ do
+        comment ("newstate handler for " ++ namecomment)
         newst <- deref newstref
         when (newst ==? (fromIntegral (unStateLabel s))) $ do
           store state newst
@@ -94,6 +105,9 @@ stateMachine name machine = do
           forM_ ehs $ \(ScopedStatements ss) ->
             mapM_ mkStmt (ss (constRef currenttime))
       where
+      namecomment = case maybename of
+        Just n -> "state " ++ n
+        Nothing -> "unnamed state " ++ show (unStateLabel s)
       nsname = case maybename of
         Just n -> "newstate_" ++ n
         Nothing -> "newstate"
@@ -104,10 +118,15 @@ stateMachine name machine = do
       onEvt e k = case maybename of
         Just n  -> handle e n k
         Nothing -> handle e "statemachineevent" k
-      mkHandler (EntryHandler stmts) = return stmts -- XXX correct?
+      mkHandler (EntryHandler stmts) = return $ scopedIvory $ \starttimeRef ->
+        case stmts of
+          ScopedStatements ss -> do
+            comment ("entry handler for " ++ namecomment)
+            mapM_ mkStmt (ss starttimeRef)
       mkHandler (TimeoutHandler i stmts) = do
         due <- taskLocal (named ("timeoutDue" ++ show i))
         onEvt tick $ \currenttime -> handleState s $ do
+          comment ("timeout " ++ show i ++ " handler for " ++ namecomment)
           now <- deref currenttime
           d <- deref due
           when ((d >? 0) .&& (d <=? now)) $ case stmts of
@@ -122,6 +141,7 @@ stateMachine name machine = do
         due <- taskLocal (named ("periodDue" ++ show i))
         onEvt tick $ \currenttime -> case stmts of
           ScopedStatements ss -> handleState s $ do
+            comment ("period " ++ show i ++ " handler for " ++ namecomment)
             now <- deref currenttime
             d   <- deref due
             when (d <=? now) $ do
@@ -134,6 +154,7 @@ stateMachine name machine = do
       mkHandler (EventHandler evt stmts) = do
         onEvt evt $ case stmts of
           ScopedStatements ss -> \v -> handleState s $ do
+            comment ("event " ++ eventDescription evt ++ " handler for " ++ namecomment)
             mapM_ mkStmt (ss v)
         return $ scopedIvory $ const (return ())
 

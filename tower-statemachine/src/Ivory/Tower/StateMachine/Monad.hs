@@ -77,7 +77,7 @@ data State = State StateLabel (Maybe String) [Handler]
      deriving (Show)
 
 data StateLabel = StateLabel { unStateLabel :: Int }
-     deriving (Show)
+     deriving (Eq, Show)
 
 newtype MachineM a =
   MachineM

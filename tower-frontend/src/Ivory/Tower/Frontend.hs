@@ -100,8 +100,9 @@ towerCompile bc c_opts conf t = do
   os <- selectos
   let (sysast, objs, artifacts) = Tower.compile t os
   mfs <- ivoryCompile bc c_opts objs [FreeRTOS.searchDir]
-
-  C.compileDepFile c_opts (artifactDeps conf artifacts (C.standaloneDepFile mfs))
+  let standarddeps = C.standaloneDepFile mfs
+      artifactpaths = map artifact_filepath artifacts
+  C.compileDepFile c_opts (("ARTIFACTS",artifactpaths):standarddeps)
 
   writeArtifacts conf artifacts
   compileDot conf sysast

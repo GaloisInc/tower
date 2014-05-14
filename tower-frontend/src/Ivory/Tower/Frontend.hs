@@ -64,7 +64,7 @@ compile bc t = do
 
 compile' :: Signalable p => BuildConf -> T.Config -> C.Opts -> Tower p () -> IO ()
 compile' bc t_opts c_opts t =
-  towerCompile (ivoryCompile bc c_opts) t_opts t
+  towerCompile bc c_opts t_opts t
 
 compilePlatforms :: BuildConf -> [(String, Twr)] -> IO ()
 compilePlatforms bc table = compilePlatforms' bc table =<< getArgs
@@ -76,13 +76,13 @@ compilePlatforms' :: BuildConf
 compilePlatforms' bc table opts =  do
   (c_opts, t_opts) <- parseOptions opts
   case lookup (T.conf_platform t_opts) table of
-    Just (Twr t) -> towerCompile (ivoryCompile bc c_opts) t_opts t
+    Just (Twr t) -> towerCompile bc c_opts t_opts t
     Nothing -> die (msg (T.conf_platform t_opts))
   where
   msg p = ("unsupported platform \"" ++ p ++ "\"."):
     (" the following platforms are supported:"):(map fst table)
 
-ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO ()
+ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO C.ModuleFiles
 ivoryCompile bc copts ms platformspecific_sp =
   void $ C.runCompilerWith szmap spath ms copts
   where
@@ -90,14 +90,20 @@ ivoryCompile bc copts ms platformspecific_sp =
   spath = Just $ bc_searchpath bc ++ platformspecific_sp
 
 towerCompile :: Signalable p
-             => ([Module] -> [IO FilePath] -> IO ())
+             => BuildConf
+             -> C.Opts
              -> T.Config
              -> Tower p ()
              -> IO ()
-towerCompile compiler conf t = do
+towerCompile bc c_opts conf t = do
   os <- selectos
   let (sysast, objs, artifacts) = Tower.compile t os
-  compiler objs [FreeRTOS.searchDir]
+  mfs <- ivoryCompile bc c_opts objs [FreeRTOS.searchDir]
+
+  let standarddeps = C.standaloneDepFile mfs
+      artifactpaths = map artifact_filepath artifacts
+  C.compileDepFile c_opts (("ARTIFACTS",artifactpaths):standarddeps)
+
   writeArtifacts conf artifacts
   compileDot conf sysast
   compileEntrypointList conf sysast

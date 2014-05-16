@@ -1,5 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 --
 -- RegTypes.hs --- Advanced Timer (TIM1 and TIM8)  register types
@@ -23,19 +24,15 @@ import Ivory.BitData
    | ccmr_mode_ocrefhi  as 5
    | ccmr_mode_pwm1     as 6
    | ccmr_mode_pwm2     as 7
-|]
 
 -- Capture/Compare Selection bit field definitions:
-[bitdata|
  bitdata CCSMode :: Bits 2
    = ccs_mode_out   as 0
    | ccs_mode_in1   as 1
    | ccs_mode_in2   as 2
    | ccs_mode_intrc as 3
-|]
 
 -- CR2 Master Mode Selection field definitions:
-[bitdata|
  bitdata CR2MMS  :: Bits 3
    = cr2_mms_reset          as 0
    | cr2_mms_enable         as 1

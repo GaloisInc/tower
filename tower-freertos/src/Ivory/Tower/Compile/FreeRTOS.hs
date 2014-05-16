@@ -39,7 +39,7 @@ os = OS.OS
   }
 
 gen_channel :: forall (n :: Nat) area p
-             . (SingI n, IvoryArea area, IvoryZero area)
+             . (ANat n, IvoryArea area, IvoryZero area)
             => AST.System p
             -> AST.Chan
             -> Proxy n

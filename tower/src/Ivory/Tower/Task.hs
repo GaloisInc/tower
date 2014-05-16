@@ -66,7 +66,7 @@ taskChannel :: (IvoryArea area, IvoryZero area)
 taskChannel = taskLiftTower channel
 
 taskChannel' :: forall (n :: Nat) p area
-              . (SingI n, IvoryArea area, IvoryZero area)
+              . (ANat n, IvoryArea area, IvoryZero area)
              => Proxy n
              -> Maybe (Init area)
              -> Task p (ChannelSource area, ChannelSink area)

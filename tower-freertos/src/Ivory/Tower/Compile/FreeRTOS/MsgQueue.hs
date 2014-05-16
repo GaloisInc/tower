@@ -12,6 +12,7 @@ module Ivory.Tower.Compile.FreeRTOS.MsgQueue
 import           Control.Monad (forM_)
 import           GHC.TypeLits
 import           Ivory.Language
+import           Ivory.Language.Proxy
 import           Ivory.Stdlib
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Unique
@@ -29,7 +30,7 @@ data MsgQueue area =
     }
 
 msgQueue :: forall (n :: Nat) area p
-          . (SingI n, IvoryArea area)
+          . (ANat n, IvoryArea area)
          => AST.System p -> AST.Chan -> Proxy n -> Maybe (Init area)
          -> MsgQueue area
 msgQueue sysast chanast n initval = MsgQueue
@@ -114,7 +115,7 @@ data RingBuffer area =
     }
 
 ringBuffer :: forall (n :: Nat) area
-            . (SingI n, IvoryArea area)
+            . (ANat n, IvoryArea area)
            => Proxy n
            -> (String -> String)
            -> RingBuffer area
@@ -142,7 +143,7 @@ ringBuffer _ named = RingBuffer
   dropped = addrOf dropped_area
 
   size :: Integer
-  size = fromSing (sing :: Sing n)
+  size = fromTypeNat (aNat :: NatType n)
   incr x = toIx ((fromIx x + 1) .% fromIntegral size)
 
   push v = do

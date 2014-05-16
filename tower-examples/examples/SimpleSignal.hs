@@ -5,7 +5,6 @@
 module Main where
 
 import Ivory.Language
-import Ivory.Stdlib
 import Ivory.Tower
 import Ivory.Tower.Frontend
 

@@ -27,6 +27,7 @@ executable tower-example-simple
     ghc-options:        -Wall -Werror
   else
     ghc-options:        -Wall
+  default-language:    Haskell2010
 
 executable tower-example-simplesignal
   main-is:             SimpleSignal.hs
@@ -44,6 +45,7 @@ executable tower-example-simplesignal
     ghc-options:        -Wall -Werror
   else
     ghc-options:        -Wall
+  default-language:    Haskell2010
 
 executable tower-example-stm32f4signals
   main-is:             App.hs
@@ -61,7 +63,7 @@ executable tower-example-stm32f4signals
                        RCC.GetFreq,
                        RCC.Regs,
                        RCC.RegTypes
-
+  default-language:    Haskell2010
 
   hs-source-dirs:      STM32F4
   ghc-options:          -Wall
@@ -79,3 +81,4 @@ executable tower-example-stm32f4signals
     ghc-options:        -Wall -Werror
   else
     ghc-options:        -Wall
+  default-language:    Haskell2010

@@ -26,6 +26,7 @@ module Ivory.Tower.Channel
 import GHC.TypeLits
 
 import Ivory.Language
+import Ivory.Language.Proxy
 import Ivory.Language.Area (ivoryArea)
 
 import qualified Ivory.Tower.AST            as AST
@@ -49,7 +50,7 @@ channel :: forall p area
 channel = channel' (Proxy :: Proxy 16) Nothing
 
 channel' :: forall (n :: Nat) p area
-                 . (SingI n, IvoryArea area, IvoryZero area)
+                 . (ANat n, IvoryArea area, IvoryZero area)
                 => Proxy n
                 -> Maybe (Init area)
                 -> Tower p (ChannelSource area, ChannelSink area)
@@ -57,7 +58,7 @@ channel' sizenat initval = do
   cid <- fresh
   os <- getOS
   let chan = AST.Chan { AST.chan_id = cid
-                      , AST.chan_size = fromSing (sing :: Sing n)
+                      , AST.chan_size = fromTypeNat (aNat :: NatType n)
                       , AST.chan_ityp = ivoryArea (Proxy :: Proxy area)
                       }
       code astsys =

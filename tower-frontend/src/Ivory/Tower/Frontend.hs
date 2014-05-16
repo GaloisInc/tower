@@ -18,6 +18,7 @@ import System.Console.GetOpt
 import System.Environment
 import System.Exit
 import System.FilePath
+import qualified Data.Map as Map
 
 import           Ivory.Language
 import qualified Ivory.Opts.CFG as CFG
@@ -100,9 +101,7 @@ towerCompile bc c_opts conf t = do
   let (sysast, objs, artifacts) = Tower.compile t os
   mfs <- ivoryCompile bc c_opts objs [FreeRTOS.searchDir]
 
-  let standarddeps = C.standaloneDepFile mfs
-      artifactpaths = map artifact_filepath artifacts
-  C.compileDepFile c_opts (("ARTIFACTS",artifactpaths):standarddeps)
+  C.compileDepFile c_opts (artifactDeps conf artifacts (C.standaloneDepFile mfs))
 
   writeArtifacts conf artifacts
   compileDot conf sysast
@@ -117,6 +116,18 @@ towerCompile bc c_opts conf t = do
     o -> die [ "unsupported operating system " ++ o
              , "tower frontend supports: freertos, aadl"]
 
+
+artifactDeps :: T.Config -> [Artifact] -> [(String,[String])] -> [(String,[String])]
+artifactDeps conf as ds = Map.toList $ foldl aux (Map.fromList ds) as
+  where
+  aux d a = case artifact_tag a of
+    "" -> addtoartifacts d
+    t  -> addkv t path $ addtoartifacts d
+    where path = (T.conf_outdir conf) </> (artifact_filepath a)
+          addtoartifacts = addkv "ARTIFACTS" path
+  addkv k v m = Map.alter addv k m
+    where addv Nothing   = Just [v]
+          addv (Just vs) = Just (v:vs)
 
 writeArtifacts :: T.Config -> [Artifact] -> IO ()
 writeArtifacts conf as =

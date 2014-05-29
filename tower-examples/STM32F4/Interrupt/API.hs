@@ -11,7 +11,6 @@ import Interrupt.Types
 import Interrupt.Regs
 
 import Ivory.Language
-import Ivory.BitData
 import Ivory.HW
 
 ----------------------------------------------------------------------

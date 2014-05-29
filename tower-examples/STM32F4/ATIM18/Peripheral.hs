@@ -13,7 +13,6 @@
 module ATIM18.Peripheral where
 
 import Ivory.Language
-import Ivory.BitData
 import Ivory.HW
 
 import ATIM18.Regs

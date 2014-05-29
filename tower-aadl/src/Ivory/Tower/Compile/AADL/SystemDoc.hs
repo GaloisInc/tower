@@ -10,9 +10,9 @@ import Debug.Trace (trace)
 import System.FilePath
 
 import           Ivory.Compile.AADL.AST
-import           Ivory.Compile.AADL.Identifier
+-- import           Ivory.Compile.AADL.Identifier
 import           Ivory.Compile.AADL.Monad
-import           Ivory.Compile.AADL.Gen (mkType, typeImpl)
+import           Ivory.Compile.AADL.Gen (mkType)
 
 import           Ivory.Language
 import           Ivory.Tower
@@ -185,8 +185,8 @@ processDef name sys = do
     return (concat (as:aas))
   component :: AST.Task p -> CompileAADL ProcessComponent
   component t = do
-    name <- uniqueIdentifier (AST.task_name t) "processComponent"
-    return (ProcessThread (threadInstance name) name)
+    name' <- uniqueIdentifier (AST.task_name t) "processComponent"
+    return (ProcessThread (threadInstance name') name')
   recur (D.Subdir _ d) = processComponents d -- Not treating grouping
 
   chanConns :: [AST.Task p] -> CompileAADL [ProcessConnection]

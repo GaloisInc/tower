@@ -11,7 +11,7 @@
 
 module RCC.Regs where
 
-import Ivory.BitData
+import Ivory.Language
 import Ivory.HW
 
 import MemoryMap (rcc_periph_base)
@@ -26,7 +26,7 @@ import RCC.RegTypes
 
 -- PLL Configuration Register --------------------------------------------------
 
-[bitdata|
+[ivory|
  bitdata RCC_PLLCFGR :: Bits 32 = rcc_pllcfgr
   { rcc_pllcfgr_pllq      :: Bits 4 --  2 <= pllq <= 15
   , _                     :: Bit
@@ -44,7 +44,7 @@ regRCC_PLLCFGR = mkBitDataReg $ rcc_periph_base + 0x04
 
 -- Clock Configuration Register ------------------------------------------------
 
-[bitdata|
+[ivory|
  bitdata RCC_CFGR :: Bits 32 = rcc_cfgr
   { rcc_cfgr_mco2         :: RCC_MCOx
   , rcc_cfgr_mco2_pre     :: RCC_MCOxPre
@@ -67,7 +67,7 @@ regRCC_CFGR = mkBitDataReg $ rcc_periph_base + 0x08
 
 -- AHB Peripheral Clock Enable Registers ---------------------------------------
 
-[bitdata|
+[ivory|
  bitdata RCC_AHB1ENR :: Bits 32 = rcc_ahb1enr
   { _                     :: Bit
   , rcc_ahb1en_otg_hsulpi :: Bit
@@ -99,7 +99,7 @@ regRCC_CFGR = mkBitDataReg $ rcc_periph_base + 0x08
 regRCC_AHB1ENR :: BitDataReg RCC_AHB1ENR
 regRCC_AHB1ENR = mkBitDataReg $ rcc_periph_base + 0x30
 
-[bitdata|
+[ivory|
  bitdata RCC_AHB2ENR :: Bits 32 = rcc_ahb2enr
   { _                     :: Bits 24
   , rcc_ahb2en_otg_fs     :: Bit
@@ -114,7 +114,7 @@ regRCC_AHB1ENR = mkBitDataReg $ rcc_periph_base + 0x30
 regRCC_AHB2ENR :: BitDataReg RCC_AHB2ENR
 regRCC_AHB2ENR = mkBitDataReg $ rcc_periph_base + 0x34
 
-[bitdata|
+[ivory|
  bitdata RCC_AHB3ENR :: Bits 32 = rcc_ahb3enr
   { _                     :: Bits 31
   , rcc_ahb3en_fsmc       :: Bit
@@ -131,7 +131,7 @@ regRCC_AHB3ENR = mkBitDataReg $ rcc_periph_base + 0x38
 -- superset of the F405&c. series, with the exception that F405 has a SPI4 and
 -- F42xxx does not.
 
-[bitdata|
+[ivory|
  bitdata RCC_APB1ENR :: Bits 32 = rcc_apb1enr
   { rcc_apb1en_uart8      :: Bit
   , rcc_apb1en_uart7      :: Bit
@@ -169,7 +169,7 @@ regRCC_AHB3ENR = mkBitDataReg $ rcc_periph_base + 0x38
 regRCC_APB1ENR :: BitDataReg RCC_APB1ENR
 regRCC_APB1ENR = mkBitDataReg $ rcc_periph_base + 0x40
 
-[bitdata|
+[ivory|
  bitdata RCC_APB2ENR :: Bits 32 = rcc_apb2enr
   { _                     :: Bits 13
   , rcc_apb2en_tim11      :: Bit

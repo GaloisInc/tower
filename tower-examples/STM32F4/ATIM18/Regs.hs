@@ -11,10 +11,10 @@
 
 module ATIM18.Regs where
 
-import Ivory.BitData
+import Ivory.Language
 import ATIM18.RegTypes
 
-[bitdata|
+[ivory|
  bitdata ATIM_CR1 :: Bits 32 = atim_cr1
   { _             :: Bits 22
   , atim_cr1_ckd  :: Bits 2
@@ -28,7 +28,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_CR2  :: Bits 32 = atim_cr2
   { _              :: Bits 17
   , atim_cr2_ois4  :: Bit
@@ -47,7 +47,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_SMCR  :: Bits 32 = atim_smcr
   { _               :: Bits 16
   , atim_smcr_etp   :: Bit
@@ -61,7 +61,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_DIER  :: Bits 32 = atim_dier
   { _               :: Bits 17
   , atim_dier_tde   :: Bit
@@ -82,7 +82,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_SR    :: Bits 32 = atim_sr
   { _               :: Bits 19
   , atim_sr_cc4of   :: Bit
@@ -101,7 +101,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_EGR   :: Bits 32 = atim_egr
   { _               :: Bits 24
   , atim_egr_bg     :: Bit
@@ -115,7 +115,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_CCMR1_OCM    :: Bits 32 = atim_ccmr1_ocm
   { _                      :: Bits 16
   , atim_ccmr1_ocm_oc2ce   :: Bit
@@ -131,7 +131,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_CCMR1_ICM    :: Bits 32 = atim_ccmr1_icm
   { _                      :: Bits 16
   , atim_ccmr1_icm_ic2f    :: Bits 4
@@ -143,7 +143,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_CCMR2_OCM    :: Bits 32 = atim_ccmr2_ocm
   { _                      :: Bits 16
   , atim_ccmr2_ocm_oc4ce   :: Bit
@@ -159,7 +159,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_CCMR2_ICM    :: Bits 32 = atim_ccmr2_icm
   { _                      :: Bits 16
   , atim_ccmr2_icm_ic4f    :: Bits 4
@@ -171,7 +171,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_CCER         :: Bits 32 = atim_ccer
   { _                      :: Bits 18
   , atim_ccer_cc4p         :: Bit
@@ -191,7 +191,7 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_BDTR :: Bits 32 = atim_bdtr
   { _              :: Bits 16
   , atim_bdtr_moe  :: Bit
@@ -205,14 +205,14 @@ import ATIM18.RegTypes
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_PSC          :: Bits 32 = atim_psc
   { _                      :: Bits 16
   , atim_psc_psc           :: Bits 16
   }
 |]
 
-[bitdata|
+[ivory|
  bitdata ATIM_16           :: Bits 32 = atim_16
   { _                      :: Bits 16
   , atim_16_data           :: Bits 16

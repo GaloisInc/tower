@@ -7,7 +7,6 @@ import Data.List (find)
 import Ivory.Language
 import Ivory.Tower
 import Ivory.Tower.Frontend
-import Ivory.BitData
 import Ivory.HW
 import Ivory.HW.Module (hw_moduledef)
 import qualified Ivory.HW.SearchDir as HW

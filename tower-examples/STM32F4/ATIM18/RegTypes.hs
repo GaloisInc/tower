@@ -11,10 +11,10 @@
 
 module ATIM18.RegTypes where
 
-import Ivory.BitData
+import Ivory.Language
 
 -- Compare Mode bit field definitions:
-[bitdata|
+[ivory|
  bitdata CCMRMode :: Bits 3
    = ccmr_mode_frzn     as 0
    | ccmr_mode_chact    as 1

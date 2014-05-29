@@ -11,9 +11,9 @@
 
 module RCC.RegTypes where
 
-import Ivory.BitData
+import Ivory.Language
 
-[bitdata|
+[ivory|
  bitdata RCC_PLLP     :: Bits 2
  = rcc_pllp_div2      as 0
  | rcc_pllp_div4      as 1

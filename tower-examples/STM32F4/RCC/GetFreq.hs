@@ -15,7 +15,6 @@ module RCC.GetFreq where
 
 import Ivory.Language
 import Ivory.Stdlib
-import Ivory.BitData
 import Ivory.HW
 
 import RCC.RegTypes

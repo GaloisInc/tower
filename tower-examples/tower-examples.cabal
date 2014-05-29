@@ -16,7 +16,6 @@ executable tower-example-simple
   hs-source-dirs:      examples
   ghc-options:          -Wall
   build-depends:       base >= 4.6,
-                       ivory-bitdata,
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
@@ -34,7 +33,6 @@ executable tower-example-simplesignal
   hs-source-dirs:      examples
   ghc-options:          -Wall
   build-depends:       base >= 4.6,
-                       ivory-bitdata,
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
@@ -68,12 +66,10 @@ executable tower-example-stm32f4signals
   hs-source-dirs:      STM32F4
   ghc-options:          -Wall
   build-depends:       base >= 4.6,
-                       ivory-bitdata,
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
                        ivory-hw,
-                       ivory-bitdata,
                        tower >= 0.8,
                        tower-freertos >= 0.8,
                        tower-frontend >= 0.8

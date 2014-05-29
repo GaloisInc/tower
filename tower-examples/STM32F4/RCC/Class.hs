@@ -12,7 +12,6 @@
 module RCC.Class where
 
 import Ivory.Language
-import Ivory.BitData
 import Ivory.HW
 
 class RCCDevice a where

@@ -74,11 +74,11 @@ stateMachine name machine = do
       deref activeState >>= ret
 
     statename :: StateLabel -> String
-    statename lbl = case find aux states of
+    statename lbl = case find aux' states of
       Just (State _ (Just n) _) -> "state " ++ n
       _ -> "unnamed state #" ++ show (unStateLabel lbl)
       where
-      aux (State l _ _) = l == lbl
+      aux' (State l _ _) = l == lbl
 
     nextstate :: StateLabel -> Ivory (AllocEffects s) ()
     nextstate lbl@(StateLabel ns) = do

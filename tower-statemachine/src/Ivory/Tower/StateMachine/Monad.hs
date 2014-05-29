@@ -6,6 +6,7 @@
 
 module Ivory.Tower.StateMachine.Monad where
 
+import Control.Applicative
 import Control.Monad.Fix
 import MonadLib hiding (StateM)
 
@@ -18,7 +19,7 @@ data CFlowAST = CFlowBranch IBool StateLabel
 newtype CFlowM a =
   CFlowM
     { unCFlowM :: WriterT [CFlowAST] Id a
-    } deriving (Functor, Monad)
+    } deriving (Functor, Monad, Applicative)
 
 type CFlow = CFlowM ()
 
@@ -39,7 +40,7 @@ data Stmt s = Stmt (Ivory (AllocEffects s) CFlow)
 newtype StmtM s a =
   StmtM
     { unStmtM :: WriterT [Stmt s] Id a
-    } deriving (Functor, Monad)
+    } deriving (Functor, Monad, Applicative)
 
 writeStmt :: Stmt s -> StmtM s ()
 writeStmt s = StmtM $ put [s]
@@ -82,14 +83,14 @@ data StateLabel = StateLabel { unStateLabel :: Int }
 newtype MachineM a =
   MachineM
     { unMachineM :: WriterT [State] (StateT StateLabel Id) a
-    } deriving (Functor, Monad, MonadFix)
+    } deriving (Functor, Monad, MonadFix, Applicative)
 
 type Machine = MachineM StateLabel
 
 newtype StateM a =
   StateM 
     { unStateM :: WriterT [Handler] Id a
-    } deriving (Functor, Monad)
+    } deriving (Functor, Monad, Applicative)
 
 runMachineM :: MachineM StateLabel -> (StateLabel, [State])
 runMachineM sm = (istate, states)

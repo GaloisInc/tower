@@ -13,7 +13,6 @@ module Interrupt.Regs where
 
 import Data.Bits ((.&.), shiftR)
 import Ivory.Language
-import Ivory.BitData
 import Ivory.HW
 
 import MemoryMap
@@ -22,7 +21,7 @@ import Interrupt.Types
 ----------------------------------------------------------------------
 -- NVIC Registers
 
-[bitdata|
+[ivory|
   bitdata NVIC_ISER :: Bits 32 = nvic_iser
     { nvic_iser_setena :: BitArray 32 Bit }
 

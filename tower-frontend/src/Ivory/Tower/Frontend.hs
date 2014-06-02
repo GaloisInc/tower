@@ -13,7 +13,7 @@ module Ivory.Tower.Frontend
 
 import Data.Maybe (catMaybes)
 import Data.Monoid (mconcat)
-import Control.Monad (when)
+import Control.Monad (when, void)
 import System.Console.GetOpt
 import System.Environment
 import System.Exit
@@ -84,7 +84,7 @@ compilePlatforms' bc table opts =  do
 
 ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO ()
 ivoryCompile bc copts ms platformspecific_sp =
-  C.runCompilerWith szmap spath ms copts
+  void $ C.runCompilerWith szmap spath ms copts
   where
   szmap = bc_sizemap bc
   spath = Just $ bc_searchpath bc ++ platformspecific_sp

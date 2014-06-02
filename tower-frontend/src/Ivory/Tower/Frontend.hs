@@ -85,7 +85,7 @@ compilePlatforms' bc table opts =  do
 
 ivoryCompile :: BuildConf -> C.Opts -> [Module] -> [IO FilePath] -> IO C.ModuleFiles
 ivoryCompile bc copts ms platformspecific_sp =
-  void $ C.runCompilerWith szmap spath ms copts
+  C.runCompilerWith szmap spath ms copts
   where
   szmap = bc_sizemap bc
   spath = Just $ bc_searchpath bc ++ platformspecific_sp

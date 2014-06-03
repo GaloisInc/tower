@@ -13,9 +13,7 @@ instance Signalable ExamplePlatform where
   data SignalType ExamplePlatform = ExampleSignal1
                                   | ExampleSignal2
                                   deriving (Eq, Show, Read)
-  signals = [ExampleSignal1, ExampleSignal2]
   signalName = show
-  signalFromName = read
 
 task_simple_per :: Task p ()
 task_simple_per = do

@@ -19,13 +19,8 @@ data STM32F4Platform = STM32F4Platform
 instance Signalable STM32F4Platform where
   data SignalType STM32F4Platform = STM32F4Signal IRQ
                                   deriving (Eq, Show, Read)
-  signals = map STM32F4Signal
-              ((map Exception (enumFrom NonMaskable))
-              ++ (map Interrupt (enumFrom WWDG)))
   signalName (STM32F4Signal (Exception e)) = isrException e
   signalName (STM32F4Signal (Interrupt i)) = isrInterrupt i
-  signalFromName n = maybe (error "invalid arg to signalFromName") id
-                   $ find (\s -> signalName s == n) signals
 
 task_simple_per :: Task p ()
 task_simple_per = do

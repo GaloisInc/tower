@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
@@ -7,16 +8,31 @@ import Ivory.Language
 import Ivory.Stdlib
 import Ivory.Tower
 import Ivory.Tower.Frontend
+import Data.String (fromString)
+
+-- Expected C function prototype: void printString(const char *);
+print_string :: Def('[IString]:->())
+print_string = externProc "printString"
+
+-- Expected C function prototype: void printUint32(uint32_t);
+print_uint32 :: Def('[Uint32]:->())
+print_uint32 = externProc "printUint32"
+
+print_deps :: Task p ()
+print_deps = taskModuleDef (inclHeader "freertos/print_helpers.h")
 
 task_simple_per :: Task p ()
 task_simple_per = do
+  print_deps
   ctr <- taskLocal "counter"
   lasttime <- taskLocal "lasttime"
   p <- withPeriodicEvent (Milliseconds 100)
 
   handle p "periodic" $ \timeRef -> do
     deref timeRef >>= store lasttime
-    deref ctr >>= \(c :: Sint32) -> store ctr (c + 1)
+    deref ctr >>= \(c :: Uint32) -> store ctr (c + 1)
+    call_ print_string $ fromString "Counter = "
+    deref ctr >>= call_ print_uint32
 
 task_simple_per_emitter :: ChannelSource (Stored Sint32) -> Task p ()
 task_simple_per_emitter c = do

@@ -19,7 +19,7 @@ print_uint32 :: Def('[Uint32]:->())
 print_uint32 = externProc "printUint32"
 
 print_deps :: Task p ()
-print_deps = taskModuleDef (inclHeader "freertos/print_helpers.h")
+print_deps = taskModuleDef (inclHeader "print_helpers.h")
 
 task_simple_per :: Task p ()
 task_simple_per = do

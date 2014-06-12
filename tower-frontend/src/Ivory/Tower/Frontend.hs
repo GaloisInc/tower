@@ -13,7 +13,7 @@ module Ivory.Tower.Frontend
 
 import Data.Maybe (catMaybes)
 import Data.Monoid (mconcat)
-import Control.Monad (when, void)
+import Control.Monad (when)
 import System.Console.GetOpt
 import System.Environment
 import System.Exit

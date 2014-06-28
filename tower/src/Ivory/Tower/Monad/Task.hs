@@ -27,6 +27,7 @@ module Ivory.Tower.Monad.Task
   ) where
 
 import MonadLib
+import Control.Monad.Fix
 import Control.Applicative (Applicative)
 
 import Ivory.Language
@@ -40,12 +41,12 @@ import Ivory.Tower.Types.Unique
 
 newtype Task p a = Task
   { unTask :: StateT (AST.Task p) (TaskCodegen p) a
-  } deriving (Functor, Monad, Applicative)
+  } deriving (Functor, Monad, Applicative, MonadFix)
 
 
 newtype TaskCodegen p a = TaskCodegen
   { unTaskCodegen :: StateT (AST.System p -> TaskCode) (Tower p) a
-  } deriving (Functor, Monad, Applicative) 
+  } deriving (Functor, Monad, Applicative, MonadFix)
 
 runTask :: Task p ()
         -> Unique

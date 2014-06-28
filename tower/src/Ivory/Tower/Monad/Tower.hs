@@ -24,6 +24,7 @@ module Ivory.Tower.Monad.Tower
   ) where
 
 import MonadLib
+import Control.Monad.Fix
 import Control.Applicative (Applicative)
 
 import Ivory.Language hiding (local)
@@ -37,11 +38,11 @@ import Ivory.Tower.Monad.Base
 
 newtype Tower p a = Tower
   { unTower :: StateT (AST.System p) (ReaderT [Unique] (SystemCodegen p)) a
-  } deriving (Functor, Monad, Applicative)
+  } deriving (Functor, Monad, Applicative, MonadFix)
 
 newtype SystemCodegen p a = SystemCodegen
   { unSystemCodegen :: StateT (AST.System p -> SystemCode) Base a
-  } deriving (Functor, Monad, Applicative)
+  } deriving (Functor, Monad, Applicative, MonadFix)
 
 
 runTower :: Tower p () -> Base (AST.System p, SystemCode)

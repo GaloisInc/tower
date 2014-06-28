@@ -7,6 +7,7 @@ module Ivory.Tower.Monad.Base
   ) where
 
 import MonadLib
+import Control.Monad.Fix
 import Control.Applicative (Applicative)
 
 import Ivory.Tower.Types.OS
@@ -14,7 +15,7 @@ import Ivory.Tower.Types.Unique
 
 newtype Base a = Base
   { unBase :: ReaderT OS (StateT Integer Id) a
-  } deriving (Functor, Monad, Applicative)
+  } deriving (Functor, Monad, Applicative, MonadFix)
 
 runBase :: Base a -> OS -> a
 runBase b os = fst (runM (unBase b) os 0)

@@ -26,6 +26,8 @@ module Ivory.Tower.StateMachine
   , halt
   , liftIvory
   , liftIvory_
+  , machineLocal
+  , machineLocalInit
   ) where
 
 import Ivory.Language
@@ -54,13 +56,13 @@ period :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
 period t stmtM = writeHandler $ PeriodHandler (toMicroseconds t)
                                     (ScopedStatements (const (runStmtM stmtM)))
 
-state :: StateM () -> Machine
+state :: StateM () -> MachineM p StateLabel
 state sh = stateAux sh Nothing
 
-stateNamed :: String -> StateM () -> Machine
+stateNamed :: String -> StateM () -> MachineM p StateLabel
 stateNamed n sh = stateAux sh (Just n)
 
-stateAux :: StateM () -> Maybe String-> Machine
+stateAux :: StateM () -> Maybe String-> MachineM p StateLabel
 stateAux sh name = do
   l <- label
   writeState $ runStateM sh l name

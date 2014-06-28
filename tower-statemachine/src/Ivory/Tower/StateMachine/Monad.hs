@@ -80,26 +80,27 @@ data State = State StateLabel (Maybe String) [Handler]
 data StateLabel = StateLabel { unStateLabel :: Int }
      deriving (Eq, Show)
 
-newtype MachineM a =
+newtype MachineM p a =
   MachineM
-    { unMachineM :: WriterT [State] (StateT StateLabel Id) a
+    { unMachineM :: WriterT [State] (StateT StateLabel (Task p)) a
     } deriving (Functor, Monad, MonadFix, Applicative)
 
-type Machine = MachineM StateLabel
+type Machine p = MachineM p StateLabel
 
 newtype StateM a =
-  StateM 
+  StateM
     { unStateM :: WriterT [Handler] Id a
     } deriving (Functor, Monad, Applicative)
 
-runMachineM :: MachineM StateLabel -> (StateLabel, [State])
-runMachineM sm = (istate, states)
-  where ((istate, states), _) = runM (unMachineM sm) (StateLabel 0)
+runMachineM :: MachineM p StateLabel -> Task p (StateLabel, [State])
+runMachineM sm = do
+  ((istate, states), _) <- runStateT (StateLabel 0) (runWriterT (unMachineM sm))
+  return (istate, states)
 
-label :: MachineM StateLabel
+label :: MachineM p StateLabel
 label = MachineM get
 
-writeState :: State -> MachineM ()
+writeState :: State -> MachineM p ()
 writeState sm = MachineM $ do
   put [sm]
   l <- get
@@ -107,6 +108,14 @@ writeState sm = MachineM $ do
   where
   nextLabel :: StateLabel -> StateLabel
   nextLabel (StateLabel i) = StateLabel (i+1)
+
+machineLocal :: (IvoryArea area, IvoryZero area)
+             => String -> MachineM p (Ref Global area)
+machineLocal n = MachineM $ lift $ lift $ taskLocal n
+
+machineLocalInit :: (IvoryArea area)
+                 => String -> Init area -> MachineM p (Ref Global area)
+machineLocalInit n iv = MachineM $ lift $ lift $ taskLocalInit n iv
 
 writeHandler :: Handler -> StateM ()
 writeHandler h = StateM $ put [h]

@@ -14,6 +14,7 @@ library
   build-depends:        base >= 4.6,
                         ivory,
                         ivory-stdlib,
+                        tower-freertos,
                         tower >= 0.8,
                         wl-pprint,
                         xml

@@ -6,6 +6,8 @@
 module Ivory.Tower.Compile.FreeRTOS
   ( os
   , searchDir
+  , towerEntry
+  , mkName
   ) where
 
 import           GHC.TypeLits
@@ -108,12 +110,12 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
     depend user_mod
     depend loop_mod
 
-  next_due_area = area (named "time_next_due") Nothing
+  next_due_area = area (tcName' "time_next_due") Nothing
   next_due_ref = addrOf next_due_area
 
-  exit_guard_area = area (named "time_exit_guard") Nothing
+  exit_guard_area = area (tcName' "time_exit_guard") Nothing
   exit_guard_ref = addrOf exit_guard_area
-  overrun_area = area (named "time_overrun") (Just (ival minBound))
+  overrun_area = area (tcName' "time_overrun") (Just (ival minBound))
   overrun_ref = addrOf overrun_area
 
   timeRemaining :: ITime -> ITime -> Ivory eff ITime
@@ -123,7 +125,7 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
     return ((remaining >? 0) ? (remaining, 0))
 
   loop_proc :: Def('[]:->())
-  loop_proc = proc (named "tower_task_loop") $ body $ noReturn $ do
+  loop_proc = proc (tcName' "tower_task_loop") $ body $ noReturn $ do
     store next_due_ref 0
     call time_proc >>= store exit_guard_ref
     forever $ noBreak $ do
@@ -143,7 +145,7 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
 
   evt_notifier = taskEventNotify (taskcode_taskname taskcode)
 
-  loop_mod = package (named "tower_task_loop") $ do
+  loop_mod = package (tcName' "tower_task_loop") $ do
     depend user_mod
     depend time_mod
     depend (package "tower" (return ()))
@@ -154,7 +156,7 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
     incl loop_proc
     evtn_code evt_notifier
 
-  user_mod = package (named "tower_task_usercode") $ do
+  user_mod = package (tcName' "tower_task_usercode") $ do
     depend loop_mod
     depend time_mod
     depend (package "tower" (return ()))
@@ -162,19 +164,15 @@ codegen_task _sys taskcode = ([loop_mod, user_mod], deps)
     incl (taskUserInitProc taskcode)
     taskcode_usercode taskcode
 
-  named n = n ++ "_" ++ (showUnique (taskcode_taskname taskcode))
+  tcName' = tcName taskcode
 
 taskUserInitProc :: TaskCode -> Def('[]:->())
-taskUserInitProc tc = proc (named "user_init") $ body $
+taskUserInitProc tc = proc (tcName tc "user_init") $ body $
   noReturn $ taskcode_user_init tc
-  where
-  named n = n ++ "_" ++ (showUnique (taskcode_taskname tc))
 
 taskSysInitProc :: TaskCode -> Def('[]:->())
-taskSysInitProc tc = proc (named "sys_init") $ body $
+taskSysInitProc tc = proc (tcName tc "sys_init") $ body $
   noReturn $ taskcode_sys_init tc
-  where
-  named n = n ++ "_" ++ (showUnique (taskcode_taskname tc))
 
 codegen_sysinit :: AST.System p
                 -> SystemCode
@@ -209,11 +207,19 @@ codegen_sysinit sysast syscode taskmoddefs = [time_mod, sys_mod]
     name = fromString (showUnique (AST.task_name taskast))
 
   taskarg_proc :: AST.Task p -> Def('[Ref Global (Struct "taskarg")]:->())
-  taskarg_proc taskast = proc (named "tower_task_entry") $ \_ -> body $ do
+  taskarg_proc taskast = proc (mkName tn towerEntry) $ \_ -> body $ do
     call_ loop_proc
     -- loop_proc should never exit.
     where
     loop_proc :: Def('[]:->())
-    loop_proc = proc (named "tower_task_loop") $ body $ undefined
-    named n = n ++ "_" ++ (showUnique (AST.task_name taskast))
+    loop_proc = proc (mkName tn "tower_task_loop") $ body $ undefined
+    tn = AST.task_name taskast
 
+tcName :: TaskCode -> String -> String
+tcName tc = mkName (taskcode_taskname tc)
+
+mkName :: Unique -> String -> String
+mkName u n = n ++ "_" ++ showUnique u
+
+towerEntry :: String
+towerEntry = "tower_task_entry"

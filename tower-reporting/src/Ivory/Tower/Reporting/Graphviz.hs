@@ -16,7 +16,10 @@ graphvizToFile f asm = withFile f WriteMode $ \h -> displayIO h rendered
   w = 1000000 -- don't wrap lines - dot doesnt handle multiline strings
   rendered = renderPretty 1.0 w $ graphvizDoc asm
 
+graphvizDoc :: AST.System p -> Doc
+graphvizDoc _ = text "XXX Unimplemented!"
 
+{-
 -- | Render a Tower system as a 'Text.PrettyPrint.Leijen.Doc'
 graphvizDoc :: AST.System p -> Doc
 graphvizDoc a = vsep $
@@ -25,8 +28,7 @@ graphvizDoc a = vsep $
   , text "}"
   ]
   where
-  body = empty
-{-
+
   towerst = asm_towerst a
   tasknodes = towerst_tasknodes towerst
   signodes  = towerst_signodes  towerst

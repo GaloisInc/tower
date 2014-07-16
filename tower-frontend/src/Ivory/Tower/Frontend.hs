@@ -34,6 +34,7 @@ import qualified Ivory.Tower.AST                   as AST
 import qualified Ivory.Tower.Compile               as Tower
 
 import qualified Ivory.Tower.Compile.FreeRTOS      as FreeRTOS
+import qualified Ivory.Tower.Compile.GRTOS         as GRTOS
 import qualified Ivory.Tower.Compile.AADL          as AADL
 
 import qualified Ivory.Tower.Reporting.Graphviz    as T
@@ -99,7 +100,7 @@ towerCompile :: Signalable p
 towerCompile bc c_opts conf t = do
   os <- selectos
   let (sysast, objs, artifacts) = Tower.compile t os
-  mfs <- ivoryCompile bc c_opts objs [FreeRTOS.searchDir]
+  mfs <- ivoryCompile bc c_opts objs [FreeRTOS.searchDir, GRTOS.searchDir]
 
   C.compileDepFile c_opts (artifactDeps conf artifacts (C.standaloneDepFile mfs))
 
@@ -112,9 +113,10 @@ towerCompile bc c_opts conf t = do
   selectos :: IO OS
   selectos = case T.conf_os conf of
     "freertos" -> return FreeRTOS.os
+    "grtos"    -> return GRTOS.os
     "aadl"     -> return AADL.os
     o -> die [ "unsupported operating system " ++ o
-             , "tower frontend supports: freertos, aadl"]
+             , "tower frontend supports: freertos, grtos, aadl"]
 
 
 artifactDeps :: T.Config -> [Artifact] -> [(String,[String])] -> [(String,[String])]

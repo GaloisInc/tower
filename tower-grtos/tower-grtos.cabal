@@ -1,0 +1,52 @@
+name:                tower-grtos
+version:             0.8.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+data-files: support/grtos_atomic_wrapper.h,
+            support/grtos_atomic_wrapper.c,
+            support/grtos_semaphore_wrapper.h,
+            support/grtos_semaphore_wrapper.c,
+            support/grtos_task_wrapper.h,
+            support/grtos_task_wrapper.c,
+            support/grtos_time_wrapper.h,
+            support/grtos_time_wrapper.c
+
+library
+  exposed-modules:      Ivory.Tower.Compile.GRTOS,
+                        Ivory.Tower.Compile.GRTOS.EventNotify,
+                        Ivory.Tower.Compile.GRTOS.MsgQueue,
+                        Ivory.Tower.Compile.GRTOS.SearchDir,
+                        Ivory.Tower.Compile.GRTOS.ISR,
+                        Ivory.OS.GRTOS.Atomic,
+                        Ivory.OS.GRTOS.BinarySemaphore,
+                        Ivory.OS.GRTOS.CountingSemaphore,
+                        Ivory.OS.GRTOS.Mutex,
+                        Ivory.OS.GRTOS.Task,
+                        Ivory.OS.GRTOS.TaskArg,
+                        Ivory.OS.GRTOS.Time
+
+  other-modules:        Paths_tower_grtos
+
+  build-depends:        base >= 4.6,
+                        srcloc,
+                        template-haskell >= 2.8,
+                        directory,
+                        filepath,
+                        process,
+                        cmdlib >= 0.3.5,
+                        containers,
+                        wl-pprint,
+                        monadLib,
+                        xml,
+                        ivory,
+                        ivory-stdlib,
+                        tower >= 0.8
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans

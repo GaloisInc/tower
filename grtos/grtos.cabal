@@ -12,7 +12,10 @@ flag werror
   description:          Pass -Werror to GHC.
 
 library
-  exposed-modules:      Ivory.GRTOS
+  exposed-modules:      Ivory.GRTOS,
+                        Ivory.GRTOS.AST,
+                        Ivory.GRTOS.Kernel,
+                        Ivory.GRTOS.PriorityGroup
 
   build-depends:        base >= 4.6,
                         monadLib,

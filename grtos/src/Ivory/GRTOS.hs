@@ -9,6 +9,7 @@ module Ivory.GRTOS where
 import Data.List
 import Ivory.Language
 import Ivory.Language.Proxy
+import Ivory.Compile.C.CmdlineFrontend (compile)
 
 data Event =
   Event
@@ -50,7 +51,7 @@ kernel_end_atomic = proc "kernel_end_atomic" $ body $ return ()
 priorityCode :: forall n . (ANat n) => Priority -> PriorityCode n
 priorityCode pri = PriorityCode
   { pc_moduledef = md
-  , pc_pending = checkready
+  , pc_pending = call pending
   , pc_wait = call_ wait
   , pc_ready = ready
   , pc_send = \e -> if elem e es
@@ -61,20 +62,22 @@ priorityCode pri = PriorityCode
   named n = "priority_group_" ++ (show (pri_level pri))++ "_" ++ n
   es = pri_events pri
 
-  state_area :: MemArea (Array n (Stored Uint32))
-  state_area = area (named "state") Nothing
-  state = addrOf state_area
   md = do
     defMemArea state_area
+    incl pending
     incl wait
     mapM_ (incl . send) es
 
-  checkready :: Ivory eff IBool
-  checkready = do
-    ss <- mapM (\ix -> deref (state ! (fromIntegral ix))) [0..slots]
-    return (foldl (\acc s -> (s >? 0) ? (true, acc)) false ss)
+  state_area :: MemArea (Array n (Stored Uint32))
+  state_area = area (named "state") Nothing
+  state = addrOf state_area
 
-  slots :: Integer
+  pending :: Def('[]:->IBool)
+  pending = proc (named "pending") $ body $ do
+    ss <- mapM (\ix -> deref (state ! (fromIntegral ix))) [0..slots]
+    ret (foldl (\acc s -> (s >? 0) ? (true, acc)) false ss)
+
+  slots :: Int
   slots = (n `div` 32)
     -- Should be equal to:
     -- = fromTypeNat (aNat :: NatType n)
@@ -110,3 +113,10 @@ priorityCode pri = PriorityCode
     slot = fromIntegral (eidx `div` 32)
     bitn = eidx `mod` 32
 
+
+test = compile [m]
+  where
+  m = package "pkg" $ pc_moduledef pc
+  pc :: PriorityCode 1
+  pc = priorityCode (Priority 1 es)
+  es = [Event 1 "e1", Event 2 "e2"]

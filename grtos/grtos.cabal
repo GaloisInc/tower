@@ -7,6 +7,17 @@ build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
+
+data-files: support/grtos_FreeRTOSConfig.h,
+            support/grtos_FreeRTOS.h,
+            support/grtos_kernel.h,
+            support/grtos_kernel.c,
+            support/grtos_portable.h,
+            support/grtos_projdefs.h,
+            support/grtos_tcb_type.h,
+            support/port_GCC_ARM_CM4F/grtos_port.c,
+            support/port_GCC_ARM_CM4F/grtos_portmacro.h
+
 flag werror
   default:              False
   description:          Pass -Werror to GHC.
@@ -15,10 +26,13 @@ library
   exposed-modules:      Ivory.GRTOS,
                         Ivory.GRTOS.AST,
                         Ivory.GRTOS.Kernel,
-                        Ivory.GRTOS.PriorityGroup
+                        Ivory.GRTOS.PriorityGroup,
+                        Ivory.GRTOS.SearchDir
+
+  other-modules:        Paths_grtos
 
   build-depends:        base >= 4.6,
-                        monadLib,
+                        filepath,
                         ivory,
                         ivory-stdlib,
                         ivory-backend-c

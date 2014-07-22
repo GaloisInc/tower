@@ -73,7 +73,7 @@
  * and stores task state information, including a pointer to the task's context
  * (the task's run time environment, including register values)
  */
-typedef struct tskTaskControlBlock
+struct task_control_block
 {
 	volatile StackType_t	*pxTopOfStack;	/*< Points to the location of the last item placed on the tasks stack.  THIS MUST BE THE FIRST MEMBER OF THE TCB STRUCT. */
 
@@ -82,7 +82,7 @@ typedef struct tskTaskControlBlock
 	char				pcTaskName[ configMAX_TASK_NAME_LEN ];/*< Descriptive name given to the task when created.  Facilitates debugging only. */ /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 	UBaseType_t state; /*< from the TASK_STATE values enumerated below. */
 
-} TCB_t;
+};
 
 #define TASK_STATE_WAITING   0
 /* Blocked waiting for an event */

@@ -31,15 +31,15 @@
 
 #define tskSTACK_FILL_BYTE (0xA5U)
 
-static TCB_t _idle_tcb;
+static struct task_control_block _idle_tcb;
 static void _idle_task_loop(void);
 static uint32_t _idle_stack[32];
 
-volatile TCB_t *pxCurrentTCB = NULL;
+volatile struct task_control_block *pxCurrentTCB = NULL;
 static volatile uint8_t scheduler_running = 0;
 
 void task_create(
-	TCB_t* tcb,
+	struct task_control_block *tcb,
 	void (*entry)(void),
 	uint32_t *stack_start,
 	uint32_t *stack_end,
@@ -77,8 +77,8 @@ void scheduler_start(void) {
 	configASSERT(scheduler_running == 0);
 	task_create(&_idle_tcb,
 		_idle_task_loop,
-		&(_idle_stack[0]),
-		&(_idle_stack[(sizeof(_idle_stack)/ sizeof(uint32_t ))]),
+		_idle_stack,
+		sizeof(_idle_stack),
 		"idle",
 		0);
 	scheduler_running = 1;
@@ -92,12 +92,12 @@ void kernel_wait(void) {
 	kernelENABLE_INTERRUPTS();
 }
 
-extern TCB_t *scheduler_pick_next_task(TCB_t* running);
+extern struct task_control_block *scheduler_pick_next_task(struct task_control_block * running);
 
 void kernel_switch_context(void) {
-	TCB_t *running;
-	TCB_t *scheduled;
-	running = (TCB_t *) pxCurrentTCB;
+	struct task_control_block *running;
+	struct task_control_block *scheduled;
+	running = (struct task_control_block *) pxCurrentTCB;
 	scheduled = scheduler_pick_next_task(running);
 	if (running != scheduled) {
 		if (running->state == TASK_STATE_RUNNING) {

@@ -31,7 +31,7 @@
 #include "grtos_tcb_type.h"
 
 void task_create(
-	TCB_t *tcb,
+	struct task_control_block *tcb,
 	void (*entry)(void),
 	uint32_t *stack_start,
 	uint32_t *stack_end,

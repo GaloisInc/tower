@@ -28,6 +28,7 @@ library
                         Ivory.GRTOS.Kernel,
                         Ivory.GRTOS.Kernel.TaskControlBlock,
                         Ivory.GRTOS.PriorityGroup,
+                        Ivory.GRTOS.System,
                         Ivory.GRTOS.SearchDir
 
   other-modules:        Paths_grtos

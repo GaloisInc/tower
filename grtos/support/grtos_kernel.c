@@ -93,13 +93,13 @@ void kernel_wait(void) {
 	kernelENABLE_INTERRUPTS();
 }
 
-extern struct task_control_block *scheduler_pick_next_task(struct task_control_block * running);
+extern void scheduler_pick_next_task(struct task_control_block **next);
 
 void kernel_switch_context(void) {
 	struct task_control_block *running;
 	struct task_control_block *scheduled;
 	running = (struct task_control_block *) pxCurrentTCB;
-	scheduled = scheduler_pick_next_task(running);
+	scheduler_pick_next_task(&scheduled);
 	if (running != scheduled) {
 		if (running->state == TASK_STATE_RUNNING) {
 			running->state = TASK_STATE_SUSPENDED;

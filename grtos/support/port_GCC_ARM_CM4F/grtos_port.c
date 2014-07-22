@@ -501,6 +501,8 @@ void xPortPendSVHandler( void )
 }
 /*-----------------------------------------------------------*/
 
+extern void scheduler_tick(void);
+
 void xPortSysTickHandler( void )
 {
 	/* The SysTick runs at the lowest interrupt priority, so when this interrupt
@@ -509,13 +511,7 @@ void xPortSysTickHandler( void )
 	known. */
 	( void ) portSET_INTERRUPT_MASK_FROM_ISR();
 	{
-		/* Increment the RTOS tick. */
-		if( xTaskIncrementTick() != pdFALSE )
-		{
-			/* A context switch is required.  Context switching is performed in
-			the PendSV interrupt.  Pend the PendSV interrupt. */
-			portNVIC_INT_CTRL_REG = portNVIC_PENDSVSET_BIT;
-		}
+		scheduler_tick();
 	}
 	portCLEAR_INTERRUPT_MASK_FROM_ISR( 0 );
 }

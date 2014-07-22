@@ -19,10 +19,10 @@ import Ivory.GRTOS.SearchDir
 main :: IO ()
 main = compileWith Nothing (Just [searchDir]) ms
   where
-  ms = [m, launch, kernel, taskControlBlockTypeModule]
+  ms = [pg_module pg, launch, kernel, taskControlBlockTypeModule]
   launch = package "launch" $ do
     depend taskControlBlockTypeModule
-    depend m
+    depend (pg_module pg)
     defMemArea task_tcb_area
     defMemArea task_stack_area
     incl launch_proc
@@ -42,23 +42,21 @@ main = compileWith Nothing (Just [searchDir]) ms
   launch_proc = proc "launch_proc" $ body $ do
     call_ kernel_task_create
               task_tcb                -- globally allocated control block
-              (procPtr loop)          -- non-terminating task body
+              (procPtr (pg_loop pg))  -- non-terminating task body
               (toCArray task_stack)   -- uint32_t *stack_start
               (256 * 4)               -- sizeof(task_stack_area)
               taskname                -- name
               1                       -- priority
 
-  code pc = (package "pkg" $ pg_moduledef pc, pg_loop pc)
-
   -- XXX is there anything in the ghc 7.8's typelits that can do this
   -- dispatch for us, e.g. a magic dictionary
-  (m, loop) = case ((length es) `div` 32) + 1 of
-        1 -> code (priorityGroup (Priority 1 es) :: PriorityGroup 1)
-        2 -> code (priorityGroup (Priority 1 es) :: PriorityGroup 2)
-        3 -> code (priorityGroup (Priority 1 es) :: PriorityGroup 3)
-        4 -> code (priorityGroup (Priority 1 es) :: PriorityGroup 4)
-        5 -> code (priorityGroup (Priority 1 es) :: PriorityGroup 5)
-        6 -> code (priorityGroup (Priority 1 es) :: PriorityGroup 6)
+  pg = case ((length es) `div` 32) + 1 of
+        1 -> priorityGroup (Priority 1 es) (Proxy :: Proxy 1)
+        2 -> priorityGroup (Priority 1 es) (Proxy :: Proxy 2)
+        3 -> priorityGroup (Priority 1 es) (Proxy :: Proxy 3)
+        4 -> priorityGroup (Priority 1 es) (Proxy :: Proxy 4)
+        5 -> priorityGroup (Priority 1 es) (Proxy :: Proxy 5)
+        6 -> priorityGroup (Priority 1 es) (Proxy :: Proxy 6)
         _ -> error "priorityGroup test: failed, no singleton for groups larger than 6"
 
   es = take 33 $ map mkevt [1..]

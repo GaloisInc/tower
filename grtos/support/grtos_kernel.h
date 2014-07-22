@@ -27,6 +27,8 @@
 
 #ifndef __KERNEL_H__
 #define __KERNEL_H__
+
+#include <stddef.h>
 #include "grtos_FreeRTOS.h"
 #include "grtos_tcb_type.h"
 
@@ -34,7 +36,7 @@ void task_create(
 	struct task_control_block *tcb,
 	void (*entry)(void),
 	uint32_t *stack_start,
-	uint32_t *stack_end,
+	size_t stack_len,
 	const char *name,
 	uint8_t priority);
 

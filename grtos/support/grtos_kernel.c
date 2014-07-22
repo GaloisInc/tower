@@ -42,17 +42,18 @@ void task_create(
 	struct task_control_block *tcb,
 	void (*entry)(void),
 	uint32_t *stack_start,
-	uint32_t *stack_end,
+	size_t stack_len,
 	const char *name,
 	uint8_t priority)
 {
 	configASSERT(scheduler_running == 0)
 	configASSERT(tcb != NULL);
 	configASSERT(stack_start != NULL);
-	configASSERT(stack_end != NULL);
+	configASSERT(stack_len > 0);
+	uint32_t *stack_end = &(stack_start[stack_len]);
 	configASSERT(stack_start < stack_end);
 
-	memset(stack_start, tskSTACK_FILL_BYTE, ((stack_end - stack_start) * sizeof(uint32_t )));
+	memset(stack_start, tskSTACK_FILL_BYTE, stack_len * sizeof(uint32_t));
 	tcb->pxStack = stack_start;
 	uint32_t *stack_top = (uint32_t *) (((portPOINTER_SIZE_TYPE) stack_end) &
 		((portPOINTER_SIZE_TYPE) ~portBYTE_ALIGNMENT_MASK));

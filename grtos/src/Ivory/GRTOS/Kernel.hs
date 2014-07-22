@@ -1,4 +1,3 @@
-
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators  #-}
 {-# LANGUAGE DataKinds #-}
@@ -29,5 +28,14 @@ kernel :: Module
 kernel = package "ivory_grtos_kernel" $ do
   inclHeader kernel_header
   sourceDep  kernel_header
+  sourceDep  "grtos_kernel.c"
+  sourceDep  "grtos_syscalls.c"
+  sourceDep  "grtos_FreeRTOSConfig.h"
+  sourceDep  "grtos_FreeRTOS.h"
+  sourceDep  "grtos_portable.h"
+  sourceDep  "grtos_projdefs.h"
+  sourceDep  "grtos_tcb_type.h"
+  sourceDep  "port_GCC_ARM_CM4F/grtos_portmacro.h"
+  sourceDep  "port_GCC_ARM_CM4F/grtos_port.c"
 
 

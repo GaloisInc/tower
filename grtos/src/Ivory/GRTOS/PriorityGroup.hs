@@ -9,7 +9,6 @@ module Ivory.GRTOS.PriorityGroup where
 import Control.Monad (forM_)
 import Data.List
 import Ivory.Language
-import Ivory.Language.Proxy
 
 import Ivory.GRTOS.AST
 import Ivory.GRTOS.Kernel
@@ -18,7 +17,7 @@ data PriorityGroup n =
   PriorityGroup
     { pg_moduledef :: ModuleDef
     , pg_pending   :: forall eff . Ivory eff IBool
-    , pg_loop      :: forall eff . Ivory eff ()
+    , pg_loop      :: Def('[]:->())
 
     , pg_wait      :: forall eff s . Ref s (Array n (Stored Uint32)) -> Ivory eff ()
     , pg_ready     :: forall eff s . Event -> Ref s (Array n (Stored Uint32)) -> Ivory eff IBool
@@ -30,7 +29,7 @@ priorityGroup :: forall n . (ANat n) => Priority -> PriorityGroup n
 priorityGroup pri = PriorityGroup
   { pg_moduledef = md
   , pg_pending = call pending
-  , pg_loop = call_ loop
+  , pg_loop = loop
   , pg_wait = call_ wait
   , pg_ready = ready
   , pg_send = \e -> if elem e es
@@ -42,6 +41,7 @@ priorityGroup pri = PriorityGroup
   es = map fst (pri_events pri)
 
   md = do
+    depend kernel
     defMemArea state_area
     incl loop
     incl pending

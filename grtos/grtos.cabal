@@ -24,8 +24,7 @@ flag werror
   description:          Pass -Werror to GHC.
 
 library
-  exposed-modules:      Ivory.GRTOS,
-                        Ivory.GRTOS.AST,
+  exposed-modules:      Ivory.GRTOS.AST,
                         Ivory.GRTOS.Kernel,
                         Ivory.GRTOS.Kernel.TaskControlBlock,
                         Ivory.GRTOS.PriorityGroup,
@@ -42,3 +41,19 @@ library
   hs-source-dirs:       src
   default-language:     Haskell2010
   ghc-options:          -Wall -fno-warn-orphans
+
+executable grtos-test-gen
+  main-is:             GRTOS.hs
+  hs-source-dirs:      tests
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory,
+                       ivory-stdlib,
+                       ivory-backend-c,
+                       grtos
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall
+  default-language:    Haskell2010
+

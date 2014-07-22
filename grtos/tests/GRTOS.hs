@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators  #-}
 {-# LANGUAGE DataKinds #-}
 
-module Ivory.GRTOS where
+module Main where
 
 import Data.String (fromString)
 import Ivory.Language
@@ -16,9 +16,10 @@ import Ivory.GRTOS.Kernel
 import Ivory.GRTOS.Kernel.TaskControlBlock
 import Ivory.GRTOS.SearchDir
 
-test :: IO ()
-test = compileWith Nothing (Just [searchDir])  [m, launch, kernel, taskControlBlockTypeModule]
+main :: IO ()
+main = compileWith Nothing (Just [searchDir]) ms
   where
+  ms = [m, launch, kernel, taskControlBlockTypeModule]
   launch = package "launch" $ do
     depend taskControlBlockTypeModule
     depend m

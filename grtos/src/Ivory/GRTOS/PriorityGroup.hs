@@ -13,25 +13,19 @@ import Ivory.Language
 import Ivory.GRTOS.AST
 import Ivory.GRTOS.Kernel
 
-data PriorityGroup n =
+data PriorityGroup =
   PriorityGroup
-    { pg_moduledef :: ModuleDef
+    { pg_module    :: Module
     , pg_pending   :: forall eff . Ivory eff IBool
     , pg_loop      :: Def('[]:->())
-
-    , pg_wait      :: forall eff s . Ref s (Array n (Stored Uint32)) -> Ivory eff ()
-    , pg_ready     :: forall eff s . Event -> Ref s (Array n (Stored Uint32)) -> Ivory eff IBool
-
     , pg_send      :: forall eff . Event -> Ivory eff ()
     }
 
-priorityGroup :: forall n . (ANat n) => Priority -> PriorityGroup n
-priorityGroup pri = PriorityGroup
-  { pg_moduledef = md
+priorityGroup :: forall n . (ANat n) => Priority -> Proxy n -> PriorityGroup
+priorityGroup pri _ = PriorityGroup
+  { pg_module  = package (named "module") md
   , pg_pending = call pending
   , pg_loop = loop
-  , pg_wait = call_ wait
-  , pg_ready = ready
   , pg_send = \e -> if elem e es
       then call_ (send e)
       else error ("invalid pg_send: invalid eventt " ++ show e)

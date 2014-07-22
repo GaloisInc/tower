@@ -26,6 +26,7 @@ library
   exposed-modules:      Ivory.GRTOS,
                         Ivory.GRTOS.AST,
                         Ivory.GRTOS.Kernel,
+                        Ivory.GRTOS.Kernel.TaskControlBlock,
                         Ivory.GRTOS.PriorityGroup,
                         Ivory.GRTOS.SearchDir
 

@@ -25,6 +25,7 @@ library
                         containers,
                         wl-pprint,
                         monadLib,
+                        pretty-show,
                         ivory,
                         ivory-opts,
                         ivory-backend-c,

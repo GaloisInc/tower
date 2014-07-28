@@ -18,6 +18,7 @@ import System.Console.GetOpt
 import System.Environment
 import System.Exit
 import System.FilePath
+import Text.Show.Pretty (ppShow)
 import qualified Data.Map as Map
 
 import           Ivory.Language
@@ -137,10 +138,14 @@ writeArtifacts conf as =
     where
     path = (T.conf_outdir conf) </> (artifact_filepath a)
 
-compileDot :: T.Config -> AST.System p -> IO ()
+compileDot :: (Signalable p) => T.Config -> AST.System p -> IO ()
 compileDot conf ast =
-  when (T.conf_mkdot conf) $ T.graphvizToFile f ast
-  where f = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
+  when (T.conf_mkdot conf) $ do
+    T.graphvizToFile gf ast
+    writeFile af (ppShow ast)
+  where
+  gf = (T.conf_outdir conf) </> (T.conf_name conf) <.> "dot"
+  af = (T.conf_outdir conf) </> (T.conf_name conf) <.> "txt"
 
 compileEntrypointList :: T.Config -> AST.System p -> IO ()
 compileEntrypointList conf ast = T.entrypointsToFile f nm ast

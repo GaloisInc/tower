@@ -29,8 +29,7 @@ withPeriodicEvent period = do
   let named n = (showUnique tname) ++ "_timer_event_" ++ n ++ "_" ++ show tid
   -- Write timer to AST:
   let astevt = AST.TimerEvt $ AST.Timer
-        { AST.timer_id = tid
-        , AST.timer_per = toMicroseconds period
+        { AST.timer_per = toMicroseconds period
         }
   putASTEvent astevt
 

@@ -5,7 +5,6 @@ module Ivory.Tower.AST.Timer
 
 data Timer =
   Timer
-    { timer_id    :: Integer
-    , timer_per   :: Integer -- Microseconds
+    { timer_per :: Integer -- Microseconds
     } deriving (Eq, Show)
 

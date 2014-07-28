@@ -15,8 +15,7 @@ data Event
   deriving (Eq, Show)
 
 eventName :: Event -> String
-eventName (ChanEvt c _) = "chan" ++ (show (chan_id c))
-eventName (TimerEvt t)  = "timer" ++ (show (timer_id t))
-                       ++ "_per" ++ (show (timer_per t))
+eventName (ChanEvt c _) = "chan_" ++ (show (chan_id c))
+eventName (TimerEvt t)  = "timer_" ++ (show (timer_per t))
 eventName (SignalEvt n) = "signal_" ++ n
 

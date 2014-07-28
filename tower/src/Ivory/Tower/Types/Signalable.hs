@@ -1,11 +1,12 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Ivory.Tower.Types.Signalable
   ( Signalable(..)
   , NoSignals(..)
   ) where
 
-class Signalable p where
+class (Show (SignalType p)) => Signalable p where
   data SignalType p
   signalName :: SignalType p -> String
 

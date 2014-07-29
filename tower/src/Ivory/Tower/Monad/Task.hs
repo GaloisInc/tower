@@ -15,7 +15,7 @@ module Ivory.Tower.Monad.Task
   , putSignalReceiver
   , putChanPollReceiver
   , putASTEvent
-  , putASTEventHandler
+  , putASTHandler
   , putUserInitCode
   , putSysInitCode
   , putTimerCode
@@ -76,7 +76,7 @@ runTask t n = do
     , AST.task_chan_readers         = []
     , AST.task_signal_receivers     = []
     , AST.task_evts                 = []
-    , AST.task_evt_handlers         = []
+    , AST.task_handlers             = []
     , AST.task_priority             = 0
     , AST.task_stack_size           = 1024
     }
@@ -188,10 +188,10 @@ putASTEvent e = do
   a <- getAST
   setAST $ a { AST.task_evts = e : AST.task_evts a }
 
-putASTEventHandler :: AST.EventHandler -> Task p ()
-putASTEventHandler e = do
+putASTHandler :: AST.Handler -> Task p ()
+putASTHandler e = do
   a <- getAST
-  setAST $ a { AST.task_evt_handlers = e : AST.task_evt_handlers a }
+  setAST $ a { AST.task_handlers = e : AST.task_handlers a }
 
 putPriority :: Integer -> Task p ()
 putPriority p = do

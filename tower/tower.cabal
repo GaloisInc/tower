@@ -16,7 +16,7 @@ library
                         Ivory.Tower.AST.ChanReceiver,
                         Ivory.Tower.AST.Directory,
                         Ivory.Tower.AST.Event,
-                        Ivory.Tower.AST.EventHandler,
+                        Ivory.Tower.AST.Handler,
                         Ivory.Tower.AST.SignalReceiver,
                         Ivory.Tower.AST.System,
                         Ivory.Tower.AST.Task,

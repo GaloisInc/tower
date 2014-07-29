@@ -79,20 +79,20 @@ threadDef t = do
     warnmsg = "Warning: multiple periodic rates in a tower task named "
               ++ (showUnique (AST.task_name t))
               ++ " cannot be rendered into an AADL property."
-    uniqueperiods :: [(Integer, [AST.EventHandler])]
+    uniqueperiods :: [(Integer, [AST.Handler])]
     uniqueperiods = map (\xs -> (fst (head xs), map snd xs))
       $ groupBy (\a b -> fst a == fst b)
       $ sortBy  (\a b -> fst a `compare` fst b)
       $ catMaybes
-      $ map aux (AST.task_evt_handlers t)
-    aux eh@(AST.EventHandler _ _ (AST.TimerEvt timer)) =
+      $ map aux (AST.task_handlers t)
+    aux eh@(AST.Handler _ _ (AST.TimerEvt timer)) =
                                           Just (AST.timer_per timer, eh)
     aux _ = Nothing
   mkPeriodProperty interval handlers =
     [ ThreadProperty "Dispatch_Protocol" (PropLiteral "Hybrid")
     , ThreadProperty "Period" (PropUnit interval "us")
     , ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text"
-        (PropList [ PropString (showUnique (AST.evthandler_name h))
+        (PropList [ PropString (showUnique (AST.handler_name h))
                   | h <- handlers])
     ]
 
@@ -133,10 +133,10 @@ featuresDef scope taskast headername = do
                            (AST.chan_size (AST.chanreceiver_chan cr))
         rtyp = [ThreadProperty "ReceiverType" (PropString "Event")] -- XXX hack
 
-        handlers = map (PropString . showUnique . AST.evthandler_name)
-                 $ filter (\eh -> AST.evthandler_evt eh
+        handlers = map (PropString . showUnique . AST.handler_name)
+                 $ filter (\eh -> AST.handler_evt eh
                               == AST.ChanEvt (AST.chanreceiver_chan cr) cr)
-                          (AST.task_evt_handlers taskast)
+                          (AST.task_handlers taskast)
         hps = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text"
                               (PropList handlers)]
         ps = concat [rtyp, cps, hps]

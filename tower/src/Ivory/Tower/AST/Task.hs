@@ -13,7 +13,7 @@ import Ivory.Tower.AST.ChanEmitter
 import Ivory.Tower.AST.ChanReader
 import Ivory.Tower.AST.ChanReceiver
 import Ivory.Tower.AST.Event
-import Ivory.Tower.AST.EventHandler
+import Ivory.Tower.AST.Handler
 import Ivory.Tower.AST.SignalReceiver
 
 data Task p =
@@ -25,7 +25,7 @@ data Task p =
     , task_chan_readers         :: [ChanReader]
     , task_signal_receivers     :: [SignalReceiver (SignalType p)]
     , task_evts                 :: [Event]
-    , task_evt_handlers         :: [EventHandler]
+    , task_handlers             :: [Handler]
     , task_priority             :: Integer
     , task_stack_size           :: Integer
     }

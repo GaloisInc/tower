@@ -35,13 +35,13 @@ handle :: forall p area
        -> Task p ()
 handle evt annotation k = do
   procname <- freshname pfix
-  -- Write EventHandler into AST
-  let ast = AST.EventHandler
-        { AST.evthandler_name = procname
-        , AST.evthandler_annotation = annotation
-        , AST.evthandler_evt = evt_ast evt
+  -- Write Handler into AST
+  let ast = AST.Handler
+        { AST.handler_name = procname
+        , AST.handler_annotation = annotation
+        , AST.handler_evt = evt_ast evt
         }
-  putASTEventHandler ast
+  putASTHandler ast
 
   -- Package handler into a procedure in usercode
   let handler_proc :: Def('[ConstRef s area]:->())

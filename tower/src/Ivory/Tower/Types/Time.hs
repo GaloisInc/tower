@@ -10,6 +10,7 @@ module Ivory.Tower.Types.Time
   , Milliseconds(..)
   , toMicroseconds
   , toMilliseconds
+  , microseconds
 
   , ITime
   , fromIMicroseconds
@@ -23,14 +24,17 @@ import Ivory.Language
 class Time a where
   toMicroseconds :: a -> Integer
 
+microseconds :: Time a => a -> Microseconds
+microseconds = Microseconds . toMicroseconds
+
 toMilliseconds :: (Time a) => a -> Integer
 toMilliseconds t = (toMicroseconds t) `div` 1000
 
-newtype Microseconds = Microseconds Integer
+newtype Microseconds = Microseconds Integer deriving (Eq, Show)
 instance Time Microseconds where
   toMicroseconds (Microseconds t) = t
 
-newtype Milliseconds = Milliseconds Integer
+newtype Milliseconds = Milliseconds Integer deriving (Eq, Show)
 instance Time Milliseconds where
   toMicroseconds (Milliseconds t) = t * 1000
 

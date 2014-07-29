@@ -21,6 +21,7 @@ library
                         Ivory.Tower.AST.System,
                         Ivory.Tower.AST.Task,
                         Ivory.Tower.AST.Timer,
+                        Ivory.Tower.AST.Trigger,
                         Ivory.Tower.Channel,
                         Ivory.Tower.Compile,
                         Ivory.Tower.Event,

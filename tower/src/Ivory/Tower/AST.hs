@@ -10,6 +10,7 @@ module Ivory.Tower.AST
   , module Ivory.Tower.AST.System
   , module Ivory.Tower.AST.Task
   , module Ivory.Tower.AST.Timer
+  , module Ivory.Tower.AST.Trigger
   ) where
 
 import Ivory.Tower.AST.Chan
@@ -22,4 +23,5 @@ import Ivory.Tower.AST.SignalReceiver
 import Ivory.Tower.AST.System
 import Ivory.Tower.AST.Task
 import Ivory.Tower.AST.Timer
+import Ivory.Tower.AST.Trigger
 

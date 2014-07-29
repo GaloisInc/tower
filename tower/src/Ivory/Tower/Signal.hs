@@ -15,25 +15,28 @@ import           Ivory.Tower.Types.Event
 import qualified Ivory.Tower.Types.OS       as OS
 import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.SignalCode
+import           Ivory.Tower.Types.Time
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Task
 
-withSignalEvent :: forall p
-                 . (Signalable p)
+withSignalEvent :: forall a p
+                 . (Time a, Signalable p)
                 => SignalType p
+                -> a
                 -> String
                 -> Task p (Event (Stored IBool))
-withSignalEvent sig annotation =
-  withUnsafeSignalEvent sig annotation (return ())
+withSignalEvent sig t annotation =
+  withUnsafeSignalEvent sig t annotation (return ())
 
-withUnsafeSignalEvent :: forall p
-                       . (Signalable p)
+withUnsafeSignalEvent :: forall a p
+                       . (Time a, Signalable p)
                       => SignalType p
+                      -> a
                       -> String
                       -> (forall eff . Ivory eff ())
                       -> Task p (Event (Stored IBool))
-withUnsafeSignalEvent sig annotation callback = do
+withUnsafeSignalEvent sig t annotation callback = do
 
   taskname <- getTaskName
   evtname <- freshname (basename taskname)
@@ -74,7 +77,7 @@ withUnsafeSignalEvent sig annotation callback = do
         ready <- deref (addrOf ready_area)
         store ref true
         return ready
-    , evt_ast = astevt
+    , evt_trigger = AST.AsynchronousTrigger astevt (microseconds t)
     }
   where
   basename tname = "signal_" ++ (signalName sig)

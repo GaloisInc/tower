@@ -23,16 +23,14 @@ module Ivory.Tower.Channel
   ) where
 
 
-import GHC.TypeLits
-
 import Ivory.Language
-import Ivory.Language.Proxy
 import Ivory.Language.Area (ivoryArea)
 
 import qualified Ivory.Tower.AST            as AST
 import           Ivory.Tower.Types.Event
 import qualified Ivory.Tower.Types.OS       as OS
 import           Ivory.Tower.Types.Channels
+import           Ivory.Tower.Types.Time
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
@@ -47,20 +45,25 @@ snk = snd
 channel :: forall p area
          . (IvoryArea area, IvoryZero area)
         => Tower p (ChannelSource area, ChannelSink area)
-channel = channel' (Proxy :: Proxy 16) Nothing
+channel = channel' Nothing Nothing
 
-channel' :: forall (n :: Nat) p area
-                 . (ANat n, IvoryArea area, IvoryZero area)
-                => Proxy n
+channel' :: forall p area
+                 . (IvoryArea area, IvoryZero area)
+                => Maybe Microseconds -- delivery bound time in microseconds
                 -> Maybe (Init area)
                 -> Tower p (ChannelSource area, ChannelSink area)
-channel' sizenat initval = do
+channel' deliverybound initval = do
   cid <- fresh
   os <- getOS
-  let chan = AST.Chan { AST.chan_id = cid
-                      , AST.chan_size = fromTypeNat (aNat :: NatType n)
+  let ctyp = case deliverybound of
+        Just i -> AST.AsynchronousChan i
+        Nothing -> AST.SynchronousChan
+      chan = AST.Chan { AST.chan_id = cid
+                      , AST.chan_type = ctyp
                       , AST.chan_ityp = ivoryArea (Proxy :: Proxy area)
                       }
+      sizenat :: Proxy 256
+      sizenat = undefined
       code astsys =
         OS.gen_channel os astsys chan sizenat (Proxy :: Proxy area) initval
   putChan               chan
@@ -203,13 +206,16 @@ withChannelEvent sink annotation = do
         ready <- deref (addrOf ready_area)
         ifte_ ready (refCopy ref (addrOf latest_area)) (return ())
         return ready
-    , evt_ast = astevt
+    , evt_trigger = chantrigger astevt
     }
   where
   chan = unChannelSink sink
   basename t = (showUnique t) ++ "_chan_"
             ++ (show (AST.chan_id chan)) ++ "_event"
 
+  chantrigger e = case AST.chan_type chan of
+    AST.SynchronousChan -> AST.SynchronousTrigger chan
+    AST.AsynchronousChan maxrate -> AST.AsynchronousTrigger e maxrate
 
 withChannelReader :: forall p area
                     . (IvoryArea area, IvoryZero area)

@@ -82,6 +82,6 @@ withPeriodicEvent period = do
         t <- deref dueTimeRef
         when due $ store duetime t
         return due
-    , evt_ast = astevt
+    , evt_trigger = AST.AsynchronousTrigger astevt (microseconds period)
     }
 

@@ -16,9 +16,8 @@ module Ivory.Tower.Task
   , taskStackSize
   ) where
 
-import GHC.TypeLits
-
 import           Ivory.Language
+import           Ivory.Tower.Types.Time
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
@@ -65,12 +64,12 @@ taskChannel :: (IvoryArea area, IvoryZero area)
             => Task p (ChannelSource area, ChannelSink area)
 taskChannel = taskLiftTower channel
 
-taskChannel' :: forall (n :: Nat) p area
-              . (ANat n, IvoryArea area, IvoryZero area)
-             => Proxy n
+taskChannel' :: forall p area
+              . (IvoryArea area, IvoryZero area)
+             => Maybe Microseconds -- delivery bound time in microseconds
              -> Maybe (Init area)
              -> Task p (ChannelSource area, ChannelSink area)
-taskChannel' p i = taskLiftTower $ channel' p i
+taskChannel' b i = taskLiftTower $ channel' b i
 
 taskPriority :: Integer -> Task p ()
 taskPriority = putPriority

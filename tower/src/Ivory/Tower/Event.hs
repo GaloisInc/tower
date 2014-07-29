@@ -39,7 +39,7 @@ handle evt annotation k = do
   let ast = AST.Handler
         { AST.handler_name = procname
         , AST.handler_annotation = annotation
-        , AST.handler_evt = evt_ast evt
+        , AST.handler_trigger = evt_trigger evt
         }
   putASTHandler ast
 
@@ -55,6 +55,6 @@ handle evt annotation k = do
     ifte_ got (call_ handler_proc (constRef r))
               (return ())
   where
-  pfix = "evt_" ++ (AST.eventName (evt_ast evt)) ++ "_handler"
+  pfix = "handler_" ++ eventDescription evt
 
 

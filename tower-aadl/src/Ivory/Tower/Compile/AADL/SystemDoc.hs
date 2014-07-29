@@ -85,7 +85,7 @@ threadDef t = do
       $ sortBy  (\a b -> fst a `compare` fst b)
       $ catMaybes
       $ map aux (AST.task_handlers t)
-    aux eh@(AST.Handler _ _ (AST.TimerEvt timer)) =
+    aux eh@(AST.Handler _ _ (AST.AsynchronousTrigger (AST.TimerEvt timer) _)) =
                                           Just (AST.timer_per timer, eh)
     aux _ = Nothing
   mkPeriodProperty interval handlers =
@@ -111,7 +111,8 @@ featuresDef scope taskast headername = do
     portname <- introduceUnique (AST.chanemitter_annotation ce)
                                 (AST.chanemitter_name ce) [scope]
     let ps = channelprops (AST.chanemitter_name ce)
-                          (AST.chan_size (AST.chanemitter_chan ce))
+                          34567 -- XXX TOTALLY WRONG
+                          -- (AST.chan_size (AST.chanemitter_chan ce))
     return $ ThreadFeatureEventPort portname Out chtype ps
 
   pollReceiverDef ::AST.ChanReceiver -> CompileAADL ThreadFeature
@@ -120,7 +121,8 @@ featuresDef scope taskast headername = do
     portname <- introduceUnique (AST.chanreceiver_annotation cr)
                                 (AST.chanreceiver_name cr) [scope]
     let ps = channelprops (AST.chanreceiver_name cr)
-                          (AST.chan_size (AST.chanreceiver_chan cr))
+                          34567 -- XXX TOTALLY WRONG
+                          --(AST.chan_size (AST.chanreceiver_chan cr))
         p = ThreadProperty "ReceiverType" (PropString "Poll") -- XXX hack
     return $ ThreadFeatureEventPort portname In chtype (p:ps)
 
@@ -130,12 +132,14 @@ featuresDef scope taskast headername = do
     portname <- introduceUnique (AST.chanreceiver_annotation cr)
                                 (AST.chanreceiver_name cr) [scope]
     let cps = channelprops (AST.chanreceiver_name cr)
-                           (AST.chan_size (AST.chanreceiver_chan cr))
+                          34567 -- XXX TOTALLY WRONG
+                           --(AST.chan_size (AST.chanreceiver_chan cr))
         rtyp = [ThreadProperty "ReceiverType" (PropString "Event")] -- XXX hack
 
         handlers = map (PropString . showUnique . AST.handler_name)
-                 $ filter (\eh -> AST.handler_evt eh
-                              == AST.ChanEvt (AST.chanreceiver_chan cr) cr)
+                 -- XXX TOTALLY BOGUS
+                 -- $ filter (\eh -> AST.handler_evt eh
+                 --             == AST.ChanEvt (AST.chanreceiver_chan cr) cr)
                           (AST.task_handlers taskast)
         hps = [ThreadProperty "SMACCM_SYS::Compute_Entrypoint_Source_Text"
                               (PropList handlers)]

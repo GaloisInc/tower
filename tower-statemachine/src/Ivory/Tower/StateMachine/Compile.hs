@@ -27,11 +27,14 @@ begin r = call_ (runnable_begin r)
 active :: Runnable -> Ivory eff IBool
 active r = call (runnable_active r)
 
+-- XXX ALL THIS CODE IS SUPER SUSPECT:
+-- DEPENDS ON QUEUING BEHAVIOR OF newstate CHANNEL
+-- NEEDS TO BE COMPLETELY RECONSIDERED IN TERMS OF SYNCHRONOUS TOWER
 stateMachine :: forall p . String -> MachineM p StateLabel -> Task p Runnable
 stateMachine name machine = do
   uniq <- freshname ("machine_" ++ name)
   tick <- withPeriodicEvent (Milliseconds 1)
-  newstate <- taskChannel' (Proxy :: Proxy 2) Nothing
+  newstate <- taskChannel
   newstate_emitter <- withChannelEmitter (src newstate) "newstateEmitter"
   newstate_receiver <- withChannelEvent (snk newstate) "newstateEvent"
   aux uniq tick newstate_emitter newstate_receiver

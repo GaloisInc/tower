@@ -9,7 +9,6 @@ module Ivory.Tower.Monad.Task
   , getTaskName
   , putCommprim
   , putUsercode
-  , putChanEmitter
   , putChanEventReceiver
   , putChanReader
   , putSignalReceiver
@@ -70,7 +69,6 @@ runTask t n = do
   emptyast :: AST.Task p
   emptyast = AST.Task
     { AST.task_name                 = n
-    , AST.task_chan_emitters        = []
     , AST.task_chan_poll_receivers  = []
     , AST.task_chan_event_receivers = []
     , AST.task_chan_readers         = []
@@ -157,11 +155,6 @@ getTaskName :: Task p Unique
 getTaskName = do
   a <- getAST
   return (AST.task_name a)
-
-putChanEmitter :: AST.ChanEmitter -> Task p ()
-putChanEmitter c = do
-  a <- getAST
-  setAST $ a { AST.task_chan_emitters = c : AST.task_chan_emitters a }
 
 putChanPollReceiver :: AST.ChanReceiver -> Task p ()
 putChanPollReceiver c = do

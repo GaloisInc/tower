@@ -197,10 +197,11 @@ import Ivory.Language
 
 onPeriod :: (Time a)
          => a
-         -> (forall s . ITime -> Ivory (ProcEffects s ()) ())
+         -> (forall s . ITime -> Ivory (AllocEffects s) ())
          -> Task p ()
 onPeriod per k = do
   evt <- withPeriodicEvent per
-  handleV evt "periodic" k
+  taskEventHandler evt "periodic" $ do
+    handleV k
 
 

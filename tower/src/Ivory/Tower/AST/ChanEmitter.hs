@@ -11,5 +11,6 @@ data ChanEmitter =
     { chanemitter_name       :: Unique
     , chanemitter_annotation :: String
     , chanemitter_chan       :: Chan
+    , chanemitter_bound      :: Integer
     } deriving (Eq, Show)
 

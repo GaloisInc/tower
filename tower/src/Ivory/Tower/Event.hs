@@ -6,55 +6,42 @@
 
 module Ivory.Tower.Event
   ( Event
+  , taskEventHandler
   , handle
   , handleV
   ) where
 
 import           Ivory.Language
-import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Types.Event
 import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Task
+import           Ivory.Tower.Monad.Handler
 
-handleV :: forall p a
-        . (IvoryVar a, IvoryArea (Stored a), IvoryZero (Stored a))
-       => Event (Stored a)
-       -> String
-       -> (forall eff . a -> Ivory (ProcEffects eff ()) ())
-       -> Task p ()
-handleV evt annotation k = handle evt annotation $ \ref -> do
-  v <- deref ref
-  k v
-
-handle :: forall p area
+taskEventHandler :: forall p area
         . (IvoryArea area, IvoryZero area)
        => Event area
        -> String
-       -> (forall s eff . ConstRef s area -> Ivory (ProcEffects eff ()) ())
+       -> Handler p area ()
        -> Task p ()
-handle evt annotation k = do
-  procname <- freshname pfix
-  -- Write Handler into AST
-  let ast = AST.Handler
-        { AST.handler_name = procname
-        , AST.handler_annotation = annotation
-        , AST.handler_trigger = evt_trigger evt
-        }
+taskEventHandler evt annotation m = do
+  tname <- getTaskName
+  name <- freshname (pfix tname)
+  (ast, codegenerator) <- runHandler m name annotation (evt_trigger evt)
   putASTHandler ast
-
-  -- Package handler into a procedure in usercode
-  let handler_proc :: Def('[ConstRef s area]:->())
-      handler_proc = proc (showUnique procname) $ \r -> body $ k r
-  putUsercode $  do
-    incl handler_proc
-  -- Check for event and call handler from eventloop
-  putEventLoopCode $ \_ -> do
-    r <- local izero
-    got <- evt_get evt r
-    ifte_ got (call_ handler_proc (constRef r))
-              (return ())
+  -- XXX DO SOMETHING WITH CODE GENERATOR
   where
-  pfix = "handler_" ++ eventDescription evt
+  pfix tname = "handler_" ++ (showUnique tname) ++ "_" ++ eventDescription evt
+
+-- Export public ivoryHandler:
+
+handle :: (forall s s' . ConstRef s area -> Ivory (AllocEffects s') ())
+      -> Handler p area ()
+handle cb = putHandlerCallback cb
+
+handleV :: (IvoryVar a, IvoryArea (Stored a))
+        => (forall s . a -> Ivory (AllocEffects s) ())
+        -> Handler p (Stored a) ()
+handleV cb = putHandlerCallback (\ref -> deref ref >>= cb)
 
 

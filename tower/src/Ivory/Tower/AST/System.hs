@@ -6,7 +6,7 @@
 module Ivory.Tower.AST.System
   ( System(..)
   , system_task_list
-  , event_emitters
+--  , event_emitters
   , poll_receivers
   , event_receivers
   , signal_receivers
@@ -35,13 +35,14 @@ deriving instance (Eq   (Task p)) => Eq   (System p)
 system_task_list :: System p -> [Task p]
 system_task_list sys = map snd (D.flatten (system_tasks sys))
 
-event_emitters :: System p -> Chan -> [(ChanEmitter, Task p)]
-event_emitters sys chan =
-    concat (map (\t -> zip (matchingemitters t) (repeat t)) ts)
-    where
-    matchingemitters t = filter p (task_chan_emitters t)
-    p ce = chanemitter_chan ce == chan
-    ts = map snd (D.flatten (system_tasks sys))
+-- XXX fix this:
+--event_emitters :: System p -> Chan -> [(ChanEmitter, Task p)]
+--event_emitters sys chan =
+--    concat (map (\t -> zip (matchingemitters t) (repeat t)) ts)
+--    where
+--    matchingemitters t = filter p (task_chan_emitters t)
+--    p ce = chanemitter_chan ce == chan
+--    ts = map snd (D.flatten (system_tasks sys))
 
 poll_receivers :: System p -> Chan -> [(ChanReceiver, Task p)]
 poll_receivers sys chan =

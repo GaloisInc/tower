@@ -26,6 +26,7 @@ library
                         Ivory.Tower.Compile,
                         Ivory.Tower.Event,
                         Ivory.Tower.Monad.Base,
+                        Ivory.Tower.Monad.Handler,
                         Ivory.Tower.Monad.Task,
                         Ivory.Tower.Monad.Tower,
                         Ivory.Tower.Signal,
@@ -41,6 +42,8 @@ library
                         Ivory.Tower.Types.SystemCode,
                         Ivory.Tower.Types.TaskCode,
                         Ivory.Tower.Types.SignalCode,
+                        Ivory.Tower.Types.HandlerCode,
+                        Ivory.Tower.Types.HandlerContext,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique
 

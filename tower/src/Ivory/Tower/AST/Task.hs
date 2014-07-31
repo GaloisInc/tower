@@ -19,7 +19,6 @@ import Ivory.Tower.AST.SignalReceiver
 data Task p =
   Task
     { task_name                 :: Unique
-    , task_chan_emitters        :: [ChanEmitter]
     , task_chan_poll_receivers  :: [ChanReceiver]
     , task_chan_event_receivers :: [ChanReceiver]
     , task_chan_readers         :: [ChanReader]

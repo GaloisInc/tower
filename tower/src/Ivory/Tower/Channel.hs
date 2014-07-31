@@ -35,6 +35,7 @@ import           Ivory.Tower.Types.Unique
 import           Ivory.Tower.Monad.Base
 import           Ivory.Tower.Monad.Tower
 import           Ivory.Tower.Monad.Task
+import           Ivory.Tower.Monad.Handler
 
 src :: (ChannelSource area, ChannelSink area) -> ChannelSource area
 src = fst
@@ -71,36 +72,42 @@ channel' deliverybound initval = do
   putSysModdef          (snd `fmap` code)
   return (ChannelSource chan, ChannelSink chan)
 
-withChannelEmitter :: forall p area
-                    . (IvoryArea area, IvoryZero area)
+withChannelEmitter :: forall p n a area
+                    . (ANat n, IvoryArea area, IvoryZero area)
                    => ChannelSource area
                    -> String
-                   -> Task p (ChannelEmitter area)
-withChannelEmitter csrc annotation = do
+                   -> Proxy n
+                   -> Handler p a (ChannelEmitter area)
+withChannelEmitter csrc annotation bound = do
   procname <- freshname pname
-  putChanEmitter $ AST.ChanEmitter
+  putHandlerEmitter $ AST.ChanEmitter
     { AST.chanemitter_name = procname
     , AST.chanemitter_annotation = annotation
     , AST.chanemitter_chan = chan
+    , AST.chanemitter_bound = fromTypeNat bound
     }
 
-  os <- getOS
-  let pr :: AST.System p -> Def('[ConstRef s area] :-> ())
-      pr sys = proc (showUnique procname) $ \r -> body $ do
-        OS.get_emitter os sys chan r
-      mock_pr :: Def('[ConstRef s area] :-> ())
-      mock_pr = pr (error msg)
+  -- XXX GENERATE APPROPRIATE CODE:
+  -- area to store messages in
+  -- area to store message count in
+  -- setup: initialize message count
+  -- finalizer: loop over sent messages, calling all delivery procs
+  --  -- XXX Need scheme for naming delivery procs, derivable from AST.System...
+  --  four categories of delivery:
+  --    -- write to each queue to be read by poll receiver
+  --    -- write to each data area associated with a chan reader
+  --    -- write to each queue associated with an asynchronous event receiver
+  --    -- deliver directly to every synchronous event receiver
+  --
+  --    for each of these we also need to define the place code is generated for
+  --    the other end. move this code out of the os-specific backend wherever
+  --    possible...
 
-  putCommprim $ \sys -> do
-    incl (pr sys)
-
-  return (ChannelEmitter (call_ mock_pr))
+  return (ChannelEmitter undefined)
 
   where
   chan = unChannelSource csrc
   pname = "emit_chan" ++ show (AST.chan_id chan)
-  msg = "from Ivory.Tower.Channel.withChannelEmitter: "
-     ++ "chan emit call should not be strict in OS-codegen argument"
 
 emit_ :: ChannelEmitter area -> ConstRef s area -> Ivory eff ()
 emit_ = unChannelEmitter

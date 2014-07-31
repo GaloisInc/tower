@@ -7,6 +7,7 @@ module Ivory.Tower.AST.Handler
   ) where
 
 import Ivory.Tower.AST.Trigger
+import Ivory.Tower.AST.ChanEmitter
 import Ivory.Tower.Types.Unique
 
 data Handler =
@@ -14,5 +15,6 @@ data Handler =
     { handler_name       :: Unique
     , handler_annotation :: String
     , handler_trigger    :: Trigger
+    , handler_emitters   :: [ChanEmitter]
     } deriving (Eq, Show)
 

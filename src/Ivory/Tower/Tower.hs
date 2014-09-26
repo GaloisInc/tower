@@ -3,36 +3,26 @@
 
 module Ivory.Tower.Tower
   ( tower
-  , monitor
-  , handler
   , channel
   , signal
   , period
+  , monitor
+  , handler
+  , emitter
   ) where
 
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
-import Ivory.Tower.Types.Unique
 
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
+import Ivory.Tower.Monad.Handler
 
 tower :: Tower () -> AST.Tower
 tower = runTower
-
-monitor :: String -> Monitor () -> Tower ()
-monitor n m = do
-  a <- runMonitor n m
-  putASTMonitor a
-
-handler :: ChanOutput a -> String -> Monitor ()
-handler (ChanOutput (Chan chanast)) name = do
-  f <- fresh
-  let a = AST.emptyHandler (Unique name f) chanast
-  putASTHandler a
 
 channel :: Tower (ChanInput a, ChanOutput a)
 channel = do
@@ -54,4 +44,17 @@ period t = do
   putASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
 
+monitor :: String -> Monitor () -> Tower ()
+monitor n m = do
+  a <- runMonitor n m
+  putASTMonitor a
+
+handler :: ChanOutput a -> String -> Handler () -> Monitor ()
+handler (ChanOutput (Chan chanast)) name block = do
+  ast <- runHandler name chanast block
+  putASTHandler ast
+
+emitter :: ChanInput a -> Integer -> Handler ()
+emitter (ChanInput (Chan chanast)) bound = do
+  putASTEmitter (AST.Emitter chanast bound)
 

@@ -1,0 +1,34 @@
+name:                toytower
+version:             0.8.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+  exposed-modules:      Ivory.Tower,
+                        Ivory.Tower.Tower,
+                        Ivory.Tower.AST,
+                        Ivory.Tower.AST.SyncChan,
+                        Ivory.Tower.AST.Signal,
+                        Ivory.Tower.AST.Period,
+                        Ivory.Tower.AST.Tower,
+                        Ivory.Tower.AST.Monitor,
+                        Ivory.Tower.Monad.Base,
+                        Ivory.Tower.Monad.Tower,
+                        Ivory.Tower.Monad.Monitor,
+                        Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.HandlerCode,
+                        Ivory.Tower.Types.Time,
+                        Ivory.Tower.Types.Unique
+
+  build-depends:        base >= 4.6,
+                        monadLib,
+                        ivory,
+                        ivory-stdlib
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans

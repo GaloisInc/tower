@@ -30,11 +30,11 @@ microseconds = Microseconds . toMicroseconds
 toMilliseconds :: (Time a) => a -> Integer
 toMilliseconds t = (toMicroseconds t) `div` 1000
 
-newtype Microseconds = Microseconds Integer deriving (Eq, Show)
+newtype Microseconds = Microseconds Integer deriving (Eq, Show, Ord)
 instance Time Microseconds where
   toMicroseconds (Microseconds t) = t
 
-newtype Milliseconds = Milliseconds Integer deriving (Eq, Show)
+newtype Milliseconds = Milliseconds Integer deriving (Eq, Show, Ord)
 instance Time Milliseconds where
   toMicroseconds (Milliseconds t) = t * 1000
 

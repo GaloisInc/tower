@@ -2,13 +2,20 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Ivory.Tower.Tower
-  ( tower
+  ( Tower()
+  , tower
+  , ChanInput()
+  , ChanOutput()
   , channel
   , signal
+  , module Ivory.Tower.Types.Time
   , period
+  , Monitor()
   , monitor
+  , Handler()
   , handler
   , emitter
+  , callback
   ) where
 
 import Ivory.Tower.Types.Chan
@@ -57,4 +64,7 @@ handler (ChanOutput (Chan chanast)) name block = do
 emitter :: ChanInput a -> Integer -> Handler ()
 emitter (ChanInput (Chan chanast)) bound = do
   putASTEmitter (AST.Emitter chanast bound)
+
+callback :: String -> Handler ()
+callback name = putASTCallback name
 

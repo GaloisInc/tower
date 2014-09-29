@@ -9,6 +9,11 @@ license:             BSD3
 
 library
   exposed-modules:      Ivory.Tower,
+                        Ivory.Tower.Test,
+
+                        Ivory.Tower.ToyObjLang,
+                        Ivory.Tower.Codegen,
+
                         Ivory.Tower.Tower,
                         Ivory.Tower.AST,
                         Ivory.Tower.AST.Chan,
@@ -30,6 +35,7 @@ library
 
   build-depends:        base >= 4.6,
                         monadLib,
+                        mainland-pretty,
                         ivory,
                         ivory-stdlib
 

@@ -5,10 +5,11 @@
 module Ivory.Tower.Monad.Tower
   ( Tower
   , runTower
-  , putASTMonitor
-  , putASTSyncChan
-  , putASTSignal
-  , putASTPeriod
+  , towerPutASTMonitor
+  , towerPutASTSyncChan
+  , towerPutASTSignal
+  , towerPutASTPeriod
+  , towerPutModule
   ) where
 
 import MonadLib
@@ -18,6 +19,8 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.TowerCodegen
 
 import Ivory.Tower.Types.TowerCode
+
+import Ivory.Tower.ToyObjLang
 
 import qualified Ivory.Tower.AST as AST
 
@@ -39,19 +42,21 @@ withAST f = Tower $ do
   a <- get
   set (f a)
 
-putASTMonitor :: AST.Monitor -> Tower ()
-putASTMonitor m = withAST $
+towerPutASTMonitor :: AST.Monitor -> Tower ()
+towerPutASTMonitor m = withAST $
   \s -> s { AST.tower_monitors = m : AST.tower_monitors s }
 
-putASTSyncChan :: AST.SyncChan -> Tower ()
-putASTSyncChan a = withAST $
+towerPutASTSyncChan :: AST.SyncChan -> Tower ()
+towerPutASTSyncChan a = withAST $
   \s -> s { AST.tower_syncchans = a : AST.tower_syncchans s }
 
-putASTPeriod :: AST.Period -> Tower ()
-putASTPeriod a = withAST $
+towerPutASTPeriod :: AST.Period -> Tower ()
+towerPutASTPeriod a = withAST $
   \s -> s { AST.tower_periods = a : AST.tower_periods s }
 
-putASTSignal :: AST.Signal -> Tower ()
-putASTSignal a = withAST $
+towerPutASTSignal :: AST.Signal -> Tower ()
+towerPutASTSignal a = withAST $
   \s -> s { AST.tower_signals = a : AST.tower_signals s }
 
+towerPutModule :: (AST.Tower -> Module) -> Tower ()
+towerPutModule m = Tower $ lift $ codegenPutModule m

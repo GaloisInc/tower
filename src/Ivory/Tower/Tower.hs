@@ -36,36 +36,36 @@ channel :: Tower (ChanInput a, ChanOutput a)
 channel = do
   f <- fresh
   let ast = AST.SyncChan f
-  putASTSyncChan ast
+  towerPutASTSyncChan ast
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
 
 signal :: String -> Tower (ChanOutput ())
 signal n = do
   let ast = AST.Signal n
-  putASTSignal ast
+  towerPutASTSignal ast
   return (ChanOutput (Chan (AST.ChanSignal ast)))
 
 period :: Time a => a -> Tower (ChanOutput ITime)
 period t = do
   let ast = AST.Period (microseconds t)
-  putASTPeriod ast
+  towerPutASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
 
 monitor :: String -> Monitor () -> Tower ()
 monitor n m = do
   a <- runMonitor n m
-  putASTMonitor a
+  towerPutASTMonitor a
 
 handler :: ChanOutput a -> String -> Handler () -> Monitor ()
 handler (ChanOutput (Chan chanast)) name block = do
   ast <- runHandler name chanast block
-  putASTHandler ast
+  monitorPutASTHandler ast
 
 emitter :: ChanInput a -> Integer -> Handler ()
 emitter (ChanInput (Chan chanast)) bound = do
-  putASTEmitter (AST.Emitter chanast bound)
+  handlerPutASTEmitter (AST.Emitter chanast bound)
 
 callback :: String -> Handler ()
-callback name = putASTCallback name
+callback name = handlerPutASTCallback name
 

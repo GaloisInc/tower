@@ -5,7 +5,8 @@
 module Ivory.Tower.Monad.Monitor
   ( Monitor
   , runMonitor
-  , putASTHandler
+  , monitorPutASTHandler
+  , monitorPutModule
   ) where
 
 import MonadLib
@@ -16,6 +17,8 @@ import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
+
+import Ivory.Tower.ToyObjLang
 
 newtype Monitor a = Monitor
   { unMonitor :: StateT AST.Monitor Tower a
@@ -32,9 +35,19 @@ withAST f = Monitor $ do
   a <- get
   set (f a)
 
-putASTHandler :: AST.Handler -> Monitor ()
-putASTHandler a = withAST $
+monitorPutASTHandler :: AST.Handler -> Monitor ()
+monitorPutASTHandler a = withAST $
   \s -> s { AST.monitor_handlers = a : AST.monitor_handlers s }
+
+monitorPutModule :: (AST.Monitor -> AST.Tower -> Module) -> Monitor ()
+monitorPutModule m = Monitor $ do
+  a <- get
+  lift $ towerPutModule $
+    \t -> m (findMonitorAST (AST.monitor_name a) t) t
+  where
+  -- XXX FIXME
+  findMonitorAST :: Unique -> AST.Tower -> AST.Monitor
+  findMonitorAST = undefined
 
 instance BaseUtils Monitor where
   fresh = Monitor $ lift fresh

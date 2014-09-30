@@ -5,7 +5,7 @@
 module Ivory.Tower.Monad.TowerCodegen
   ( TowerCodegen
   , runTowerCodegen
-  , putCodeModule
+  , codegenPutModule
   ) where
 
 import MonadLib
@@ -26,8 +26,8 @@ runTowerCodegen :: TowerCodegen a -> AST.Tower -> Base (a, TowerCode)
 runTowerCodegen m ast = runStateT emptyTowerCode
                       $ runReaderT ast (unTowerCodegen m)
 
-putCodeModule :: (AST.Tower -> Module) -> TowerCodegen ()
-putCodeModule f = TowerCodegen $ do
+codegenPutModule :: (AST.Tower -> Module) -> TowerCodegen ()
+codegenPutModule f = TowerCodegen $ do
   m <- asks f
   s <- get
   set (s { towercode_modules = m : towercode_modules s })

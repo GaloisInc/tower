@@ -1,7 +1,7 @@
 
 module Ivory.Tower.Test where
 
-import Ivory.Tower.Tower
+import Ivory.Tower
 import Ivory.Tower.Types.TowerCode
 import Ivory.Tower.ToyObjLang
 import Text.Show.Pretty

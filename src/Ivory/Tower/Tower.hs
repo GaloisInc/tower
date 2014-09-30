@@ -12,10 +12,6 @@ module Ivory.Tower.Tower
   , period
   , Monitor()
   , monitor
-  , Handler()
-  , handler
-  , emitter
-  , callback
   ) where
 
 import Ivory.Tower.Types.Chan
@@ -28,6 +24,8 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Monad.Handler
+
+import Ivory.Tower.ToyObjLang
 
 tower :: Tower () -> (AST.Tower, TowerCode)
 tower = runTower
@@ -56,16 +54,4 @@ monitor :: String -> Monitor () -> Tower ()
 monitor n m = do
   a <- runMonitor n m
   towerPutASTMonitor a
-
-handler :: ChanOutput a -> String -> Handler () -> Monitor ()
-handler (ChanOutput (Chan chanast)) name block = do
-  ast <- runHandler name chanast block
-  monitorPutASTHandler ast
-
-emitter :: ChanInput a -> Integer -> Handler ()
-emitter (ChanInput (Chan chanast)) bound = do
-  handlerPutASTEmitter (AST.Emitter chanast bound)
-
-callback :: String -> Handler ()
-callback name = handlerPutASTCallback name
 

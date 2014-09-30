@@ -45,9 +45,9 @@ monitorPutModule m = Monitor $ do
   lift $ towerPutModule $
     \t -> m (findMonitorAST (AST.monitor_name a) t) t
   where
-  -- XXX FIXME
   findMonitorAST :: Unique -> AST.Tower -> AST.Monitor
-  findMonitorAST = undefined
+  findMonitorAST n twr = maybe err id (AST.towerFindMonitorByName n twr)
+  err = error "findMonitorAST failed - broken invariant"
 
 instance BaseUtils Monitor where
   fresh = Monitor $ lift fresh

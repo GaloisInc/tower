@@ -49,9 +49,9 @@ handlerPutModule m = Handler $ do
   lift $ monitorPutModule $
     \mon t -> m (findHandlerAST (AST.handler_name a) mon) mon t
   where
-  -- XXX FIXME
   findHandlerAST :: Unique -> AST.Monitor -> AST.Handler
-  findHandlerAST = undefined
+  findHandlerAST n mon = maybe err id (AST.monitorFindHandlerByName n mon)
+  err = error "findHandlerAST failed - broken invarnant"
 
 instance BaseUtils Handler where
   fresh = Handler $ lift fresh

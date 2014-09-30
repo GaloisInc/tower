@@ -27,8 +27,8 @@ newtype Handler a = Handler
 
 runHandler :: String -> AST.Chan -> Handler () -> Monitor AST.Handler
 runHandler n c b = do
-  f <- fresh
-  let h = AST.emptyHandler (Unique n f) c
+  u <- freshname n
+  let h = AST.emptyHandler u c
   fmap snd (runStateT h (unHandler b))
 
 withAST :: (AST.Handler -> AST.Handler) -> Handler ()

@@ -26,9 +26,8 @@ newtype Monitor a = Monitor
 
 runMonitor :: String -> Monitor () -> Tower AST.Monitor
 runMonitor n b = do
-  f <- fresh
-  let m = AST.emptyMonitor (Unique n f)
-  fmap snd (runStateT m (unMonitor b))
+  u <- freshname n
+  fmap snd (runStateT (AST.emptyMonitor u) (unMonitor b))
 
 withAST :: (AST.Monitor -> AST.Monitor) -> Monitor ()
 withAST f = Monitor $ do

@@ -15,15 +15,21 @@ import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
 import Ivory.Tower.Monad.Base
+import Ivory.Tower.Monad.TowerCodegen
+
+import Ivory.Tower.Types.TowerCode
 
 import qualified Ivory.Tower.AST as AST
 
 newtype Tower a = Tower
-  { unTower :: StateT AST.Tower Base a
+  { unTower :: StateT AST.Tower TowerCodegen a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runTower :: Tower () -> AST.Tower
-runTower b = snd (runBase (runStateT AST.emptyTower (unTower b)))
+runTower :: Tower () -> (AST.Tower, TowerCode)
+runTower t = (a,b)
+  where
+  (a,b) = runBase (runTowerCodegen outer a)
+  outer = fmap snd (runStateT AST.emptyTower (unTower t))
 
 instance BaseUtils Tower where
   fresh = Tower $ lift fresh

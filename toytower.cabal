@@ -38,6 +38,8 @@ library
                         Ivory.Tower.Monad.TowerCodegen,
                         -- Types
                         Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.HandlerCode,
+                        Ivory.Tower.Types.MonitorCode,
                         Ivory.Tower.Types.TowerCode,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique

@@ -17,15 +17,13 @@ module Ivory.Tower.Tower
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.TowerCode
+import Ivory.Tower.Types.MonitorCode
 
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
-import Ivory.Tower.Monad.Handler
-
-import Ivory.Tower.ToyObjLang
 
 tower :: Tower () -> (AST.Tower, TowerCode)
 tower = runTower
@@ -52,6 +50,7 @@ period t = do
 
 monitor :: String -> Monitor () -> Tower ()
 monitor n m = do
-  a <- runMonitor n m
-  towerPutASTMonitor a
+  (ast, mcode) <- runMonitor n m
+  towerPutASTMonitor ast
+  towerPutModules $ \_ -> generateMonitorCode mcode ast
 

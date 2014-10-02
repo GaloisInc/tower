@@ -6,6 +6,7 @@ module Ivory.Tower.Monad.Generated
   ( Generated
   , runGenerated
   , codegenPutModules
+  , codegenPutThreadCode
   ) where
 
 import MonadLib
@@ -29,8 +30,17 @@ runGenerated m ast = runStateT emptyGeneratedCode
 codegenPutModules :: (AST.Tower -> [Module]) -> Generated ()
 codegenPutModules f = Generated $ do
   ms <- asks f
-  s <- get
-  set (s { generatedcode_modules = generatedcode_modules s ++ ms })
+  gc <- get
+  set (gc { generatedcode_modules = generatedcode_modules gc ++ ms })
+
+codegenPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
+                     -> Generated ()
+codegenPutThreadCode f = Generated $ do
+  tms <- asks f
+  gc <- get
+  set (foldl gen gc tms)
+  where
+  gen gc (thread, moddef) = generatedCodeForThread thread moddef gc
 
 instance BaseUtils Generated where
   fresh = Generated $ lift $ lift fresh

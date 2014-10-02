@@ -14,5 +14,5 @@ handler :: ChanOutput a -> String -> Handler () -> Monitor ()
 handler (ChanOutput (Chan chanast)) name block = do
   (ast, code) <- runHandler name chanast block
   monitorPutASTHandler ast
-  monitorPutModules $ \mon twr -> generateHandlerCode code twr mon ast
+  monitorPutThreadCode $ \twr -> generateHandlerCode code twr ast
 

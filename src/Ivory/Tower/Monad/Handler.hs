@@ -44,6 +44,10 @@ handlerPutASTEmitter a = withAST (AST.handlerInsertEmitter a)
 handlerPutASTCallback :: String -> Handler ()
 handlerPutASTCallback a = withAST (AST.handlerInsertCallback a)
 
+-- XXX is this even needed??
+-- isnt this replaced by the monadic version of
+-- Types.HandlerCode.insertHandlerCode?
+
 handlerPutModules :: (AST.Handler -> AST.Monitor -> AST.Tower -> [Module])
                  -> Handler ()
 handlerPutModules ms = Handler $ do

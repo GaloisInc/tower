@@ -7,6 +7,7 @@ module Ivory.Tower.Monad.Monitor
   , runMonitor
   , monitorPutASTHandler
   , monitorPutModules
+  , monitorPutThreadCode
   ) where
 
 import MonadLib
@@ -49,6 +50,11 @@ monitorPutModules ms = Monitor $ do
   findMonitorAST :: Unique -> AST.Tower -> AST.Monitor
   findMonitorAST n twr = maybe err id (AST.towerFindMonitorByName n twr)
   err = error "findMonitorAST failed - broken invariant"
+
+
+monitorPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
+                     -> Monitor ()
+monitorPutThreadCode c = Monitor $ lift $ lift $ towerPutThreadCode c
 
 instance BaseUtils Monitor where
   fresh = Monitor $ lift $ lift fresh

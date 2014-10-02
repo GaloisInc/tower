@@ -1,7 +1,6 @@
 
 module Ivory.Tower.Types.HandlerCode
-  ( HandlerContext
-  , HandlerCode(..)
+  ( HandlerCode(..)
   , emptyHandlerCode
   , insertHandlerCode
   , generateHandlerCode
@@ -10,30 +9,26 @@ module Ivory.Tower.Types.HandlerCode
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.ToyObjLang
 
--- XXX STRING IS A PLACEHOLDER
-type HandlerContext = String
-
 data HandlerCode = HandlerCode
-  { handlercode_moddef :: HandlerContext -> ModuleM ()
+  { handlercode_moddef :: AST.Handler -> AST.Thread -> ModuleM ()
   }
 
 emptyHandlerCode :: HandlerCode
 emptyHandlerCode = HandlerCode
-  { handlercode_moddef = const (return ())
+  { handlercode_moddef = const (const (return ()))
   }
 
-insertHandlerCode :: (HandlerContext -> ModuleM ())
+-- XXX implement message delivery on top of this - make sure we
+-- have enough context to do it properly.
+insertHandlerCode :: (AST.Handler -> AST.Thread -> ModuleM ())
                   -> HandlerCode -> HandlerCode
 insertHandlerCode m c =
   c { handlercode_moddef = \ctx -> handlercode_moddef c ctx >> m ctx }
 
 generateHandlerCode :: HandlerCode
-                    -> AST.Tower -> AST.Monitor -> AST.Handler
-                    -> [Module]
-generateHandlerCode _hc _twr _mon _han = [] -- XXX NEED REAL IMPLEMENTATION.
-  -- What are the set of HandlerContexts - derived from AST
-  -- Then, generate a Module for each context
-  --    with a name given by that
-  --    the moddef applied to that context
+                    -> AST.Tower -> AST.Handler
+                    -> [(AST.Thread, ModuleM ())]
+generateHandlerCode _hc _twr _han = [] -- XXX NEED REAL IMPLEMENTATION.
+  -- What are the set of threads that touch this handler?
 
 

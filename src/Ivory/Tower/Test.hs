@@ -2,7 +2,6 @@
 module Ivory.Tower.Test where
 
 import Ivory.Tower
-import Ivory.Tower.Types.TowerCode
 import Ivory.Tower.ToyObjLang
 import Text.Show.Pretty
 
@@ -21,7 +20,7 @@ test1 = do
 run :: Tower () -> IO ()
 run t = do
   putStrLn (ppShow ast)
-  printModules (towercode_modules code)
+  printModules (generatedcode_modules code)
   where
   (ast, code) = tower t
 

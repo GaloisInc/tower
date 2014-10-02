@@ -35,17 +35,18 @@ library
                         Ivory.Tower.Monad.Tower,
                         Ivory.Tower.Monad.Monitor,
                         Ivory.Tower.Monad.Handler,
-                        Ivory.Tower.Monad.TowerCodegen,
+                        Ivory.Tower.Monad.Generated,
                         -- Types
                         Ivory.Tower.Types.Chan,
                         Ivory.Tower.Types.HandlerCode,
                         Ivory.Tower.Types.MonitorCode,
-                        Ivory.Tower.Types.TowerCode,
+                        Ivory.Tower.Types.GeneratedCode,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique
 
   build-depends:        base >= 4.6,
                         monadLib,
+                        containers,
                         mainland-pretty,
                         pretty-show,
                         ivory,

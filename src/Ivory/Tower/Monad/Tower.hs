@@ -16,22 +16,22 @@ import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
 import Ivory.Tower.Monad.Base
-import Ivory.Tower.Monad.TowerCodegen
+import Ivory.Tower.Monad.Generated
 
-import Ivory.Tower.Types.TowerCode
+import Ivory.Tower.Types.GeneratedCode
 
 import Ivory.Tower.ToyObjLang
 
 import qualified Ivory.Tower.AST as AST
 
 newtype Tower a = Tower
-  { unTower :: StateT AST.Tower TowerCodegen a
+  { unTower :: StateT AST.Tower Generated a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runTower :: Tower () -> (AST.Tower, TowerCode)
+runTower :: Tower () -> (AST.Tower, GeneratedCode)
 runTower t = (a,b)
   where
-  (a,b) = runBase (runTowerCodegen outer a)
+  (a,b) = runBase (runGenerated outer a)
   outer = fmap snd (runStateT AST.emptyTower (unTower t))
 
 instance BaseUtils Tower where

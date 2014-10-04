@@ -7,6 +7,7 @@ import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal
 import Ivory.Tower.AST.Period
 import Ivory.Tower.AST.Monitor
+import Ivory.Tower.AST.Thread
 
 data Tower = Tower
   { tower_monitors  :: [Monitor]
@@ -22,6 +23,10 @@ emptyTower  = Tower
   , tower_signals   = []
   , tower_periods   = []
   }
+
+towerThreads :: Tower -> [Thread]
+towerThreads t = map SignalThread (tower_signals t) ++
+                 map PeriodThread (tower_periods t)
 
 towerFindMonitorByName :: Unique -> Tower -> Maybe Monitor
 towerFindMonitorByName n t = find p (tower_monitors t)

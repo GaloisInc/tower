@@ -16,7 +16,7 @@ data Handler = Handler
   , handler_chan      :: Chan
   , handler_emitters  :: [Emitter]
   , handler_callbacks :: [String]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
 emptyHandler :: Unique -> Chan -> Handler
 emptyHandler u c = Handler

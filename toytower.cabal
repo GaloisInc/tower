@@ -30,6 +30,7 @@ library
                         Ivory.Tower.AST.Monitor,
                         Ivory.Tower.AST.Handler,
                         Ivory.Tower.AST.Emitter,
+                        Ivory.Tower.AST.Graph,
                         -- Monads
                         Ivory.Tower.Monad.Base,
                         Ivory.Tower.Monad.Tower,

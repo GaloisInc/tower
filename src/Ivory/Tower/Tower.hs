@@ -3,7 +3,8 @@
 
 module Ivory.Tower.Tower
   ( Tower()
-  , GeneratedCode(..)
+  , GeneratedCode()
+  , generatedCodeModules
   , tower
   , ChanInput()
   , ChanOutput()

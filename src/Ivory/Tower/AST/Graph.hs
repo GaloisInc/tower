@@ -2,7 +2,8 @@
 module Ivory.Tower.AST.Graph where
 
 import Data.Graph
-import Data.List (groupBy)
+import Data.List (groupBy, nub)
+import Control.Monad (guard)
 import Ivory.Tower.AST.Thread
 import Ivory.Tower.AST.Handler
 import Ivory.Tower.AST.Monitor
@@ -21,11 +22,11 @@ data MessageSource = ThreadMessage Thread
 handlerMessageSource :: (Monitor, Handler) -> MessageSource
 handlerMessageSource = uncurry HandlerMessage
 
-handlerGraph :: Tower
-             -> ( Graph
-                , (Vertex -> (MessageSource, MessageSource, [MessageSource]))
-                , MessageSource-> Maybe Vertex)
-handlerGraph t = graphFromEdges (handleredges ++ threadedges)
+type MessageVertex = (MessageSource, MessageSource, [MessageSource])
+type MessageGraph = (Graph, Vertex -> MessageVertex, MessageSource -> Maybe Vertex)
+
+messageGraph :: Tower -> MessageGraph
+messageGraph t = graphFromEdges (handleredges ++ threadedges)
   where
   threadedges = do
     th <- towerThreads t
@@ -38,11 +39,28 @@ handlerGraph t = graphFromEdges (handleredges ++ threadedges)
     let ms = HandlerMessage m h
     return (ms, ms, map handlerMessageSource (handlerOutboundHandlers t h))
 
-graphviz :: ( Graph
-            , (Vertex -> (MessageSource, MessageSource, [MessageSource]))
-            , MessageSource -> Maybe Vertex
-            )
-            -> String
+handlerThreads :: Tower -> Monitor -> Handler -> [Thread]
+handlerThreads t m h = do
+  th <- towerThreads t
+  guard $ (m,h) `elem` threadHandlers (messageGraph t) th
+  return th
+
+threadHandlers :: MessageGraph -> Thread -> [(Monitor, Handler)]
+threadHandlers (g, unv, tov) t
+  = map mh
+  $ filter (/= (ThreadMessage t))
+  $ map (fst3 . unv)
+  $ nub
+  $ reachable g threadv
+  where
+  fst3 (a,_,_) = a
+  Just threadv = tov (ThreadMessage t)
+  mh (HandlerMessage m h) = (m,h)
+  mh _ = error "Ivory.Tower.AST.Graph.threadHandlers impossible"
+  -- invariant - ThreadMessage never reachable from ThreadMessage
+  -- (except itself is always "reachable" so we filter that out above.)
+
+graphviz :: MessageGraph -> String
 graphviz (g, unvertex, _) = pretty 80 $ stack $
   [ text "digraph Tower {"
   , indent 4 $ stack $ map ppSubgraph monitors

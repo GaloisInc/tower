@@ -28,7 +28,9 @@ insertHandlerCode m c =
 generateHandlerCode :: HandlerCode
                     -> AST.Tower -> AST.Handler
                     -> [(AST.Thread, ModuleM ())]
-generateHandlerCode _hc _twr _han = [] -- XXX NEED REAL IMPLEMENTATION.
-  -- What are the set of threads that touch this handler?
-
+generateHandlerCode hc twr han = do
+  t <- AST.handlerThreads twr mon han
+  return (t, handlercode_moddef hc han t)
+  where
+  Just mon = AST.towerFindMonitorOfHandler han twr
 

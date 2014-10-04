@@ -45,11 +45,12 @@ run :: Tower () -> IO ()
 run t = do
   putStrLn (ppShow ast)
   putStrLn "\n=======\n"
-  let dot = graphviz (handlerGraph ast)
+  let graph = messageGraph ast
+      dot = graphviz graph
   putStrLn dot
   writeFile "out.dot" dot
   putStrLn "\n=======\n"
-  printModules (generatedcode_modules code)
+  printModules (generatedCodeModules code)
   where
   (ast, code) = tower t
 

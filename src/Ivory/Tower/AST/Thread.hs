@@ -4,6 +4,7 @@ module Ivory.Tower.AST.Thread where
 import Ivory.Tower.Types.Time
 import Ivory.Tower.AST.Period
 import Ivory.Tower.AST.Signal
+import Ivory.Tower.AST.Chan
 
 data Thread = SignalThread Signal
             | PeriodThread Period
@@ -19,3 +20,6 @@ threadName (PeriodThread p) = "thread_period_" ++ t
     _ -> (show us) ++ "us"
 
 
+threadChan :: Thread -> Chan
+threadChan (PeriodThread p) = ChanPeriod p
+threadChan (SignalThread s) = ChanSignal s

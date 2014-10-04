@@ -8,7 +8,7 @@ import Ivory.Tower.AST.Handler
 data Monitor = Monitor
   { monitor_name     :: Unique
   , monitor_handlers :: [Handler]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
 emptyMonitor :: Unique -> Monitor
 emptyMonitor u = Monitor

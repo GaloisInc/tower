@@ -7,6 +7,7 @@ module Ivory.Tower.Monad.Monitor
   , runMonitor
   , monitorPutASTHandler
   , monitorPutModules
+  , monitorPutCode
   , monitorPutThreadCode
   ) where
 
@@ -51,6 +52,13 @@ monitorPutModules ms = Monitor $ do
   findMonitorAST n twr = maybe err id (AST.towerFindMonitorByName n twr)
   err = error "findMonitorAST failed - broken invariant"
 
+withCode :: (MonitorCode -> MonitorCode) -> Monitor ()
+withCode f = Monitor $ do
+  a <- lift get
+  lift (set (f a))
+
+monitorPutCode :: (AST.Monitor -> ModuleM ()) -> Monitor ()
+monitorPutCode f = withCode $ insertMonitorCode f
 
 monitorPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
                      -> Monitor ()

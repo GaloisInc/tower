@@ -86,7 +86,7 @@ graphviz (g, unvertex, _) = pretty 80 $ stack $
     tname <+> text "[style=filled]" <> semi
     where tname = text (threadName t)
 
-  ppSubgraph _ = empty -- XXX
+  ppSubgraph _ = empty -- should be impossible.
   ppHandlerNode ((HandlerMessage _ h),_,_) = text (showUnique (handler_name h))
   ppHandlerNode ((ThreadMessage t),_,_) = text (threadName t)
   ppEdge :: Edge -> Doc

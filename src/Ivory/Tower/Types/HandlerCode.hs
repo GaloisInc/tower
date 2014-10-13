@@ -18,8 +18,6 @@ emptyHandlerCode = HandlerCode
   { handlercode_moddef = const (const (return ()))
   }
 
--- XXX implement message delivery on top of this - make sure we
--- have enough context to do it properly.
 insertHandlerCode :: (AST.Handler -> AST.Thread -> ModuleM ())
                   -> HandlerCode -> HandlerCode
 insertHandlerCode m c =

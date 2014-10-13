@@ -7,14 +7,13 @@ module Ivory.Tower.Monad.Handler
   , runHandler
   , handlerPutASTEmitter
   , handlerPutASTCallback
-  , handlerPutModules
+  , handlerPutCode
   ) where
 
 import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
 
-import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.HandlerCode
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Monitor
@@ -44,20 +43,14 @@ handlerPutASTEmitter a = withAST (AST.handlerInsertEmitter a)
 handlerPutASTCallback :: String -> Handler ()
 handlerPutASTCallback a = withAST (AST.handlerInsertCallback a)
 
--- XXX is this even needed??
--- isnt this replaced by the monadic version of
--- Types.HandlerCode.insertHandlerCode?
+withCode :: (HandlerCode -> HandlerCode) -> Handler ()
+withCode f = Handler $ do
+  a <- lift get
+  lift (set (f a))
 
-handlerPutModules :: (AST.Handler -> AST.Monitor -> AST.Tower -> [Module])
+handlerPutCode :: (AST.Handler -> AST.Thread -> ModuleM ())
                  -> Handler ()
-handlerPutModules ms = Handler $ do
-  a <- get
-  lift $ lift $ monitorPutModules $
-    \mon t -> ms (findHandlerAST (AST.handler_name a) mon) mon t
-  where
-  findHandlerAST :: Unique -> AST.Monitor -> AST.Handler
-  findHandlerAST n mon = maybe err id (AST.monitorFindHandlerByName n mon)
-  err = error "findHandlerAST failed - broken invarnant"
+handlerPutCode ms = withCode $ insertHandlerCode ms
 
 instance BaseUtils Handler where
   fresh = Handler $ lift $ lift fresh

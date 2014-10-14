@@ -15,7 +15,7 @@ data Handler = Handler
   { handler_name      :: Unique
   , handler_chan      :: Chan
   , handler_emitters  :: [Emitter]
-  , handler_callbacks :: [String]
+  , handler_callbacks :: [Unique]
   } deriving (Eq, Show, Ord)
 
 emptyHandler :: Unique -> Chan -> Handler
@@ -30,7 +30,7 @@ handlerInsertEmitter :: Emitter -> Handler -> Handler
 handlerInsertEmitter a h =
   h { handler_emitters = a : (handler_emitters h) }
 
-handlerInsertCallback :: String -> Handler -> Handler
+handlerInsertCallback :: Unique -> Handler -> Handler
 handlerInsertCallback a h =
   h { handler_callbacks = a : (handler_callbacks h) }
 

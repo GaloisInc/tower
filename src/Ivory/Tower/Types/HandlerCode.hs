@@ -6,29 +6,22 @@ module Ivory.Tower.Types.HandlerCode
   , generateHandlerCode
   ) where
 
-import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.ToyObjLang
 
+-- XXX: the _moddef field really is only storing callbacks
+-- for emitter code generation we'll have to expand this record
+-- with emitter initialization & delivery
 data HandlerCode = HandlerCode
-  { handlercode_moddef :: AST.Handler -> AST.Thread -> ModuleM ()
+  { handlercode_moddef :: ModuleM ()
   }
 
 emptyHandlerCode :: HandlerCode
 emptyHandlerCode = HandlerCode
-  { handlercode_moddef = const (const (return ()))
+  { handlercode_moddef = return ()
   }
 
-insertHandlerCode :: (AST.Handler -> AST.Thread -> ModuleM ())
-                  -> HandlerCode -> HandlerCode
-insertHandlerCode m c =
-  c { handlercode_moddef = \ctx -> handlercode_moddef c ctx >> m ctx }
+insertHandlerCode :: ModuleM () -> HandlerCode -> HandlerCode
+insertHandlerCode m c = c { handlercode_moddef = handlercode_moddef c >> m }
 
-generateHandlerCode :: HandlerCode
-                    -> AST.Tower -> AST.Handler
-                    -> [(AST.Thread, ModuleM ())]
-generateHandlerCode hc twr han = do
-  t <- AST.handlerThreads twr mon han
-  return (t, handlercode_moddef hc han t)
-  where
-  Just mon = AST.towerFindMonitorOfHandler han twr
-
+generateHandlerCode :: HandlerCode -> ModuleM ()
+generateHandlerCode = handlercode_moddef

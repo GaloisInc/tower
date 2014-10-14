@@ -9,6 +9,7 @@ module Ivory.Tower.Monad.Monitor
   , monitorPutModules
   , monitorPutCode
   , monitorPutThreadCode
+  , monitorGetGeneratedAST
   ) where
 
 import MonadLib
@@ -60,9 +61,15 @@ withCode f = Monitor $ do
 monitorPutCode :: (AST.Monitor -> ModuleM ()) -> Monitor ()
 monitorPutCode f = withCode $ insertMonitorCode f
 
+liftTower :: Tower a -> Monitor a
+liftTower a = Monitor $ lift $ lift $ a
+
 monitorPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
                      -> Monitor ()
-monitorPutThreadCode c = Monitor $ lift $ lift $ towerPutThreadCode c
+monitorPutThreadCode = liftTower . towerPutThreadCode
+
+monitorGetGeneratedAST :: Monitor AST.Tower
+monitorGetGeneratedAST = liftTower towerGetGeneratedAST
 
 instance BaseUtils Monitor where
-  fresh = Monitor $ lift $ lift fresh
+  fresh = liftTower fresh

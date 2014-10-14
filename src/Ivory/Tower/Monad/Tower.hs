@@ -11,6 +11,7 @@ module Ivory.Tower.Monad.Tower
   , towerPutASTPeriod
   , towerPutModules
   , towerPutThreadCode
+  , towerGetGeneratedAST
   ) where
 
 import MonadLib
@@ -65,3 +66,8 @@ towerPutModules m = Tower $ lift $ codegenPutModules m
 towerPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
                      -> Tower ()
 towerPutThreadCode c = Tower $ lift $ codegenPutThreadCode c
+
+towerGetGeneratedAST :: Tower AST.Tower
+towerGetGeneratedAST = Tower $ lift $ codegenGetGeneratedAST
+
+

@@ -17,9 +17,7 @@ import Ivory.Tower.ToyObjLang
 
 handler :: ChanOutput a -> String -> Handler () -> Monitor ()
 handler (ChanOutput (Chan chanast)) name block = do
-  (ast, code) <- runHandler name chanast block
-  monitorPutASTHandler ast
-  monitorPutThreadCode $ \twr -> generateHandlerCode code twr ast
+  runHandler name chanast block
 
 state :: String -> Monitor Var
 state n = do

@@ -39,10 +39,10 @@ messageGraph t = graphFromEdges (handleredges ++ threadedges)
     let ms = HandlerMessage m h
     return (ms, ms, map handlerMessageSource (handlerOutboundHandlers t h))
 
-handlerThreads :: Tower -> Monitor -> Handler -> [Thread]
-handlerThreads t m h = do
+handlerThreads :: Tower -> Handler -> [Thread]
+handlerThreads t h = do
   th <- towerThreads t
-  guard $ (m,h) `elem` threadHandlers (messageGraph t) th
+  guard $ h `elem` map snd (threadHandlers (messageGraph t) th)
   return th
 
 threadHandlers :: MessageGraph -> Thread -> [(Monitor, Handler)]

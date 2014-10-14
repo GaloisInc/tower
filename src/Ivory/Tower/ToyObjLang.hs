@@ -10,6 +10,7 @@ module Ivory.Tower.ToyObjLang
   , var
   , Proc()
   , proc
+  , ProcM()
   , stmt
 
   , display

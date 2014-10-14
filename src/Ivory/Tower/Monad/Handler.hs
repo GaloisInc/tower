@@ -9,7 +9,8 @@ module Ivory.Tower.Monad.Handler
   , handlerName
   , handlerPutASTEmitter
   , handlerPutASTCallback
-  , handlerPutCode
+  , handlerPutCodeEmitter
+  , handlerPutCodeCallback
   ) where
 
 import MonadLib
@@ -17,6 +18,7 @@ import Control.Monad.Fix
 import Control.Applicative
 
 import Ivory.Tower.Types.HandlerCode
+import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Monitor
@@ -63,8 +65,11 @@ withCode f = Handler $ do
   a <- lift get
   lift (set [(t, f t c) | (t, c) <- a ])
 
-handlerPutCode :: (AST.Thread -> ModuleM ()) -> Handler ()
-handlerPutCode ms = withCode $ \t -> insertHandlerCode (ms t)
+handlerPutCodeCallback :: (AST.Thread -> ModuleM ()) -> Handler ()
+handlerPutCodeCallback ms = withCode $ \t -> insertHandlerCodeCallback (ms t)
+
+handlerPutCodeEmitter :: (AST.Thread -> EmitterCode) -> Handler ()
+handlerPutCodeEmitter ms = withCode $ \t -> insertHandlerCodeEmitter (ms t)
 
 instance BaseUtils Handler where
   fresh = Handler $ lift $ lift fresh

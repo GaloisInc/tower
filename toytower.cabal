@@ -39,6 +39,7 @@ library
                         Ivory.Tower.Monad.Generated,
                         -- Types
                         Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.EmitterCode,
                         Ivory.Tower.Types.HandlerCode,
                         Ivory.Tower.Types.MonitorCode,
                         Ivory.Tower.Types.GeneratedCode,

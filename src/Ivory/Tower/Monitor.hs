@@ -8,7 +8,6 @@ module Ivory.Tower.Monitor
 
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.Chan
-import Ivory.Tower.Types.HandlerCode
 import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Monad.Base

@@ -2,26 +2,36 @@
 module Ivory.Tower.Types.HandlerCode
   ( HandlerCode(..)
   , emptyHandlerCode
-  , insertHandlerCode
+  , insertHandlerCodeCallback
+  , insertHandlerCodeEmitter
   , generateHandlerCode
   ) where
 
 import Ivory.Tower.ToyObjLang
+import Ivory.Tower.Types.EmitterCode
 
--- XXX: the _moddef field really is only storing callbacks
--- for emitter code generation we'll have to expand this record
--- with emitter initialization & delivery
 data HandlerCode = HandlerCode
-  { handlercode_moddef :: ModuleM ()
+  { handlercode_callbacks :: ModuleM ()
+  , handlercode_emitters :: [EmitterCode]
   }
 
 emptyHandlerCode :: HandlerCode
 emptyHandlerCode = HandlerCode
-  { handlercode_moddef = return ()
+  { handlercode_callbacks = return ()
+  , handlercode_emitters = []
   }
 
-insertHandlerCode :: ModuleM () -> HandlerCode -> HandlerCode
-insertHandlerCode m c = c { handlercode_moddef = handlercode_moddef c >> m }
+insertHandlerCodeCallback :: ModuleM () -> HandlerCode -> HandlerCode
+insertHandlerCodeCallback m c =
+  c { handlercode_callbacks = handlercode_callbacks c >> m }
+
+insertHandlerCodeEmitter :: EmitterCode -> HandlerCode -> HandlerCode
+insertHandlerCodeEmitter e c =
+  c { handlercode_emitters = e : handlercode_emitters c}
 
 generateHandlerCode :: HandlerCode -> ModuleM ()
-generateHandlerCode = handlercode_moddef
+generateHandlerCode hc = handlercode_callbacks hc >> 
+  foldl appendmoddef (return ()) (handlercode_emitters hc)
+  -- XXX MAKE RUNNER FUNCTION
+  where
+  appendmoddef acc ec = acc >> emittercode_moddef ec

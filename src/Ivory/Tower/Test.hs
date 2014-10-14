@@ -25,6 +25,28 @@ test1 = do
 test2 :: Tower ()
 test2 = do
   (c1in, c1out) <- channel
+  per1 <- period (Microseconds 1000)
+  per2 <- period (Microseconds 333)
+  monitor "m1" $ do
+    _ <- state "some_m1_state"
+    handler per1 "tick1" $ do
+      e <- emitter c1in 1
+      callback $ do
+        stmt "some_ivory_in_m1_tick2"
+        emit e
+    handler per2 "tick2" $ do
+      e <- emitter c1in 1
+      callback $ do
+        stmt "some_ivory_in_m1_tick2"
+        emit e
+  monitor "m2" $ do
+    _ <- state "some_m2_state"
+    handler c1out "chan1msg" $ do
+      callback $ stmt "some_ivory_in_m2_onmsg"
+
+test3 :: Tower ()
+test3 = do
+  (c1in, c1out) <- channel
   (c2in, c2out) <- channel
   p1 <- period (Microseconds 1000)
   p2 <- period (Microseconds 666)

@@ -15,6 +15,7 @@ import Control.Monad.Fix
 import Control.Applicative
 
 import Ivory.Tower.Types.GeneratedCode
+import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Monad.Base
 import qualified Ivory.Tower.AST as AST
 
@@ -34,14 +35,12 @@ codegenPutModules f = Generated $ do
   gc <- get
   set (gc { generatedcode_modules = generatedcode_modules gc ++ ms })
 
-codegenPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
+codegenPutThreadCode :: (AST.Tower -> [ThreadCode])
                      -> Generated ()
 codegenPutThreadCode f = Generated $ do
-  tms <- asks f
+  tcs <- asks f
   gc <- get
-  set (foldl gen gc tms)
-  where
-  gen gc (thread, moddef) = generatedCodeForThread thread moddef gc
+  set (foldl (flip insertTCGeneratedCode) gc tcs)
 
 codegenGetGeneratedAST :: Generated AST.Tower
 codegenGetGeneratedAST = Generated $ ask

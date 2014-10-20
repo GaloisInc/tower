@@ -4,7 +4,8 @@ module Ivory.Tower.Types.HandlerCode
   , emptyHandlerCode
   , insertHandlerCodeCallback
   , insertHandlerCodeEmitter
-  , generateHandlerCode
+  , generatedHandlerCode
+  , userHandlerCode
   ) where
 
 import Ivory.Tower.ToyObjLang
@@ -29,9 +30,15 @@ insertHandlerCodeEmitter :: EmitterCode -> HandlerCode -> HandlerCode
 insertHandlerCodeEmitter e c =
   c { handlercode_emitters = e : handlercode_emitters c}
 
-generateHandlerCode :: HandlerCode -> ModuleM ()
-generateHandlerCode hc = handlercode_callbacks hc >> 
-  foldl appendmoddef (return ()) (handlercode_emitters hc)
+userHandlerCode :: HandlerCode -> ModuleM ()
+userHandlerCode hc = handlercode_callbacks hc >>
+  foldl appenduser (return ()) (handlercode_emitters hc)
+  where
+  appenduser acc ec = acc >> emittercode_user ec
+
+generatedHandlerCode :: HandlerCode -> ModuleM ()
+generatedHandlerCode hc =
+  foldl appendgen (return ()) (handlercode_emitters hc)
   -- XXX MAKE RUNNER FUNCTION
   where
-  appendmoddef acc ec = acc >> emittercode_moddef ec
+  appendgen acc ec = acc >> emittercode_gen ec

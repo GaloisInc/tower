@@ -21,6 +21,7 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Generated
 
 import Ivory.Tower.Types.GeneratedCode
+import Ivory.Tower.Types.ThreadCode
 
 import Ivory.Tower.ToyObjLang
 
@@ -63,7 +64,7 @@ towerPutASTSignal a = withAST $
 towerPutModules :: (AST.Tower -> [Module]) -> Tower ()
 towerPutModules m = Tower $ lift $ codegenPutModules m
 
-towerPutThreadCode :: (AST.Tower -> [(AST.Thread, ModuleM ())])
+towerPutThreadCode :: (AST.Tower -> [ThreadCode])
                      -> Tower ()
 towerPutThreadCode c = Tower $ lift $ codegenPutThreadCode c
 

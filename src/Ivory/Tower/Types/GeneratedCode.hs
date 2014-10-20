@@ -1,31 +1,34 @@
 module Ivory.Tower.Types.GeneratedCode
   ( GeneratedCode(..)
   , generatedCodeModules
-  , generatedCodeForThread
+  , insertTCGeneratedCode
   , emptyGeneratedCode
   ) where
 
 import qualified Data.Map as Map
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.ToyObjLang
+import Ivory.Tower.Types.ThreadCode
 
 data GeneratedCode = GeneratedCode
   { generatedcode_modules :: [Module]
-  , generatedcode_threads :: Map.Map AST.Thread (ModuleM ())
+  , generatedcode_threads :: Map.Map AST.Thread ThreadCode
   }
 
 generatedCodeModules :: GeneratedCode -> [Module]
 generatedCodeModules gc = generatedcode_modules gc ++
-  map threadModule (Map.toList (generatedcode_threads gc))
+  map threadUserModule (Map.elems (generatedcode_threads gc)) ++
+  map threadGenModule (Map.elems (generatedcode_threads gc))
   where
-  threadModule (t, moddef) =
-    package ("tower_" ++ AST.threadName t) moddef
+  threadUserModule t = package ("t_u_" ++ AST.threadName (threadcode_thread t))                                (threadcode_user t)
+  threadGenModule t = package ("t_g_" ++ AST.threadName (threadcode_thread t))
+                               (threadcode_gen t)
 
-generatedCodeForThread :: AST.Thread -> ModuleM ()
+insertTCGeneratedCode :: ThreadCode
                        -> GeneratedCode -> GeneratedCode
-generatedCodeForThread t m g =
+insertTCGeneratedCode tc g =
   g { generatedcode_threads = ins (generatedcode_threads g) }
-  where ins = Map.insertWith (>>) t m
+  where ins = Map.insertWith addThreadCode (threadcode_thread tc) tc
 
 emptyGeneratedCode :: GeneratedCode
 emptyGeneratedCode = GeneratedCode [] Map.empty

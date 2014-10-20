@@ -6,6 +6,8 @@ module Ivory.Tower.Handler
   , Handler()
   ) where
 
+import Control.Monad (forM_)
+
 import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.Chan
@@ -22,21 +24,31 @@ emitter (ChanInput (Chan chanast)) bound = do
   let ast = AST.emitter n chanast bound
   handlerPutASTEmitter ast
   let e = Emitter ast
-  handlerPutCodeEmitter $ \t ->
-    let tn = AST.threadName t
-        iproc = proc ((emitterProcName e) ++ "_" ++ tn ++ "_init") []
+      ename = emitterProcName e
+      e_per_thread tn suffix = ename ++ "_" ++ tn ++ "_" ++ suffix
+  handlerPutCodeEmitter $ \twr thr ->
+    let tn = AST.threadName thr
+        iproc = proc (e_per_thread tn "init") []
                      (stmt ("init in thread " ++ tn ))
-        eproc = proc (emitterProcName e) ["msg"]
-                  (stmt ("emitter for chan " ++ show chanast))
-        dproc = proc ((emitterProcName e) ++ "_" ++ tn ++ "_deliver") []
-                     (stmt ("XXX unimplemented delivery in thread " ++ tn))
+        trampoline = proc ename ["msg"]
+                  (stmt ("call " ++ (e_per_thread tn "emit")))
+        eproc' = proc (e_per_thread tn "emit") ["msg"]
+                  (stmt ("store messages for delivery"))
+        dproc = proc (e_per_thread tn "deliver") [] $ do
+                     stmt ("XXX unimplemented delivery in thread " ++ tn)
+                     forM_ (AST.towerChanHandlers twr chanast) $ \(m,h) ->
+                       stmt ( "deliver to: "
+                            ++ (showUnique (AST.monitor_name m)) ++ " "
+                            ++ (showUnique (AST.handler_name h)))
     in EmitterCode
         { emittercode_init = iproc
-        , emittercode_emit = eproc
+        , emittercode_emit = trampoline
         , emittercode_deliver = dproc
-        , emittercode_moddef = do
+        , emittercode_user = do
+            defProc trampoline -- XXX make sure this is private to c module.
+        , emittercode_gen = do
             defProc iproc
-            defProc eproc
+            defProc eproc'
             defProc dproc
         }
   return e

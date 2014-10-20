@@ -42,6 +42,7 @@ library
                         Ivory.Tower.Types.EmitterCode,
                         Ivory.Tower.Types.HandlerCode,
                         Ivory.Tower.Types.MonitorCode,
+                        Ivory.Tower.Types.ThreadCode,
                         Ivory.Tower.Types.GeneratedCode,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.Unique

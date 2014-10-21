@@ -17,12 +17,12 @@ import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
 
-import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.HandlerCode
 import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Monitor
+import Ivory.Tower.Codegen.Handler
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.ToyObjLang
@@ -37,15 +37,11 @@ runHandler :: String -> AST.Chan -> Handler ()
 runHandler n ch b = mdo
   u <- freshname n
   let h = AST.emptyHandler u ch
-      ehcs towerast = [ (t, emptyHandlerCode)
-                      | t <- AST.handlerThreads towerast handlerast
-                      ]
-  (handlerast, thcs) <- runStateT ehcs $ fmap snd (runStateT h (unHandler b))
+  (handlerast, thcs) <- runStateT (emptyHandlerThreadCode handlerast)
+                      $ fmap snd (runStateT h (unHandler b))
 
   monitorPutASTHandler handlerast
-  monitorPutThreadCode $ \twr -> [ handlerCodeToThreadCode t hc
-                                 | (t, hc) <- thcs twr
-                                 ]
+  monitorPutThreadCode $ \twr -> generateHandlerThreadCode thcs twr
 
 withAST :: (AST.Handler -> AST.Handler) -> Handler ()
 withAST f = Handler $ do

@@ -1,8 +1,14 @@
 
-module Ivory.Tower.Types.ThreadCode where
+module Ivory.Tower.Types.ThreadCode
+  ( ThreadCode(..)
+  , emptyThreadCode
+  , insertUserThreadCode
+  , insertGenThreadCode
+  , addThreadCode
+  ) where
 
-import Ivory.Tower.Types.HandlerCode
 import qualified Ivory.Tower.AST.Thread as AST
+
 import Ivory.Tower.ToyObjLang
 
 data ThreadCode =
@@ -29,10 +35,5 @@ addThreadCode :: ThreadCode -> ThreadCode -> ThreadCode
 addThreadCode a b = insertUserThreadCode (threadcode_user b)
                   $ insertGenThreadCode  (threadcode_gen b)
                   $ a
-
-handlerCodeToThreadCode :: AST.Thread -> HandlerCode -> ThreadCode
-handlerCodeToThreadCode t hc = insertUserThreadCode (userHandlerCode hc)
-                             $ insertGenThreadCode (generatedHandlerCode hc)
-                             $ emptyThreadCode t
 
 

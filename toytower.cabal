@@ -31,6 +31,11 @@ library
                         Ivory.Tower.AST.Handler,
                         Ivory.Tower.AST.Emitter,
                         Ivory.Tower.AST.Graph,
+
+                        -- Code generation
+                        Ivory.Tower.Codegen.Emitter,
+                        Ivory.Tower.Codegen.Handler,
+
                         -- Monads
                         Ivory.Tower.Monad.Base,
                         Ivory.Tower.Monad.Tower,

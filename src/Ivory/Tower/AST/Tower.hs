@@ -1,5 +1,11 @@
 
-module Ivory.Tower.AST.Tower where
+module Ivory.Tower.AST.Tower
+  ( Tower(..)
+  , emptyTower
+  , towerThreads
+  , towerFindMonitorByName
+  , towerFindMonitorOfHandler
+  ) where
 
 import Data.List (find)
 import Ivory.Tower.Types.Unique

@@ -19,7 +19,7 @@ module Ivory.Tower.Tower
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.GeneratedCode
-import Ivory.Tower.Types.MonitorCode
+import Ivory.Tower.Codegen.Monitor
 
 import qualified Ivory.Tower.AST as AST
 

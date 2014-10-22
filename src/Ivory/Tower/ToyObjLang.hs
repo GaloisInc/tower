@@ -12,6 +12,8 @@ module Ivory.Tower.ToyObjLang
   , proc
   , ProcM()
   , stmt
+  , call
+  , comment
 
   , display
   , printModules
@@ -84,6 +86,12 @@ withProc f = ProcM $ do
 
 stmt :: String -> ProcM ()
 stmt s = withProc $ \(Proc n as bs) -> Proc n as (bs ++ [s])
+
+comment :: String -> ProcM ()
+comment s = stmt ("/* " ++ s ++ " */")
+
+call :: Proc -> ProcM ()
+call (Proc name _ _) = stmt ("call " ++ name)
 
 package :: String -> ModuleM () -> Module
 package n b = snd (runM (unModuleM b) (Module n [] []))

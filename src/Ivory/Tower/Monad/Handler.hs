@@ -41,7 +41,8 @@ runHandler n ch b = mdo
                       $ fmap snd (runStateT h (unHandler b))
 
   monitorPutASTHandler handlerast
-  monitorPutThreadCode $ \twr -> generateHandlerThreadCode thcs twr
+  monitorPutThreadCode $ \twr ->
+    generateHandlerThreadCode thcs twr handlerast
 
 withAST :: (AST.Handler -> AST.Handler) -> Handler ()
 withAST f = Handler $ do

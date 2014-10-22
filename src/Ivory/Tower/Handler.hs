@@ -11,8 +11,10 @@ import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Base
-import Ivory.Tower.Types.Unique
+
 import Ivory.Tower.Codegen.Emitter
+import Ivory.Tower.Codegen.Handler
+
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.ToyObjLang
@@ -32,16 +34,9 @@ callback b = do
   handlerPutASTCallback u
   hname <- handlerName
   handlerPutCodeCallback $ \t -> do
-    defProc (proc (callbackName u hname t)  ["msg"] b)
+    defProc (proc (callbackProcName u hname t)  ["msg"] b)
 
-callbackName :: Unique -> Unique -> AST.Thread -> String
-callbackName callbackname handlername tast
-  =  showUnique callbackname
-  ++ "_"
-  ++ showUnique handlername
-  ++ "_"
-  ++ AST.threadName tast
 
 emit :: Emitter a -> ProcM ()
-emit e = stmt $ "call emitter " ++ emitterProcName e
+emit e = call (proc (emitterProcName e) [] (return ()))
 

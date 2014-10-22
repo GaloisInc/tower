@@ -16,6 +16,9 @@ emptyMonitor u = Monitor
   , monitor_handlers = []
   }
 
+monitorName :: Monitor -> String
+monitorName = showUnique . monitor_name
+
 monitorFindHandlerByName :: Unique -> Monitor -> Maybe Handler
 monitorFindHandlerByName n m = find p (monitor_handlers m)
   where p h = handler_name h == n

@@ -2,6 +2,7 @@
 module Ivory.Tower.AST.Handler
   ( Handler(..)
   , emptyHandler
+  , handlerName
   , handlerInsertEmitter
   , handlerInsertCallback
   ) where
@@ -25,6 +26,9 @@ emptyHandler u c = Handler
   , handler_emitters  = []
   , handler_callbacks = []
   }
+
+handlerName :: Handler -> String
+handlerName = showUnique . handler_name
 
 handlerInsertEmitter :: Emitter -> Handler -> Handler
 handlerInsertEmitter a h =

@@ -36,6 +36,7 @@ library
                         Ivory.Tower.Codegen.Emitter,
                         Ivory.Tower.Codegen.Handler,
                         Ivory.Tower.Codegen.Monitor,
+                        Ivory.Tower.Codegen.Thread,
 
                         -- Monads
                         Ivory.Tower.Monad.Base,

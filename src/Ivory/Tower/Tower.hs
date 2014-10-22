@@ -3,8 +3,6 @@
 
 module Ivory.Tower.Tower
   ( Tower()
-  , GeneratedCode()
-  , generatedCodeModules
   , tower
   , ChanInput()
   , ChanOutput()
@@ -18,8 +16,8 @@ module Ivory.Tower.Tower
 
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
-import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Codegen.Monitor
+import Ivory.Tower.Codegen.Thread
 
 import qualified Ivory.Tower.AST as AST
 
@@ -27,8 +25,11 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
-tower :: Tower () -> (AST.Tower, GeneratedCode)
-tower = runTower
+import Ivory.Tower.ToyObjLang
+
+tower :: Tower () -> (AST.Tower, [Module])
+tower t = (ast, generatedCodeModules gc ast)
+  where (ast, gc) = runTower t
 
 channel :: Tower (ChanInput a, ChanOutput a)
 channel = do

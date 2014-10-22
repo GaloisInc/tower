@@ -92,7 +92,7 @@ run t = do
   putStrLn dot
   writeFile "out.dot" dot
   putStrLn "\n=======\n"
-  printModules (generatedCodeModules code)
+  printModules code
   where
   (ast, code) = tower t
 

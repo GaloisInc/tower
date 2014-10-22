@@ -35,6 +35,7 @@ library
                         -- Code generation
                         Ivory.Tower.Codegen.Emitter,
                         Ivory.Tower.Codegen.Handler,
+                        Ivory.Tower.Codegen.Monitor,
 
                         -- Monads
                         Ivory.Tower.Monad.Base,

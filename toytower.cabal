@@ -36,14 +36,14 @@ library
                         Ivory.Tower.Codegen.Emitter,
                         Ivory.Tower.Codegen.Handler,
                         Ivory.Tower.Codegen.Monitor,
-                        Ivory.Tower.Codegen.Thread,
+                        Ivory.Tower.Codegen.System,
 
                         -- Monads
                         Ivory.Tower.Monad.Base,
                         Ivory.Tower.Monad.Tower,
                         Ivory.Tower.Monad.Monitor,
                         Ivory.Tower.Monad.Handler,
-                        Ivory.Tower.Monad.Generated,
+                        Ivory.Tower.Monad.Codegen,
                         -- Types
                         Ivory.Tower.Types.Chan,
                         Ivory.Tower.Types.EmitterCode,

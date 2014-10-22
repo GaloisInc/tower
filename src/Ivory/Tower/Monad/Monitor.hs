@@ -19,6 +19,7 @@ import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Monad.Base
+import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
 
@@ -46,11 +47,17 @@ monitorPutASTHandler :: AST.Handler -> Monitor ()
 monitorPutASTHandler a = withAST $
   \s -> s { AST.monitor_handlers = a : AST.monitor_handlers s }
 
+liftTower :: Tower a -> Monitor a
+liftTower a = Monitor $ lift $ lift $ a
+
+monitorCodegen :: Codegen a -> Monitor a
+monitorCodegen = liftTower . towerCodegen
+
 monitorPutModules :: (AST.Monitor -> AST.Tower -> [Module]) -> Monitor ()
-monitorPutModules ms = Monitor $ do
-  a <- get
-  lift $ lift $ towerPutModules $
-    \t -> ms (findMonitorAST (AST.monitor_name a) t) t
+monitorPutModules ms = do
+  a <- Monitor get
+  monitorCodegen $ codegenModules $
+    \twr -> ms (findMonitorAST (AST.monitor_name a) twr) twr
   where
   findMonitorAST :: Unique -> AST.Tower -> AST.Monitor
   findMonitorAST n twr = maybe err id (AST.towerFindMonitorByName n twr)
@@ -61,14 +68,12 @@ withCode f = Monitor $ do
   a <- lift get
   lift (set (\ctx -> (f ctx (a ctx))))
 
+-- XXX UNIFY THE FOLLOWING TWO IDEAS SOMEHOW?
 monitorPutCode :: (AST.Monitor -> ModuleM ()) -> Monitor ()
 monitorPutCode f = withCode $ \ctx mc -> insertMonitorCode (f ctx) mc
 
-liftTower :: Tower a -> Monitor a
-liftTower a = Monitor $ lift $ lift $ a
-
 monitorPutThreadCode :: (AST.Tower -> [ThreadCode]) -> Monitor ()
-monitorPutThreadCode = liftTower . towerPutThreadCode
+monitorPutThreadCode = monitorCodegen . codegenThreadCode
 
 instance BaseUtils Monitor where
   fresh = liftTower fresh

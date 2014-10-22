@@ -16,12 +16,12 @@ module Ivory.Tower.Tower
 
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
-import Ivory.Tower.Codegen.Monitor
-import Ivory.Tower.Codegen.Thread
+import Ivory.Tower.Codegen.System
 
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.Monad.Base
+import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
@@ -55,5 +55,5 @@ monitor :: String -> Monitor () -> Tower ()
 monitor n m = do
   (ast, mcode) <- runMonitor n m
   towerPutASTMonitor ast
-  towerPutModules $ \_ -> generateMonitorCode mcode ast
+  towerCodegen $ codegenMonitor ast (const mcode)
 

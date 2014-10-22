@@ -15,7 +15,7 @@ generateMonitorCode :: MonitorCode
                     -> AST.Monitor
                     -> [Module]
 generateMonitorCode mc mon =
-  [ package state_pkgname (monitorcode_moddef mc mon)
+  [ package state_pkgname (monitorcode_moddef mc)
   , package sync_pkgname sync_pkg
   ]
   where

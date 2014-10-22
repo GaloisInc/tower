@@ -25,14 +25,17 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.ToyObjLang
 
 newtype Monitor a = Monitor
-  { unMonitor :: StateT AST.Monitor (StateT MonitorCode Tower) a
+  { unMonitor :: StateT AST.Monitor
+                    (StateT (AST.Monitor -> MonitorCode) Tower) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runMonitor :: String -> Monitor () -> Tower (AST.Monitor, MonitorCode)
+runMonitor :: String -> Monitor ()
+           -> Tower (AST.Monitor, MonitorCode)
 runMonitor n b = do
   u <- freshname n
-  runStateT emptyMonitorCode
-              (fmap snd (runStateT (AST.emptyMonitor u) (unMonitor b)))
+  (ast, mkmc) <- runStateT (const emptyMonitorCode)
+                    (fmap snd (runStateT (AST.emptyMonitor u) (unMonitor b)))
+  return (ast, mkmc ast)
 
 withAST :: (AST.Monitor -> AST.Monitor) -> Monitor ()
 withAST f = Monitor $ do
@@ -53,13 +56,13 @@ monitorPutModules ms = Monitor $ do
   findMonitorAST n twr = maybe err id (AST.towerFindMonitorByName n twr)
   err = error "findMonitorAST failed - broken invariant"
 
-withCode :: (MonitorCode -> MonitorCode) -> Monitor ()
+withCode :: (AST.Monitor -> MonitorCode -> MonitorCode) -> Monitor ()
 withCode f = Monitor $ do
   a <- lift get
-  lift (set (f a))
+  lift (set (\ctx -> (f ctx (a ctx))))
 
 monitorPutCode :: (AST.Monitor -> ModuleM ()) -> Monitor ()
-monitorPutCode f = withCode $ insertMonitorCode f
+monitorPutCode f = withCode $ \ctx mc -> insertMonitorCode (f ctx) mc
 
 liftTower :: Tower a -> Monitor a
 liftTower a = Monitor $ lift $ lift $ a

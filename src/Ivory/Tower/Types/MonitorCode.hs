@@ -5,22 +5,19 @@ module Ivory.Tower.Types.MonitorCode
   , insertMonitorCode
   ) where
 
-import qualified Ivory.Tower.AST as AST
-
 import Ivory.Tower.ToyObjLang
 
--- XXX CHANGE TO BE MODULEM () ONLY, PUT CODATA IN MONAD
 data MonitorCode = MonitorCode
-  { monitorcode_moddef :: AST.Monitor -> ModuleM ()
+  { monitorcode_moddef :: ModuleM ()
   }
 
 emptyMonitorCode :: MonitorCode
 emptyMonitorCode = MonitorCode
-  { monitorcode_moddef = const (return ())
+  { monitorcode_moddef = return ()
   }
 
-insertMonitorCode :: (AST.Monitor -> ModuleM ())
+insertMonitorCode :: ModuleM ()
                   -> MonitorCode -> MonitorCode
 insertMonitorCode m c =
-  c { monitorcode_moddef = \ctx -> monitorcode_moddef c ctx >> m ctx }
+  c { monitorcode_moddef = monitorcode_moddef c >> m }
 

@@ -18,13 +18,13 @@ import Ivory.Tower.ToyObjLang
 data SomeEmitterCode = forall a . SomeEmitterCode (EmitterCode a)
 
 someemittercode_deliver :: SomeEmitterCode -> Def('[]:->())
-someemittercode_deliver  = undefined
+someemittercode_deliver (SomeEmitterCode c) = emittercode_deliver c
 someemittercode_init :: SomeEmitterCode -> Def('[]:->())
-someemittercode_init  = undefined
+someemittercode_init (SomeEmitterCode c) = emittercode_init c
 someemittercode_gen :: SomeEmitterCode -> ModuleDef
-someemittercode_gen  = undefined
+someemittercode_gen (SomeEmitterCode c) = emittercode_gen c
 someemittercode_user :: SomeEmitterCode -> ModuleDef
-someemittercode_user  = undefined
+someemittercode_user (SomeEmitterCode c) = emittercode_user c
 
 data EmitterCode (a :: Area *) = EmitterCode
   { emittercode_init :: Def('[]:->())

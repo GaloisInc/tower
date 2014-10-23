@@ -8,6 +8,8 @@ import Ivory.Tower.ToyObjLang
 import Ivory.Tower.AST.Graph
 import Text.Show.Pretty
 
+import Ivory.Compile.C.CmdlineFrontend
+
 test1 :: Tower ()
 test1 = do
   (c1in, c1out) <- channel
@@ -94,7 +96,8 @@ run t = do
   putStrLn dot
   writeFile "out.dot" dot
   putStrLn "\n=======\n"
-  --printModules code
+  _ <- runCompiler code initialOpts { stdOut = True }
+  return ()
   where
-  (ast, _code) = tower t
+  (ast, code) = tower t
 

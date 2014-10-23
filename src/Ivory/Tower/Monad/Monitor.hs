@@ -6,7 +6,6 @@ module Ivory.Tower.Monad.Monitor
   ( Monitor
   , runMonitor
   , monitorPutASTHandler
-  , monitorPutModules
   , monitorPutCode
   , monitorPutThreadCode
   ) where
@@ -15,7 +14,6 @@ import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
 
-import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Monad.Base
@@ -53,22 +51,11 @@ liftTower a = Monitor $ lift $ lift $ a
 monitorCodegen :: Codegen a -> Monitor a
 monitorCodegen = liftTower . towerCodegen
 
-monitorPutModules :: (AST.Monitor -> AST.Tower -> [Module]) -> Monitor ()
-monitorPutModules ms = do
-  a <- Monitor get
-  monitorCodegen $ codegenModules $
-    \twr -> ms (findMonitorAST (AST.monitor_name a) twr) twr
-  where
-  findMonitorAST :: Unique -> AST.Tower -> AST.Monitor
-  findMonitorAST n twr = maybe err id (AST.towerFindMonitorByName n twr)
-  err = error "findMonitorAST failed - broken invariant"
-
 withCode :: (AST.Monitor -> MonitorCode -> MonitorCode) -> Monitor ()
 withCode f = Monitor $ do
   a <- lift get
   lift (set (\ctx -> (f ctx (a ctx))))
 
--- XXX UNIFY THE FOLLOWING TWO IDEAS SOMEHOW?
 monitorPutCode :: (AST.Monitor -> ModuleM ()) -> Monitor ()
 monitorPutCode f = withCode $ \ctx mc -> insertMonitorCode (f ctx) mc
 

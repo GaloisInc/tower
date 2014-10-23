@@ -38,6 +38,7 @@ withGeneratedCode f = Codegen $ do
   gc <- get
   set (f gc)
 
+-- XXX nobody uses this function, esp not given the AST.Tower continuation.
 codegenModules :: (AST.Tower -> [Module]) -> Codegen ()
 codegenModules f = do
   a <- getAST
@@ -45,18 +46,18 @@ codegenModules f = do
   withGeneratedCode $ \c ->
     foldl (flip generatedCodeInsertModule) c (f a)
 
--- XXX might not even need AST.Tower continuation exposed here?
-codegenMonitor :: AST.Monitor -> (AST.Tower -> MonitorCode) -> Codegen ()
-codegenMonitor m f = do
-  a <- getAST
-  withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
-
 codegenThreadCode :: (AST.Tower -> [ThreadCode]) -> Codegen ()
 codegenThreadCode f = do
   a <- getAST
   -- Don't replace this fold with a mapM - causes black hole
   withGeneratedCode $ \c ->
     foldl (flip generatedCodeInsertThreadCode) c (f a)
+
+-- might not even need AST.Tower continuation exposed here?
+codegenMonitor :: AST.Monitor -> (AST.Tower -> MonitorCode) -> Codegen ()
+codegenMonitor m f = do
+  a <- getAST
+  withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
 
 instance BaseUtils Codegen where
   fresh = Codegen $ lift $ lift fresh

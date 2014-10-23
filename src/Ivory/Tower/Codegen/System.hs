@@ -14,8 +14,8 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.ToyObjLang
 
 generatedCodeModules :: GeneratedCode -> AST.Tower -> [Module]
-generatedCodeModules gc _XXX
-  = generatedcode_modules gc
+generatedCodeModules gc _twr
+   = generatedcode_modules gc
   ++ map threadUserModule ts
   ++ map threadGenModule ts
   ++ concatMap monitorModules ms

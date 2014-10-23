@@ -56,7 +56,7 @@ withCode f = Monitor $ do
   a <- lift get
   lift (set (\ctx -> (f ctx (a ctx))))
 
-monitorPutCode :: (AST.Monitor -> ModuleM ()) -> Monitor ()
+monitorPutCode :: (AST.Monitor -> ModuleDef) -> Monitor ()
 monitorPutCode f = withCode $ \ctx mc -> insertMonitorCode (f ctx) mc
 
 monitorPutThreadCode :: (AST.Tower -> [ThreadCode]) -> Monitor ()

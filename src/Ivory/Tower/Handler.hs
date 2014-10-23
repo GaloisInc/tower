@@ -1,3 +1,7 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Handler
   ( emitter
@@ -8,6 +12,7 @@ module Ivory.Tower.Handler
 
 
 import Ivory.Tower.Types.Emitter
+import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Base
@@ -19,24 +24,38 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.ToyObjLang
 
-emitter :: ChanInput a -> Integer -> Handler (Emitter a)
+emitter :: forall a b
+         . (IvoryArea a)
+        => ChanInput a -> Integer -> Handler b (Emitter a)
 emitter (ChanInput (Chan chanast)) bound = do
   n <- fresh
   let ast = AST.emitter n chanast bound
       e = Emitter ast
   handlerPutASTEmitter ast
-  handlerPutCodeEmitter $ \twr thr -> emitterCode e twr thr
+  handlerPutCodeEmitter $ \twr thr ->
+    (emitterCode e twr thr :: EmitterCode a)
   return e
 
-callback :: ProcM () -> Handler ()
+callback :: forall s a
+          . (IvoryArea a)
+         => (forall eff . ConstRef s a -> Ivory eff ()) -> Handler a ()
 callback b = do
   u <- freshname "callback"
   handlerPutASTCallback u
   hname <- handlerName
   handlerPutCodeCallback $ \t -> do
-    defProc (proc (callbackProcName u hname t)  ["msg"] b)
+    incl (callbackProc (callbackProcName u hname t) b)
 
 
-emit :: Emitter a -> ProcM ()
-emit e = call (proc (emitterProcName e) [] (return ()))
+callbackProc :: forall s a
+              . (IvoryArea a)
+             => String
+             -> (forall eff . ConstRef s a -> Ivory eff ())
+             -> Def('[ConstRef s a]:->())
+callbackProc name f = proc name $ \m -> body $ f m
+
+emit :: forall eff s a
+      . (IvoryArea a)
+     => Emitter a -> ConstRef s a -> Ivory eff ()
+emit e = call_ (callbackProc (emitterProcName e) (const (return ())))
 

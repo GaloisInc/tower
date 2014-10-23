@@ -9,7 +9,7 @@ module Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.ToyObjLang
 
 data MonitorCode = MonitorCode
-  { monitorcode_moddef :: ModuleM ()
+  { monitorcode_moddef :: ModuleDef
   }
 
 emptyMonitorCode :: MonitorCode
@@ -17,7 +17,7 @@ emptyMonitorCode = MonitorCode
   { monitorcode_moddef = return ()
   }
 
-insertMonitorCode :: ModuleM ()
+insertMonitorCode :: ModuleDef
                   -> MonitorCode -> MonitorCode
 insertMonitorCode m c =
   c { monitorcode_moddef = monitorcode_moddef c >> m }

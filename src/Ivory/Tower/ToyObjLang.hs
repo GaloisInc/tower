@@ -1,6 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Ivory.Tower.ToyObjLang
+  ( module Ivory.Language
+  ) where
+import Ivory.Language
+{-
+
   ( Module()
   , package
   , defProc
@@ -111,4 +116,4 @@ _objlangtest = printModules
         stmt "first statement"
         stmt "second statement"
   ]
-
+-}

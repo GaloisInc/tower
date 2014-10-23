@@ -14,8 +14,8 @@ import Ivory.Tower.ToyObjLang
 data ThreadCode =
   ThreadCode
     { threadcode_thread :: AST.Thread
-    , threadcode_user   :: ModuleM ()
-    , threadcode_gen    :: ModuleM ()
+    , threadcode_user   :: ModuleDef
+    , threadcode_gen    :: ModuleDef
     }
 
 emptyThreadCode :: AST.Thread -> ThreadCode
@@ -25,10 +25,10 @@ emptyThreadCode t = ThreadCode
   , threadcode_gen    = return ()
   }
 
-insertUserThreadCode :: ModuleM () -> ThreadCode -> ThreadCode
+insertUserThreadCode :: ModuleDef -> ThreadCode -> ThreadCode
 insertUserThreadCode m t = t { threadcode_user = threadcode_user t >> m }
 
-insertGenThreadCode :: ModuleM () -> ThreadCode -> ThreadCode
+insertGenThreadCode :: ModuleDef -> ThreadCode -> ThreadCode
 insertGenThreadCode m t = t { threadcode_gen = threadcode_gen t >> m }
 
 addThreadCode :: ThreadCode -> ThreadCode -> ThreadCode

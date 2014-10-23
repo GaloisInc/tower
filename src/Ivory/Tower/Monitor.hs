@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Monitor
   ( handler
@@ -14,13 +15,15 @@ import Ivory.Tower.Monad.Base
 
 import Ivory.Tower.ToyObjLang
 
-handler :: ChanOutput a -> String -> Handler () -> Monitor ()
+handler :: (IvoryArea a)
+        => ChanOutput a -> String -> Handler a () -> Monitor ()
 handler (ChanOutput (Chan chanast)) name block = do
   runHandler name chanast block
 
-state :: String -> Monitor Var
+state :: (IvoryArea a)
+      => String -> Monitor (Ref Global a)
 state n = do
   f <- freshname n
-  let v = var (showUnique f)
-  monitorPutCode $ \_ -> defVar v
-  return v
+  let a = area (showUnique f) Nothing
+  monitorPutCode $ \_ -> defMemArea a
+  return (addrOf a)

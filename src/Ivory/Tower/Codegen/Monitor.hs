@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Codegen.Monitor
   ( generateMonitorCode
@@ -22,17 +24,20 @@ generateMonitorCode mc mon =
   state_pkgname = "t_monitor_state_" ++ AST.monitorName mon
   sync_pkgname = "t_monitor_sync_" ++ AST.monitorName mon
   sync_pkg = do
-    defVar (var (monitorLockName mon))
-    defProc (monitorLockProc mon)
-    defProc (monitorUnlockProc mon)
+    incl (monitorLockProc mon)
+    incl (monitorUnlockProc mon)
 
 monitorLockName :: AST.Monitor -> String
 monitorLockName mon = "lock_"  ++ AST.monitorName mon
 
-monitorUnlockProc :: AST.Monitor -> Proc
-monitorUnlockProc mon = proc n [] (stmt ("give " ++ monitorLockName mon))
-  where n = "monitor_unlock_" ++ AST.monitorName mon
+monitorUnlockProc :: AST.Monitor -> Def('[]:->())
+monitorUnlockProc mon = proc n $ body $
+  comment ("give " ++ monitorLockName mon)
+  where
+  n = "monitor_unlock_" ++ AST.monitorName mon
 
-monitorLockProc :: AST.Monitor -> Proc
-monitorLockProc mon = proc n [] (stmt ("take " ++ monitorLockName mon))
-  where n = "monitor_lock_" ++ AST.monitorName mon
+monitorLockProc :: AST.Monitor -> Def('[]:->())
+monitorLockProc mon = proc n $ body $
+  comment ("take " ++ monitorLockName mon)
+  where
+  n = "monitor_lock_" ++ AST.monitorName mon

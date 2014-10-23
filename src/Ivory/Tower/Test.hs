@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Test where
 
@@ -11,16 +13,16 @@ test1 = do
   (c1in, c1out) <- channel
   per <- period (Microseconds 1000)
   monitor "m1" $ do
-    _ <- state "some_m1_state"
+    (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
     handler per "tick" $ do
       e <- emitter c1in 1
-      callback $ do
-        stmt "some_ivory_in_m1_tick"
-        emit e
+      callback $ \m -> do
+        comment "some_ivory_in_m1_tick"
+        emit e m
   monitor "m2" $ do
-    _ <- state "some_m2_state"
+    (_s :: Ref Global (Stored IBool))<- state "some_m2_state"
     handler c1out "chan1msg" $ do
-      callback $ stmt "some_ivory_in_m2_onmsg"
+      callback $ \_ -> comment "some_ivory_in_m2_onmsg"
 
 test2 :: Tower ()
 test2 = do
@@ -28,21 +30,21 @@ test2 = do
   per1 <- period (Microseconds 1000)
   per2 <- period (Microseconds 333)
   monitor "m1" $ do
-    _ <- state "some_m1_state"
+    (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
     handler per1 "tick1" $ do
       e <- emitter c1in 1
-      callback $ do
-        stmt "some_ivory_in_m1_tick2"
-        emit e
+      callback $ \m -> do
+        comment "some_ivory_in_m1_tick2"
+        emit e m
     handler per2 "tick2" $ do
       e <- emitter c1in 1
-      callback $ do
-        stmt "some_ivory_in_m1_tick2"
-        emit e
+      callback $ \m -> do
+        comment "some_ivory_in_m1_tick2"
+        emit e m
   monitor "m2" $ do
-    _ <- state "some_m2_state"
+    (_s :: Ref Global (Stored Uint32)) <- state "some_m2_state"
     handler c1out "chan1msg" $ do
-      callback $ stmt "some_ivory_in_m2_onmsg"
+      callback $ \_ -> comment "some_ivory_in_m2_onmsg"
 
 test3 :: Tower ()
 test3 = do
@@ -51,37 +53,37 @@ test3 = do
   p1 <- period (Microseconds 1000)
   p2 <- period (Microseconds 666)
   monitor "m1" $ do
-    _ <- state "some_m1_state"
+    (_s :: Ref Global (Stored Uint8)) <- state "some_m1_state"
     handler p1 "tick" $ do
       e <- emitter c1in 1
-      callback $ do
-        stmt "some_ivory_in_m1_tick"
-        emit e
+      callback $ \m -> do
+        comment "some_ivory_in_m1_tick"
+        emit e m
   monitor "m2" $ do
-    _ <- state "some_m2_state"
+    (_s :: Ref Global (Stored Uint8)) <- state "some_m2_state"
     handler c1out "chan1msg" $ do
       e <- emitter c2in 1
-      callback $ do
-        stmt "some_ivory_in_m2_onmsg"
-        emit e
+      callback $ \m -> do
+        comment "some_ivory_in_m2_onmsg"
+        emit e m
   monitor "m3" $ do
-    _ <- state "some_m3_state"
+    (_s :: Ref Global (Stored Uint8)) <- state "some_m3_state"
     handler c1out "chan1msg" $ do
       e <- emitter c2in 1
-      callback $ do
-        stmt "some_ivory_in_m3_onchan1"
-        emit e
+      callback $ \m -> do
+        comment "some_ivory_in_m3_onchan1"
+        emit e m
     handler c2out "chan2msg" $ do
-      callback $ stmt "some_ivory_in_m3_onchan2"
+      callback $ \_ -> comment "some_ivory_in_m3_onchan2"
     handler p2 "tick2" $ do
       e <- emitter c1in 3
-      callback $ do
-        stmt "some ivory in m3 tick2"
-        emit e
+      callback $ \m -> do
+        comment "some ivory in m3 tick2"
+        emit e m
   monitor "m4" $ do
-    _ <- state "some_m4_state"
+    (_s :: Ref Global (Stored Uint8)) <- state "some_m4_state"
     handler c2out "chan2msg" $ do
-      callback $ stmt "some_ivory_in_m4_onmsg"
+      callback $ \_ -> comment "some_ivory_in_m4_onmsg"
 
 run :: Tower () -> IO ()
 run t = do
@@ -92,7 +94,7 @@ run t = do
   putStrLn dot
   writeFile "out.dot" dot
   putStrLn "\n=======\n"
-  printModules code
+  --printModules code
   where
-  (ast, code) = tower t
+  (ast, _code) = tower t
 

@@ -1,5 +1,5 @@
-name:                toytower
-version:             0.8.0.0
+name:                tower
+version:             0.9.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language

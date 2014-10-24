@@ -10,8 +10,10 @@ import Text.Show.Pretty
 
 import Ivory.Compile.C.CmdlineFrontend
 
-test1 :: Tower ()
-test1 = do
+data Test = Test String (Tower ())
+
+test1 :: Test
+test1 = Test "test1" $ do
   (c1in, c1out) <- channel
   per <- period (Microseconds 1000)
   monitor "m1" $ do
@@ -26,8 +28,8 @@ test1 = do
     handler c1out "chan1msg" $ do
       callback $ \_ -> comment "some_ivory_in_m2_onmsg"
 
-test2 :: Tower ()
-test2 = do
+test2 :: Test
+test2 = Test "test2" $ do
   (c1in, c1out) <- channel
   per1 <- period (Microseconds 1000)
   per2 <- period (Microseconds 333)
@@ -48,8 +50,8 @@ test2 = do
     handler c1out "chan1msg" $ do
       callback $ \_ -> comment "some_ivory_in_m2_onmsg"
 
-test3 :: Tower ()
-test3 = do
+test3 :: Test
+test3 = Test "test3" $ do
   (c1in, c1out) <- channel
   (c2in, c2out) <- channel
   p1 <- period (Microseconds 1000)
@@ -87,16 +89,15 @@ test3 = do
     handler c2out "chan2msg" $ do
       callback $ \_ -> comment "some_ivory_in_m4_onmsg"
 
-run :: Tower () -> IO ()
-run t = do
+run :: Test -> IO ()
+run (Test dir t) = do
   putStrLn (ppShow ast)
   putStrLn "\n=======\n"
   let graph = messageGraph ast
       dot = graphviz graph
   putStrLn dot
   writeFile "out.dot" dot
-  putStrLn "\n=======\n"
-  _ <- runCompiler code initialOpts { stdOut = True }
+  _ <- runCompiler code initialOpts { srcDir = dir, includeDir = dir }
   return ()
   where
   (ast, code) = tower t

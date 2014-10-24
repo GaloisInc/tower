@@ -1,5 +1,5 @@
 name:                tower-freertos
-version:             0.8.0.0
+version:             0.9.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language
@@ -17,12 +17,7 @@ data-files: ivory-freertos-wrapper/freertos_atomic_wrapper.h,
             ivory-freertos-wrapper/freertos_time_wrapper.c
 
 library
-  exposed-modules:      Ivory.Tower.Compile.FreeRTOS,
-                        Ivory.Tower.Compile.FreeRTOS.EventNotify,
-                        Ivory.Tower.Compile.FreeRTOS.MsgQueue,
-                        Ivory.Tower.Compile.FreeRTOS.SearchDir,
-                        Ivory.Tower.Compile.FreeRTOS.ISR,
-                        Ivory.OS.FreeRTOS.Atomic,
+  exposed-modules:      Ivory.OS.FreeRTOS.Atomic,
                         Ivory.OS.FreeRTOS.BinarySemaphore,
                         Ivory.OS.FreeRTOS.CountingSemaphore,
                         Ivory.OS.FreeRTOS.Mutex,
@@ -44,8 +39,7 @@ library
                         monadLib,
                         xml,
                         ivory,
-                        ivory-stdlib,
-                        tower >= 0.8
+                        ivory-stdlib
 
   hs-source-dirs:       src
   default-language:     Haskell2010

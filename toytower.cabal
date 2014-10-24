@@ -1,0 +1,67 @@
+name:                toytower
+version:             0.8.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+                        -- Exports (unimplemented):
+  exposed-modules:      Ivory.Tower,
+
+                        -- Development tests:
+                        Ivory.Tower.Test,
+
+                        -- Surface syntax:
+                        Ivory.Tower.Tower,
+                        Ivory.Tower.Monitor,
+                        Ivory.Tower.Handler,
+
+                        -- AST
+                        Ivory.Tower.AST,
+                        Ivory.Tower.AST.Chan,
+                        Ivory.Tower.AST.SyncChan,
+                        Ivory.Tower.AST.Signal,
+                        Ivory.Tower.AST.Period,
+                        Ivory.Tower.AST.Tower,
+                        Ivory.Tower.AST.Monitor,
+                        Ivory.Tower.AST.Handler,
+                        Ivory.Tower.AST.Emitter,
+                        Ivory.Tower.AST.Graph,
+
+                        -- Code generation
+                        Ivory.Tower.Codegen.Emitter,
+                        Ivory.Tower.Codegen.Handler,
+                        Ivory.Tower.Codegen.Monitor,
+                        Ivory.Tower.Codegen.System,
+
+                        -- Monads
+                        Ivory.Tower.Monad.Base,
+                        Ivory.Tower.Monad.Tower,
+                        Ivory.Tower.Monad.Monitor,
+                        Ivory.Tower.Monad.Handler,
+                        Ivory.Tower.Monad.Codegen,
+                        -- Types
+                        Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.EmitterCode,
+                        Ivory.Tower.Types.HandlerCode,
+                        Ivory.Tower.Types.MonitorCode,
+                        Ivory.Tower.Types.ThreadCode,
+                        Ivory.Tower.Types.GeneratedCode,
+                        Ivory.Tower.Types.Time,
+                        Ivory.Tower.Types.Unique
+
+  build-depends:        base >= 4.6,
+                        monadLib,
+                        containers,
+                        mainland-pretty,
+                        pretty-show,
+                        ivory,
+                        ivory-stdlib,
+                        ivory-backend-c
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans

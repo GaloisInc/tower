@@ -25,7 +25,7 @@ import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 tower :: Tower () -> (AST.Tower, [Module])
 tower t = (ast, generatedCodeModules gc ast)

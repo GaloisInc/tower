@@ -6,7 +6,7 @@ module Ivory.Tower.Types.MonitorCode
   , addMonitorCode
   ) where
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 data MonitorCode = MonitorCode
   { monitorcode_moddef :: ModuleDef

@@ -21,7 +21,7 @@ import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 newtype Monitor a = Monitor
   { unMonitor :: StateT AST.Monitor

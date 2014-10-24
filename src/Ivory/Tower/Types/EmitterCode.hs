@@ -13,7 +13,7 @@ module Ivory.Tower.Types.EmitterCode
   , someemittercode_user
   ) where
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 data SomeEmitterCode = forall a . SomeEmitterCode (EmitterCode a)
 

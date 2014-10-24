@@ -9,7 +9,7 @@ module Ivory.Tower.Types.ThreadCode
 
 import qualified Ivory.Tower.AST.Thread as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 data ThreadCode =
   ThreadCode

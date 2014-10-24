@@ -11,7 +11,7 @@ import Ivory.Tower.Types.MonitorCode
 
 import qualified Ivory.Tower.AST as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 generateMonitorCode :: MonitorCode
                     -> AST.Monitor

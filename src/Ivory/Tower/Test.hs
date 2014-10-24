@@ -4,7 +4,7 @@
 module Ivory.Tower.Test where
 
 import Ivory.Tower
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 import Ivory.Tower.AST.Graph
 import Text.Show.Pretty
 

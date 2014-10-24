@@ -20,7 +20,7 @@ import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Monad.Base
 import qualified Ivory.Tower.AST as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 newtype Codegen a = Codegen
   { unCodegen :: ReaderT AST.Tower (StateT GeneratedCode Base) a

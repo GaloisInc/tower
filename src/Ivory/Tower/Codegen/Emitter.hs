@@ -13,7 +13,7 @@ import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Codegen.Handler
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 emitterCode :: forall a
              . (IvoryArea a)

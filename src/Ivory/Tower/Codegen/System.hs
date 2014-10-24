@@ -11,7 +11,7 @@ import Ivory.Tower.Codegen.Monitor
 
 import qualified Ivory.Tower.AST as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 generatedCodeModules :: GeneratedCode -> AST.Tower -> [Module]
 generatedCodeModules gc _twr

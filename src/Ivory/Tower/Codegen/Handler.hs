@@ -20,7 +20,7 @@ import Ivory.Tower.Types.Unique
 
 import Ivory.Tower.Codegen.Monitor
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 emptyHandlerThreadCode :: AST.Handler -> AST.Tower
                        -> [(AST.Thread, HandlerCode a)]

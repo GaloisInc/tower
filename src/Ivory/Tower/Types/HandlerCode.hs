@@ -8,7 +8,7 @@ module Ivory.Tower.Types.HandlerCode
   , insertHandlerCodeEmitter
   ) where
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 import Ivory.Tower.Types.EmitterCode
 
 data HandlerCode (a :: Area *) = HandlerCode

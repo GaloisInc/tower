@@ -11,9 +11,8 @@ library
                         -- Exports (unimplemented):
   exposed-modules:      Ivory.Tower,
 
-                        -- Development mocks:
+                        -- Development tests:
                         Ivory.Tower.Test,
-                        Ivory.Tower.ToyObjLang,
 
                         -- Surface syntax:
                         Ivory.Tower.Tower,

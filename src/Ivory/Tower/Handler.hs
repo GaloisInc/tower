@@ -22,7 +22,7 @@ import Ivory.Tower.Codegen.Handler
 
 import qualified Ivory.Tower.AST as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 emitter :: forall a b
          . (IvoryArea a)

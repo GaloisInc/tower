@@ -13,7 +13,7 @@ import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Monad.Base
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 handler :: (IvoryArea a)
         => ChanOutput a -> String -> Handler a () -> Monitor ()

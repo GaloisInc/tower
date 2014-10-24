@@ -8,7 +8,7 @@ module Ivory.Tower.Types.GeneratedCode
 
 import qualified Data.Map as Map
 import qualified Ivory.Tower.AST as AST
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
 

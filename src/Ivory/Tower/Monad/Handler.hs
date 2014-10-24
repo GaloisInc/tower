@@ -26,7 +26,7 @@ import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Codegen.Handler
 import qualified Ivory.Tower.AST as AST
 
-import Ivory.Tower.ToyObjLang
+import Ivory.Language
 
 newtype Handler (area :: Area *) a = Handler
   { unHandler :: StateT AST.Handler

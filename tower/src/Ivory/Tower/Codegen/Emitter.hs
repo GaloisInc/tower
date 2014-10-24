@@ -25,6 +25,7 @@ emitterCode e twr thr = EmitterCode
   , emittercode_user = do
       private $ incl trampoline -- XXX make sure this is private to c module.
   , emittercode_gen = do
+      defMemArea placeholder
       incl iproc
       incl eproc
       incl dproc

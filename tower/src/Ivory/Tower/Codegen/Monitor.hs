@@ -38,12 +38,12 @@ monitorLockName mon = "lock_"  ++ AST.monitorName mon
 
 monitorUnlockProc :: AST.Monitor -> Def('[]:->())
 monitorUnlockProc mon = proc n $ body $
-  comment ("give " ++ monitorLockName mon)
+  comment ("give " ++ monitorLockName mon) -- XXX fill in with proper code
   where
   n = "monitor_unlock_" ++ AST.monitorName mon
 
 monitorLockProc :: AST.Monitor -> Def('[]:->())
 monitorLockProc mon = proc n $ body $
-  comment ("take " ++ monitorLockName mon)
+  comment ("take " ++ monitorLockName mon) -- XXX fill in with proper code
   where
   n = "monitor_lock_" ++ AST.monitorName mon

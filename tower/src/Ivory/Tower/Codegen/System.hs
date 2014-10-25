@@ -99,10 +99,10 @@ threadBegin twr thr = do
                 stacksize priority debugname
   where
   stacksize :: Uint32
-  stacksize = 1024
+  stacksize = 1024 -- XXX need some story for computing this
 
   priority :: Uint8
-  priority = 3 -- XXX
+  priority = 3 -- XXX should be possible to compute this properly
 
   debugname :: IString
   debugname = fromString (AST.threadName thr)

@@ -23,7 +23,8 @@ library
                         Ivory.OS.FreeRTOS.Mutex,
                         Ivory.OS.FreeRTOS.Task,
                         Ivory.OS.FreeRTOS.TaskArg,
-                        Ivory.OS.FreeRTOS.Time
+                        Ivory.OS.FreeRTOS.Time,
+                        Ivory.OS.FreeRTOS.SearchDir
 
   other-modules:        Paths_tower_freertos
 

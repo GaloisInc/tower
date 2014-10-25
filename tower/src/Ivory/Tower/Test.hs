@@ -9,6 +9,7 @@ import Ivory.Tower.AST.Graph
 import Text.Show.Pretty
 
 import Ivory.Compile.C.CmdlineFrontend
+import qualified Ivory.OS.FreeRTOS.SearchDir as FreeRTOS
 
 data Test = Test String (Tower ())
 
@@ -97,7 +98,8 @@ run (Test dir t) = do
       dot = graphviz graph
   putStrLn dot
   writeFile "out.dot" dot
-  _ <- runCompiler code initialOpts { srcDir = dir, includeDir = dir }
+  _ <- runCompilerWith Nothing (Just [FreeRTOS.searchDir]) 
+                      code initialOpts { srcDir = dir, includeDir = dir }
   return ()
   where
   (ast, code) = tower t

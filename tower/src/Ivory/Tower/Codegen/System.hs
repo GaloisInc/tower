@@ -6,6 +6,7 @@ module Ivory.Tower.Codegen.System
   ) where
 
 import qualified Data.Map as Map
+import Data.String (fromString)
 
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.ThreadCode
@@ -17,47 +18,58 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
 
+import qualified Ivory.OS.FreeRTOS.Task as Task
+
 generatedCodeModules :: GeneratedCode -> AST.Tower -> [Module]
 generatedCodeModules gc twr
    = generatedcode_modules gc
   ++ map threadUserModule ts
   ++ map threadGenModule ts
   ++ concatMap monitorModules ms
+  ++ [ initModule twr ]
   where
   ms = Map.toList (generatedcode_monitors gc)
   ts = Map.elems (generatedcode_threads gc)
 
   monitorModules (ast, code) = generateMonitorCode code ast
 
-  threadUserModule t =
+  threadUserModule tc =
+    let t = threadcode_thread tc in
     package (threadUserCodeModName t) $ do
-      depend (threadGenModule t)
-      threadcode_user t
-  threadGenModule t =
+      depend (threadGenModule tc)
+      threadcode_user tc
+  threadGenModule tc =
+    let t = threadcode_thread tc in
     package (threadGenCodeModName t) $ do
-      depend (threadUserModule t)
-      mapM_ depend (threadGenDeps (threadcode_thread t))
-      threadLoopModdef twr (threadcode_thread t)
-      threadcode_gen t
+      depend (threadUserModule tc)
+      mapM_ depend (threadGenDeps t)
+      threadLoopModdef twr t
+      threadcode_gen tc
 
 
   threadGenDeps :: AST.Thread -> [Module]
   threadGenDeps t = [ package (monitorGenModName m) (return ())
                     | (m,_h) <- AST.threadHandlers (AST.messageGraph twr) t ]
 
-threadUserCodeModName :: ThreadCode -> String
-threadUserCodeModName tc = "tower_user_"
-  ++ AST.threadName (threadcode_thread tc)
+threadUserCodeModName :: AST.Thread -> String
+threadUserCodeModName t = "tower_user_" ++ AST.threadName t
 
-threadGenCodeModName :: ThreadCode -> String
-threadGenCodeModName tc = "tower_gen_"
-  ++ AST.threadName (threadcode_thread tc)
+threadGenCodeModName :: AST.Thread -> String
+threadGenCodeModName t = "tower_gen_" ++ AST.threadName t
 
 threadLoopProcName :: AST.Thread -> String
 threadLoopProcName t = "loop_" ++ AST.threadName t
 
-threadLoopProc :: AST.Tower -> AST.Thread -> Def('[]:->())
-threadLoopProc twr thr = proc (threadLoopProcName thr) $ body $ do
+
+threadLoopModdef :: AST.Tower -> AST.Thread -> ModuleDef
+threadLoopModdef twr thr = do
+  Task.moddef
+  incl (threadLoopProc twr thr)
+
+
+threadLoopProc :: AST.Tower -> AST.Thread
+               -> Def('[Ref Global (Struct "taskarg")]:->())
+threadLoopProc twr thr = proc (threadLoopProcName thr) $ const $ body $ do
   -- XXX guard on init here
   forever $ do
     -- XXX guard on event here
@@ -69,8 +81,30 @@ threadLoopProc twr thr = proc (threadLoopProcName thr) $ body $ do
   hproc :: AST.Handler -> Def('[ConstRef s (Stored ITime)]:->())
   hproc h = proc (handlerProcName h thr) (const (body (return ())))
 
+initModule :: AST.Tower -> Module
+initModule twr = package "tower_init" $ do
+  Task.moddef
+  sequence_ [ depend (package (threadGenCodeModName t) (return ()))
+            | t <- AST.towerThreads twr ]
+  incl initProc
+  where
+  initProc :: Def('[]:->())
+  initProc = proc "tower_init" $ body $ do
+    -- XXX init all sync primitives.
+    sequence_ [ threadBegin twr thr | thr <- AST.towerThreads twr ]
 
-threadLoopModdef :: AST.Tower -> AST.Thread -> ModuleDef
-threadLoopModdef twr thr = do
-  incl (threadLoopProc twr thr)
+threadBegin :: AST.Tower -> AST.Thread -> Ivory eff ()
+threadBegin twr thr = do
+  call_ Task.begin (Task.taskProc (threadLoopProc twr thr))
+                stacksize priority debugname
+  where
+  stacksize :: Uint32
+  stacksize = 1024
+
+  priority :: Uint8
+  priority = 3 -- XXX
+
+  debugname :: IString
+  debugname = fromString (AST.threadName thr)
+
 

@@ -23,3 +23,7 @@ threadName (PeriodThread p) = "thread_period_" ++ t
 threadChan :: Thread -> Chan
 threadChan (PeriodThread p) = ChanPeriod p
 threadChan (SignalThread s) = ChanSignal s
+
+threadDeadline :: Thread -> Microseconds
+threadDeadline (PeriodThread p) = period_dt p
+threadDeadline (SignalThread s) = signal_deadline s

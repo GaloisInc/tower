@@ -49,8 +49,7 @@ towerPutASTSyncChan a = withAST $
   \s -> s { AST.tower_syncchans = a : AST.tower_syncchans s }
 
 towerPutASTPeriod :: AST.Period -> Tower ()
-towerPutASTPeriod a = withAST $
-  \s -> s { AST.tower_periods = a : AST.tower_periods s }
+towerPutASTPeriod a = withAST $ AST.towerInsertPeriod a
 
 towerPutASTSignal :: AST.Signal -> Tower ()
 towerPutASTSignal a = withAST $

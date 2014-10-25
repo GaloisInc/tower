@@ -39,11 +39,15 @@ channel = do
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
 
-signal :: String -> Tower (ChanOutput (Stored ITime))
-signal n = do
-  let ast = AST.Signal n
+signal :: Time a => String -> a -> Tower (ChanOutput (Stored ITime))
+signal n t = do
   towerPutASTSignal ast
   return (ChanOutput (Chan (AST.ChanSignal ast)))
+  where
+  ast = AST.Signal
+    { AST.signal_name = n
+    , AST.signal_deadline = microseconds t
+    }
 
 period :: Time a => a -> Tower (ChanOutput (Stored ITime))
 period t = do

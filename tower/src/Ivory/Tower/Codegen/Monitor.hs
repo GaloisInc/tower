@@ -15,6 +15,7 @@ import Ivory.Tower.Types.MonitorCode
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
+import qualified Ivory.OS.FreeRTOS.Mutex as Mutex
 
 monitorStateModName :: AST.Monitor -> String
 monitorStateModName mon = "tower_state_monitor_" ++ AST.monitorName mon
@@ -31,6 +32,8 @@ generateMonitorCode mc mon =
   ]
   where
   gen_pkg = do
+    Mutex.moddef
+    defMemArea (monitorLockArea mon)
     incl (monitorInitProc mon)
     incl (monitorLockProc mon)
     incl (monitorUnlockProc mon)
@@ -38,20 +41,26 @@ generateMonitorCode mc mon =
 monitorLockName :: AST.Monitor -> String
 monitorLockName mon = "lock_"  ++ AST.monitorName mon
 
+monitorLockArea :: AST.Monitor -> MemArea (Stored Mutex.Mutex)
+monitorLockArea mon = area (monitorLockName mon) Nothing
+
+monitorLock :: AST.Monitor -> Mutex.MutexHandle
+monitorLock mon = addrOf (monitorLockArea mon)
+
 monitorInitProc :: AST.Monitor -> Def('[]:->())
 monitorInitProc mon = proc n $ body $
-  comment ("init " ++ monitorLockName mon)
+  call_ Mutex.create (monitorLock mon)
   where
   n = "monitor_init_" ++ AST.monitorName mon
 
 monitorUnlockProc :: AST.Monitor -> Def('[]:->())
 monitorUnlockProc mon = proc n $ body $
-  comment ("give " ++ monitorLockName mon) -- XXX fill in with proper code
+  call_ Mutex.give (monitorLock mon)
   where
   n = "monitor_unlock_" ++ AST.monitorName mon
 
 monitorLockProc :: AST.Monitor -> Def('[]:->())
 monitorLockProc mon = proc n $ body $
-  comment ("take " ++ monitorLockName mon) -- XXX fill in with proper code
+  call_ Mutex.take (monitorLock mon)
   where
   n = "monitor_lock_" ++ AST.monitorName mon

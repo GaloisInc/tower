@@ -7,6 +7,7 @@ module Ivory.Tower.Codegen.System
 
 import qualified Data.Map as Map
 import Data.String (fromString)
+import Data.List (sort, elemIndex)
 
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.ThreadCode
@@ -104,9 +105,14 @@ threadBegin twr thr = do
   stacksize = 1024 -- XXX need some story for computing this
 
   priority :: Uint8
-  priority = 3 -- XXX should be possible to compute this properly
+  priority = fromIntegral (threadPriority twr thr)
 
   debugname :: IString
   debugname = fromString (AST.threadName thr)
 
+threadPriority :: AST.Tower -> AST.Thread -> Int
+threadPriority twr thr = idx + 1
+  where
+  Just idx = elemIndex thr priorityordering
+  priorityordering = reverse (sort (AST.towerThreads twr))
 

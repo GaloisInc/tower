@@ -3,6 +3,7 @@
 
 module Ivory.Tower.Codegen.Monitor
   ( generateMonitorCode
+  , monitorInitProc
   , monitorLockProc
   , monitorUnlockProc
   , monitorStateModName
@@ -30,11 +31,18 @@ generateMonitorCode mc mon =
   ]
   where
   gen_pkg = do
+    incl (monitorInitProc mon)
     incl (monitorLockProc mon)
     incl (monitorUnlockProc mon)
 
 monitorLockName :: AST.Monitor -> String
 monitorLockName mon = "lock_"  ++ AST.monitorName mon
+
+monitorInitProc :: AST.Monitor -> Def('[]:->())
+monitorInitProc mon = proc n $ body $
+  comment ("init " ++ monitorLockName mon)
+  where
+  n = "monitor_init_" ++ AST.monitorName mon
 
 monitorUnlockProc :: AST.Monitor -> Def('[]:->())
 monitorUnlockProc mon = proc n $ body $

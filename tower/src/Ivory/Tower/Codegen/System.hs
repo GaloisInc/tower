@@ -84,13 +84,15 @@ threadLoopProc twr thr = proc (threadLoopProcName thr) $ const $ body $ do
 initModule :: AST.Tower -> Module
 initModule twr = package "tower_init" $ do
   Task.moddef
+  sequence_ [ depend (package (monitorGenModName m) (return ()))
+            | m <- AST.tower_monitors twr ]
   sequence_ [ depend (package (threadGenCodeModName t) (return ()))
             | t <- AST.towerThreads twr ]
   incl initProc
   where
   initProc :: Def('[]:->())
   initProc = proc "tower_init" $ body $ do
-    -- XXX init all sync primitives.
+    sequence_ [ call_ (monitorInitProc m) | m <- AST.tower_monitors twr ]
     sequence_ [ threadBegin twr thr | thr <- AST.towerThreads twr ]
 
 threadBegin :: AST.Tower -> AST.Thread -> Ivory eff ()

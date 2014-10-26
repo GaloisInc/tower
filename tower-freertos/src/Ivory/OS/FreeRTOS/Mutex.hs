@@ -24,6 +24,12 @@ type MutexHandle = Ref Global (Stored Mutex)
 semaphoreWrapperHeader :: String
 semaphoreWrapperHeader = "freertos_semaphore_wrapper.h"
 
+moddef :: ModuleDef
+moddef = do
+  inclHeader semaphoreWrapperHeader
+  sourceDep semaphoreWrapperHeader
+  sourceDep "freertos_semaphore_wrapper.c"
+
 create :: Def ('[ MutexHandle ] :-> ())
 create =
   importProc "ivory_freertos_semaphore_create_mutex" semaphoreWrapperHeader

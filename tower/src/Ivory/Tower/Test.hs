@@ -4,9 +4,14 @@
 module Ivory.Tower.Test where
 
 import Ivory.Tower
+import Ivory.Tower.Build
 import Ivory.Language
 import Ivory.Tower.AST.Graph
+
 import Text.Show.Pretty
+import Text.PrettyPrint.Mainland (hPutDoc)
+import System.IO (withFile, IOMode(WriteMode))
+import System.FilePath
 
 import Ivory.Compile.C.CmdlineFrontend
 import qualified Ivory.OS.FreeRTOS.SearchDir as FreeRTOS
@@ -90,6 +95,7 @@ test3 = Test "test3" $ do
     handler c2out "chan2msg" $ do
       callback $ \_ -> comment "some_ivory_in_m4_onmsg"
 
+
 run :: Test -> IO ()
 run (Test dir t) = do
   putStrLn (ppShow ast)
@@ -98,9 +104,12 @@ run (Test dir t) = do
       dot = graphviz graph
   putStrLn dot
   writeFile "out.dot" dot
-  _ <- runCompilerWith Nothing (Just [FreeRTOS.searchDir]) 
-                      code initialOpts { srcDir = dir, includeDir = dir }
-  return ()
+  mods <- runCompilerWith Nothing searchpath code compileropts
+  withFile (dir </> "Makefile") WriteMode $ \h ->
+    hPutDoc h (makefile mods)
   where
   (ast, code) = tower t
+  searchpath = Just [FreeRTOS.searchDir]
+  compileropts = initialOpts { srcDir = dir, includeDir = dir }
+
 

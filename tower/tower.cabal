@@ -58,6 +58,7 @@ library
                         containers,
                         mainland-pretty,
                         pretty-show,
+                        filepath,
                         ivory,
                         ivory-stdlib,
                         ivory-backend-c,

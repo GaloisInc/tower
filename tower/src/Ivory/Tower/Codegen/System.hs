@@ -89,10 +89,10 @@ initModule twr = package "tower_init" $ do
             | m <- AST.tower_monitors twr ]
   sequence_ [ depend (package (threadGenCodeModName t) (return ()))
             | t <- AST.towerThreads twr ]
-  incl initProc
+  incl entryProc
   where
-  initProc :: Def('[]:->())
-  initProc = proc "tower_init" $ body $ do
+  entryProc :: Def('[]:->())
+  entryProc = proc "tower_entry" $ body $ do
     sequence_ [ call_ (monitorInitProc m) | m <- AST.tower_monitors twr ]
     sequence_ [ threadBegin twr thr | thr <- AST.towerThreads twr ]
 

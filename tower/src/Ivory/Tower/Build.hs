@@ -66,7 +66,10 @@ srcs sources = decl
 
 targets :: Doc
 targets = stack
-  [ text "default: $(OBJS) $(STM32_OBJS)"
+  [ text "default: test"
+  , empty
+  , text "test: $(OBJS) $(STM32_OBJS)"
+  , text "\t$(CC) -o $@ $(LDFLAGS) -Wl,-Map=$@.map $(OBJS) $(STM32_OBJS) $(FREERTOS_LIB)"
   , empty
   , text "%.o : %.c"
   , text "\t$(CC) $(CFLAGS) -c -o $@ $<"
@@ -75,9 +78,9 @@ targets = stack
   , text "\t$(CC) $(CFLAGS) -c -o $@ $<"
   , empty
   , text "clean:"
-  , text "\t-rm *.o"
+  , text "\t-rm *.o test"
   , empty
-  , text "veryclean:"
+  , text "veryclean: clean"
   , text "\t-rm *.c *.h"
   ]
 

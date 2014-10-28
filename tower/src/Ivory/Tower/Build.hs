@@ -73,7 +73,8 @@ targets = stack
   [ text "default: test"
   , empty
   , text "test: $(OBJS) $(STM32_OBJS)"
-  , text "\t$(CC) -o $@ $(LDFLAGS) -Wl,--script=$(LDSCRIPT) -Wl,-Map=$@.map $(OBJS) $(STM32_OBJS) $(FREERTOS_LIB)"
+  , text "\t$(CC) -o $@ $(LDFLAGS) -Wl,--script=$(LDSCRIPT) -Wl,-Map=$@.map \\"
+  , text "\t $(OBJS) $(STM32_OBJS) $(FREERTOS_LIB)"
   , empty
   , text "%.o : %.c"
   , text "\t$(CC) $(CFLAGS) -c -o $@ $<"

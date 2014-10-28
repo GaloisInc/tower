@@ -36,10 +36,14 @@ toolchain = stack
   , text "    -I../testing_helpers/FreeRTOS/config"
   , text "FREERTOS_LIB := ../testing_helpers/FreeRTOS/libFreeRTOS.a"
   , empty
-  , text "STM32_INCLUDES := -I../testing_helpers/stm32"
+  , text "STM32_INCLUDES := -I../testing_helpers/stm32 -I. "
   , text "STM32_OBJS := \\"
   , text "    ../testing_helpers/stm32/stm32_init.o \\"
-  , text "    ../testing_helpers/stm32/stm32f405_vectors.o"
+  , text "    ../testing_helpers/stm32/stm32_ivory_init.o \\"
+  , text "    ../testing_helpers/stm32/stm32f405_vectors.o \\"
+  , text "    ../testing_helpers/stm32/syscalls.o"
+  , empty
+  , text "LDSCRIPT := ../testing_helpers/stm32/stm32f405.lds"
   , empty
   , text "CFLAGS := $(BASE_CFLAGS) -std=gnu99 $(FREERTOS_INCLUDES) $(STM32_INCLUDES)"
   , empty
@@ -69,7 +73,7 @@ targets = stack
   [ text "default: test"
   , empty
   , text "test: $(OBJS) $(STM32_OBJS)"
-  , text "\t$(CC) -o $@ $(LDFLAGS) -Wl,-Map=$@.map $(OBJS) $(STM32_OBJS) $(FREERTOS_LIB)"
+  , text "\t$(CC) -o $@ $(LDFLAGS) -Wl,--script=$(LDSCRIPT) -Wl,-Map=$@.map $(OBJS) $(STM32_OBJS) $(FREERTOS_LIB)"
   , empty
   , text "%.o : %.c"
   , text "\t$(CC) $(CFLAGS) -c -o $@ $<"
@@ -78,7 +82,9 @@ targets = stack
   , text "\t$(CC) $(CFLAGS) -c -o $@ $<"
   , empty
   , text "clean:"
-  , text "\t-rm *.o test"
+  , text "\t-rm *.o"
+  , text "\t-rm test"
+  , text "\t-rm ../testing_helpers/stm32/*.o"
   , empty
   , text "veryclean: clean"
   , text "\t-rm *.c *.h"

@@ -90,6 +90,8 @@ test3 = Test "test3" $ do
       callback $ \m -> do
         comment "some ivory in m3 tick2"
         emit e m
+        emit e m
+        emit e m
   monitor "m4" $ do
     (_s :: Ref Global (Stored Uint8)) <- state "some_m4_state"
     handler c2out "chan2msg" $ do

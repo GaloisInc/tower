@@ -24,6 +24,12 @@ type BinarySemaphoreHandle = Ref Global (Stored BinarySemaphore)
 semaphoreWrapperHeader :: String
 semaphoreWrapperHeader = "freertos_semaphore_wrapper.h"
 
+moddef :: ModuleDef
+moddef = do
+  inclHeader semaphoreWrapperHeader
+  sourceDep semaphoreWrapperHeader
+  sourceDep "freertos_semaphore_wrapper.c"
+
 create :: Def ('[ BinarySemaphoreHandle ] :-> ())
 create = importProc "ivory_freertos_semaphore_create_binary" semaphoreWrapperHeader
 

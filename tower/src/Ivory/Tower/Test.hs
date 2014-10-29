@@ -37,8 +37,8 @@ test1 = Test "test1" $ do
 test2 :: Test
 test2 = Test "test2" $ do
   (c1in, c1out) <- channel
-  per1 <- period (Microseconds 1000)
-  per2 <- period (Microseconds 333)
+  per1 <- period (Microseconds 2000)
+  per2 <- period (Microseconds 3000)
   monitor "m1" $ do
     (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
     handler per1 "tick1" $ do
@@ -60,8 +60,8 @@ test3 :: Test
 test3 = Test "test3" $ do
   (c1in, c1out) <- channel
   (c2in, c2out) <- channel
-  p1 <- period (Microseconds 1000)
-  p2 <- period (Microseconds 666)
+  p1 <- period (Microseconds 2000)
+  p2 <- period (Microseconds 3000)
   monitor "m1" $ do
     (_s :: Ref Global (Stored Uint8)) <- state "some_m1_state"
     handler p1 "tick" $ do

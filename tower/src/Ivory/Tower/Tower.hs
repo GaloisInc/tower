@@ -16,6 +16,7 @@ module Ivory.Tower.Tower
 
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
+import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Codegen.System
 
 import qualified Ivory.Tower.AST as AST
@@ -39,11 +40,14 @@ channel = do
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
 
-signal :: Time a => String -> a -> Tower p (ChanOutput (Stored ITime))
-signal n t = do
+signal :: (Time a, Signalable p)
+       => SignalType p -> a -> Tower p (ChanOutput (Stored ITime))
+signal s t = do
   towerPutASTSignal ast
+  towerCodegen $ codegenSignal s
   return (ChanOutput (Chan (AST.ChanSignal ast)))
   where
+  n = signalName s
   ast = AST.Signal
     { AST.signal_name = n
     , AST.signal_deadline = microseconds t

@@ -8,6 +8,7 @@ module Ivory.Tower.Monad.Codegen
   , codegenModules
   , codegenThreadCode
   , codegenMonitor
+  , codegenSignal
   ) where
 
 import MonadLib
@@ -17,6 +18,7 @@ import Control.Applicative
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.ThreadCode
+import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Monad.Base
 import qualified Ivory.Tower.AST as AST
 
@@ -58,6 +60,10 @@ codegenMonitor :: AST.Monitor -> (AST.Tower -> MonitorCode) -> Codegen ()
 codegenMonitor m f = do
   a <- getAST
   withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
+
+codegenSignal :: (Signalable p) => SignalType p -> Codegen ()
+codegenSignal s = withGeneratedCode $
+  generatedCodeInsertSignalCode (signalName s) (signalHandler s)
 
 instance BaseUtils Codegen where
   fresh = Codegen $ lift $ lift fresh

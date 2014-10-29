@@ -20,6 +20,8 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 
 import qualified Ivory.OS.FreeRTOS.Task as Task
+import qualified Ivory.OS.FreeRTOS.Time as Time
+import qualified Ivory.OS.FreeRTOS.BinarySemaphore as Semaphore
 
 generatedCodeModules :: GeneratedCode -> AST.Tower -> [Module]
 generatedCodeModules gc twr
@@ -62,25 +64,57 @@ threadLoopProcName :: AST.Thread -> String
 threadLoopProcName t = "loop_" ++ AST.threadName t
 
 
-threadLoopModdef :: AST.Tower -> AST.Thread -> ModuleDef
-threadLoopModdef twr thr = do
-  Task.moddef
-  incl (threadLoopProc twr thr)
-
-
-threadLoopProc :: AST.Tower -> AST.Thread
-               -> Def('[Ref Global (Struct "taskarg")]:->())
-threadLoopProc twr thr = proc (threadLoopProcName thr) $ const $ body $ do
-  -- XXX guard on init here
-  forever $ do
-    -- XXX guard on event here
-    t <- local (ival 666) -- XXX
-    sequence_ [ call_ (hproc h) (constRef t)
-              | (_m,h) <- AST.towerChanHandlers twr (AST.threadChan thr) ]
-
+threadLoopRunHandlers :: AST.Tower -> AST.Thread
+                      -> Ref s (Stored ITime) -> Ivory eff ()
+threadLoopRunHandlers twr thr t = sequence_
+  [ call_ (hproc h) (constRef t)
+  | (_m,h) <- AST.towerChanHandlers twr (AST.threadChan thr) ]
   where
   hproc :: AST.Handler -> Def('[ConstRef s (Stored ITime)]:->())
   hproc h = proc (handlerProcName h thr) (const (body (return ())))
+
+threadLoopModdef :: AST.Tower -> AST.Thread -> ModuleDef
+threadLoopModdef twr thr@(AST.PeriodThread p) = do
+  Task.moddef
+  Time.moddef
+  incl tloopProc
+  where
+  period_ms :: Uint32
+  period_ms = fromIntegral (toMilliseconds (AST.period_dt p))
+
+  tloopProc :: Def('[Ref Global (Struct "taskarg")]:->())
+  tloopProc = proc (threadLoopProcName thr) $ const $ body $ noReturn $ do
+    t_init <- call Time.getTickCount
+    t_last_wake <- local (ival (t_init))
+
+    t_rate <- call Time.getTickRateMilliseconds
+    let toITime :: Uint32 -> ITime
+        toITime t = fromIMilliseconds (t `iDiv` t_rate)
+
+    forever $ noBreak $ do
+      call_ Time.delayUntil t_last_wake (t_rate * period_ms)
+      now <- deref t_last_wake
+      t <- local (ival (toITime now))
+      threadLoopRunHandlers twr thr t
+
+threadLoopModdef twr thr@(AST.SignalThread _s) = do
+  Task.moddef
+  Time.moddef
+  Semaphore.moddef
+  incl tloopProc
+  -- XXX CREATE ISR HANDLER PROC
+  where
+  tloopProc :: Def('[Ref Global (Struct "taskarg")]:->())
+  tloopProc = proc (threadLoopProcName thr) $ const $ body $ noReturn $ do
+    t_rate <- call Time.getTickRateMilliseconds
+    let toITime :: Uint32 -> ITime
+        toITime t = fromIMilliseconds (t `iDiv` t_rate)
+    forever $ noBreak $ do
+      -- XXX INITIALIZE, BLOCK ON SEMAPHORE
+      now <- call Time.getTickCount
+      t <- local (ival (toITime now))
+      threadLoopRunHandlers twr thr t
+
 
 initModule :: AST.Tower -> Module
 initModule twr = package "tower_init" $ do
@@ -98,9 +132,12 @@ initModule twr = package "tower_init" $ do
 
 threadBegin :: AST.Tower -> AST.Thread -> Ivory eff ()
 threadBegin twr thr = do
-  call_ Task.begin (Task.taskProc (threadLoopProc twr thr))
+  call_ Task.begin (Task.taskProc threadLoopProcStub)
                 stacksize priority debugname
   where
+  threadLoopProcStub :: Def('[Ref s (Struct "taskarg")]:->())
+  threadLoopProcStub = proc (threadLoopProcName thr)
+                        (const (body (return ())))
   stacksize :: Uint32
   stacksize = 1024 -- XXX need some story for computing this
 

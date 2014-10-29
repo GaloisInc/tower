@@ -16,7 +16,9 @@ import System.FilePath
 import Ivory.Compile.C.CmdlineFrontend
 import qualified Ivory.OS.FreeRTOS.SearchDir as FreeRTOS
 
-data Test = Test String (Tower ())
+data TestPlatform
+
+data Test = Test String (Tower TestPlatform ())
 
 test1 :: Test
 test1 = Test "test1" $ do

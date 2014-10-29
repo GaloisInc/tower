@@ -24,9 +24,9 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
 
-emitter :: forall a b
+emitter :: forall a b p
          . (IvoryArea a)
-        => ChanInput a -> Integer -> Handler b (Emitter a)
+        => ChanInput a -> Integer -> Handler p b (Emitter a)
 emitter (ChanInput (Chan chanast)) bound = do
   n <- fresh
   let ast = AST.emitter n chanast bound
@@ -36,9 +36,9 @@ emitter (ChanInput (Chan chanast)) bound = do
     (emitterCode e twr thr :: EmitterCode a)
   return e
 
-callback :: forall s a
+callback :: forall s a p
           . (IvoryArea a)
-         => (forall eff . ConstRef s a -> Ivory eff ()) -> Handler a ()
+         => (forall eff . ConstRef s a -> Ivory eff ()) -> Handler p a ()
 callback b = do
   u <- freshname "callback"
   handlerPutASTCallback u

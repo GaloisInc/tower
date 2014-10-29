@@ -16,12 +16,12 @@ import Ivory.Tower.Monad.Base
 import Ivory.Language
 
 handler :: (IvoryArea a)
-        => ChanOutput a -> String -> Handler a () -> Monitor ()
+        => ChanOutput a -> String -> Handler p a () -> Monitor p ()
 handler (ChanOutput (Chan chanast)) name block = do
   runHandler name chanast block
 
 state :: (IvoryArea a)
-      => String -> Monitor (Ref Global a)
+      => String -> Monitor p (Ref Global a)
 state n = do
   f <- freshname n
   let a = area (showUnique f) Nothing

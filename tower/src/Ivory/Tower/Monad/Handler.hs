@@ -28,15 +28,15 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
 
-newtype Handler (area :: Area *) a = Handler
+newtype Handler p (area :: Area *) a = Handler
   { unHandler :: StateT AST.Handler
                   (StateT (AST.Tower -> [(AST.Thread, HandlerCode area)])
-                    Monitor) a
+                    (Monitor p)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runHandler :: (IvoryArea a)
-           => String -> AST.Chan -> Handler a ()
-           -> Monitor ()
+           => String -> AST.Chan -> Handler p a ()
+           -> Monitor p ()
 runHandler n ch b = mdo
   u <- freshname n
   let h = AST.emptyHandler u ch
@@ -47,35 +47,35 @@ runHandler n ch b = mdo
   monitorPutThreadCode $ \twr ->
     generateHandlerThreadCode thcs twr handlerast
 
-withAST :: (AST.Handler -> AST.Handler) -> Handler a ()
+withAST :: (AST.Handler -> AST.Handler) -> Handler p a ()
 withAST f = Handler $ do
   a <- get
   set (f a)
 
-handlerName :: Handler a Unique
+handlerName :: Handler p a Unique
 handlerName = Handler $ do
   a <- get
   return (AST.handler_name a)
 
-handlerPutASTEmitter :: AST.Emitter -> Handler a ()
+handlerPutASTEmitter :: AST.Emitter -> Handler p a ()
 handlerPutASTEmitter a = withAST (AST.handlerInsertEmitter a)
 
-handlerPutASTCallback :: Unique -> Handler a ()
+handlerPutASTCallback :: Unique -> Handler p a ()
 handlerPutASTCallback a = withAST (AST.handlerInsertCallback a)
 
 withCode :: (AST.Tower -> AST.Thread -> HandlerCode a -> HandlerCode a)
-         -> Handler a ()
+         -> Handler p a ()
 withCode f = Handler $ do
   tcs <- lift get
   lift (set (\twr -> [(t, f twr t c) | (t, c) <- tcs twr ]))
 
 handlerPutCodeCallback :: (AST.Thread -> ModuleDef)
-                       -> Handler a ()
+                       -> Handler p a ()
 handlerPutCodeCallback ms = withCode $ \_ t -> insertHandlerCodeCallback (ms t)
 
 handlerPutCodeEmitter :: (AST.Tower -> AST.Thread -> EmitterCode b)
-                      -> Handler a ()
+                      -> Handler p a ()
 handlerPutCodeEmitter ms = withCode $ \a t -> insertHandlerCodeEmitter (ms a t)
 
-instance BaseUtils (Handler area) where
+instance BaseUtils (Handler p area) where
   fresh = Handler $ lift $ lift fresh

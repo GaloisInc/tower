@@ -27,11 +27,11 @@ import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
 
-tower :: Tower () -> (AST.Tower, [Module])
+tower :: Tower p () -> (AST.Tower, [Module])
 tower t = (ast, generatedCodeModules gc ast)
   where (ast, gc) = runTower t
 
-channel :: Tower (ChanInput a, ChanOutput a)
+channel :: Tower p (ChanInput a, ChanOutput a)
 channel = do
   f <- fresh
   let ast = AST.SyncChan f
@@ -39,7 +39,7 @@ channel = do
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
 
-signal :: Time a => String -> a -> Tower (ChanOutput (Stored ITime))
+signal :: Time a => String -> a -> Tower p (ChanOutput (Stored ITime))
 signal n t = do
   towerPutASTSignal ast
   return (ChanOutput (Chan (AST.ChanSignal ast)))
@@ -49,13 +49,13 @@ signal n t = do
     , AST.signal_deadline = microseconds t
     }
 
-period :: Time a => a -> Tower (ChanOutput (Stored ITime))
+period :: Time a => a -> Tower p (ChanOutput (Stored ITime))
 period t = do
   let ast = AST.Period (microseconds t)
   towerPutASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
 
-monitor :: String -> Monitor () -> Tower ()
+monitor :: String -> Monitor p () -> Tower p ()
 monitor n m = do
   (ast, mcode) <- runMonitor n m
   towerPutASTMonitor ast

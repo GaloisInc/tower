@@ -8,6 +8,7 @@ module Ivory.Tower.Tower
   , ChanOutput()
   , channel
   , signal
+  , Signalable(..)
   , module Ivory.Tower.Types.Time
   , period
   , Monitor()

@@ -27,7 +27,7 @@ generatedCodeModules :: GeneratedCode -> AST.Tower -> [Module]
 generatedCodeModules gc twr
    = generatedcode_modules gc
   ++ map threadUserModule ts
-  ++ map threadGenModule ts
+  ++ map threadGenModule  ts
   ++ concatMap monitorModules ms
   ++ [ initModule twr ]
   where
@@ -46,7 +46,7 @@ generatedCodeModules gc twr
     package (threadGenCodeModName t) $ do
       depend (threadUserModule tc)
       mapM_ depend (threadGenDeps t)
-      threadLoopModdef twr t
+      threadLoopModdef gc twr t
       threadcode_gen tc
 
 
@@ -73,8 +73,8 @@ threadLoopRunHandlers twr thr t = sequence_
   hproc :: AST.Handler -> Def('[ConstRef s (Stored ITime)]:->())
   hproc h = proc (handlerProcName h thr) (const (body (return ())))
 
-threadLoopModdef :: AST.Tower -> AST.Thread -> ModuleDef
-threadLoopModdef twr thr@(AST.PeriodThread p) = do
+threadLoopModdef :: GeneratedCode -> AST.Tower -> AST.Thread -> ModuleDef
+threadLoopModdef _gc twr thr@(AST.PeriodThread p) = do
   Task.moddef
   Time.moddef
   incl tloopProc
@@ -97,20 +97,25 @@ threadLoopModdef twr thr@(AST.PeriodThread p) = do
       t <- local (ival (toITime now))
       threadLoopRunHandlers twr thr t
 
-threadLoopModdef twr thr@(AST.SignalThread _s) = do
+threadLoopModdef gc twr thr@(AST.SignalThread s) = do
   Task.moddef
   Time.moddef
   Semaphore.moddef
   incl tloopProc
-  -- XXX CREATE ISR HANDLER PROC
+  defMemArea sem
+  unGeneratedSignal (generatedCodeForSignal s gc) $ do
+    call_ Semaphore.giveFromISR (addrOf sem)
   where
+  sem :: MemArea (Stored Semaphore.BinarySemaphore)
+  sem = area ("signal_semaphore_" ++ AST.threadName thr) Nothing
   tloopProc :: Def('[Ref Global (Struct "taskarg")]:->())
   tloopProc = proc (threadLoopProcName thr) $ const $ body $ noReturn $ do
     t_rate <- call Time.getTickRateMilliseconds
     let toITime :: Uint32 -> ITime
         toITime t = fromIMilliseconds (t `iDiv` t_rate)
+    call_ Semaphore.create (addrOf sem)
     forever $ noBreak $ do
-      -- XXX INITIALIZE, BLOCK ON SEMAPHORE
+      call_ Semaphore.take (addrOf sem)
       now <- call Time.getTickCount
       t <- local (ival (toITime now))
       threadLoopRunHandlers twr thr t

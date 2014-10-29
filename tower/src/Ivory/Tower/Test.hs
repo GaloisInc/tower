@@ -1,5 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.Test where
 
@@ -20,10 +23,41 @@ data TestPlatform
 
 data Test = Test String (Tower TestPlatform ())
 
-test1 :: Test
-test1 = Test "test1" $ do
+test1_per :: Test
+test1_per = Test "test1_period" $ do
   (c1in, c1out) <- channel
   per <- period (Microseconds 1000)
+  monitor "m1" $ do
+    (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
+    handler per "tick" $ do
+      e <- emitter c1in 1
+      callback $ \m -> do
+        comment "some_ivory_in_m1_tick"
+        emit e m
+  monitor "m2" $ do
+    (_s :: Ref Global (Stored IBool))<- state "some_m2_state"
+    handler c1out "chan1msg" $ do
+      callback $ \_ -> comment "some_ivory_in_m2_onmsg"
+
+data TestSignal = TestSignal
+testSignalName :: TestSignal -> String
+testSignalName _ = "TestSignal"
+testSignalHandler :: TestSignal -> (forall eff . Ivory eff ()) -> ModuleDef
+testSignalHandler _ f = incl p
+  where
+  p :: Def('[]:->())
+  p = proc "TestSignal_Handler" $ body $ f
+
+instance Signalable TestPlatform where
+  data SignalType TestPlatform = TestPlatformSignal TestSignal
+  signalName (TestPlatformSignal s) = testSignalName s
+  signalHandler (TestPlatformSignal s) = testSignalHandler s
+
+
+test1_sig :: Test
+test1_sig = Test "test1_sig" $ do
+  (c1in, c1out) <- channel
+  per <- signal (TestPlatformSignal TestSignal) (Microseconds 100)
   monitor "m1" $ do
     (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
     handler per "tick" $ do

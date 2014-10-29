@@ -7,6 +7,7 @@ module Ivory.Tower.Types.GeneratedCode
   , generatedCodeInsertThreadCode
   , generatedCodeInsertMonitorCode
   , generatedCodeInsertSignalCode
+  , generatedCodeForSignal
   , emptyGeneratedCode
   ) where
 
@@ -25,7 +26,7 @@ data GeneratedCode = GeneratedCode
 
 newtype GeneratedSignal =
   GeneratedSignal
-    { unGeneratedSignal :: forall eff . Ivory eff () -> ModuleDef
+    { unGeneratedSignal :: (forall eff . Ivory eff ()) -> ModuleDef
     }
 
 generatedCodeInsertModule :: Module
@@ -46,11 +47,19 @@ generatedCodeInsertMonitorCode mast mc g =
   where ins = Map.insertWith addMonitorCode mast mc
 
 generatedCodeInsertSignalCode :: String
-                              -> (forall eff . Ivory eff () -> ModuleDef)
+                              -> ((forall eff . Ivory eff ()) -> ModuleDef)
                               -> GeneratedCode -> GeneratedCode
 generatedCodeInsertSignalCode signame sigcode g =
   g { generatedcode_signals = ins (generatedcode_signals g) }
   where ins = Map.insert signame (GeneratedSignal sigcode)
+
+generatedCodeForSignal :: AST.Signal -> GeneratedCode
+                       -> GeneratedSignal
+generatedCodeForSignal sig gc = maybe err id lkup
+  where
+  lkup = Map.lookup (AST.signal_name sig) (generatedcode_signals gc)
+  err = error ("generateCodeForSignal failed: could not find signal code for "
+                ++ "signal named " ++ AST.signal_name sig)
 
 emptyGeneratedCode :: GeneratedCode
 emptyGeneratedCode = GeneratedCode

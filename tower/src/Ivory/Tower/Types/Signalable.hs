@@ -10,5 +10,5 @@ import Ivory.Language
 class Signalable p where
   data SignalType p
   signalName :: SignalType p -> String
-  signalHandler :: forall eff . SignalType p -> Ivory eff () -> ModuleDef
+  signalHandler :: SignalType p -> (forall eff . Ivory eff ()) -> ModuleDef
 

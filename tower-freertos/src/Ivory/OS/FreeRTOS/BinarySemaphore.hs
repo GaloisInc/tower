@@ -33,8 +33,8 @@ moddef = do
 create :: Def ('[ BinarySemaphoreHandle ] :-> ())
 create = importProc "ivory_freertos_semaphore_create_binary" semaphoreWrapperHeader
 
-take :: Def ('[ BinarySemaphoreHandle, Uint32 ] :-> IBool)
-take = importProc "ivory_freertos_semaphore_take" semaphoreWrapperHeader
+take :: Def ('[ BinarySemaphoreHandle ] :-> ())
+take = importProc "ivory_freertos_semaphore_takeblocking" semaphoreWrapperHeader
 
 give :: Def('[ BinarySemaphoreHandle ] :-> ())
 give = importProc "ivory_freertos_semaphore_give" semaphoreWrapperHeader

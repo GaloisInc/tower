@@ -39,25 +39,24 @@ test1_per = Test "test1_period" $ do
     handler c1out "chan1msg" $ do
       callback $ \_ -> comment "some_ivory_in_m2_onmsg"
 
-data TestSignal = TestSignal
-testSignalName :: TestSignal -> String
-testSignalName _ = "TestSignal"
-testSignalHandler :: TestSignal -> (forall eff . Ivory eff ()) -> ModuleDef
+data STM32TrivialSignal = STM32_TIM1_UP_TIM10
+testSignalName :: STM32TrivialSignal -> String
+testSignalName _ = "STM32TrivialSignal"
+testSignalHandler :: STM32TrivialSignal -> (forall eff . Ivory eff ()) -> ModuleDef
 testSignalHandler _ f = incl p
   where
   p :: Def('[]:->())
-  p = proc "TestSignal_Handler" $ body $ f
+  p = proc "TIM1_UP_TIM10_IRQHandler" $ body $ f
 
 instance Signalable TestPlatform where
-  data SignalType TestPlatform = TestPlatformSignal TestSignal
+  data SignalType TestPlatform = TestPlatformSignal STM32TrivialSignal
   signalName (TestPlatformSignal s) = testSignalName s
   signalHandler (TestPlatformSignal s) = testSignalHandler s
-
 
 test1_sig :: Test
 test1_sig = Test "test1_sig" $ do
   (c1in, c1out) <- channel
-  per <- signal (TestPlatformSignal TestSignal) (Microseconds 100)
+  per <- signal (TestPlatformSignal STM32_TIM1_UP_TIM10) (Microseconds 100)
   monitor "m1" $ do
     (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
     handler per "tick" $ do

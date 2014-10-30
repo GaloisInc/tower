@@ -34,16 +34,20 @@ generatedCodeModules gc twr
   ms = Map.toList (generatedcode_monitors gc)
   ts = Map.elems (generatedcode_threads gc)
 
-  monitorModules (ast, code) = generateMonitorCode code ast
+  dependencies = mapM_ depend (generatedcode_depends gc)
+
+  monitorModules (ast, code) = generateMonitorCode code ast dependencies
 
   threadUserModule tc =
     let t = threadcode_thread tc in
     package (threadUserCodeModName t) $ do
+      dependencies
       depend (threadGenModule tc)
       threadcode_user tc
   threadGenModule tc =
     let t = threadcode_thread tc in
     package (threadGenCodeModName t) $ do
+      dependencies
       depend (threadUserModule tc)
       mapM_ depend (threadGenDeps t)
       threadLoopModdef gc twr t

@@ -25,10 +25,15 @@ monitorGenModName mon = "tower_gen_monitor_" ++ AST.monitorName mon
 
 generateMonitorCode :: MonitorCode
                     -> AST.Monitor
+                    -> ModuleDef
                     -> [Module]
-generateMonitorCode mc mon =
-  [ package (monitorStateModName mon) (monitorcode_moddef mc)
-  , package (monitorGenModName mon) gen_pkg
+generateMonitorCode mc mon dependencies =
+  [ package (monitorStateModName mon) $ do
+      dependencies
+      monitorcode_moddef mc
+  , package (monitorGenModName mon) $ do
+      dependencies
+      gen_pkg
   ]
   where
   gen_pkg = do

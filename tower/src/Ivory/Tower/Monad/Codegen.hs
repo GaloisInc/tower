@@ -5,7 +5,8 @@
 module Ivory.Tower.Monad.Codegen
   ( Codegen
   , runCodegen
-  , codegenModules
+  , codegenModule
+  , codegenDepends
   , codegenThreadCode
   , codegenMonitor
   , codegenSignal
@@ -40,13 +41,13 @@ withGeneratedCode f = Codegen $ do
   gc <- get
   set (f gc)
 
--- XXX nobody uses this function, esp not given the AST.Tower continuation.
-codegenModules :: (AST.Tower -> [Module]) -> Codegen ()
-codegenModules f = do
-  a <- getAST
-  -- Don't replace this fold with a mapM - causes black hole
-  withGeneratedCode $ \c ->
-    foldl (flip generatedCodeInsertModule) c (f a)
+codegenModule :: Module -> Codegen ()
+codegenModule m =
+  withGeneratedCode $ \c -> generatedCodeInsertModule m c
+
+codegenDepends :: Module -> Codegen ()
+codegenDepends m =
+  withGeneratedCode $ \c -> generatedCodeInsertDepends m c
 
 codegenThreadCode :: (AST.Tower -> [ThreadCode]) -> Codegen ()
 codegenThreadCode f = do

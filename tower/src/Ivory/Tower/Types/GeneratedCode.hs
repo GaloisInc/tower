@@ -4,6 +4,7 @@ module Ivory.Tower.Types.GeneratedCode
   ( GeneratedCode(..)
   , GeneratedSignal(..)
   , generatedCodeInsertModule
+  , generatedCodeInsertDepends
   , generatedCodeInsertThreadCode
   , generatedCodeInsertMonitorCode
   , generatedCodeInsertSignalCode
@@ -19,6 +20,7 @@ import Ivory.Tower.Types.MonitorCode
 
 data GeneratedCode = GeneratedCode
   { generatedcode_modules  :: [Module]
+  , generatedcode_depends  :: [Module]
   , generatedcode_threads  :: Map.Map AST.Thread ThreadCode
   , generatedcode_monitors :: Map.Map AST.Monitor MonitorCode
   , generatedcode_signals  :: Map.Map String GeneratedSignal
@@ -33,6 +35,11 @@ generatedCodeInsertModule :: Module
                           -> GeneratedCode -> GeneratedCode
 generatedCodeInsertModule m g =
   g { generatedcode_modules = m : generatedcode_modules g }
+
+generatedCodeInsertDepends :: Module
+                          -> GeneratedCode -> GeneratedCode
+generatedCodeInsertDepends m g =
+  g { generatedcode_depends = m : generatedcode_depends g }
 
 generatedCodeInsertThreadCode :: ThreadCode
                               -> GeneratedCode -> GeneratedCode
@@ -64,6 +71,7 @@ generatedCodeForSignal sig gc = maybe err id lkup
 emptyGeneratedCode :: GeneratedCode
 emptyGeneratedCode = GeneratedCode
   { generatedcode_modules  = []
+  , generatedcode_depends  = []
   , generatedcode_threads  = Map.empty
   , generatedcode_monitors = Map.empty
   , generatedcode_signals  = Map.empty

@@ -3,6 +3,7 @@
 module Ivory.Tower.Monitor
   ( handler
   , state
+  , monitorModuleDef
   , Handler()
   , Monitor()
   ) where
@@ -27,3 +28,6 @@ state n = do
   let a = area (showUnique f) Nothing
   monitorPutCode $ \_ -> defMemArea a
   return (addrOf a)
+
+monitorModuleDef :: ModuleDef -> Monitor p ()
+monitorModuleDef = monitorPutCode . const

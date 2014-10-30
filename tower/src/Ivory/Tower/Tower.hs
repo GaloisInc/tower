@@ -13,6 +13,8 @@ module Ivory.Tower.Tower
   , period
   , Monitor()
   , monitor
+  , towerModule
+  , towerDepends
   ) where
 
 import Ivory.Tower.Types.Chan
@@ -65,4 +67,10 @@ monitor n m = do
   (ast, mcode) <- runMonitor n m
   towerPutASTMonitor ast
   towerCodegen $ codegenMonitor ast (const mcode)
+
+towerModule :: Module -> Tower p ()
+towerModule = towerCodegen . codegenModule
+
+towerDepends :: Module -> Tower p ()
+towerDepends = towerCodegen . codegenDepends
 

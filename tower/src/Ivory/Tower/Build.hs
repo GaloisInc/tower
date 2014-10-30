@@ -41,6 +41,7 @@ toolchain = stack
   , text "    ../testing_helpers/stm32/stm32_init.o \\"
   , text "    ../testing_helpers/stm32/stm32_ivory_init.o \\"
   , text "    ../testing_helpers/stm32/stm32f405_vectors.o \\"
+  , text "    ../testing_helpers/stm32/timer_driver.o \\"
   , text "    ../testing_helpers/stm32/syscalls.o"
   , empty
   , text "LDSCRIPT := ../testing_helpers/stm32/stm32f405.lds"

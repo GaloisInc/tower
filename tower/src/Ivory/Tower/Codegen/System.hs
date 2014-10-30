@@ -42,6 +42,7 @@ generatedCodeModules gc twr
     let t = threadcode_thread tc in
     package (threadUserCodeModName t) $ do
       dependencies
+      threadMonitorDeps t monitorStateModName
       depend (threadGenModule tc)
       threadcode_user tc
   threadGenModule tc =
@@ -49,14 +50,14 @@ generatedCodeModules gc twr
     package (threadGenCodeModName t) $ do
       dependencies
       depend (threadUserModule tc)
-      mapM_ depend (threadGenDeps t)
+      threadMonitorDeps t monitorGenModName
       threadLoopModdef gc twr t
       threadcode_gen tc
 
-
-  threadGenDeps :: AST.Thread -> [Module]
-  threadGenDeps t = [ package (monitorGenModName m) (return ())
-                    | (m,_h) <- AST.threadHandlers (AST.messageGraph twr) t ]
+  threadMonitorDeps :: AST.Thread -> (AST.Monitor -> String) -> ModuleDef
+  threadMonitorDeps t mname = sequence_
+    [ depend $ package (mname m) $ return ()
+    | (m,_) <- AST.threadHandlers (AST.messageGraph twr) t ]
 
 threadUserCodeModName :: AST.Thread -> String
 threadUserCodeModName t = "tower_user_" ++ AST.threadName t

@@ -58,18 +58,21 @@ test1_sig = Test "test1_sig" $ do
   (c1in, c1out) <- channel
   sig <- signal (TestPlatformSignal STM32_TIM1_UP_TIM10) (Microseconds 100)
   monitor "m1" $ do
-
     let timer_init :: Def('[]:->())
         timer_init  = importProc "timer_init" "timer_driver.h"
         timer_clear :: Def('[]:->())
         timer_clear  = importProc "timer_clear" "timer_driver.h"
     monitorModuleDef $ do
       inclHeader "timer_driver.h"
+
 -- artificially provided by build system, just for now:
 --      sourceDep "timer_driver.h"
 --      sourceDep "timer_driver.c"
--- XXX need support for initialization!
+
     (_s :: Ref Global (Stored IBool)) <- state "some_m1_state"
+    handler systemInit "init" $ do
+      callback $ \_ ->
+        call_ timer_init
     handler sig "sig" $ do
       e <- emitter c1in 1
       callback $ \m -> do
@@ -139,7 +142,9 @@ test3 = Test "test3" $ do
         emit e m
         emit e m
   monitor "m4" $ do
-    (_s :: Ref Global (Stored Uint8)) <- state "some_m4_state"
+    (s :: Ref Global (Stored Uint8)) <- state "some_m4_state"
+    handler systemInit "init" $ do
+      callback $ \_ -> store s 55
     handler c2out "chan2msg" $ do
       callback $ \_ -> comment "some_ivory_in_m4_onmsg"
 

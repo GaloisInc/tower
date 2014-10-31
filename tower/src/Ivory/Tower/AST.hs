@@ -1,6 +1,7 @@
 
 module Ivory.Tower.AST
-  ( module Ivory.Tower.AST.Chan
+  ( module Ivory.Tower.AST.Init
+  , module Ivory.Tower.AST.Chan
   , module Ivory.Tower.AST.SyncChan
   , module Ivory.Tower.AST.Signal
   , module Ivory.Tower.AST.Period
@@ -12,6 +13,7 @@ module Ivory.Tower.AST
   , module Ivory.Tower.AST.Graph
   ) where
 
+import Ivory.Tower.AST.Init
 import Ivory.Tower.AST.Chan
 import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal

@@ -11,6 +11,7 @@ module Ivory.Tower.Tower
   , Signalable(..)
   , module Ivory.Tower.Types.Time
   , period
+  , systemInit
   , Monitor()
   , monitor
   , towerModule
@@ -61,6 +62,9 @@ period t = do
   let ast = AST.Period (microseconds t)
   towerPutASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
+
+systemInit :: ChanOutput (Stored ITime)
+systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
 
 monitor :: String -> Monitor p () -> Tower p ()
 monitor n m = do

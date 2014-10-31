@@ -72,8 +72,10 @@ emptyGeneratedCode :: GeneratedCode
 emptyGeneratedCode = GeneratedCode
   { generatedcode_modules  = []
   , generatedcode_depends  = []
-  , generatedcode_threads  = Map.empty
+  , generatedcode_threads  = Map.fromList
+      [ (initThread, emptyThreadCode initThread) ]
   , generatedcode_monitors = Map.empty
   , generatedcode_signals  = Map.empty
   }
-
+  where
+  initThread = AST.InitThread AST.Init

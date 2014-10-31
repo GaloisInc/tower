@@ -16,6 +16,7 @@ import Ivory.Tower.AST.Period
 import Ivory.Tower.AST.Monitor
 import Ivory.Tower.AST.Thread
 import Ivory.Tower.AST.Handler
+import Ivory.Tower.AST.Init
 
 data Tower = Tower
   { tower_monitors  :: [Monitor]
@@ -34,7 +35,8 @@ emptyTower  = Tower
 
 towerThreads :: Tower -> [Thread]
 towerThreads t = map SignalThread (tower_signals t) ++
-                 map PeriodThread (tower_periods t)
+                 map PeriodThread (tower_periods t) ++
+                 [ InitThread Init ]
 
 -- Periods are a set
 towerInsertPeriod :: Period -> Tower -> Tower

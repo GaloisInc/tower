@@ -21,6 +21,7 @@ library
 
                         -- AST
                         Ivory.Tower.AST,
+                        Ivory.Tower.AST.Init,
                         Ivory.Tower.AST.Chan,
                         Ivory.Tower.AST.SyncChan,
                         Ivory.Tower.AST.Signal,

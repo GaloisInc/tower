@@ -1,20 +1,18 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
-module Ivory.Tower.Codegen.Monitor
+module Ivory.OS.FreeRTOS.Tower.Codegen.Monitor
   ( generateMonitorCode
   , monitorInitProc
   , monitorLockProc
   , monitorUnlockProc
   , monitorStateModName
   , monitorGenModName
-
-  , monitorLockProcName
-  , monitorUnlockProcName
   ) where
 
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.MonitorCode
+import Ivory.Tower.Codegen.Monitor
 
 import qualified Ivory.Tower.AST as AST
 
@@ -71,8 +69,3 @@ monitorLockProc :: AST.Monitor -> Def('[]:->())
 monitorLockProc mon = proc (monitorLockProcName mon) $ body $
   call_ Mutex.take (monitorLock mon)
 
-monitorUnlockProcName :: AST.Monitor -> String
-monitorUnlockProcName mon = "monitor_unlock_" ++ AST.monitorName mon
-
-monitorLockProcName :: AST.Monitor -> String
-monitorLockProcName mon = "monitor_lock_" ++ AST.monitorName mon

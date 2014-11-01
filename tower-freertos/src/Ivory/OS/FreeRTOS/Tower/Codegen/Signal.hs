@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Ivory.Tower.Codegen.Signal
+module Ivory.OS.FreeRTOS.Tower.Codegen.Signal
   ( CodegenSignal(..)
   , codegenSignal
   ) where

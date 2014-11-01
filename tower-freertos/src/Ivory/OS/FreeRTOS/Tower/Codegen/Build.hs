@@ -1,5 +1,5 @@
 
-module Ivory.Tower.Build
+module Ivory.OS.FreeRTOS.Tower.Codegen.Build
   ( makefile
   ) where
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
-module Ivory.Tower.Codegen.System
+module Ivory.OS.FreeRTOS.Tower.Codegen.Build
   ( threadModules
   , monitorModules
   , systemModules
@@ -13,30 +13,34 @@ import qualified Data.Map as Map
 import Data.String (fromString)
 import Data.List (sort, elemIndex)
 
+import Text.Show.Pretty
+
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.Artifact
 import Ivory.Tower.Codegen.Monitor
 import Ivory.Tower.Codegen.Handler
-import Ivory.Tower.Codegen.Init
-import Ivory.Tower.Codegen.Signal
-
-import Ivory.Tower.Build (makefile)
-
+import qualified Ivory.Tower.AST.Graph as G
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
 import qualified Ivory.Compile.C.SourceDeps as C
 
+import Ivory.OS.FreeRTOS.Tower.Codegen.Init
+import Ivory.OS.FreeRTOS.Tower.Codegen.Signal
+import Ivory.OS.FreeRTOS.Tower.Codegen.Build
+import Ivory.OS.FreeRTOS.Tower.Codegen.Monitor
+
 import qualified Ivory.OS.FreeRTOS.Task as Task
 import qualified Ivory.OS.FreeRTOS.Time as Time
 
-
 systemArtifacts :: AST.Tower -> [Module] -> [Artifact]
-systemArtifacts _twr ms =
-  [ artifactFromString "debug.txt" dbg
-  , makefile (map (\m -> m ++ ".c") mods)
+systemArtifacts twr ms =
+  [ artifactFromString "debug_mods.txt" dbg
+  , artifactFromString "debug_ast.txt" (prettyShow twr)
+  , makefile (map (\m -> m ++ ".c") mods)  -- XXX FIXME: needs to include generated source .c, .s files as well
+  , artifactFromString "out.dot" (G.graphviz (G.messageGraph twr))
   ]
   where
   dbg = (show mods) ++ "\n" ++ (show sdeps)

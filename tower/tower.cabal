@@ -8,11 +8,8 @@ cabal-version:       >= 1.10
 license:             BSD3
 
 library
-                        -- Exports (unimplemented):
+                        -- Exports
   exposed-modules:      Ivory.Tower,
-
-                        -- Development tests:
-                        Ivory.Tower.Test,
 
                         -- Surface syntax:
                         Ivory.Tower.Tower,
@@ -21,51 +18,55 @@ library
 
                         -- AST
                         Ivory.Tower.AST,
-                        Ivory.Tower.AST.Init,
                         Ivory.Tower.AST.Chan,
-                        Ivory.Tower.AST.SyncChan,
-                        Ivory.Tower.AST.Signal,
-                        Ivory.Tower.AST.Period,
-                        Ivory.Tower.AST.Tower,
-                        Ivory.Tower.AST.Monitor,
-                        Ivory.Tower.AST.Handler,
                         Ivory.Tower.AST.Emitter,
                         Ivory.Tower.AST.Graph,
+                        Ivory.Tower.AST.Handler,
+                        Ivory.Tower.AST.Init,
+                        Ivory.Tower.AST.Monitor,
+                        Ivory.Tower.AST.Period,
+                        Ivory.Tower.AST.Signal,
+                        Ivory.Tower.AST.SyncChan,
+                        Ivory.Tower.AST.Thread,
+                        Ivory.Tower.AST.Tower,
 
                         -- Code generation
+                        Ivory.Tower.Compile,
+                        Ivory.Tower.Codegen,
                         Ivory.Tower.Codegen.Emitter,
                         Ivory.Tower.Codegen.Handler,
                         Ivory.Tower.Codegen.Monitor,
-                        Ivory.Tower.Codegen.System,
 
                         -- Monads
                         Ivory.Tower.Monad.Base,
-                        Ivory.Tower.Monad.Tower,
-                        Ivory.Tower.Monad.Monitor,
-                        Ivory.Tower.Monad.Handler,
                         Ivory.Tower.Monad.Codegen,
+                        Ivory.Tower.Monad.Handler,
+                        Ivory.Tower.Monad.Monitor,
+                        Ivory.Tower.Monad.Tower,
+
                         -- Types
+                        Ivory.Tower.Types.Artifact,
                         Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.Emitter,
                         Ivory.Tower.Types.EmitterCode,
+                        Ivory.Tower.Types.GeneratedCode,
                         Ivory.Tower.Types.HandlerCode,
                         Ivory.Tower.Types.MonitorCode,
-                        Ivory.Tower.Types.ThreadCode,
-                        Ivory.Tower.Types.GeneratedCode,
                         Ivory.Tower.Types.Signalable,
+                        Ivory.Tower.Types.ThreadCode,
                         Ivory.Tower.Types.Time,
+                        Ivory.Tower.Types.TowerPlatform,
                         Ivory.Tower.Types.Unique
 
   build-depends:        base >= 4.6,
                         monadLib,
                         containers,
                         mainland-pretty,
-                        pretty-show,
                         text,
                         filepath,
                         ivory,
                         ivory-stdlib,
-                        ivory-backend-c,
-                        tower-freertos
+                        ivory-backend-c
 
   hs-source-dirs:       src
   default-language:     Haskell2010

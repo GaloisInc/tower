@@ -18,7 +18,7 @@ import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Unique
 
-import Ivory.Tower.Codegen.Monitor (monitorUnlockProcName, monitorLockProcName)
+import Ivory.Tower.Codegen.Monitor
 
 import Ivory.Language
 

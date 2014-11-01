@@ -4,7 +4,7 @@
 module Ivory.Tower.Tower
   ( Tower()
   , GeneratedCode()
-  , tower
+  , runTower
   , ChanInput()
   , ChanOutput()
   , channel
@@ -32,9 +32,6 @@ import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
-
-tower :: Tower p () -> (AST.Tower, GeneratedCode)
-tower = runTower
 
 channel :: Tower p (ChanInput a, ChanOutput a)
 channel = do

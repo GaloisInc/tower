@@ -10,15 +10,15 @@ module Ivory.Tower.Codegen
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.Artifact
+import Ivory.Tower.Types.TowerPlatform
 import Ivory.Language
 
-import Ivory.Tower.Codegen.System
-
-generateTowerCode :: GeneratedCode -> AST.Tower -> () -> ([Module], [Artifact])
-generateTowerCode gc twr _ = (ms, as)
+generateTowerCode :: GeneratedCode -> AST.Tower -> TowerPlatform
+                  -> ([Module], [Artifact])
+generateTowerCode gc twr p = (ms, as)
   where
   ms = generatedcode_modules gc
-    ++ threadModules gc twr
-    ++ monitorModules gc twr
-    ++ systemModules twr
-  as = systemArtifacts twr ms
+    ++ threadModules p gc twr
+    ++ monitorModules p gc twr
+    ++ systemModules p twr
+  as = systemArtifacts p twr ms

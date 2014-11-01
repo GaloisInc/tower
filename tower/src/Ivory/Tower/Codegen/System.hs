@@ -2,7 +2,10 @@
 {-# LANGUAGE DataKinds #-}
 
 module Ivory.Tower.Codegen.System
-  ( generatedCodeModules
+  ( threadModules
+  , monitorModules
+  , systemModules
+  , systemArtifacts
   ) where
 
 import Control.Monad (forM_, when)
@@ -13,33 +16,44 @@ import Data.List (sort, elemIndex)
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Time
+import Ivory.Tower.Types.Artifact
 import Ivory.Tower.Codegen.Monitor
 import Ivory.Tower.Codegen.Handler
 import Ivory.Tower.Codegen.Init
 import Ivory.Tower.Codegen.Signal
 
+import Ivory.Tower.Build (makefile)
+
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
+import qualified Ivory.Compile.C.SourceDeps as C
 
 import qualified Ivory.OS.FreeRTOS.Task as Task
 import qualified Ivory.OS.FreeRTOS.Time as Time
 
-generatedCodeModules :: GeneratedCode -> AST.Tower -> [Module]
-generatedCodeModules gc twr
-   = generatedcode_modules gc
-  ++ map threadUserModule ts
-  ++ map threadGenModule  ts
-  ++ concatMap monitorModules ms
-  ++ [ initModule twr ]
+
+systemArtifacts :: AST.Tower -> [Module] -> [Artifact]
+systemArtifacts _twr ms =
+  [ artifactFromString "debug.txt" dbg
+  , makefile (map (\m -> m ++ ".c") mods)
+  ]
+  where
+  dbg = (show mods) ++ "\n" ++ (show sdeps)
+
+  mods = map moduleName ms
+  sdeps = C.collectSourceDeps ms
+
+monitorModules :: GeneratedCode -> AST.Tower -> [Module]
+monitorModules gc _twr = concatMap permon ms
   where
   ms = Map.toList (generatedcode_monitors gc)
-  ts = Map.elems (generatedcode_threads gc)
+  permon (ast, code) = generateMonitorCode gc code ast
 
-  dependencies = mapM_ depend (generatedcode_depends gc)
-
-  monitorModules (ast, code) = generateMonitorCode code ast dependencies
-
+threadModules :: GeneratedCode -> AST.Tower-> [Module]
+threadModules gc twr = concatMap pertask (Map.elems (generatedcode_threads gc))
+  where
+  pertask tc = [threadUserModule tc, threadGenModule tc]
   threadUserModule tc =
     let t = threadcode_thread tc in
     package (threadUserCodeModName t) $ do
@@ -55,6 +69,8 @@ generatedCodeModules gc twr
       threadMonitorDeps t monitorGenModName
       threadLoopModdef gc twr t
       threadcode_gen tc
+
+  dependencies = mapM_ depend (generatedcode_depends gc)
 
   threadMonitorDeps :: AST.Thread -> (AST.Monitor -> String) -> ModuleDef
   threadMonitorDeps t mname = sequence_
@@ -147,45 +163,44 @@ threadLoopModdef _gc twr thr@(AST.InitThread _) = do
     forM_ (AST.towerThreads twr) (codegeninit_unblock . codegenInit)
     forever $ noBreak $ return ()
 
-initModule :: AST.Tower -> Module
-initModule twr = package "tower_init" $ do
-  Task.moddef
-  sequence_ [ depend (package (monitorGenModName m) (return ()))
-            | m <- AST.tower_monitors twr ]
-  sequence_ [ depend (package (threadGenCodeModName t) (return ()))
-            | t <- AST.towerThreads twr ]
-  incl entryProc
+systemModules :: AST.Tower -> [Module]
+systemModules twr = [initModule]
   where
-  entryProc :: Def('[]:->())
-  entryProc = proc "tower_entry" $ body $ do
-    forM_ (AST.tower_monitors twr) $ \m -> do
-      call_ (monitorInitProc m)
-    forM_ (AST.towerThreads twr) $ \thr -> do
-      codegensignal_init (codegenSignal thr)
-      codegeninit_init (codegenInit thr)
-    forM_ (AST.towerThreads twr) $ \thr -> do
-      threadBegin twr thr
+  initModule = package "tower_init" $ do
+    Task.moddef
+    sequence_ [ depend (package (monitorGenModName m) (return ()))
+              | m <- AST.tower_monitors twr ]
+    sequence_ [ depend (package (threadGenCodeModName t) (return ()))
+              | t <- AST.towerThreads twr ]
+    incl entryProc
+    where
+    entryProc :: Def('[]:->())
+    entryProc = proc "tower_entry" $ body $ do
+      forM_ (AST.tower_monitors twr) $ \m -> do
+        call_ (monitorInitProc m)
+      forM_ (AST.towerThreads twr) $ \thr -> do
+        codegensignal_init (codegenSignal thr)
+        codegeninit_init (codegenInit thr)
+      forM_ (AST.towerThreads twr) $ \thr -> do
+        threadBegin thr
 
-threadBegin :: AST.Tower -> AST.Thread -> Ivory eff ()
-threadBegin twr thr = do
-  call_ Task.begin (Task.taskProc threadLoopProcStub)
-                stacksize priority debugname
-  where
-  threadLoopProcStub :: Def('[Ref s (Struct "taskarg")]:->())
-  threadLoopProcStub = proc (threadLoopProcName thr)
-                        (const (body (return ())))
-  stacksize :: Uint32
-  stacksize = 1024 -- XXX need some story for computing this
+  threadBegin :: AST.Thread -> Ivory eff ()
+  threadBegin thr = do
+    call_ Task.begin (Task.taskProc threadLoopProcStub)
+                  stacksize priority debugname
+    where
+    threadLoopProcStub :: Def('[Ref s (Struct "taskarg")]:->())
+    threadLoopProcStub = proc (threadLoopProcName thr)
+                          (const (body (return ())))
+    stacksize :: Uint32
+    stacksize = 1024 -- XXX need some story for computing this
 
-  priority :: Uint8
-  priority = fromIntegral (threadPriority twr thr)
+    debugname :: IString
+    debugname = fromString (AST.threadName thr)
 
-  debugname :: IString
-  debugname = fromString (AST.threadName thr)
-
-threadPriority :: AST.Tower -> AST.Thread -> Int
-threadPriority twr thr = idx + 1
-  where
-  Just idx = elemIndex thr priorityordering
-  priorityordering = reverse (sort (AST.towerThreads twr))
+    priority :: Uint8
+    priority = fromIntegral (idx + 1)
+      where
+      Just idx = elemIndex thr priorityordering
+      priorityordering = reverse (sort (AST.towerThreads twr))
 

@@ -60,6 +60,7 @@ library
                         containers,
                         mainland-pretty,
                         pretty-show,
+                        text,
                         filepath,
                         ivory,
                         ivory-stdlib,

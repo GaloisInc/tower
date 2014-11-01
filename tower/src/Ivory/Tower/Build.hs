@@ -3,22 +3,25 @@ module Ivory.Tower.Build
   ( makefile
   ) where
 
+import Ivory.Tower.Types.Artifact
 import Text.PrettyPrint.Mainland
-import Ivory.Compile.C.CmdlineFrontend
 import System.FilePath (replaceDirectory)
 
-makefile :: ModuleFiles -> Doc
-makefile sources = stack
-  [ toolchain
-  , empty
-  , text "##############"
-  , empty
-  , srcs sources
-  , empty
-  , text "##############"
-  , empty
-  , targets
-  ]
+makefile :: [FilePath] -> Artifact
+makefile sources = Artifact "Makefile" (prettyLazyText 1000000 d)
+  where
+  d :: Doc
+  d = stack
+    [ toolchain
+    , empty
+    , text "##############"
+    , empty
+    , srcs sources
+    , empty
+    , text "##############"
+    , empty
+    , targets
+    ]
 
 toolchain :: Doc
 toolchain = stack
@@ -58,14 +61,14 @@ toolchain = stack
     , text "    -mfloat-abi=hard -mfpu=fpv4-sp-d16 \\"
     ]
 
-srcs :: ModuleFiles -> Doc
+srcs :: [FilePath] -> Doc
 srcs sources = decl
   </> indent 4 items
   </> text "OBJS := $(SRCS:.c=.o)"
   where
   decl = text "SRCS := \\"
   items = stack $ punctuate backslash ivory_sources
-  ivory_sources = map mkpath $ mf_sources sources
+  ivory_sources = map mkpath sources
   mkpath p = string (replaceDirectory p "")
   backslash = text " \\"
 

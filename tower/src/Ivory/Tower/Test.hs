@@ -7,14 +7,10 @@
 module Ivory.Tower.Test where
 
 import Ivory.Tower
-import Ivory.Tower.Build
 import Ivory.Language
 import Ivory.Tower.AST.Graph
 
 import Text.Show.Pretty
-import Text.PrettyPrint.Mainland (hPutDoc)
-import System.IO (withFile, IOMode(WriteMode))
-import System.FilePath
 
 import Ivory.Compile.C.CmdlineFrontend
 import qualified Ivory.OS.FreeRTOS.SearchDir as FreeRTOS
@@ -157,11 +153,13 @@ run (Test dir t) = do
       dot = graphviz graph
   putStrLn dot
   writeFile "out.dot" dot
-  mods <- runCompilerWith Nothing searchpath code compileropts
-  withFile (dir </> "Makefile") WriteMode $ \h ->
-    hPutDoc h (makefile mods)
+
+  _mods <- runCompilerWith Nothing searchpath ms compileropts
+  mapM_ (putArtifact ".") as
+
   where
-  (ast, code) = tower t
+  (ast, gc) = tower t
+  (ms, as)  = generateTowerCode gc ast ()
   searchpath = Just [FreeRTOS.searchDir]
   compileropts = initialOpts { srcDir = dir, includeDir = dir }
 

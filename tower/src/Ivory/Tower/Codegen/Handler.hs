@@ -18,7 +18,7 @@ import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Unique
 
-import Ivory.Tower.Codegen.Monitor
+import Ivory.Tower.Codegen.Monitor (monitorUnlockProcName, monitorLockProcName)
 
 import Ivory.Language
 
@@ -63,14 +63,19 @@ generatedHandlerCode hc t m h =
     forM_ (handlercode_emitters hc)
       (\e -> call_ (someemittercode_init e))
     comment "take monitor lock"
-    call_ (monitorLockProc m)
+    call_ monitorLockProc
     comment "run callbacks"
     forM_ (AST.handler_callbacks h) (\ast -> call_ (cbproc ast) msg)
     comment "release monitor lock"
-    call_ (monitorUnlockProc m)
+    call_ monitorUnlockProc
     comment "deliver emitters"
     forM_ (handlercode_emitters hc)
       (\e -> call_ (someemittercode_deliver e))
+
+  monitorUnlockProc :: Def('[]:->())
+  monitorUnlockProc = proc (monitorUnlockProcName m) (body (return ()))
+  monitorLockProc :: Def('[]:->())
+  monitorLockProc = proc (monitorLockProcName m) (body (return ()))
 
   -- Dummy proc body, just need to call by name
   cbproc :: Unique -> Def('[ConstRef s a]:->())

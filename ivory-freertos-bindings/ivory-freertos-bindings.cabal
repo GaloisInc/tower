@@ -1,5 +1,5 @@
-name:                tower-freertos
-version:             0.9.0.0
+name:                ivory-freertos-bindings
+version:             0.1.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language
@@ -26,19 +26,11 @@ library
                         Ivory.OS.FreeRTOS.Time,
                         Ivory.OS.FreeRTOS.SearchDir
 
-  other-modules:        Paths_tower_freertos
+  other-modules:        Paths_ivory_freertos_bindings
 
   build-depends:        base >= 4.6,
-                        srcloc,
                         template-haskell >= 2.8,
-                        directory,
                         filepath,
-                        process,
-                        cmdlib >= 0.3.5,
-                        containers,
-                        wl-pprint,
-                        monadLib,
-                        xml,
                         ivory,
                         ivory-stdlib
 

@@ -1,5 +1,5 @@
 name:                tower-examples
-version:             0.8.0.0
+version:             0.9.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language
@@ -19,9 +19,8 @@ executable tower-example-simple
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
-                       tower >= 0.8,
-                       tower-freertos >= 0.8,
-                       tower-frontend >= 0.8
+                       tower >= 0.9,
+                       tower-freertos >= 0.9
   if flag(werror)
     ghc-options:        -Wall -Werror
   else
@@ -36,9 +35,8 @@ executable tower-example-simplesignal
                        ivory,
                        ivory-stdlib,
                        ivory-backend-c,
-                       tower >= 0.8,
-                       tower-freertos >= 0.8,
-                       tower-frontend >= 0.8
+                       tower >= 0.9,
+                       tower-freertos >= 0.9
   if flag(werror)
     ghc-options:        -Wall -Werror
   else
@@ -70,9 +68,8 @@ executable tower-example-stm32f4signals
                        ivory-stdlib,
                        ivory-backend-c,
                        ivory-hw,
-                       tower >= 0.8,
-                       tower-freertos >= 0.8,
-                       tower-frontend >= 0.8
+                       tower >= 0.9,
+                       tower-freertos >= 0.9
   if flag(werror)
     ghc-options:        -Wall -Werror
   else

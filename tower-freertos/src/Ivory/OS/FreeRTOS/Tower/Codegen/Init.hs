@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Ivory.OS.FreeRTOS.Tower.Codegen.Build
+module Ivory.OS.FreeRTOS.Tower.Codegen.Init
   ( CodegenInit(..)
   , codegenInit
   ) where

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
-module Ivory.OS.FreeRTOS.Tower.Codegen.Build
+module Ivory.OS.FreeRTOS.Tower.Codegen.System
   ( threadModules
   , monitorModules
   , systemModules
@@ -19,7 +19,6 @@ import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.Artifact
-import Ivory.Tower.Codegen.Monitor
 import Ivory.Tower.Codegen.Handler
 import qualified Ivory.Tower.AST.Graph as G
 import qualified Ivory.Tower.AST as AST
@@ -38,7 +37,7 @@ import qualified Ivory.OS.FreeRTOS.Time as Time
 systemArtifacts :: AST.Tower -> [Module] -> [Artifact]
 systemArtifacts twr ms =
   [ artifactFromString "debug_mods.txt" dbg
-  , artifactFromString "debug_ast.txt" (prettyShow twr)
+  , artifactFromString "debug_ast.txt" (ppShow twr)
   , makefile (map (\m -> m ++ ".c") mods)  -- XXX FIXME: needs to include generated source .c, .s files as well
   , artifactFromString "out.dot" (G.graphviz (G.messageGraph twr))
   ]

@@ -1,0 +1,32 @@
+name:                tower-freertos
+version:             0.9.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+  exposed-modules:      Ivory.OS.FreeRTOS.Tower.Codegen,
+                        Ivory.OS.FreeRTOS.Tower.Codegen.Build,
+                        Ivory.OS.FreeRTOS.Tower.Codegen.Init,
+                        Ivory.OS.FreeRTOS.Tower.Codegen.Monitor,
+                        Ivory.OS.FreeRTOS.Tower.Codegen.Signal,
+                        Ivory.OS.FreeRTOS.Tower.Codegen.System
+
+  build-depends:        base >= 4.6,
+                        template-haskell >= 2.8,
+                        filepath,
+                        containers,
+                        mainland-pretty,
+                        pretty-show,
+                        ivory,
+                        ivory-stdlib,
+                        ivory-backend-c,
+                        ivory-freertos-bindings,
+                        tower >= 0.9
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans

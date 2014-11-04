@@ -19,8 +19,5 @@ atomicWrapperHeader :: String
 atomicWrapperHeader = "freertos_atomic_wrapper.h"
 
 moddef :: ModuleDef
-moddef = do
-  inclHeader atomicWrapperHeader
-  sourceDep atomicWrapperHeader
-  sourceDep "freertos_atomic_wrapper.c"
+moddef = inclHeader atomicWrapperHeader
 

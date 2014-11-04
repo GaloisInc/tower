@@ -12,10 +12,7 @@ module Ivory.OS.FreeRTOS.Time
 import Ivory.Language
 
 moddef :: ModuleDef
-moddef = do
-  inclHeader timeWrapperHeader
-  sourceDep timeWrapperHeader
-  sourceDep "freertos_time_wrapper.c"
+moddef = inclHeader timeWrapperHeader
 
 timeWrapperHeader :: String
 timeWrapperHeader = "freertos_time_wrapper.h"

@@ -32,7 +32,6 @@ library
 
                         -- Code generation
                         Ivory.Tower.Compile,
-                        Ivory.Tower.Codegen,
                         Ivory.Tower.Codegen.Emitter,
                         Ivory.Tower.Codegen.Handler,
                         Ivory.Tower.Codegen.Monitor,
@@ -45,7 +44,6 @@ library
                         Ivory.Tower.Monad.Tower,
 
                         -- Types
-                        Ivory.Tower.Types.Artifact,
                         Ivory.Tower.Types.Chan,
                         Ivory.Tower.Types.Emitter,
                         Ivory.Tower.Types.EmitterCode,
@@ -65,6 +63,7 @@ library
                         text,
                         filepath,
                         ivory,
+                        ivory-artifact,
                         ivory-stdlib,
                         ivory-backend-c
 

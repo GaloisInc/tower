@@ -1,9 +1,11 @@
-module Ivory.OS.FreeRTOS.Artifacts
+module Ivory.OS.FreeRTOS
   ( kernel
   , wrappers
+  , objects
   , Config(..)
   ) where
 
+import System.FilePath
 import qualified Paths_ivory_freertos_bindings as P
 import Ivory.Artifact
 import Ivory.OS.FreeRTOS.Config
@@ -18,14 +20,14 @@ wrappers = map (artifactCabalFile P.getDataDir) wrapperfiles
 
 wrapperfiles :: [FilePath]
 wrapperfiles =
-  [ "ivory-freertos-wrapper/freertos_atomic_wrapper.h"
-  , "ivory-freertos-wrapper/freertos_atomic_wrapper.c"
-  , "ivory-freertos-wrapper/freertos_semaphore_wrapper.h"
-  , "ivory-freertos-wrapper/freertos_semaphore_wrapper.c"
-  , "ivory-freertos-wrapper/freertos_task_wrapper.h"
-  , "ivory-freertos-wrapper/freertos_task_wrapper.c"
-  , "ivory-freertos-wrapper/freertos_time_wrapper.h"
-  , "ivory-freertos-wrapper/freertos_time_wrapper.c"
+  [ "wrapper/freertos_atomic_wrapper.h"
+  , "wrapper/freertos_atomic_wrapper.c"
+  , "wrapper/freertos_semaphore_wrapper.h"
+  , "wrapper/freertos_semaphore_wrapper.c"
+  , "wrapper/freertos_task_wrapper.h"
+  , "wrapper/freertos_task_wrapper.c"
+  , "wrapper/freertos_time_wrapper.h"
+  , "wrapper/freertos_time_wrapper.c"
   ]
 
 kernelfiles :: [FilePath]
@@ -49,7 +51,13 @@ kernelfiles =
   , "freertos-sources/portable/GCC/ARM_CM4F/port.c"
   , "freertos-sources/portable/GCC/ARM_CM4F/portmacro.h"
   , "freertos-sources/portable/MemMang/heap_1.c"
-  , "freertos-sources/portable/MemMang/heap_2.c"
-  , "freertos-sources/portable/MemMang/heap_3.c"
-  , "freertos-sources/portable/MemMang/heap_4.c"
+  , "syscalls/syscalls.c"
   ]
+
+objects :: [FilePath]
+objects = map (\f -> replaceExtension f "o") sources
+
+sources :: [FilePath]
+sources = filter (\f -> takeExtension f == ".c")
+        $ map takeFileName ( wrapperfiles ++ kernelfiles )
+

@@ -1,8 +1,8 @@
 
 #include "freertos_semaphore_wrapper.h"
 
-#include <FreeRTOS.h>
-#include <semphr.h>
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 
 void ivory_freertos_semaphore_create_mutex(uint8_t **semhandle)

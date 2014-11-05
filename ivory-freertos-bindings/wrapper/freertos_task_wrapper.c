@@ -1,8 +1,8 @@
 
 #include "freertos_task_wrapper.h"
 
-#include <FreeRTOS.h>
-#include <task.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 void ivory_freertos_task_create(void (*tsk)(struct taskarg*),
         uint32_t stacksize, uint8_t priority, const char* const name)

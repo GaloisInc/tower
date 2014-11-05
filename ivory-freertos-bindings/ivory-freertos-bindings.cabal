@@ -7,14 +7,14 @@ build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
-data-files: ivory-freertos-wrapper/freertos_atomic_wrapper.h,
-            ivory-freertos-wrapper/freertos_atomic_wrapper.c,
-            ivory-freertos-wrapper/freertos_semaphore_wrapper.h,
-            ivory-freertos-wrapper/freertos_semaphore_wrapper.c,
-            ivory-freertos-wrapper/freertos_task_wrapper.h,
-            ivory-freertos-wrapper/freertos_task_wrapper.c,
-            ivory-freertos-wrapper/freertos_time_wrapper.h,
-            ivory-freertos-wrapper/freertos_time_wrapper.c,
+data-files: wrapper/freertos_atomic_wrapper.h,
+            wrapper/freertos_atomic_wrapper.c,
+            wrapper/freertos_semaphore_wrapper.h,
+            wrapper/freertos_semaphore_wrapper.c,
+            wrapper/freertos_task_wrapper.h,
+            wrapper/freertos_task_wrapper.c,
+            wrapper/freertos_time_wrapper.h,
+            wrapper/freertos_time_wrapper.c,
             freertos-sources/FreeRTOSConfig.h.template,
             freertos-sources/croutine.c,
             freertos-sources/list.c,
@@ -37,10 +37,12 @@ data-files: ivory-freertos-wrapper/freertos_atomic_wrapper.h,
             freertos-sources/portable/MemMang/heap_1.c,
             freertos-sources/portable/MemMang/heap_2.c,
             freertos-sources/portable/MemMang/heap_3.c,
-            freertos-sources/portable/MemMang/heap_4.c
+            freertos-sources/portable/MemMang/heap_4.c,
+            syscalls/syscalls.c
+
 
 library
-  exposed-modules:      Ivory.OS.FreeRTOS.Artifacts,
+  exposed-modules:      Ivory.OS.FreeRTOS,
                         Ivory.OS.FreeRTOS.Atomic,
                         Ivory.OS.FreeRTOS.BinarySemaphore,
                         Ivory.OS.FreeRTOS.Config,

@@ -1,8 +1,8 @@
 
 #include "freertos_time_wrapper.h"
 
-#include <FreeRTOS.h>
-#include <task.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 void ivory_freertos_time_delay(uint32_t ticks)
 {   vTaskDelay(ticks);

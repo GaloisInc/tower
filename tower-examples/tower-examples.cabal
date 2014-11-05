@@ -84,6 +84,7 @@ executable freertos-bindings-test
   ghc-options:          -Wall
   build-depends:       base >= 4.6,
                        ivory,
+                       ivory-artifact,
                        ivory-backend-c,
                        ivory-freertos-bindings
   if flag(werror)

@@ -1,13 +1,16 @@
 
+.PHONY: default
 default:
 	cabal build
 
+.PHONY: freertos-test
 freertos-test:
 	rm -rf dist
 	cabal sandbox add-source ../ivory-freertos-bindings
 	cabal install --dependencies-only
-	cabal run freertos-bindings-test
+	cabal run freertos-bindings-test -- --src-dir=freertos-test
 
+.PHONY: create-sandbox
 create-sandbox:
 	cabal sandbox init
 	cabal sandbox add-source ../../ivory/ivory

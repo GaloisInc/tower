@@ -3,12 +3,12 @@ module Ivory.OS.FreeRTOS.Tower.Codegen.Build
   ( makefile
   ) where
 
-import Ivory.Tower.Types.Artifact
+import Ivory.Artifact
 import Text.PrettyPrint.Mainland
 import System.FilePath (replaceDirectory)
 
 makefile :: [FilePath] -> Artifact
-makefile sources = Artifact "Makefile" (prettyLazyText 1000000 d)
+makefile sources = artifactText "Makefile" (prettyLazyText 1000000 d)
   where
   d :: Doc
   d = stack

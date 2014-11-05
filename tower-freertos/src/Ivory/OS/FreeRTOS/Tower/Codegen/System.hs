@@ -18,13 +18,12 @@ import Text.Show.Pretty
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Time
-import Ivory.Tower.Types.Artifact
 import Ivory.Tower.Codegen.Handler
 import qualified Ivory.Tower.AST.Graph as G
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
-import qualified Ivory.Compile.C.SourceDeps as C
+import Ivory.Artifact
 
 import Ivory.OS.FreeRTOS.Tower.Codegen.Init
 import Ivory.OS.FreeRTOS.Tower.Codegen.Signal
@@ -36,16 +35,17 @@ import qualified Ivory.OS.FreeRTOS.Time as Time
 
 systemArtifacts :: AST.Tower -> [Module] -> [Artifact]
 systemArtifacts twr ms =
-  [ artifactFromString "debug_mods.txt" dbg
-  , artifactFromString "debug_ast.txt" (ppShow twr)
-  , makefile (map (\m -> m ++ ".c") mods)  -- XXX FIXME: needs to include generated source .c, .s files as well
-  , artifactFromString "out.dot" (G.graphviz (G.messageGraph twr))
+  [ artifactString "debug_mods.txt" dbg
+  , artifactString "debug_ast.txt" (ppShow twr)
+  , makefile (map (\m -> m ++ ".c") mods)
+  , artifactString "out.dot" (G.graphviz (G.messageGraph twr))
   ]
   where
-  dbg = (show mods) ++ "\n" ++ (show sdeps)
-
+  dbg = (show mods)
   mods = map moduleName ms
-  sdeps = C.collectSourceDeps ms
+  -- XXX FIXME: needs to include generated source .c, .s files as well
+  -- XXX FIXME: this is where we insert the freertos kernel, wrappers
+  -- Need to add artifacts to tower's GeneratedCode
 
 monitorModules :: GeneratedCode -> AST.Tower -> [Module]
 monitorModules gc _twr = concatMap permon ms

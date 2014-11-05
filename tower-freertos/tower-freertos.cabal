@@ -22,6 +22,7 @@ library
                         mainland-pretty,
                         pretty-show,
                         ivory,
+                        ivory-artifact,
                         ivory-stdlib,
                         ivory-backend-c,
                         ivory-freertos-bindings,

@@ -13,6 +13,7 @@ flag werror
 
 executable tower-example-simple
   main-is:             Simple.hs
+  other-modules:       Examples
   hs-source-dirs:      examples
   ghc-options:          -Wall
   build-depends:       base >= 4.6,
@@ -29,6 +30,7 @@ executable tower-example-simple
 
 executable tower-example-simplesignal
   main-is:             SimpleSignal.hs
+  other-modules:       Examples
   hs-source-dirs:      examples
   ghc-options:          -Wall
   build-depends:       base >= 4.6,
@@ -70,6 +72,20 @@ executable tower-example-stm32f4signals
                        ivory-hw,
                        tower >= 0.9,
                        tower-freertos >= 0.9
+  if flag(werror)
+    ghc-options:        -Wall -Werror
+  else
+    ghc-options:        -Wall
+  default-language:    Haskell2010
+
+executable freertos-bindings-test
+  main-is:             Main.hs
+  hs-source-dirs:      freertos-bindings-test
+  ghc-options:          -Wall
+  build-depends:       base >= 4.6,
+                       ivory,
+                       ivory-backend-c,
+                       ivory-freertos-bindings
   if flag(werror)
     ghc-options:        -Wall -Werror
   else

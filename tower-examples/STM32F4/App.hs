@@ -10,7 +10,6 @@ import Ivory.Tower
 import Ivory.Tower.Compile
 import Ivory.HW
 import Ivory.HW.Module (hw_moduledef)
-import qualified Ivory.HW.SearchDir as HW
 
 import Interrupt
 import ATIM18

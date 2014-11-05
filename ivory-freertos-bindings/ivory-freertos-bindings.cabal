@@ -55,6 +55,7 @@ library
   build-depends:        base >= 4.6,
                         template-haskell >= 2.8,
                         filepath,
+                        HStringTemplate,
                         ivory,
                         ivory-artifact
 

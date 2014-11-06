@@ -10,10 +10,12 @@ void ivory_freertos_semaphore_create_mutex(uint8_t **semhandle)
     *((xSemaphoreHandle*)semhandle) = xSemaphoreCreateMutex();
 }
 
+#if configUSE_COUNTING_SEMAPHORES > 0
 void ivory_freertos_semaphore_create_counting(uint8_t **semhandle, uint32_t max, uint32_t init)
 {
     *((xSemaphoreHandle*)semhandle) = xSemaphoreCreateCounting(max,init);
 }
+#endif
 
 void ivory_freertos_semaphore_create_binary(uint8_t **semhandle)
 {

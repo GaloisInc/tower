@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "FreeRTOSConfig.h"
 
 /* we're using uint8_t to stand in for void, because ivory doesn't have a
  * concept of void. an xSemaphoreHandle is a void*, so a uint8_t** is analogous
@@ -11,7 +12,9 @@
  * it.*/
 void ivory_freertos_semaphore_create_mutex(uint8_t** semhandle);
 
+#if configUSE_COUNTING_SEMAPHORES > 0
 void ivory_freertos_semaphore_create_counting(uint8_t** semhandle, uint32_t max, uint32_t init);
+#endif
 
 void ivory_freertos_semaphore_create_binary(uint8_t** semhandle);
 

@@ -1,8 +1,9 @@
 module Ivory.OS.FreeRTOS
   ( kernel
-  , wrappers
+  , wrapper
   , objects
   , Config(..)
+  , defaultConfig
   ) where
 
 import System.FilePath
@@ -15,8 +16,8 @@ kernel conf = configHeader conf : kas
   where
   kas = map (artifactCabalFile P.getDataDir) kernelfiles
 
-wrappers :: [Artifact]
-wrappers = map (artifactCabalFile P.getDataDir) wrapperfiles
+wrapper :: [Artifact]
+wrapper = map (artifactCabalFile P.getDataDir) wrapperfiles
 
 wrapperfiles :: [FilePath]
 wrapperfiles =
@@ -60,4 +61,13 @@ objects = map (\f -> replaceExtension f "o") sources
 sources :: [FilePath]
 sources = filter (\f -> takeExtension f == ".c")
         $ map takeFileName ( wrapperfiles ++ kernelfiles )
+
+defaultConfig :: Config
+defaultConfig  = Config
+  { cpu_clock_hz       = 168 * 1000 * 1000
+  , tick_rate_hz       = 1000
+  , max_priorities     = 5
+  , minimal_stack_size = 256
+  , total_heap_size    = 64 * 1024
+  }
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
-module Ivory.OS.FreeRTOS.Tower.Codegen.System
+module Ivory.OS.FreeRTOS.Tower.System
   ( threadModules
   , monitorModules
   , systemModules
@@ -25,10 +25,9 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 import Ivory.Artifact
 
-import Ivory.OS.FreeRTOS.Tower.Codegen.Init
-import Ivory.OS.FreeRTOS.Tower.Codegen.Signal
-import Ivory.OS.FreeRTOS.Tower.Codegen.Build
-import Ivory.OS.FreeRTOS.Tower.Codegen.Monitor
+import Ivory.OS.FreeRTOS.Tower.Init
+import Ivory.OS.FreeRTOS.Tower.Signal
+import Ivory.OS.FreeRTOS.Tower.Monitor
 
 import qualified Ivory.OS.FreeRTOS.Task as Task
 import qualified Ivory.OS.FreeRTOS.Time as Time
@@ -37,15 +36,11 @@ systemArtifacts :: AST.Tower -> [Module] -> [Artifact]
 systemArtifacts twr ms =
   [ artifactString "debug_mods.txt" dbg
   , artifactString "debug_ast.txt" (ppShow twr)
-  , makefile (map (\m -> m ++ ".c") mods)
   , artifactString "out.dot" (G.graphviz (G.messageGraph twr))
   ]
   where
   dbg = (show mods)
   mods = map moduleName ms
-  -- XXX FIXME: needs to include generated source .c, .s files as well
-  -- XXX FIXME: this is where we insert the freertos kernel, wrappers
-  -- Need to add artifacts to tower's GeneratedCode
 
 monitorModules :: GeneratedCode -> AST.Tower -> [Module]
 monitorModules gc _twr = concatMap permon ms

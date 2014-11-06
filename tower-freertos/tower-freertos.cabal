@@ -7,13 +7,23 @@ build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
+data-files: support/stm32_init.c,
+            support/stm32_init.h,
+            support/stm32_ivory_init.c,
+            support/stm32_ivory_init.h,
+            support/stm32f405_vectors.s,
+            support/stm32f405.lds
+
 library
-  exposed-modules:      Ivory.OS.FreeRTOS.Tower.Codegen,
-                        Ivory.OS.FreeRTOS.Tower.Codegen.Build,
-                        Ivory.OS.FreeRTOS.Tower.Codegen.Init,
-                        Ivory.OS.FreeRTOS.Tower.Codegen.Monitor,
-                        Ivory.OS.FreeRTOS.Tower.Codegen.Signal,
-                        Ivory.OS.FreeRTOS.Tower.Codegen.System
+  exposed-modules:      Ivory.OS.FreeRTOS.Tower,
+                        Ivory.OS.FreeRTOS.Tower.STM32F4,
+                        Ivory.OS.FreeRTOS.Tower.STM32F4.Build,
+                        Ivory.OS.FreeRTOS.Tower.Init,
+                        Ivory.OS.FreeRTOS.Tower.Monitor,
+                        Ivory.OS.FreeRTOS.Tower.Signal,
+                        Ivory.OS.FreeRTOS.Tower.System
+
+  other-modules:        Paths_tower_freertos
 
   build-depends:        base >= 4.6,
                         template-haskell >= 2.8,
@@ -22,6 +32,7 @@ library
                         mainland-pretty,
                         pretty-show,
                         ivory,
+                        ivory-hw,
                         ivory-artifact,
                         ivory-stdlib,
                         ivory-backend-c,
@@ -31,3 +42,4 @@ library
   hs-source-dirs:       src
   default-language:     Haskell2010
   ghc-options:          -Wall -fno-warn-orphans
+

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
-module Ivory.OS.FreeRTOS.Tower.Codegen.Monitor
+module Ivory.OS.FreeRTOS.Tower.Monitor
   ( generateMonitorCode
   , monitorInitProc
   , monitorLockProc

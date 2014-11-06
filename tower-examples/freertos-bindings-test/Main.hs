@@ -10,7 +10,7 @@ import Ivory.Compile.C.CmdlineFrontend
 main :: IO ()
 main = compile [] as
   where
-  as = kernel config ++ wrappers
+  as = kernel config ++ wrapper
      ++ [ artifactString "Makefile" makefile ]
   config = Config
     { cpu_clock_hz = 168 * 1000 * 1000

@@ -6,7 +6,7 @@ module Main where
 import Ivory.Language
 import Ivory.Tower
 import Ivory.Tower.Compile
-import Ivory.OS.FreeRTOS.Tower.Codegen
+import Ivory.OS.FreeRTOS.Tower
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
 test1_per :: Tower p ()

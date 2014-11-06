@@ -10,6 +10,15 @@ freertos-test:
 	cabal install --dependencies-only
 	cabal run freertos-bindings-test -- --src-dir=freertos-test
 
+.PHONY: simple-test
+simple-test:
+	rm -rf dist
+	cabal sandbox add-source ../ivory-freertos-bindings
+	cabal sandbox add-source ../tower
+	cabal sandbox add-source ../tower-freertos
+	cabal install --dependencies-only
+	cabal run tower-example-simple -- --src-dir=tower-example-simple
+
 .PHONY: create-sandbox
 create-sandbox:
 	cabal sandbox init

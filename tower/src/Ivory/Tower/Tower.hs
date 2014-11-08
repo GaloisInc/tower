@@ -33,7 +33,7 @@ import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
 
-channel :: Tower p (ChanInput a, ChanOutput a)
+channel :: Tower e (ChanInput a, ChanOutput a)
 channel = do
   f <- fresh
   let ast = AST.SyncChan f
@@ -41,8 +41,8 @@ channel = do
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
 
-signal :: (Time a, Signalable p)
-       => SignalType p -> a -> Tower p (ChanOutput (Stored ITime))
+signal :: (Time a, Signalable s)
+       => SignalType s -> a -> Tower e (ChanOutput (Stored ITime))
 signal s t = do
   towerPutASTSignal ast
   towerCodegen $ codegenSignal s
@@ -54,7 +54,7 @@ signal s t = do
     , AST.signal_deadline = microseconds t
     }
 
-period :: Time a => a -> Tower p (ChanOutput (Stored ITime))
+period :: Time a => a -> Tower e (ChanOutput (Stored ITime))
 period t = do
   let ast = AST.Period (microseconds t)
   towerPutASTPeriod ast
@@ -63,15 +63,15 @@ period t = do
 systemInit :: ChanOutput (Stored ITime)
 systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
 
-monitor :: String -> Monitor p () -> Tower p ()
+monitor :: String -> Monitor e () -> Tower e ()
 monitor n m = do
   (ast, mcode) <- runMonitor n m
   towerPutASTMonitor ast
   towerCodegen $ codegenMonitor ast (const mcode)
 
-towerModule :: Module -> Tower p ()
+towerModule :: Module -> Tower e ()
 towerModule = towerCodegen . codegenModule
 
-towerDepends :: Module -> Tower p ()
+towerDepends :: Module -> Tower e ()
 towerDepends = towerCodegen . codegenDepends
 

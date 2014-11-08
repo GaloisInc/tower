@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Ivory.Tower.Monad.Base
   ( Base
@@ -25,16 +27,18 @@ runBase env b = runId
               $ runStateT 0
               $ unBase b
 
-class (Monad m) => BaseUtils m where
-  fresh :: m Integer
+class (Monad (m e)) => BaseUtils m e where
+  fresh :: m e Integer
+  getEnv :: m e e
 
-instance BaseUtils (Base env) where
+instance BaseUtils Base env where
   fresh = Base $ do
     n <- get
     set (n + 1)
     return n
+  getEnv = Base $ lift $ ask
 
-freshname :: (BaseUtils m) => String -> m Unique
+freshname :: (BaseUtils m e) => String -> m e Unique
 freshname n = do
   f <- fresh
   return (Unique { unique_name = n, unique_fresh = f })

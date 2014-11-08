@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Ivory.Tower.Monad.Codegen
   ( Codegen
@@ -62,9 +64,10 @@ codegenMonitor m f = do
   a <- getAST
   withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
 
-codegenSignal :: (Signalable p) => SignalType p -> Codegen e ()
+codegenSignal :: (Signalable s) => SignalType s -> Codegen e ()
 codegenSignal s = withGeneratedCode $
   generatedCodeInsertSignalCode (signalName s) (signalHandler s)
 
-instance BaseUtils (Codegen e) where
+instance BaseUtils Codegen e where
   fresh = Codegen $ lift $ lift fresh
+  getEnv = Codegen $ lift $ lift getEnv

@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Ivory.Tower.Monad.Monitor
   ( Monitor
@@ -62,5 +64,6 @@ monitorPutCode f = withCode $ \ctx mc -> insertMonitorCode (f ctx) mc
 monitorPutThreadCode :: (AST.Tower -> [ThreadCode]) -> Monitor e ()
 monitorPutThreadCode = monitorCodegen . codegenThreadCode
 
-instance BaseUtils (Monitor e) where
+instance BaseUtils Monitor e where
   fresh = liftTower fresh
+  getEnv = liftTower getEnv

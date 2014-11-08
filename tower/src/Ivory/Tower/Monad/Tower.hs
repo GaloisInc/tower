@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Ivory.Tower.Monad.Tower
   ( Tower
@@ -32,8 +34,9 @@ runTower t e = (a,b)
   (a,b) = runBase e (runCodegen outer a)
   outer = fmap snd (runStateT AST.emptyTower (unTower t))
 
-instance BaseUtils (Tower e) where
+instance BaseUtils Tower e where
   fresh = Tower $ lift fresh
+  getEnv = Tower $ lift getEnv
 
 withAST :: (AST.Tower -> AST.Tower) -> Tower e ()
 withAST f = Tower $ do

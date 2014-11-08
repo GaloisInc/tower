@@ -25,31 +25,31 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
 
-newtype Codegen a = Codegen
-  { unCodegen :: ReaderT AST.Tower (StateT GeneratedCode Base) a
+newtype Codegen env a = Codegen
+  { unCodegen :: ReaderT AST.Tower (StateT GeneratedCode (Base env)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runCodegen :: Codegen a -> AST.Tower -> Base (a, GeneratedCode)
+runCodegen :: Codegen env a -> AST.Tower -> Base env (a, GeneratedCode)
 runCodegen m ast = runStateT emptyGeneratedCode
                       $ runReaderT ast (unCodegen m)
 
-getAST :: Codegen AST.Tower
+getAST :: Codegen e AST.Tower
 getAST = Codegen ask
 
-withGeneratedCode :: (GeneratedCode -> GeneratedCode) -> Codegen ()
+withGeneratedCode :: (GeneratedCode -> GeneratedCode) -> Codegen e ()
 withGeneratedCode f = Codegen $ do
   gc <- get
   set (f gc)
 
-codegenModule :: Module -> Codegen ()
+codegenModule :: Module -> Codegen e ()
 codegenModule m =
   withGeneratedCode $ \c -> generatedCodeInsertModule m c
 
-codegenDepends :: Module -> Codegen ()
+codegenDepends :: Module -> Codegen e ()
 codegenDepends m =
   withGeneratedCode $ \c -> generatedCodeInsertDepends m c
 
-codegenThreadCode :: (AST.Tower -> [ThreadCode]) -> Codegen ()
+codegenThreadCode :: (AST.Tower -> [ThreadCode]) -> Codegen e ()
 codegenThreadCode f = do
   a <- getAST
   -- Don't replace this fold with a mapM - causes black hole
@@ -57,14 +57,14 @@ codegenThreadCode f = do
     foldl (flip generatedCodeInsertThreadCode) c (f a)
 
 -- might not even need AST.Tower continuation exposed here?
-codegenMonitor :: AST.Monitor -> (AST.Tower -> MonitorCode) -> Codegen ()
+codegenMonitor :: AST.Monitor -> (AST.Tower -> MonitorCode) -> Codegen e ()
 codegenMonitor m f = do
   a <- getAST
   withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
 
-codegenSignal :: (Signalable p) => SignalType p -> Codegen ()
+codegenSignal :: (Signalable p) => SignalType p -> Codegen e ()
 codegenSignal s = withGeneratedCode $
   generatedCodeInsertSignalCode (signalName s) (signalHandler s)
 
-instance BaseUtils Codegen where
+instance BaseUtils (Codegen e) where
   fresh = Codegen $ lift $ lift fresh

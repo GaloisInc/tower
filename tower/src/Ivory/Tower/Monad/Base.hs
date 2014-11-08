@@ -14,17 +14,21 @@ import Control.Monad.Fix
 import Control.Applicative
 import Ivory.Tower.Types.Unique
 
-newtype Base a = Base
-  { unBase :: StateT Integer Id a
+newtype Base env a = Base
+  { unBase :: StateT Integer (ReaderT env Id) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runBase :: Base a -> a
-runBase b = fst (runM (unBase b) 0)
+runBase :: env -> Base env a -> a
+runBase env b = runId
+              $ runReaderT env
+              $ fmap fst
+              $ runStateT 0
+              $ unBase b
 
 class (Monad m) => BaseUtils m where
   fresh :: m Integer
 
-instance BaseUtils Base where
+instance BaseUtils (Base env) where
   fresh = Base $ do
     n <- get
     set (n + 1)

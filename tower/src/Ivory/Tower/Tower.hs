@@ -41,6 +41,9 @@ channel = do
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
 
+-- Note: signals are no longer tied to be the same type throughout
+-- a given Tower. We'd need to add another phantom type to make that
+-- work.
 signal :: (Time a, Signalable s)
        => SignalType s -> a -> Tower e (ChanOutput (Stored ITime))
 signal s t = do

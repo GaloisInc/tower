@@ -17,6 +17,7 @@ module Ivory.Tower.Tower
   , monitor
   , towerModule
   , towerDepends
+  , BaseUtils(..)
   ) where
 
 import Ivory.Tower.Types.Chan

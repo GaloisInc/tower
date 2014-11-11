@@ -7,7 +7,6 @@ homepage:            http://ivorylang.org
 build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
-license-file:        LICENSE
 source-repository    this
   type:     git
   location: https://github.com/GaloisInc/tower

@@ -5,7 +5,6 @@ module Tower.Config.File
 
 import Data.Either (lefts, rights)
 import qualified Data.ByteString.Char8 as B
---import Tower.Config.Types
 import System.FilePath
 import System.Directory
 

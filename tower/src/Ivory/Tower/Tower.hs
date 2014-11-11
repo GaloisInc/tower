@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Ivory.Tower.Tower
   ( Tower()
@@ -17,13 +18,19 @@ module Ivory.Tower.Tower
   , monitor
   , towerModule
   , towerDepends
+
+  , getTime
   , BaseUtils(..)
+  , Unique
+  , showUnique
+  , freshname
   ) where
 
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.Signalable
+import Ivory.Tower.Types.Unique
 
 import qualified Ivory.Tower.AST as AST
 
@@ -78,4 +85,11 @@ towerModule = towerCodegen . codegenModule
 
 towerDepends :: Module -> Tower e ()
 towerDepends = towerCodegen . codegenDepends
+
+getTime :: Ivory eff ITime
+getTime = call getTimeProc
+  where
+  -- Must be provided by the code generator:
+  getTimeProc :: Def('[]:->ITime)
+  getTimeProc = importProc "tower_get_time" "tower.h"
 

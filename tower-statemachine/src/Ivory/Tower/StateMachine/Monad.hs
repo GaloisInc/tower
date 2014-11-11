@@ -59,19 +59,22 @@ data StateHandler
   | TimeoutStateHandler Micros (ScopedStatements (Stored ITime))
   | PeriodStateHandler Micros (ScopedStatements (Stored ITime))
   | forall a . (IvoryArea a, IvoryZero a)
-     => EventStateHandler (Event a) (ScopedStatements a)
+     => ChanStateHandler (ChanOutput a) (ScopedStatements a)
 
 instance Show StateHandler where
   show (EntryStateHandler _)     = "EntryStateHandler"
   show (TimeoutStateHandler _ _) = "TimeoutStateHandler"
   show (PeriodStateHandler _ _)  = "PeriodStateHandler"
-  show (EventStateHandler _ _)   = "EventStateHandler"
+  show (ChanStateHandler _ _)    = "ChanStateHandler"
 
-data ScopedStatements a = ScopedStatements (forall s s' . ConstRef s' a -> [Stmt s])
+data ScopedStatements a =
+  ScopedStatements
+    (forall s s' . Emitter (Stored Uint32) -> ConstRef s' a -> [Stmt s])
 
-scopedIvory :: (forall s s' . ConstRef s' a -> Ivory (AllocEffects s) ())
+scopedICallback :: (forall s s' . Emitter (Stored Uint32) -> ConstRef s' a
+                                    -> Ivory (AllocEffects s) ())
             -> ScopedStatements a
-scopedIvory k = ScopedStatements (\r -> [ Stmt ( k r >> return (return ())) ] )
+scopedICallback k = ScopedStatements (\e r -> [ Stmt ( k e r >> return (return ())) ] )
 
 
 data State = State StateLabel (Maybe String) [StateHandler]
@@ -80,9 +83,9 @@ data State = State StateLabel (Maybe String) [StateHandler]
 data StateLabel = StateLabel { unStateLabel :: Int }
      deriving (Eq, Show)
 
-newtype MachineM p a =
+newtype MachineM e a =
   MachineM
-    { unMachineM :: WriterT [State] (StateT StateLabel (Task p)) a
+    { unMachineM :: WriterT [State] (StateT StateLabel (Monitor e)) a
     } deriving (Functor, Monad, MonadFix, Applicative)
 
 type Machine p = MachineM p StateLabel
@@ -92,7 +95,7 @@ newtype StateM a =
     { unStateM :: WriterT [StateHandler] Id a
     } deriving (Functor, Monad, Applicative)
 
-runMachineM :: MachineM p StateLabel -> Task p (StateLabel, [State])
+runMachineM :: MachineM e StateLabel -> Monitor e (StateLabel, [State])
 runMachineM sm = do
   ((istate, states), _) <- runStateT (StateLabel 0) (runWriterT (unMachineM sm))
   return (istate, states)
@@ -111,11 +114,11 @@ writeState sm = MachineM $ do
 
 machineLocal :: (IvoryArea area, IvoryZero area)
              => String -> MachineM p (Ref Global area)
-machineLocal n = MachineM $ lift $ lift $ taskLocal n
+machineLocal n = MachineM $ lift $ lift $ state n
 
 machineLocalInit :: (IvoryArea area)
                  => String -> Init area -> MachineM p (Ref Global area)
-machineLocalInit n iv = MachineM $ lift $ lift $ taskLocalInit n iv
+machineLocalInit n iv = MachineM $ lift $ lift $ stateInit n iv
 
 writeStateHandler :: StateHandler -> StateM ()
 writeStateHandler h = StateM $ put [h]

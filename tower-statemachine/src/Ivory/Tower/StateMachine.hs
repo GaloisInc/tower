@@ -5,7 +5,7 @@
 
 module Ivory.Tower.StateMachine
   ( on
-  , period
+  , periodic
   , timeout
   , entry
 
@@ -18,8 +18,8 @@ module Ivory.Tower.StateMachine
   , Stmt
   , StateLabel
 
-  , state
-  , stateNamed
+  , machineState
+  , machineStateNamed
   , branch
   , goto
   , haltWhen
@@ -37,30 +37,35 @@ import Ivory.Tower.StateMachine.Compile
 
 on :: forall area
          . (IvoryArea area, IvoryZero area)
-        => Event area
+        => ChanOutput area
         -> (forall s s' . ConstRef s' area -> StmtM s ())
         -> StateM ()
-on e stmtM = writeHandler $ EventHandler e (ScopedStatements stmts)
+on c stmtM = writeStateHandler
+           $ ChanStateHandler c (ScopedStatements stmts)
   where
-  stmts :: ConstRef s' area -> [Stmt s]
-  stmts ref = runStmtM (stmtM ref)
+  stmts :: Emitter a -> ConstRef s' area -> [Stmt s]
+  stmts _ ref = runStmtM (stmtM ref)
 
 entry :: (forall s . StmtM s ()) -> StateM ()
-entry stmtM = writeHandler $ EntryHandler (ScopedStatements (const (runStmtM stmtM)))
+entry stmtM = writeStateHandler
+            $ EntryStateHandler
+            $ ScopedStatements (\_ _ -> runStmtM stmtM)
 
 timeout :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
-timeout t stmtM = writeHandler $ TimeoutHandler (toMicroseconds t)
-                                    (ScopedStatements (const (runStmtM stmtM)))
+timeout t stmtM = writeStateHandler
+                $ TimeoutStateHandler (toMicroseconds t)
+                $ ScopedStatements (\_ _ -> runStmtM stmtM)
 
-period :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
-period t stmtM = writeHandler $ PeriodHandler (toMicroseconds t)
-                                    (ScopedStatements (const (runStmtM stmtM)))
+periodic :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
+periodic t stmtM = writeStateHandler
+                 $ PeriodStateHandler (toMicroseconds t)
+                 $ ScopedStatements (\ _ _ -> runStmtM stmtM)
 
-state :: StateM () -> MachineM p StateLabel
-state sh = stateAux sh Nothing
+machineState :: StateM () -> MachineM p StateLabel
+machineState sh = stateAux sh Nothing
 
-stateNamed :: String -> StateM () -> MachineM p StateLabel
-stateNamed n sh = stateAux sh (Just n)
+machineStateNamed :: String -> StateM () -> MachineM p StateLabel
+machineStateNamed n sh = stateAux sh (Just n)
 
 stateAux :: StateM () -> Maybe String-> MachineM p StateLabel
 stateAux sh name = do

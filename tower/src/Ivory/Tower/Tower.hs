@@ -10,6 +10,7 @@ module Ivory.Tower.Tower
   , ChanOutput()
   , channel
   , signal
+  , signalUnsafe
   , Signalable(..)
   , module Ivory.Tower.Types.Time
   , period
@@ -54,9 +55,14 @@ channel = do
 -- work.
 signal :: (Time a, Signalable s)
        => SignalType s -> a -> Tower e (ChanOutput (Stored ITime))
-signal s t = do
+signal s t = signalUnsafe s t (return ())
+
+signalUnsafe :: (Time a, Signalable s)
+       => SignalType s -> a -> (forall eff . Ivory eff ())
+       -> Tower e (ChanOutput (Stored ITime))
+signalUnsafe s t i = do
   towerPutASTSignal ast
-  towerCodegen $ codegenSignal s
+  towerCodegen $ codegenSignal s i
   return (ChanOutput (Chan (AST.ChanSignal ast)))
   where
   n = signalName s

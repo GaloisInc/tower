@@ -10,6 +10,7 @@ module Ivory.Tower.Monad.Monitor
   , monitorPutASTHandler
   , monitorPutCode
   , monitorPutThreadCode
+  , liftTower -- XXX UNSAFE TO USE
   ) where
 
 import MonadLib

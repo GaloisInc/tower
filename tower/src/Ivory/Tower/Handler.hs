@@ -2,11 +2,15 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Ivory.Tower.Handler
   ( emitter
+  , Emitter()
   , callback
   , emit
+  , emitV
   , Handler()
   ) where
 
@@ -38,7 +42,8 @@ emitter (ChanInput (Chan chanast)) bound = do
 
 callback :: forall s a e
           . (IvoryArea a)
-         => (forall eff . ConstRef s a -> Ivory eff ()) -> Handler a e ()
+         => (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
+         -> Handler a e ()
 callback b = do
   u <- freshname "callback"
   handlerPutASTCallback u
@@ -50,12 +55,19 @@ callback b = do
 callbackProc :: forall s a
               . (IvoryArea a)
              => String
-             -> (forall eff . ConstRef s a -> Ivory eff ())
+             -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
              -> Def('[ConstRef s a]:->())
-callbackProc name f = proc name $ \m -> body $ f m
+callbackProc name f = proc name $ \m -> body $ noReturn $ f m
 
 emit :: forall eff s a
       . (IvoryArea a)
      => Emitter a -> ConstRef s a -> Ivory eff ()
 emit e = call_ (callbackProc (emitterProcName e) (const (return ())))
+
+emitV :: forall eff s a
+       . (IvoryArea (Stored a), IvoryInit a, GetAlloc eff ~ Scope s)
+      => Emitter (Stored a) -> a -> Ivory eff ()
+emitV e v = do
+  l <- local (ival v)
+  emit e (constRef l)
 

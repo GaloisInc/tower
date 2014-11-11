@@ -3,6 +3,7 @@
 module Ivory.Tower.Monitor
   ( handler
   , state
+  , stateInit
   , monitorModuleDef
   , Handler()
   , Monitor()
@@ -23,11 +24,22 @@ handler (ChanOutput (Chan chanast)) name block = do
 
 state :: (IvoryArea a)
       => String -> Monitor e (Ref Global a)
-state n = do
+state n = state' n Nothing
+
+stateInit :: (IvoryArea a)
+          => String -> Init a -> Monitor e (Ref Global a)
+stateInit n i = state' n (Just i)
+
+state' :: (IvoryArea a)
+       => String
+       -> Maybe (Init a)
+       -> Monitor e (Ref Global a)
+state' n i = do
   f <- freshname n
   let a = area (showUnique f) Nothing
   monitorPutCode $ \_ -> defMemArea a
   return (addrOf a)
+
 
 monitorModuleDef :: ModuleDef -> Monitor e ()
 monitorModuleDef = monitorPutCode . const

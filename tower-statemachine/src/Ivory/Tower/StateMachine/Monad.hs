@@ -54,18 +54,18 @@ instance CFlowable (StmtM s) where
 
 type Micros = Integer
 
-data Handler
-  = EntryHandler (ScopedStatements (Stored ITime))
-  | TimeoutHandler Micros (ScopedStatements (Stored ITime))
-  | PeriodHandler Micros (ScopedStatements (Stored ITime))
+data StateHandler
+  = EntryStateHandler (ScopedStatements (Stored ITime))
+  | TimeoutStateHandler Micros (ScopedStatements (Stored ITime))
+  | PeriodStateHandler Micros (ScopedStatements (Stored ITime))
   | forall a . (IvoryArea a, IvoryZero a)
-     => EventHandler (Event a) (ScopedStatements a)
+     => EventStateHandler (Event a) (ScopedStatements a)
 
-instance Show Handler where
-  show (EntryHandler _)     = "EntryHandler"
-  show (TimeoutHandler _ _) = "TimeoutHandler"
-  show (PeriodHandler _ _)  = "PeriodHandler"
-  show (EventHandler _ _)   = "EventHandler"
+instance Show StateHandler where
+  show (EntryStateHandler _)     = "EntryStateHandler"
+  show (TimeoutStateHandler _ _) = "TimeoutStateHandler"
+  show (PeriodStateHandler _ _)  = "PeriodStateHandler"
+  show (EventStateHandler _ _)   = "EventStateHandler"
 
 data ScopedStatements a = ScopedStatements (forall s s' . ConstRef s' a -> [Stmt s])
 
@@ -74,7 +74,7 @@ scopedIvory :: (forall s s' . ConstRef s' a -> Ivory (AllocEffects s) ())
 scopedIvory k = ScopedStatements (\r -> [ Stmt ( k r >> return (return ())) ] )
 
 
-data State = State StateLabel (Maybe String) [Handler]
+data State = State StateLabel (Maybe String) [StateHandler]
      deriving (Show)
 
 data StateLabel = StateLabel { unStateLabel :: Int }
@@ -89,7 +89,7 @@ type Machine p = MachineM p StateLabel
 
 newtype StateM a =
   StateM
-    { unStateM :: WriterT [Handler] Id a
+    { unStateM :: WriterT [StateHandler] Id a
     } deriving (Functor, Monad, Applicative)
 
 runMachineM :: MachineM p StateLabel -> Task p (StateLabel, [State])
@@ -117,8 +117,8 @@ machineLocalInit :: (IvoryArea area)
                  => String -> Init area -> MachineM p (Ref Global area)
 machineLocalInit n iv = MachineM $ lift $ lift $ taskLocalInit n iv
 
-writeHandler :: Handler -> StateM ()
-writeHandler h = StateM $ put [h]
+writeStateHandler :: StateHandler -> StateM ()
+writeStateHandler h = StateM $ put [h]
 
 runStateM :: StateM () -> StateLabel -> Maybe String -> State
 runStateM sh lbl n = State lbl n handlers

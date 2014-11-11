@@ -12,7 +12,7 @@ import Ivory.Tower.StateMachine.Monad
 
 import Ivory.Language
 import Ivory.Tower
-import Ivory.Tower.Types.Event (eventDescription)
+--import Ivory.Tower.Types.Event (eventDescription)
 import Ivory.Stdlib
 
 data Runnable =

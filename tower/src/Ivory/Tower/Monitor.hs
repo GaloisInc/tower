@@ -36,7 +36,7 @@ state' :: (IvoryArea a)
        -> Monitor e (Ref Global a)
 state' n i = do
   f <- freshname n
-  let a = area (showUnique f) Nothing
+  let a = area (showUnique f) i
   monitorPutCode $ \_ -> defMemArea a
   return (addrOf a)
 

@@ -8,16 +8,25 @@ import Ivory.Tower.Tower
 import Ivory.Tower.Types.GeneratedCode
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.TowerPlatform
+import Ivory.Tower.Compile.Options
 
 import Ivory.Language
 import Ivory.Artifact
 import qualified Ivory.Compile.C.CmdlineFrontend as C
+import Tower.Config
 
-towerCompile :: (IO (TowerPlatform e)) -> Tower e () -> IO ()
-towerCompile _getPlatform _t = do
-  error "towerCompiler unimplemented"
-  -- XXX get opts, get TowerPlatform, parse remaining as C backend opts
-  -- runTowerCompile
+import System.Environment (getArgs)
+import System.Exit (exitFailure)
+
+towerCompile :: (Configurable c) => (c -> TowerPlatform e) -> Tower e () -> IO ()
+towerCompile mkPlatform t = do
+  args <- getArgs
+  (copts, topts) <- getOpts args
+  c <- configFromFile (topts_configfile topts) (topts_configpath topts)
+  case c of
+    Right conf -> do
+      runTowerCompile t (mkPlatform conf) copts
+    Left e -> putStrLn e >> exitFailure
 
 runTowerCodegen :: Tower e () -> TowerPlatform e
                 -> ([Module], [Artifact])

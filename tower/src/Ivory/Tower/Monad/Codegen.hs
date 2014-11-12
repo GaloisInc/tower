@@ -64,7 +64,7 @@ codegenMonitor m f = do
   a <- getAST
   withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
 
-codegenSignal :: (Signalable s) => SignalType s -> (forall eff . Ivory eff ())
+codegenSignal :: (Signalable s) => s -> (forall eff . Ivory eff ())
               -> Codegen e ()
 codegenSignal s i = withGeneratedCode $
   generatedCodeInsertSignalCode (signalName s) (\i' -> (signalHandler s) (i >> i'))

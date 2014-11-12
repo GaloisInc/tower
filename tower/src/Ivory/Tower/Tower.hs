@@ -54,11 +54,11 @@ channel = do
 -- a given Tower. We'd need to add another phantom type to make that
 -- work.
 signal :: (Time a, Signalable s)
-       => SignalType s -> a -> Tower e (ChanOutput (Stored ITime))
+       => s -> a -> Tower e (ChanOutput (Stored ITime))
 signal s t = signalUnsafe s t (return ())
 
 signalUnsafe :: (Time a, Signalable s)
-       => SignalType s -> a -> (forall eff . Ivory eff ())
+       => s -> a -> (forall eff . Ivory eff ())
        -> Tower e (ChanOutput (Stored ITime))
 signalUnsafe s t i = do
   towerPutASTSignal ast

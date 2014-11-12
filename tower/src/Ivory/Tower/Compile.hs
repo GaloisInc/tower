@@ -18,7 +18,8 @@ import Tower.Config
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 
-towerCompile :: (Configurable c) => (c -> TowerPlatform e) -> Tower e () -> IO ()
+towerCompile :: (Configurable c)
+             => (c -> TowerPlatform e) -> Tower e () -> IO ()
 towerCompile mkPlatform t = do
   args <- getArgs
   (copts, topts) <- getOpts args

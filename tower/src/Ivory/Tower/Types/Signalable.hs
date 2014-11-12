@@ -1,5 +1,4 @@
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.Types.Signalable
   ( Signalable(..)
@@ -7,8 +6,7 @@ module Ivory.Tower.Types.Signalable
 
 import Ivory.Language
 
-class Signalable p where
-  data SignalType p
-  signalName :: SignalType p -> String
-  signalHandler :: SignalType p -> (forall eff . Ivory eff ()) -> ModuleDef
+class Signalable s where
+  signalName    :: s -> String
+  signalHandler :: s -> (forall eff . Ivory eff ()) -> ModuleDef
 

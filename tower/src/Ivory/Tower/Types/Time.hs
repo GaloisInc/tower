@@ -17,6 +17,7 @@ module Ivory.Tower.Types.Time
   , fromIMilliseconds
   , toIMicroseconds
   , toIMilliseconds
+  , toITime
   ) where
 
 import Ivory.Language
@@ -56,4 +57,10 @@ toIMicroseconds (ITime t) = t
 
 toIMilliseconds :: ITime -> Sint64
 toIMilliseconds (ITime t) = t `iDiv` 1000
+
+toITime :: (Time a) => a -> ITime
+toITime t = fromIMicroseconds us
+  where
+  us :: Sint64
+  us = fromIntegral (toMicroseconds t)
 

@@ -1,6 +1,6 @@
 
-module Tower.Config.File
-  ( getConfigFile
+module Tower.Config.Preprocess
+  ( getPreprocessedFile
   ) where
 
 import Data.Either (lefts, rights)
@@ -42,8 +42,9 @@ findInclude f (p:ps) = do
 -- This has terrible worst case complexity because unlines is strict.
 -- I suspect config files will be small enough that it wont matter.
 -- Also, this will loop forever on circular dependencies
-getConfigFile :: FilePath -> [FilePath] -> IO (Either String B.ByteString)
-getConfigFile root path = aux (Include root)
+getPreprocessedFile :: FilePath -> [FilePath]
+                    -> IO (Either String B.ByteString)
+getPreprocessedFile root path = aux (Include root)
   where
   run f = do
     ls <- getLines f

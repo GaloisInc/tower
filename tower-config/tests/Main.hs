@@ -3,9 +3,13 @@
 module Main where
 
 import           Tower.Config
+import           Tower.Config.Preprocess
+import           Tower.Config.Document
+import           Tower.Config.Options
 import           System.Exit
 import           Data.List (intercalate)
 import qualified Data.ByteString.Char8 as B
+import qualified Ivory.Tower.Compile.Options as O
 
 data ClockConfig = ClockConfig Integer Integer deriving (Eq, Show)
 
@@ -68,6 +72,7 @@ main = do
 
   trivialfile
   multiincludefile
+  optionparsing
   exitSuccess
   where
   equality a b = (a,b)
@@ -97,11 +102,12 @@ main = do
 trivialfile :: IO ()
 trivialfile = do
   putStrLn "get trivial.config: "
-  f <- getConfigFile "trivial.config" ["./tests/resources1"]
+  f <- getPreprocessedFile "trivial.config" ["./tests/resources1"]
   case f of
     Right bs -> case check bs of
       Just True -> putStrLn "Passed"
-      a -> putStrLn ("Failed to parse trivial.config: got " ++ show a) >> exitFailure
+      a -> putStrLn ("Failed check of trivial.config: got " ++ show a)
+           >> exitFailure
     Left e -> putStrLn ("Failed with error: " ++ e) >> exitFailure
   where
   check s = do
@@ -113,15 +119,14 @@ trivialfile = do
 multiincludefile :: IO ()
 multiincludefile = do
   putStrLn "get root.config: "
-  f <- getConfigFile "root.config" ["./tests/resources1", "./tests/resources2"]
+  f <- getDocument "root.config" ["./tests/resources1", "./tests/resources2"]
   case f of
     Right bs -> case check bs of
       Just ("at root",True, (2 :: Integer),"in child3") -> putStrLn "Passed"
       a -> putStrLn ("Failed to parse root.config: got " ++ show a) >> exitFailure
     Left e -> putStrLn ("Failed with error: " ++ e) >> exitFailure
   where
-  check s = do
-    doc <- parse s
+  check doc = do
     root <- element "rootsection" doc
     rp <- element "root_property" root
     c1 <- element "child1" doc
@@ -132,3 +137,21 @@ multiincludefile = do
     c3foo <- element "foo" c3
     return (rp, c1foo, c2foo, c3foo)
 
+optionparsing :: IO ()
+optionparsing = do
+  putStrLn "parse options:\n"
+  (cfgopts, extras) <- getCfgOpts topts
+  d <- getDocument (cfgopts_configfile cfgopts)
+                   (cfgopts_configpath cfgopts)
+  case (d, O.topts_args extras) of
+    (Right _, []) -> putStrLn "Passed"
+    (Left e, _) -> putStrLn ("Failed with error: " ++ e) >> exitFailure
+    (_, rs) -> putStrLn ("Failed to parse options: " ++ unwords rs) >> exitFailure
+  where
+  topts = O.TOpts
+    { O.topts_args = [ "--conf-file=root.config"
+                     , "--conf-path=./tests/resources1"
+                     , "--conf-path=./tests/resources2"
+                     ]
+    , O.topts_error = error "option parsing fail"
+    }

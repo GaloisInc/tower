@@ -27,7 +27,7 @@ runBase env b = runId
               $ runStateT 0
               $ unBase b
 
-class (Monad (m e)) => BaseUtils m e where
+class (Monad (m e), Functor (m e)) => BaseUtils m e where
   fresh :: m e Integer
   getEnv :: m e e
 

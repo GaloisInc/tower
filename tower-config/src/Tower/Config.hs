@@ -2,14 +2,12 @@
 module Tower.Config
   ( module Tower.Config.Parser
   , getConfig
-  , Value
   ) where
 
 import Ivory.Tower.Compile.Options
 import Tower.Config.Parser
 import Tower.Config.Options
 import Tower.Config.Document
-import Text.TOML.Value
 
 getConfig :: TOpts -> ConfigParser a -> IO (a, TOpts)
 getConfig topts p = do

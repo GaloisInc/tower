@@ -6,6 +6,7 @@ import           Tower.Config
 import           Tower.Config.Preprocess
 import           Tower.Config.Document
 import           Tower.Config.Options
+import           Tower.Config.TOML
 import           System.Exit
 import           Data.List (intercalate)
 import qualified Data.ByteString.Char8 as B
@@ -13,11 +14,11 @@ import qualified Ivory.Tower.Compile.Options as O
 
 data ClockConfig = ClockConfig Integer Integer deriving (Eq, Show)
 
-instance Configurable ClockConfig where
-  fromConfig a = do
-    xtal_mhz   <- element "xtalMHz"   a
-    sysclk_mhz <- element "sysclkMHz" a
-    return (ClockConfig xtal_mhz sysclk_mhz)
+clockConfigParser :: ConfigParser ClockConfig
+clockConfigParser = do
+  xtal_mhz   <- subsection "xtalMHz"   integer
+  sysclk_mhz <- subsection "sysclkMHz" integer
+  return (ClockConfig xtal_mhz sysclk_mhz)
 
 sample1 :: B.ByteString
 sample1 = B.pack $ unlines
@@ -37,24 +38,30 @@ sample1 = B.pack $ unlines
   , "foo = \"overridden\""
   ]
 
+testParse :: B.ByteString -> ConfigParser a -> Maybe a
+testParse bs p = do
+  doc <- tomlParse bs
+  case runConfigParser p doc of
+    Right v -> Just v
+    Left _ -> Nothing
+
 parseCC :: B.ByteString -> Maybe ClockConfig
-parseCC s = do
-  doc <- parse s
-  element "clockconfig" doc
+parseCC s = testParse s
+          $ subsection "clockconfig" clockConfigParser
 
 getpllfoo :: B.ByteString -> Maybe Integer
-getpllfoo s = do
-  doc <- parse s
-  cc <- element "clockconfig" doc
-  pll <- element "pll" cc
-  element "foo" pll
+getpllfoo s = testParse s
+            $ subsection "clockconfig"
+            $ subsection "pll"
+            $ subsection "foo"
+            $ integer
 
 getsub1foo :: B.ByteString -> Maybe String
-getsub1foo s = do
-  doc <- parse s
-  cc <- element "clockconfig" doc
-  sub1 <- element "sub1" cc
-  element "foo" sub1
+getsub1foo s = testParse s
+             $ subsection "clockconfig"
+             $ subsection "sub1"
+             $ subsection "foo"
+             $ string
 
 main :: IO ()
 main = do
@@ -76,7 +83,9 @@ main = do
   exitSuccess
   where
   equality a b = (a,b)
-  parsed = case parse sample1 of Just a -> a; Nothing -> error "parsing failed"
+  parsed = case tomlParse sample1 of
+            Just a -> a
+            Nothing -> error "parsing failed"
   canonical = intercalate "\n"
     [ "bar = \"hello world\""
     , "[clockconfig]"
@@ -110,31 +119,36 @@ trivialfile = do
            >> exitFailure
     Left e -> putStrLn ("Failed with error: " ++ e) >> exitFailure
   where
-  check s = do
-    doc <- parse s
-    trivial <- element "trivial" doc
-    element "foo" trivial
-
+  check s = testParse s
+          $ subsection "trivial"
+          $ subsection "foo"
+          $ bool
 
 multiincludefile :: IO ()
 multiincludefile = do
   putStrLn "get root.config: "
   f <- getDocument "root.config" ["./tests/resources1", "./tests/resources2"]
   case f of
-    Right bs -> case check bs of
-      Just ("at root",True, (2 :: Integer),"in child3") -> putStrLn "Passed"
-      a -> putStrLn ("Failed to parse root.config: got " ++ show a) >> exitFailure
-    Left e -> putStrLn ("Failed with error: " ++ e) >> exitFailure
+    Right v -> case runConfigParser parser v of
+      Right ("at root",True, (2 :: Integer),"in child3") -> putStrLn "Passed"
+      Right res -> err ("Wrong result when parsing root.config: " ++ show res)
+      Left e -> err ("Failed to parse root.config: got " ++ show e)
+    Left e -> err ("Failed with error: " ++ e)
   where
-  check doc = do
-    root <- element "rootsection" doc
-    rp <- element "root_property" root
-    c1 <- element "child1" doc
-    c1foo <- element "foo" c1
-    c2 <- element "child2" doc
-    c2foo <- element "foo" c2
-    c3 <- element "child3" doc
-    c3foo <- element "foo" c3
+  err s = putStrLn s >> exitFailure
+  parser = do
+    rp    <- subsection "rootsection"
+           $ subsection "root_property"
+           $ string
+    c1foo <- subsection "child1"
+           $ subsection "foo"
+           $ bool
+    c2foo <- subsection "child2"
+           $ subsection "foo"
+           $ integer
+    c3foo <- subsection "child3"
+           $ subsection "foo"
+           $ string
     return (rp, c1foo, c2foo, c3foo)
 
 optionparsing :: IO ()

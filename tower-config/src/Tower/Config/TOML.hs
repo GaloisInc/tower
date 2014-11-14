@@ -1,9 +1,15 @@
 
-module Tower.Config.TOML where
+module Tower.Config.TOML
+  ( Value
+  , ppValue
+  , tomlParse
+  ) where
 
 import qualified Data.Map as M
 import           Data.List (intercalate)
 import           Text.TOML.Value
+import qualified Text.TOML as T
+import qualified Data.ByteString.Char8 as B
 
 ppValue :: Value -> String
 ppValue = aux []
@@ -38,3 +44,5 @@ ppValue = aux []
   ppSubsection ctx (s,v) = aux (ctx ++ [s]) (Left v)
 
 
+tomlParse :: B.ByteString -> Maybe Value
+tomlParse bs = fmap Left (T.parse bs)

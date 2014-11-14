@@ -1,6 +1,7 @@
 
 module Tower.Config
   ( module Tower.Config.Parser
+  , getConfig'
   , getConfig
   ) where
 
@@ -10,8 +11,8 @@ import Tower.Config.Options
 import Tower.Config.Document
 import Tower.Config.Extend
 
-getConfig :: TOpts -> ConfigParser a -> IO (a, TOpts)
-getConfig topts p = do
+getConfig' :: TOpts -> ConfigParser a -> IO (a, TOpts)
+getConfig' topts p = do
   (cfgopts, t') <- getCfgOpts topts
   d <- getDocument (cfgopts_configfile cfgopts)
                    (cfgopts_configpath cfgopts)
@@ -23,4 +24,5 @@ getConfig topts p = do
         Right c -> return (c, t')
         Left  e -> topts_error t' ("Error parsing config file: " ++ e)
 
-
+getConfig :: TOpts -> ConfigParser a -> IO a
+getConfig topts p = fmap fst (getConfig' topts p)

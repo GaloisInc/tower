@@ -4,7 +4,7 @@ module Tower.Config.Document where
 import Tower.Config.Preprocess
 import Tower.Config.TOML
 
-getDocument :: FilePath -> [FilePath] -> IO (Either String Value)
+getDocument :: FilePath -> [FilePath] -> IO (Either String TOML)
 getDocument root path = do
   b <- getPreprocessedFile root path
   case b of

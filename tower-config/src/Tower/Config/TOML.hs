@@ -1,6 +1,8 @@
 
 module Tower.Config.TOML
-  ( Value
+  ( TOML
+  , TOMLV
+  , Value
   , ppValue
   , tomlParse
   ) where
@@ -44,5 +46,5 @@ ppValue = aux []
   ppSubsection ctx (s,v) = aux (ctx ++ [s]) (Left v)
 
 
-tomlParse :: B.ByteString -> Maybe Value
-tomlParse bs = fmap Left (T.parse bs)
+tomlParse :: B.ByteString -> Maybe TOML
+tomlParse bs = T.parse bs

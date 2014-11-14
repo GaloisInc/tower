@@ -14,18 +14,21 @@ source-repository    this
 library
   exposed-modules:      Tower.Config,
                         Tower.Config.Document,
+                        Tower.Config.Extend,
                         Tower.Config.Parser,
                         Tower.Config.TOML,
                         Tower.Config.Options,
                         Tower.Config.Preprocess
 
   build-depends:        base >= 4.6,
+                        attoparsec,
                         bytestring,
                         containers,
                         directory,
                         filepath,
                         time,
                         toml,
+                        scientific,
                         ivory-backend-c,
                         tower
   hs-source-dirs:       src

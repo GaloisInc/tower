@@ -41,7 +41,7 @@ sample1 = B.pack $ unlines
 testParse :: B.ByteString -> ConfigParser a -> Maybe a
 testParse bs p = do
   doc <- tomlParse bs
-  case runConfigParser p doc of
+  case runConfigParser p (Left doc) of
     Right v -> Just v
     Left _ -> Nothing
 
@@ -75,7 +75,7 @@ main = do
        (getsub1foo sample1 `equality` Just "overridden")
 
   test "show"
-       (ppValue parsed `equality` canonical)
+       (ppValue (Left parsed) `equality` canonical)
 
   trivialfile
   multiincludefile
@@ -129,7 +129,7 @@ multiincludefile = do
   putStrLn "get root.config: "
   f <- getDocument "root.config" ["./tests/resources1", "./tests/resources2"]
   case f of
-    Right v -> case runConfigParser parser v of
+    Right v -> case runConfigParser parser (Left v) of
       Right ("at root",True, (2 :: Integer),"in child3") -> putStrLn "Passed"
       Right res -> err ("Wrong result when parsing root.config: " ++ show res)
       Left e -> err ("Failed to parse root.config: got " ++ show e)

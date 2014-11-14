@@ -1,21 +1,26 @@
 
 module Tower.Config
-  ( module Tower.Config.Types
+  ( module Tower.Config.Parser
   , getConfig
+  , Value
   ) where
 
 import Ivory.Tower.Compile.Options
-import Tower.Config.Types
+import Tower.Config.Parser
 import Tower.Config.Options
 import Tower.Config.Document
+import Text.TOML.Value
 
-getConfig :: TOpts -> IO (Value, TOpts)
-getConfig topts = do
+getConfig :: TOpts -> ConfigParser a -> IO (a, TOpts)
+getConfig topts p = do
   (cfgopts, t') <- getCfgOpts topts
   d <- getDocument (cfgopts_configfile cfgopts)
                    (cfgopts_configpath cfgopts)
   case d of
-    Right v -> return (v, t')
     Left e -> topts_error t' ("Error in tower getConfig: " ++ e)
+    Right v ->
+      case runConfigParser p v of
+        Right c -> return (c, t')
+        Left  e -> topts_error t' ("Error parsing config file: " ++ e)
 
 

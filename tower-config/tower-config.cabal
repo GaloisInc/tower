@@ -14,7 +14,8 @@ source-repository    this
 library
   exposed-modules:      Tower.Config,
                         Tower.Config.Document,
-                        Tower.Config.Types,
+                        Tower.Config.Parser,
+                        Tower.Config.TOML,
                         Tower.Config.Options,
                         Tower.Config.Preprocess
 
@@ -33,19 +34,19 @@ library
   ghc-options:          -Wall
 --                        Tower.Config.Test
 
-test-suite tests
-  type: exitcode-stdio-1.0
-  hs-source-dirs: tests
-  main-is: Main.hs
-  default-language: Haskell98
-  ghc-options: -Wall
-  build-depends: base >= 4.6,
-                 bytestring,
-                 containers,
-                 directory,
-                 filepath,
-                 time,
-                 toml,
-                 tower,
-                 tower-config
-
+--test-suite tests
+--  type: exitcode-stdio-1.0
+--  hs-source-dirs: tests
+--  main-is: Main.hs
+--  default-language: Haskell98
+--  ghc-options: -Wall
+--  build-depends: base >= 4.6,
+--                 bytestring,
+--                 containers,
+--                 directory,
+--                 filepath,
+--                 time,
+--                 toml,
+--                 tower,
+--                 tower-config
+--

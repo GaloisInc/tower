@@ -14,8 +14,11 @@ import Text.TOML.Parser
 
 extendConfig :: TOML -> [String] -> TOML
 extendConfig root@(TOML rmap) opts = case parseOpts opts of
-  Right t -> TOML (M.insert "args" (Left t) rmap)
+  Right t -> TOML (M.insertWith aux "args" (Left t) rmap)
   Left _ -> root
+  where
+  aux (Left (TOML new)) (Left (TOML old)) = Left (TOML (M.union new old))
+  aux new _ = new
 
 parseOpts :: [String] -> Either String TOML
 parseOpts as = case lefts kvs of

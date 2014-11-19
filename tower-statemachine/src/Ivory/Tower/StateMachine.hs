@@ -28,6 +28,8 @@ module Ivory.Tower.StateMachine
   , liftIvory_
   , machineLocal
   , machineLocalInit
+
+  , unScopedIvory
   ) where
 
 import Ivory.Language

@@ -23,6 +23,9 @@ data Runnable =
 
 newtype ScopedIvory = ScopedIvory (forall s . Ivory (AllocEffects s) ())
 
+unScopedIvory :: ScopedIvory -> (forall s . Ivory (AllocEffects s) ())
+unScopedIvory (ScopedIvory s) = s
+
 begin :: Runnable -> Handler a e ScopedIvory
 begin r = runnable_begin r
 

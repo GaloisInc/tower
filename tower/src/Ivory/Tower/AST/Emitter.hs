@@ -12,7 +12,7 @@ data Emitter = Emitter
 
 emitter :: Integer -> Chan -> Integer -> Emitter
 emitter i c b = Emitter
-  { emitter_name = Unique "emitter" i
-  , emitter_chan = c
+  { emitter_name  = Unique "emitter" i
+  , emitter_chan  = c
   , emitter_bound = b
   }

@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Tower
   ( Tower()
@@ -41,11 +42,12 @@ import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
+import qualified Ivory.Language.Area as I
 
-channel :: Tower e (ChanInput a, ChanOutput a)
+channel :: forall e a . IvoryArea a => Tower e (ChanInput a, ChanOutput a)
 channel = do
   f <- fresh
-  let ast = AST.SyncChan f
+  let ast = AST.SyncChan f (I.ivoryArea (Proxy :: Proxy a))
   towerPutASTSyncChan ast
   let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
@@ -73,7 +75,7 @@ signalUnsafe s t i = do
 
 period :: Time a => a -> Tower e (ChanOutput (Stored ITime))
 period t = do
-  let ast = AST.Period (microseconds t)
+  let ast = AST.Period (microseconds t) (I.ivoryArea (Proxy :: I.AProxy (Stored ITime)))
   towerPutASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
 

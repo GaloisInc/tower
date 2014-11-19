@@ -13,5 +13,5 @@ data Emitter (a :: Area *) = Emitter AST.Emitter
 emitterProcName :: Emitter a -> String
 emitterProcName (Emitter e) = showUnique (AST.emitter_name e)
   ++ case AST.emitter_chan e of
-    (AST.ChanSync (AST.SyncChan c)) -> "_chan_" ++ show c
+    (AST.ChanSync c) -> "_chan_" ++ show (AST.sync_chan_label c)
     _ -> error ("impossible: emitterProcName invariant broken @ " ++ show e)

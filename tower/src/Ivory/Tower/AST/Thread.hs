@@ -52,6 +52,7 @@ tiebreak _              (InitThread _) = LT
 tiebreak (SignalThread _)  (PeriodThread _) = LT
 tiebreak (PeriodThread _) (SignalThread _) = GT
 -- Break tie between signals - based on signal name
-tiebreak (SignalThread (Signal a _)) (SignalThread (Signal b _)) = compare a b
+tiebreak (SignalThread s0) (SignalThread s1) =
+  compare (signal_name s0) (signal_name s1)
 -- Periods are a set, should not need to break ties.
 tiebreak (PeriodThread _) (PeriodThread _) = EQ

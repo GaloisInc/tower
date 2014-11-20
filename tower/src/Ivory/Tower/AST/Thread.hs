@@ -4,7 +4,6 @@ module Ivory.Tower.AST.Thread
   , threadName
   , threadChan
   , threadDeadline
-  , prettyTime
   ) where
 
 import Ivory.Tower.Types.Time
@@ -17,14 +16,6 @@ data Thread = SignalThread Signal
             | PeriodThread Period
             | InitThread   Init
             deriving (Eq, Show)
-
-prettyTime :: Microseconds -> String
-prettyTime m = t
-  where
-  us = toMicroseconds m
-  t  = case us `mod` 1000 of
-    0 -> (show (us `div` 1000)) ++ "ms"
-    _ -> (show us) ++ "us"
 
 threadName :: Thread -> String
 threadName (SignalThread s) = "thread_signal_" ++ signal_name s

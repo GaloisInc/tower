@@ -18,6 +18,7 @@ module Ivory.Tower.Types.Time
   , toIMicroseconds
   , toIMilliseconds
   , toITime
+  , prettyTime
   ) where
 
 import Ivory.Language
@@ -64,3 +65,10 @@ toITime t = fromIMicroseconds us
   us :: Sint64
   us = fromIntegral (toMicroseconds t)
 
+prettyTime :: Microseconds -> String
+prettyTime m = t
+  where
+  us = toMicroseconds m
+  t  = case us `mod` 1000 of
+    0 -> (show (us `div` 1000)) ++ "ms"
+    _ -> (show us) ++ "us"

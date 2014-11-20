@@ -2,6 +2,7 @@
 module Ivory.Tower.AST.Emitter where
 
 import Ivory.Tower.AST.Chan
+import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.Types.Unique
 
 data Emitter = Emitter
@@ -16,3 +17,9 @@ emitter i c b = Emitter
   , emitter_chan  = c
   , emitter_bound = b
   }
+
+emitterProcName :: Emitter -> String
+emitterProcName e = showUnique (emitter_name e)
+  ++ case emitter_chan e of
+       ChanSync c -> "_chan_" ++ show (sync_chan_label c)
+       _ -> error ("impossible: emitterProcName invariant broken @ " ++ show e)

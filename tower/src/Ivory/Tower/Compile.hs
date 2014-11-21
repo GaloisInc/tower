@@ -31,15 +31,15 @@ runTowerCodegen t p = generateTowerCode ast gc p
 
 runTowerCompile :: Tower e () -> TowerPlatform e -> C.Opts -> IO ()
 runTowerCompile t p opts = do
-  let (ms, as) = runTowerCodegen t p
-  C.runCompilerWith Nothing ms as opts
+  let (mods, as) = runTowerCodegen t p
+  C.runCompilerWith Nothing mods as opts
 
 generateTowerCode :: GeneratedCode -> AST.Tower -> TowerPlatform e
                   -> ([Module], [Artifact])
-generateTowerCode gc twr p = (ms, as)
+generateTowerCode gc twr p = (mods, as)
   where
-  ms = generatedcode_modules gc
-    ++ threadModules p gc twr
-    ++ monitorModules p gc twr
-    ++ systemModules p twr
-  as = systemArtifacts p twr ms
+  mods = generatedcode_modules gc
+      ++ threadModules p gc twr
+      ++ monitorModules p gc twr
+      ++ systemModules p twr
+  as = systemArtifacts p twr mods

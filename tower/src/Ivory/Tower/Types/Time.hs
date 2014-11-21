@@ -4,6 +4,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
 
+{-# LANGUAGE PostfixOperators #-}
+
 module Ivory.Tower.Types.Time
   ( Time
   , Microseconds(..)
@@ -11,6 +13,8 @@ module Ivory.Tower.Types.Time
   , toMicroseconds
   , toMilliseconds
   , microseconds
+--  , us
+  , ms
 
   , ITime
   , fromIMicroseconds
@@ -36,9 +40,15 @@ newtype Microseconds = Microseconds Integer deriving (Eq, Show, Ord)
 instance Time Microseconds where
   toMicroseconds (Microseconds t) = t
 
+us :: Integer -> Microseconds
+us = Microseconds
+
 newtype Milliseconds = Milliseconds Integer deriving (Eq, Show, Ord)
 instance Time Milliseconds where
   toMicroseconds (Milliseconds t) = t * 1000
+
+ms :: Integer -> Milliseconds
+ms = Milliseconds
 
 newtype ITime = ITime Sint64
   deriving ( Num, IvoryType, IvoryVar, IvoryExpr, IvoryEq, IvoryOrd

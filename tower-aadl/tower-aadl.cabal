@@ -1,0 +1,52 @@
+name:                tower-aadl
+version:             0.0.1.0
+author:              Galois, Inc.
+maintainer:          leepike@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+  exposed-modules: Tower.AADL
+                 , Tower.AADL.AST.AST
+                 , Tower.AADL.AST.ProcessAST
+                 , Tower.AADL.AST.TypeAST
+                 , Tower.AADL.FromTower
+                 , Tower.AADL.Monad
+                 , Tower.AADL.Render
+
+  build-depends: base >= 4.6
+               , transformers
+               , containers
+               , monadLib
+               , wl-pprint
+               , ivory >= 0.1.0.1
+               , ivory-artifact
+               , ivory-backend-aadl
+               , tower
+               -- XXX testing
+               , pretty-show
+
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans
+
+executable test
+  hs-source-dirs: test
+  main-is:        Simple.hs
+  ghc-options:    -Wall
+  build-depends: base >= 4.6
+               , transformers
+               , containers
+               , monadLib
+               , ivory >= 0.1.0.1
+               , ivory-artifact
+               , ivory-backend-aadl
+               , ivory-backend-c
+               , ivory-opts
+               , ivory-stdlib
+               , tower
+               -- XXX testing
+               , pretty-show

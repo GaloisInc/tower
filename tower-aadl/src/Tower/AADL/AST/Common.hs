@@ -1,13 +1,13 @@
 --
--- Pre-processing of the AST to extract all of the channels associated with a
--- process.
+-- Pre-processing helpers for the AST to extract all of the channels associated
+-- with a process.
 --
 -- (c) 2014 Galois, Inc.
 --
 
-module Tower.AADL.AST.ProcessAST where
+module Tower.AADL.AST.Common where
 
-import Tower.AADL.AST.AST
+import Tower.AADL.AST
 
 import Data.List (nubBy)
 

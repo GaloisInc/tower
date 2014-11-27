@@ -4,20 +4,20 @@
 -- (c) 2014 Galois, Inc.
 --
 
-module Tower.AADL.AST.AST where
+module Tower.AADL.AST where
 
-import Tower.AADL.AST.TypeAST
+import qualified Ivory.Language.Syntax.Type as I
 
 --------------------------------------------------------------------------------
 
 data Package = Packagek
-  { packageName      :: String
+  { packageName      :: Name
   , packageImports   :: [String]
-  , packageSystem    :: [System]
+  , packageSystems   :: [System]
   } deriving (Show, Eq)
 
 data Thread = Thread
-  { threadName       :: String
+  { threadName       :: Name
   , threadFeatures   :: [Feature]
   , threadProperties :: [ThreadProperty]
   } deriving (Show, Eq)
@@ -26,13 +26,11 @@ data Feature =
   ChannelFeature Channel
   deriving (Show, Eq)
 
-type ChanLabel = String
-
 -- Integer corresponds to Tower's SyncChan integer label.
 data Channel = Channel
   { chanLabel     :: ChanLabel
   , chanHandle    :: ChannelHandle
-  , chanType      :: ChanType
+  , chanType      :: I.Type
   -- ^ The Ivory AADL backend has converted an Ivory Type into an AADL type.
   , chanCallbacks :: SourceText
   } deriving (Show, Eq)
@@ -45,11 +43,9 @@ data ChannelHandle =
   deriving (Show, Eq)
 
 data SourceText =
-    Prim [String]
-  | User [(FilePath, String)]
+    Prim [FuncSym]
+  | User [(FilePath, FuncSym)]
   deriving (Show, Eq)
-
-type Bound = Integer
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -73,12 +69,12 @@ data ThreadType =
   deriving (Show, Eq)
 
 data Process = Process
-  { processName        :: String
+  { processName        :: Name
   , processComponents  :: [Thread]
   } deriving (Show, Eq)
 
 data System = System
-  { systemName       :: String
+  { systemName       :: Name
   , systemComponents :: [Process]
   -- ^ For eChronos and seL4, there will be one process per system.
   , systemProperties :: [SystemProperty]
@@ -89,7 +85,20 @@ data SystemProperty =
   | SystemHW String
   deriving (Show, Eq)
 
--- | An AADL identifier.
+-- | An AADL variable.
 type LocalId = String
 
+-- | An AADL identifier.
+type Name = String
+
+-- | Channel label.
+type ChanLabel = String
+
+-- | Channel bound.
+type Bound = Integer
+
+-- | Function symbol.
+type FuncSym = String
+
 --------------------------------------------------------------------------------
+

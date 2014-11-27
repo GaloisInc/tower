@@ -7,32 +7,21 @@
 --
 
 module Tower.AADL.FromTower
-  -- ( fromTower
-  -- )
-    where
+  ( fromTower
+  ) where
 
 import Prelude hiding (init)
+import System.FilePath ((</>))
 
 import qualified Ivory.Tower.AST as A
 import qualified Ivory.Tower.Types.Time as T
 import Ivory.Tower.Types.Unique (showUnique)
 import qualified Ivory.Tower.AST.Graph as G
 
-import Tower.AADL.AST.AST
-import Tower.AADL.AST.TypeAST
+import Tower.AADL.AST
+import Tower.AADL.Config
 
 import Control.Arrow
-
---------------------------------------------------------------------------------
-
-data Config = Config
-  { configThreadModules :: [FilePath]
-  -- ^ Ivory module names for thread code, corresponding to the list of (active)
-  -- threads in the Tower AST.
-  , configSystemName :: String
-  , configSystemOS   :: String
-  , configSystemHW   :: String
-  } deriving (Show, Read, Eq)
 
 --------------------------------------------------------------------------------
 
@@ -43,15 +32,15 @@ fromTower c t = System { .. }
   systemName       = configSystemName c
   systemProperties = [ SystemOS (configSystemOS c)
                      , SystemHW (configSystemHW c) ]
-  systemComponents = [mkProcess systemName t]
+  systemComponents = [mkProcess c t]
 
-mkProcess :: String -> A.Tower -> Process
-mkProcess systemName t = Process { .. }
+mkProcess :: Config -> A.Tower -> Process
+mkProcess c t = Process { .. }
   where
-  processName = systemName ++ "_process"
+  processName = (configSystemName c) ++ "_process"
   processComponents = activeThreads ++ passiveThreads
   activeThreads  = map (fromThread t) (skipInitThread (A.towerThreads t))
-  passiveThreads = map (fromMonitor "foo") (A.tower_monitors t)
+  passiveThreads = map (fromMonitor c) (A.tower_monitors t)
   skipInitThread = filter (("thread_init" /=) . A.threadName)
 
 fromThread :: A.Tower -> A.Thread -> Thread
@@ -83,7 +72,7 @@ chanFeature twr t = case c of
     -> error $ "chanFeature " ++ show c
   A.ChanPeriod per
     -> let chanLabel = prettyPeriod per in
-       let chanType  = periodChanType per in
+       let chanType  = A.period_ty per in
        Channel { .. }
   A.ChanInit init
     -> error $ "chanFeature " ++ show c
@@ -93,10 +82,10 @@ chanFeature twr t = case c of
   chanCallbacks = Prim (map A.monitorName chanMonitors)
   chanMonitors  = map fst (G.towerChanHandlers twr c)
 
-fromMonitor :: FilePath -> A.Monitor -> Thread
-fromMonitor fp m = Thread { .. }
+fromMonitor :: Config -> A.Monitor -> Thread
+fromMonitor c m = Thread { .. }
   where
-  (fs, ps) = concatPair (map (fromHandler fp) (A.monitor_handlers m))
+  (fs, ps) = concatPair (map (fromHandler c threadName) (A.monitor_handlers m))
   threadName = A.monitorName m
   threadFeatures = fs
   threadProperties = ps ++
@@ -109,31 +98,32 @@ fromMonitor fp m = Thread { .. }
     , Priority 1
     ]
 
-fromHandler :: FilePath -> A.Handler -> ([Feature], [ThreadProperty])
-fromHandler fp h = (cf:fs, ps)
+fromHandler :: Config -> String -> A.Handler -> ([Feature], [ThreadProperty])
+fromHandler c threadName h = (cf:fs, ps)
   where
   callbacks = map showUnique (A.handler_callbacks h)
-  cf        = fromInputChan fp callbacks (A.handler_chan h)
+  cf        = fromInputChan c threadName callbacks (A.handler_chan h)
   (fs, ps)  = concatPair (map fromEmitter (A.handler_emitters h))
 
 -- | Process Tower handlers which take inputs and run callbacks.
-fromInputChan :: FilePath -> [String] -> A.Chan -> Feature
-fromInputChan fp callbacks c = case c of
+fromInputChan :: Config -> String -> [String] -> A.Chan -> Feature
+fromInputChan config threadName callbacks c = case c of
   A.ChanSync s
-    -> let chanType  = syncChanType  s in
+    -> let chanType  = A.sync_chan_type  s in
        let chanLabel = syncChanLabel s in
        ChannelFeature (Channel { .. })
   A.ChanSignal sig
     -> error $ "fromInputChan " ++ show c
   A.ChanPeriod per
     -> let chanLabel = prettyPeriod per in
-       let chanType  = periodChanType per in
+       let chanType  = A.period_ty per in
        ChannelFeature (Channel { .. })
   A.ChanInit{}
     -> error "Impossible ChanInit in fromInputChan."
   where
-  chanHandle = Input
-  chanCallbacks = User (zip (repeat fp) callbacks)
+  chanHandle    = Input
+  chanCallbacks = User (zip (repeat srcs) callbacks)
+  srcs = configSrcsDir config </> (threadName ++ configMonitorSrcs config)
 
 fromEmitter :: A.Emitter -> ([Feature], [ThreadProperty])
 fromEmitter e = (fs, ps)
@@ -152,14 +142,11 @@ emitterChan proc c = case c of
     -> Channel { .. }
       where
       chanLabel = syncChanLabel s
-      chanType  = syncChanType s
+      chanType  = A.sync_chan_type s
   _ -> error $ "Impossible channel " ++ show c ++ " in emitterChan."
   where
   chanHandle    = Output
   chanCallbacks = Prim [proc]
-
-syncChanType :: A.SyncChan -> ChanType
-syncChanType = renderChanType . A.sync_chan_type
 
 syncChanLabel :: A.SyncChan -> String
 syncChanLabel = ("sync_" ++) . show . A.sync_chan_label
@@ -172,7 +159,3 @@ concatPair = (concat *** concat) . unzip
 
 prettyPeriod :: A.Period -> String
 prettyPeriod = T.prettyTime . A.period_dt
-
-periodChanType :: A.Period -> ChanType
-periodChanType = renderChanType . A.period_ty
-

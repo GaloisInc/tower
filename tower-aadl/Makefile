@@ -30,14 +30,13 @@ install-deps: cabal.sandbox.config
 	-rm -rf dist
 	cabal sandbox add-source $(PACKAGES)
 	cabal install $(PACKAGES)
+# Requires a local .cabal file.
+	cabal install --dependencies-only
 
-# .PHONY: test
-# test: build
-# 	./$(BIN)/ivory-c-clang-test clang-test-dir
-# 	./$(BIN)/ivory-fibtutorial
-# 	./$(BIN)/ivory-concrete
-# 	# Created from ivory-model-check
-# 	./$(shell find ivory-model-check/dist/ -path "*/test/test")
+.PHONY: runtest
+runtest:
+	cabal run test -- --help
+	cabal run test -- --aadl-dir="aadl-files"
 
 .PHONY: veryclean
 veryclean:

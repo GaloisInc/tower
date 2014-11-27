@@ -6,8 +6,10 @@
 
 module Tower.AADL.Render where
 
-import Tower.AADL.AST.AST
-import Tower.AADL.AST.ProcessAST
+import Tower.AADL.AST
+import Tower.AADL.AST.Common
+import Tower.AADL.Render.Common
+import Tower.AADL.Render.Types
 
 import Text.PrettyPrint.Leijen
 
@@ -18,7 +20,7 @@ renderPackage p =
         text "package" <+> text (packageName p)
    <$$> text "public"
    <$$> vsep (map renderImport (packageImports p))
-  <$$$> vsep (map renderSystem (packageSystem p))
+  <$$$> vsep (map renderSystem (packageSystems p))
 
 renderImport :: String -> Doc
 renderImport i = tab (stmt (text "with" <+> text i))
@@ -67,10 +69,6 @@ renderProcess p =
   namedThreads = zip threads (map (("th"++) . show) [0::Integer ..])
   threads = processComponents p
   nm      = text (processName p)
-  impl    = mkImpl nm
-  def     = text "process"
-    <+> text "implementation"
-    <+> impl
 
 renderProcessSubcomponent :: (Thread, LocalId) -> Doc
 renderProcessSubcomponent (t, var) = stmt $
@@ -109,17 +107,25 @@ renderThreadFeature f = case f of
 renderDataPort :: Channel -> Doc
 renderDataPort c = stmt
     $ mkChan c <> colon
-  <+> fst inout
+  <+> renderChannelHandle h
   <+> hsep (map text ["event", "data", "port"])
+  <+> renderType (chanType c)
  <$$> tab lbrace
  <$$> tab (tab (vsep st))
  <$$> tab rbrace
   where
-  st = renderSourceText (snd inout) (chanCallbacks c)
-  h = chanHandle c
-  inout = case h of
-    Input ->  (text "in", entrySrc)
-    Output -> (text "out", primSrc)
+  st = renderSourceText (renderChanBody h) (chanCallbacks c)
+  h  = chanHandle c
+
+renderChanBody :: ChannelHandle -> Doc
+renderChanBody h = case h of
+  Input  -> entrySrc
+  Output -> primSrc
+
+renderChannelHandle :: ChannelHandle -> Doc
+renderChannelHandle h = text $ case h of
+  Input  -> "in"
+  Output -> "out"
 
 -- | Takes the kind of source text (e.g. "Compute_Entrypoint_Source_Text" or
 -- "CommPrim_Source_Text"), source text, and makes the property.
@@ -172,66 +178,5 @@ renderThreadProperty p = case p of
                        Passive -> text "Passive"
                        Active  -> text "Active"
 
---------------------------------------------------------------------------------
--- Helpers
-
-primSrc :: Doc
-primSrc = text "CommPrim_Source_Text"
-entrySrc :: Doc
-entrySrc = text "Compute_Entrypoint_Source_Text"
-
-mkImpl :: Doc -> Doc
-mkImpl d = d <> dot <> text "impl"
-
-tab :: Doc -> Doc
-tab = indent 2
-
-stmt :: Doc -> Doc
-stmt d = d <> semi
-
-nameSpace :: Doc -> Doc -> Doc
-nameSpace d0 d1 = d0 <> colon <> colon <> d1
-
-fromSMACCM :: Doc -> Doc
-fromSMACCM = nameSpace (text "SMACCM_SYS")
-
-(==>) :: Doc -> Doc -> Doc
-(==>) d0 d1 = d0 <+> equals <> rangle <+> d1
-
-(->>) :: Doc -> Doc -> Doc
-(->>) d0 d1 = d0 <+> char '-' <> rangle <+> d1
-
--- | Skip a line.
-(<$$$>) :: Doc -> Doc -> Doc
-(<$$$>) d0 d1 = d0 <$$> empty <$$> d1
-
--- | Separate with line breaks.
-skipLines :: [Doc] -> Doc
-skipLines = vsep . (punctuate linebreak)
-
-mkTxChan :: String -> Doc
-mkTxChan l = text "Output" <> text l
-
-mkRxChan :: String -> Doc
-mkRxChan l = text "Input" <> text l
-
-mkChan :: Channel -> Doc
-mkChan c =
-  let l = chanLabel c in
-  case chanHandle c of
-    Input  -> mkRxChan l
-    Output -> mkTxChan l
-
--- | Takes the kind of block, block name, statements (e.g., features/properties) etc.
-renderBlk :: Doc -> Doc -> [Doc] -> Doc
-renderBlk kind nm stmts =
-       kind <+> nm
-  <$$> tab (vsep stmts)
-  <$$> stmt (text "end" <+> nm)
-
-prettyTime :: Integer -> Doc
-prettyTime i = t
-  where
-  t = case i `mod` 1000 of
-    0 -> integer (i `div` 1000) <+> text "ms"
-    _ -> integer i <+> text "us"
+renderComment :: String -> Doc
+renderComment s = text "--" <+> text s

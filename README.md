@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/GaloisInc/tower.svg?branch=tower-9)](https://travis-ci.org/GaloisInc/tower)
+
 # [Tower][tower]
 
 ## About

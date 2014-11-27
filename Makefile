@@ -6,4 +6,7 @@ default:
 	make -C tower-statemachine
 	make -C tower-config create-sandbox
 	make -C tower-config
+	make -C tower-aadl install-deps
+	make -C tower-aadl build
+	make -C tower-aadl runtest
 

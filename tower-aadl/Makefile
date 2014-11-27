@@ -1,6 +1,4 @@
-all: build
-
-BIN=.cabal-sandbox/bin
+default: build
 
 IVORY= \
   ivory \
@@ -13,7 +11,9 @@ IVORY= \
 TOWER= \
   ../tower
 
-IVORYLOC=$(foreach p, $(IVORY), ../../ivory/$(p)/)
+IVORY_REPO ?= ../../ivory
+
+IVORYLOC=$(foreach p, $(IVORY), $(IVORY_REPO)/$(p)/)
 
 PACKAGES=$(IVORYLOC) $(TOWER)
 
@@ -30,7 +30,7 @@ install-deps: cabal.sandbox.config
 	-rm -rf dist
 	cabal sandbox add-source $(PACKAGES)
 	cabal install $(PACKAGES)
-# Requires a local .cabal file.
+  # Requires a local .cabal file.
 	cabal install --dependencies-only
 
 .PHONY: runtest

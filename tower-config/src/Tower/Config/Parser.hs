@@ -70,11 +70,11 @@ bool = configParser "bool" $ \v ->
     Right (VBool a) -> Just a
     _ -> Nothing
 
-array :: [ConfigParser a] -> ConfigParser [a]
-array ps = ConfigParser $ \v ->
+array :: ConfigParser a -> ConfigParser [a]
+array p = ConfigParser $ \v ->
   case v of
     Right (VArray as) ->
-      let bs = zipWith (\p a -> unConfigParser p (Right a)) ps as
+      let bs = map (\a -> unConfigParser p (Right a)) as
       in case lefts bs of
         [] -> Right (rights bs)
         es -> Left ("got following errors when parsing array elements: " ++ 

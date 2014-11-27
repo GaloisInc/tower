@@ -3,34 +3,18 @@
 ## About
 
 Tower is a concurrency framework for the [Ivory language][ivory]. Tower
-composes Ivory programs into tasks which communicate via shared state and
-synchronous channels.
+composes Ivory programs into monitors which communicate with synchronous
+channels.
 
-At the moment, Tower includes a backend targeting the [FreeRTOS][freertos]
-operating system.
+Tower uses pluggable backends to support individual operating systems and
+target architectures. A backend for the [FreeRTOS][freertos] operating
+system running on the [STM32][] line of microcontrollers is available in
+the [ivory-tower-stm32][] repo.
 
-## Installing
-
-Tower should be installed in a cabal-dev sandbox along with the packages from
-the [Ivory language repository][ivory].
-
-## Sample Tower Application
-
-A sample tower application can be found at
-`ivory-tower/src/Ivory/Tower/Test/FooBarTest.hs` ([github][foobartest])
-and a sample for building `FooBarTest` for FreeRTOS is found at
-`ivory-tower-freertos/examples/Main.hs` ([github][foobarmain]).
-
-In the [smaccmpilot-stm32f4][] project build tree, the sample application
-is built into an executable named `tower-test`.
-
-## Using Tower
-
-At this time, a brief overview of the Tower framework [is available at
-smaccmpilot.org][overview]. Further materials are forthcoming.
+[![Build Status](https://travis-ci.org/GaloisInc/tower.svg?branch=tower-9)](https://travis-ci.org/GaloisInc/tower)
 
 ## Copyright and license
-Copyright 2013 [Galois, Inc.][galois]
+Copyright 2014 [Galois, Inc.][galois]
 
 Licensed under the BSD 3-Clause License; you may not use this work except in
 compliance with the License. A copy of the License is included in the LICENSE
@@ -38,13 +22,11 @@ file.
 
 [ivory]: http://github.com/GaloisInc/ivory
 [tower]: http://github.com/GaloisInc/tower
-[smaccmpilot-stm32f4]: http://github.com/GaloisInc/smaccmpilot-stm32f4
+[ivory-tower-stm32]: http://github.com/GaloisInc/ivory-tower-stm32
 [overview]: http://smaccmpilot.org/software/tower-overview.html
 
+[STM32]: http://www.st.com/stm32
 [freertos]: http://freertos.org
 [galois]: http://galois.com
-
-[foobartest]: https://github.com/GaloisInc/tower/blob/master/ivory-tower/src/Ivory/Tower/Test/FooBarTower.hs
-[foobarmain]: https://github.com/GaloisInc/tower/blob/master/ivory-tower-freertos/examples/Main.hs
 
 

@@ -9,6 +9,7 @@ module Ivory.Tower.Handler
   ( emitter
   , Emitter()
   , callback
+  , callbackV
   , emit
   , emitV
   , Handler()
@@ -51,6 +52,11 @@ callback b = do
   handlerPutCodeCallback $ \t -> do
     incl (callbackProc (callbackProcName u hname t) b)
 
+callbackV :: forall a e
+           . (IvoryArea (Stored a), IvoryVar a)
+          => (forall s' . a -> Ivory (AllocEffects s') ())
+          -> Handler (Stored a) e ()
+callbackV b = callback (\bref -> deref bref >>= b)
 
 callbackProc :: forall s a
               . (IvoryArea a)

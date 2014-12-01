@@ -13,7 +13,7 @@ module Ivory.Tower.Types.Time
   , toMicroseconds
   , toMilliseconds
   , microseconds
---  , us
+  , us
   , ms
 
   , ITime
@@ -70,15 +70,15 @@ toIMilliseconds :: ITime -> Sint64
 toIMilliseconds (ITime t) = t `iDiv` 1000
 
 toITime :: (Time a) => a -> ITime
-toITime t = fromIMicroseconds us
+toITime t = fromIMicroseconds us'
   where
-  us :: Sint64
-  us = fromIntegral (toMicroseconds t)
+  us' :: Sint64
+  us' = fromIntegral (toMicroseconds t)
 
 prettyTime :: Microseconds -> String
 prettyTime m = t
   where
-  us = toMicroseconds m
-  t  = case us `mod` 1000 of
-    0 -> (show (us `div` 1000)) ++ "ms"
-    _ -> (show us) ++ "us"
+  us' = toMicroseconds m
+  t  = case us' `mod` 1000 of
+    0 -> (show (us' `div` 1000)) ++ "ms"
+    _ -> (show us') ++ "us"

@@ -21,7 +21,7 @@ library
                         Tower.Config.Preprocess
 
   build-depends:        base >= 4.6,
-                        attoparsec,
+                        attoparsec >= 0.12.1.2,
                         bytestring,
                         containers,
                         directory,

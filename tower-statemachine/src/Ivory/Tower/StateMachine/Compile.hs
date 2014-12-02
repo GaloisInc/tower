@@ -72,7 +72,7 @@ stateMachine name machine = do
         ns_timeout_hs
         ns_period_hs
         forM_ (entryStateHandlers ss) $ \(lbl, stmtm) -> do
-          runStmtM stmtm newstate_e (undefined lbl mstate)
+          runStmtM stmtm newstate_e (labelCflow lbl mstate)
 
       handler tick (named "tick") $ do
         newstate_e <- emitter newstate_in 1
@@ -88,7 +88,12 @@ stateMachine name machine = do
       handler cout (named "chan") $ do
         newstate_e <- emitter newstate_in 1
         forM_ (chanStateHandlers ss cout) $ \(lbl, stmtm) -> do
-          runStmtM stmtm newstate_e (undefined lbl mstate)
+          runStmtM stmtm newstate_e (labelCflow lbl mstate)
+
+    labelCflow :: StateLabel -> Ref Global (Stored MachineState) -> ICflow
+    labelCflow lbl mstate = ICflow $ \k -> do
+      st <- deref mstate
+      when (st ==? stateLabel lbl) k
 
 entryStateHandlers :: [State e]
   -> [(StateLabel, StmtM (Stored MachineState) e ())]
@@ -144,11 +149,11 @@ timeoutHandler (lbl, t, stmtm) = do
         store deadline (now + toITime t)
         store has_run false
       trigger e mstate = runStmtM stmtm e $ ICflow $ \k -> do
-        ms <- deref mstate
+        st <- deref mstate
         r <- deref has_run
         dl <- deref deadline
         now <- getTime
-        when ( ms ==? stateLabel lbl
+        when ( st ==? stateLabel lbl
               .&& iNot r
               .&& now >=? dl) $
           store has_run true >> k
@@ -173,10 +178,10 @@ periodHandler (lbl, t, stmtm) = do
         now <- getTime
         store deadline (now + toITime t)
       trigger e mstate = runStmtM stmtm e $ ICflow $ \k -> do
-        ms <- deref mstate
+        st <- deref mstate
         dl <- deref deadline
         now <- getTime
-        when ( ms ==? stateLabel lbl
+        when ( st ==? stateLabel lbl
               .&& now >=? dl) $
           store deadline (now + toITime t) >> k
 

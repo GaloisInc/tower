@@ -10,7 +10,8 @@ license:             BSD3
 library
   exposed-modules:      Ivory.Tower.StateMachine,
                         Ivory.Tower.StateMachine.Compile,
-                        Ivory.Tower.StateMachine.Monad
+                        Ivory.Tower.StateMachine.Monad,
+                        Ivory.Tower.StateMachine.Example
 
   build-depends:        base >= 4.6,
                         monadLib,

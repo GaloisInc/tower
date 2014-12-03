@@ -8,14 +8,21 @@ import qualified Data.ByteString.Char8 as B
 import System.FilePath
 import System.Directory
 
-data Line = Literal B.ByteString | Include Importance FilePath
-data Importance = Mandatory | Optional
+data Line
+  = Literal B.ByteString
+  | Include Importance FilePath
+  deriving (Eq, Show)
+
+data Importance
+  = Mandatory
+  | Optional
+  deriving (Eq, Show)
 
 directive :: String -> B.ByteString -> Maybe FilePath
 directive tag l =
-  case (h == B.empty, t' == B.empty) of
-    (True, True) -> Just (B.unpack h')
-    _ -> Nothing
+  if and [ l /= B.empty, h == B.empty, t' == B.empty ]
+     then Just (B.unpack h')
+     else Nothing
   where
   (h , t ) = beforeafter (B.pack ("#" ++ tag ++ " \"")) l
   (h', t') = beforeafter (B.pack "\"") t

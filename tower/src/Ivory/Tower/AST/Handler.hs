@@ -32,9 +32,9 @@ handlerName = showUnique . handler_name
 
 handlerInsertEmitter :: Emitter -> Handler -> Handler
 handlerInsertEmitter a h =
-  h { handler_emitters = a : (handler_emitters h) }
+  h { handler_emitters = handler_emitters h ++ [a] }
 
 handlerInsertCallback :: Unique -> Handler -> Handler
 handlerInsertCallback a h =
-  h { handler_callbacks = a : (handler_callbacks h) }
+  h { handler_callbacks = handler_callbacks h ++ [a] }
 

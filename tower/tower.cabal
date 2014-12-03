@@ -18,6 +18,7 @@ library
 
                         -- AST
                         Ivory.Tower.AST,
+                        Ivory.Tower.AST.Comment,
                         Ivory.Tower.AST.Chan,
                         Ivory.Tower.AST.Emitter,
                         Ivory.Tower.AST.Graph,
@@ -59,6 +60,9 @@ library
                         Ivory.Tower.Types.TowerPlatform,
                         Ivory.Tower.Types.Unique
 
+                        -- SrcLoc
+                        Ivory.Tower.SrcLoc.Location
+
   build-depends:        base >= 4.6,
                         monadLib,
                         containers,
@@ -73,3 +77,7 @@ library
   hs-source-dirs:       src
   default-language:     Haskell2010
   ghc-options:          -Wall -fno-warn-orphans
+
+  if impl(ghc >= 7.8)
+    build-depends:      ghc, hpc, ghc-srcspan-plugin
+    exposed-modules:    Ivory.Tower.SrcLoc.Plugin

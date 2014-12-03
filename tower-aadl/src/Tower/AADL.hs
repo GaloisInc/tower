@@ -55,4 +55,4 @@ outputAADL dir sys contents = do
   fname = addExtension (dir </> sys) ".aadl"
 
 header :: Doc
-header = renderComment "File generated from Tower-AADL compiler" <$$> empty
+header = renderStringComment "File generated from Tower-AADL compiler" <$$> empty

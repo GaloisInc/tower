@@ -7,6 +7,7 @@
 module Tower.AADL.AST where
 
 import qualified Ivory.Language.Syntax.Type as I
+import qualified Ivory.Tower.AST.Comment    as C
 
 --------------------------------------------------------------------------------
 
@@ -20,6 +21,7 @@ data Thread = Thread
   { threadName       :: Name
   , threadFeatures   :: [Feature]
   , threadProperties :: [ThreadProperty]
+  , threadComments   :: [C.Comment]
   } deriving (Show, Eq)
 
 data Feature =

@@ -11,6 +11,9 @@ import Tower.AADL.AST.Common
 import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
+import qualified Ivory.Tower.AST.Comment as C
+import qualified Ivory.Tower.SrcLoc.Location as L
+
 import Text.PrettyPrint.Leijen
 
 --------------------------------------------------------------------------------
@@ -92,10 +95,12 @@ renderConnection c = vsep (allSynchConnect (connectionLabel c))
 
 renderThread :: Thread -> Doc
 renderThread t =
-  renderBlk (text "thread") (text (threadName t))
-    [ (text "features")
+  renderBlk (text "thread") (text (threadName t)) $
+    map renderComment (threadComments t)
+    ++
+    [ text "features"
     , tab $ vsep $ map renderThreadFeature $ threadFeatures t
-    , (text "properties")
+    , text "properties"
     , tab $ vsep $ map renderThreadProperty $ threadProperties t
     ]
 
@@ -178,5 +183,31 @@ renderThreadProperty p = case p of
                        Passive -> text "Passive"
                        Active  -> text "Active"
 
-renderComment :: String -> Doc
-renderComment s = text "--" <+> text s
+--------------------------------------------------------------------------------
+-- Comments
+
+renderStringComment :: String -> Doc
+renderStringComment = renderComment . C.UserComment
+
+renderComment :: C.Comment -> Doc
+renderComment c = text "--" <+> cm
+  where
+  cm = case c of
+    C.UserComment s -> text s
+    C.SourcePos   s -> renderSrcLoc s
+
+renderSrcLoc :: L.SrcLoc -> Doc
+renderSrcLoc s = case s of
+  L.NoLoc
+    -> text "No source location"
+  L.SrcLoc rng msrc
+    -> case msrc of
+      Nothing  -> renderRng rng
+      Just src -> text src <> colon <> renderRng rng
+
+-- Ignore the column.
+renderRng :: L.Range -> Doc
+renderRng (L.Range (L.Position _ ln0 _) (L.Position _ ln1 _)) =
+  if ln0 == ln1
+    then int ln0
+    else int ln0 <+> char '-' <+> int ln1

@@ -10,6 +10,7 @@ import Ivory.Tower.StateMachine
 ex :: Monitor e (StateMachine e)
 ex  = stateMachine "ex" $ mdo
   initTime <- machineLocal "initTime"
+  endInitTime <- machineLocal "endInitTime"
   firstLoopTime <- machineLocal "firstLoopTime"
   latestLoopTime <- machineLocal "latestLoopTime"
 
@@ -17,13 +18,16 @@ ex  = stateMachine "ex" $ mdo
         entry $ machineCallback $ \_ -> do
           t <- getTime
           store initTime t
-        timeout (100`ms`) $ machineControl $ \_ ->
+        timeout (500`ms`) $ machineControl $ \_ -> do
+          t <- getTime
+          store endInitTime t
           return $ goto l
+
   l <- machineStateNamed "loop" $ do
         entry $ machineCallback $ \_ -> do
           t <- getTime
           store firstLoopTime t
-        periodic (333`ms`) $ machineCallback $ \_ -> do
+        periodic (50`ms`) $ machineCallback $ \_ -> do
           t <- getTime
           store latestLoopTime t
   return i

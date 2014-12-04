@@ -11,6 +11,7 @@ module Ivory.Tower.AST
   , module Ivory.Tower.AST.Emitter
   , module Ivory.Tower.AST.Thread
   , module Ivory.Tower.AST.Graph
+  , module Ivory.Tower.AST.Comment
   ) where
 
 import Ivory.Tower.AST.Init
@@ -24,4 +25,5 @@ import Ivory.Tower.AST.Handler
 import Ivory.Tower.AST.Emitter
 import Ivory.Tower.AST.Thread
 import Ivory.Tower.AST.Graph
+import Ivory.Tower.AST.Comment
 

@@ -14,6 +14,10 @@ module Ivory.Tower.Monad.Handler
   , handlerPutASTCallback
   , handlerPutCodeEmitter
   , handlerPutCodeCallback
+  -- Source Location
+  , mkLocation
+  , setLocation
+  , withLocation
   ) where
 
 import MonadLib
@@ -27,6 +31,8 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Codegen.Handler
 import qualified Ivory.Tower.AST as AST
+
+import Ivory.Tower.SrcLoc.Location (SrcLoc(..), Position(..), Range(..))
 
 import Ivory.Language
 
@@ -80,5 +86,18 @@ handlerPutCodeEmitter :: (AST.Tower -> AST.Thread -> EmitterCode b)
 handlerPutCodeEmitter ms = withCode $ \a t -> insertHandlerCodeEmitter (ms a t)
 
 instance BaseUtils (Handler a) p where
-  fresh = Handler $ lift $ lift fresh
+  fresh  = Handler $ lift $ lift fresh
   getEnv = Handler $ lift $ lift getEnv
+
+--------------------------------------------------------------------------------
+-- SrcLoc stuff
+
+mkLocation :: FilePath -> Int -> Int -> Int -> Int -> SrcLoc
+mkLocation file l1 c1 l2 c2
+  = SrcLoc (Range (Position 0 l1 c1) (Position 0 l2 c2)) (Just file)
+
+setLocation :: SrcLoc -> Handler a e ()
+setLocation src = withAST (AST.handlerInsertComment (AST.SourcePos src))
+
+withLocation :: SrcLoc -> Handler area e a -> Handler area e a
+withLocation src h = setLocation src >> h

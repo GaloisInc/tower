@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -10,18 +11,20 @@ module Tower.AADL.FromTower
   ( fromTower
   ) where
 
-import Prelude hiding (init)
-import System.FilePath ((</>))
+import           Prelude hiding (init)
+import           System.FilePath ((</>))
+import           Data.List (partition)
+import           Data.Monoid (mconcat)
 
 import qualified Ivory.Tower.AST as A
 import qualified Ivory.Tower.Types.Time as T
-import Ivory.Tower.Types.Unique (showUnique)
+import           Ivory.Tower.Types.Unique (showUnique)
 import qualified Ivory.Tower.AST.Graph as G
 
-import Tower.AADL.AST
-import Tower.AADL.Config
+import           Tower.AADL.AST
+import           Tower.AADL.Config
 
-import Control.Arrow
+import           Control.Arrow
 
 --------------------------------------------------------------------------------
 
@@ -47,6 +50,7 @@ fromThread :: A.Tower -> A.Thread -> Thread
 fromThread twr t = Thread { .. }
   where
   threadName       = A.threadName t
+  threadComments   = []
   threadFeatures   = [ChannelFeature (chanFeature twr t)]
   threadProperties =
     [ ThreadType Active
@@ -85,9 +89,11 @@ chanFeature twr t = case c of
 fromMonitor :: Config -> A.Monitor -> Thread
 fromMonitor c m = Thread { .. }
   where
-  (fs, ps) = concatPair (map (fromHandler c threadName) (A.monitor_handlers m))
-  threadName = A.monitorName m
-  threadFeatures = fs
+  hs               = A.monitor_handlers m
+  threadComments   = catHandlerSrcLocs (concatMap A.handler_comments hs)
+  (fs, ps)         = concatPair (map (fromHandler c threadName) hs)
+  threadName       = A.monitorName m
+  threadFeatures   = fs
   threadProperties = ps ++
     [ ThreadType Passive
     , DispatchProtocol Aperiodic
@@ -159,3 +165,11 @@ concatPair = (concat *** concat) . unzip
 
 prettyPeriod :: A.Period -> String
 prettyPeriod = T.prettyTime . A.period_dt
+
+-- concatenate source locations, then return all comments.
+catHandlerSrcLocs :: [A.Comment] -> [A.Comment]
+catHandlerSrcLocs cs = srcloc : strs
+  where
+  (strs, srclocs) =
+    partition (\case {A.UserComment{} -> True; A.SourcePos{} -> False}) cs
+  srcloc = A.SourcePos (mconcat (map (\(A.SourcePos sl) -> sl) srclocs))

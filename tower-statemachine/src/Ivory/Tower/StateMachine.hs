@@ -21,8 +21,10 @@ module Ivory.Tower.StateMachine
 
   , machineLocal
   , machineLocalInit
+
   , machineControl
   , machineCallback
+  , machineEmitter
 
   , module Ivory.Tower.StateMachine.Compile
   ) where

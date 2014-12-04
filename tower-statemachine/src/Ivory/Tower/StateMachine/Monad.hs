@@ -90,6 +90,12 @@ machineControl k = putStmtM $ \e r -> callback $ \a -> r $ do
     cfM <- k a
     mkCFlow cfM e
 
+machineEmitter :: (IvoryArea a)
+               => ChanInput a
+               -> Integer
+               -> StmtM b e (Emitter a)
+machineEmitter c b = putStmtM $ \_ _ -> emitter c b
+
 instance (IvoryArea a) => CFlowable (StmtM a e) where
   cflow a = machineControl (const (return (cflow a)))
 

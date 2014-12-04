@@ -26,9 +26,8 @@ library
                , directory
                , filepath
                , wl-pprint
-               , ivory >= 0.1.0.1
+               , ivory >= 0.1.0.2
                , ivory-artifact
-               , ivory-backend-aadl
                , tower
 
   hs-source-dirs:       src

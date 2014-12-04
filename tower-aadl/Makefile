@@ -3,7 +3,6 @@ default: build
 IVORY= \
   ivory \
   ivory-artifact \
-  ivory-backend-aadl \
   ivory-backend-c \
   ivory-opts \
   ivory-stdlib \

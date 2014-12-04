@@ -26,6 +26,8 @@ data StateMachine e =
                           => ChanOutput a -> Monitor e ()
     }
 
+-- XXX: take advantage of labeled states by leaving comments with their names
+
 stateMachine :: forall e . String -> MachineM e StateLabel
              -> Monitor e (StateMachine e)
 stateMachine name machine = do
@@ -41,7 +43,7 @@ stateMachine name machine = do
       -> Monitor e (StateMachine e)
   aux uniq tick newstate_in newstate_out = do
     (istate, states) <- runMachineM machine
-    mstate       <- state "machineState"
+    mstate       <- state (named "state")
     handler systemInit (named "init") $ do
       newstate_e <- emitter newstate_in 1
       callback $ \_ -> emitV newstate_e (stateLabel istate)
@@ -60,9 +62,9 @@ stateMachine name machine = do
     makeHandlers :: Ref Global (Stored MachineState)
                  -> [State e] -> Monitor e ()
     makeHandlers mstate ss = do
-      (ns_timeout_hs, tick_timeout_hs) <- zipHandlers timeoutHandler
+      (ns_timeout_hs, tick_timeout_hs) <- zipHandlers (timeoutHandler uniq)
           (timeoutStateHandlers ss)
-      (ns_period_hs, tick_period_hs) <- zipHandlers periodHandler
+      (ns_period_hs, tick_period_hs) <- zipHandlers (periodHandler uniq)
           (periodStateHandlers ss)
 
       handler newstate_out (named "newstate") $ do
@@ -131,17 +133,18 @@ chanStateHandlers ss c =
   ]
 
 
-timeoutHandler  :: ( StateLabel
+timeoutHandler  :: Unique
+                -> ( StateLabel
                    , Microseconds
                    , StmtM (Stored ITime) e ())
-                 -> Monitor e
+                -> Monitor e
                       ( Handler (Stored MachineState) e ()
-                      ,      Emitter (Stored MachineState)
-                          -> Ref Global (Stored MachineState)
-                          -> Handler (Stored ITime) e ()
+                      ,    Emitter (Stored MachineState)
+                        -> Ref Global (Stored MachineState)
+                        -> Handler (Stored ITime) e ()
                       )
 
-timeoutHandler (lbl, t, stmtm) = do
+timeoutHandler uniq (lbl, t, stmtm) = do
   has_run <- state (named "has_run")
   deadline <- state (named "deadline")
   let reset = callback $ \_ -> do
@@ -160,19 +163,19 @@ timeoutHandler (lbl, t, stmtm) = do
 
   return (reset, trigger)
   where
-  named = id -- XXX make more descriptive
+  named n = showUnique uniq ++ "_machine_tout_" ++ prettyTime t ++ "_" ++ n
 
-periodHandler  :: ( StateLabel
-                   , Microseconds
-                   , StmtM (Stored ITime) e ())
-                 -> Monitor e
-                      ( Handler (Stored MachineState) e ()
-                      ,      Emitter (Stored MachineState)
-                          -> Ref Global (Stored MachineState)
-                          -> Handler (Stored ITime) e ()
-                      )
-
-periodHandler (lbl, t, stmtm) = do
+periodHandler :: Unique
+              -> ( StateLabel
+                 , Microseconds
+                 , StmtM (Stored ITime) e ())
+              -> Monitor e
+                   ( Handler (Stored MachineState) e ()
+                   ,    Emitter (Stored MachineState)
+                     -> Ref Global (Stored MachineState)
+                     -> Handler (Stored ITime) e ()
+                   )
+periodHandler uniq (lbl, t, stmtm) = do
   deadline <- state (named "deadline")
   let reset = callback $ \_ -> do
         now <- getTime
@@ -187,5 +190,5 @@ periodHandler (lbl, t, stmtm) = do
 
   return (reset, trigger)
   where
-  named = id -- XXX make more descriptive
+  named n = showUnique uniq ++ "_machine_per_" ++ prettyTime t ++ "_" ++ n
 

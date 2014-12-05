@@ -7,6 +7,7 @@
 module Ivory.Tower.StateMachine.Compile
   ( StateMachine
   , stateMachine_onChan
+  , stateMachine_active
   , stateMachine
   ) where
 
@@ -24,6 +25,7 @@ data StateMachine e =
   StateMachine
     { stateMachine_onChan :: forall a . (IvoryArea a, IvoryZero a)
                           => ChanOutput a -> Monitor e ()
+    , stateMachine_active :: forall eff . Ivory eff IBool
     }
 
 -- XXX: take advantage of labeled states by leaving comments with their names
@@ -51,6 +53,9 @@ stateMachine name machine = do
     return StateMachine
       { stateMachine_onChan = \c ->
           makeChanHandler c mstate states
+      , stateMachine_active = do
+          s <- deref mstate
+          return (s /=? (MachineState 0))
       }
     where
     named n = (showUnique uniq) ++ "_machine_" ++ n

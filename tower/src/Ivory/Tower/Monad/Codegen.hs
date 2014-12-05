@@ -12,6 +12,7 @@ module Ivory.Tower.Monad.Codegen
   , codegenThreadCode
   , codegenMonitor
   , codegenSignal
+  , codegenArtifact
   ) where
 
 import MonadLib
@@ -26,6 +27,7 @@ import Ivory.Tower.Monad.Base
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
+import Ivory.Artifact
 
 newtype Codegen env a = Codegen
   { unCodegen :: ReaderT AST.Tower (StateT GeneratedCode (Base env)) a
@@ -68,6 +70,9 @@ codegenSignal :: (Signalable s) => s -> (forall eff . Ivory eff ())
               -> Codegen e ()
 codegenSignal s i = withGeneratedCode $
   generatedCodeInsertSignalCode (signalName s) (\i' -> (signalHandler s) (i >> i'))
+
+codegenArtifact :: Artifact -> Codegen e ()
+codegenArtifact = withGeneratedCode . generatedCodeInsertArtifact
 
 instance BaseUtils Codegen e where
   fresh = Codegen $ lift $ lift fresh

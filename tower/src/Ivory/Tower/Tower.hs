@@ -20,6 +20,7 @@ module Ivory.Tower.Tower
   , monitor
   , towerModule
   , towerDepends
+  , towerArtifact
 
   , getTime
   , BaseUtils(..)
@@ -42,6 +43,7 @@ import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
+import Ivory.Artifact
 import qualified Ivory.Language.Area as I
 
 channel :: forall e a . IvoryArea a => Tower e (ChanInput a, ChanOutput a)
@@ -93,6 +95,9 @@ towerModule = towerCodegen . codegenModule
 
 towerDepends :: Module -> Tower e ()
 towerDepends = towerCodegen . codegenDepends
+
+towerArtifact :: Artifact -> Tower e ()
+towerArtifact = towerCodegen . codegenArtifact
 
 getTime :: Ivory eff ITime
 getTime = call getTimeProc

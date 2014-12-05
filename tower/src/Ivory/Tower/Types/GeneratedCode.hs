@@ -8,6 +8,7 @@ module Ivory.Tower.Types.GeneratedCode
   , generatedCodeInsertThreadCode
   , generatedCodeInsertMonitorCode
   , generatedCodeInsertSignalCode
+  , generatedCodeInsertArtifact
   , generatedCodeForSignal
   , emptyGeneratedCode
   ) where
@@ -15,15 +16,17 @@ module Ivory.Tower.Types.GeneratedCode
 import qualified Data.Map as Map
 import qualified Ivory.Tower.AST as AST
 import Ivory.Language
+import Ivory.Artifact
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
 
 data GeneratedCode = GeneratedCode
-  { generatedcode_modules  :: [Module]
-  , generatedcode_depends  :: [Module]
-  , generatedcode_threads  :: Map.Map AST.Thread ThreadCode
-  , generatedcode_monitors :: Map.Map AST.Monitor MonitorCode
-  , generatedcode_signals  :: Map.Map String GeneratedSignal
+  { generatedcode_modules   :: [Module]
+  , generatedcode_depends   :: [Module]
+  , generatedcode_threads   :: Map.Map AST.Thread ThreadCode
+  , generatedcode_monitors  :: Map.Map AST.Monitor MonitorCode
+  , generatedcode_signals   :: Map.Map String GeneratedSignal
+  , generatedcode_artifacts :: [Artifact]
   }
 
 newtype GeneratedSignal =
@@ -60,6 +63,11 @@ generatedCodeInsertSignalCode signame sigcode g =
   g { generatedcode_signals = ins (generatedcode_signals g) }
   where ins = Map.insert signame (GeneratedSignal sigcode)
 
+generatedCodeInsertArtifact :: Artifact
+                            -> GeneratedCode -> GeneratedCode
+generatedCodeInsertArtifact a g =
+  g { generatedcode_artifacts = a : generatedcode_artifacts g }
+
 generatedCodeForSignal :: AST.Signal -> GeneratedCode
                        -> GeneratedSignal
 generatedCodeForSignal sig gc = maybe err id lkup
@@ -70,12 +78,13 @@ generatedCodeForSignal sig gc = maybe err id lkup
 
 emptyGeneratedCode :: GeneratedCode
 emptyGeneratedCode = GeneratedCode
-  { generatedcode_modules  = []
-  , generatedcode_depends  = []
-  , generatedcode_threads  = Map.fromList
+  { generatedcode_modules   = []
+  , generatedcode_depends   = []
+  , generatedcode_threads   = Map.fromList
       [ (initThread, emptyThreadCode initThread) ]
-  , generatedcode_monitors = Map.empty
-  , generatedcode_signals  = Map.empty
+  , generatedcode_monitors  = Map.empty
+  , generatedcode_signals   = Map.empty
+  , generatedcode_artifacts = []
   }
   where
   initThread = AST.InitThread AST.Init

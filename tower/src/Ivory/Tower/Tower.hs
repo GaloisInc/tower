@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PostfixOperators #-}
 
 module Ivory.Tower.Tower
   ( Tower()
@@ -15,6 +16,7 @@ module Ivory.Tower.Tower
   , Signalable(..)
   , module Ivory.Tower.Types.Time
   , period
+  , periodPhase
   , systemInit
   , Monitor()
   , monitor
@@ -76,10 +78,17 @@ signalUnsafe s t i = do
     }
 
 period :: Time a => a -> Tower e (ChanOutput (Stored ITime))
-period t = do
-  let ast = AST.Period (microseconds t) (I.ivoryArea (Proxy :: I.AProxy (Stored ITime)))
+period t = periodPhase t (0`us`)
+
+periodPhase :: (Time a, Time b)
+       => a
+       -> b
+       -> Tower e (ChanOutput (Stored ITime))
+periodPhase t ph = do
+  let ast = AST.Period (microseconds t) perTy (microseconds ph)
   towerPutASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
+  where perTy = I.ivoryArea (Proxy :: I.AProxy (Stored ITime))
 
 systemInit :: ChanOutput (Stored ITime)
 systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))

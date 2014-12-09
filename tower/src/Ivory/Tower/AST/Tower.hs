@@ -40,8 +40,9 @@ towerThreads t = map SignalThread (tower_signals t) ++
 
 -- Periods are a set
 towerInsertPeriod :: Period -> Tower -> Tower
-towerInsertPeriod p t | p `elem` (tower_periods t) = t
-                      | otherwise = t { tower_periods = p : tower_periods t }
+towerInsertPeriod p t
+  | p `elem` (tower_periods t) = t
+  | otherwise = t { tower_periods = p : tower_periods t }
 
 towerFindMonitorByName :: Unique -> Tower -> Maybe Monitor
 towerFindMonitorByName n t = find p (tower_monitors t)

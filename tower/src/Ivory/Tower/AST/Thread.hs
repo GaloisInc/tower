@@ -17,8 +17,15 @@ data Thread = SignalThread Signal
 
 threadName :: Thread -> String
 threadName (SignalThread s) = "thread_signal_" ++ signal_name s
-threadName (PeriodThread p) = "thread_period_" ++ prettyTime (period_dt p)
 threadName (InitThread _)   = "thread_init"
+threadName (PeriodThread p) =
+     "thread_period_"
+  ++ prettyTime (period_dt p)
+  ++ if toMicroseconds ph == 0
+       then ""
+       else "_phase_" ++ prettyTime ph
+  where
+  ph = period_phase p
 
 threadChan :: Thread -> Chan
 threadChan (PeriodThread p) = ChanPeriod p

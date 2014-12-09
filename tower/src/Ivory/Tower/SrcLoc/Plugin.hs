@@ -38,9 +38,8 @@ install opts todos = do
   Just handlerName <- liftIO $ lookupRdrNameInModuleForPlugins hsc_env hANDLER_MONAD_MODULE hANDLER
   handlerCon <- lookupTyCon handlerName
 
-  let isInteresting expr = return (isHandlerStmt handlerCon expr)
-  let annotate loc expr = mkWithLocExpr mkLocVar withLocVar loc expr
-  let locpass = mkPass isInteresting annotate killForeignStubs
+  let annotate loc expr = mkWithLocExpr handlerCon mkLocVar withLocVar loc expr
+  let locpass = mkPass annotate killForeignStubs
 
   return $ (CoreDoPluginPass "Add Locations" locpass) : todos
   where
@@ -49,21 +48,25 @@ install opts todos = do
 
 -- | Check that the expression is a handler monad type constructor.
 isHandlerStmt :: TyCon -> CoreExpr -> Bool
-isHandlerStmt handlerM expr
+isHandlerStmt handlerM expr@(App _ _)
   | Just (tc, _) <- splitTyConApp_maybe $ exprType expr
   = tc == handlerM
-  | otherwise
+isHandlerStmt handlerM expr@(Var _)
+  | Just (tc, _) <- splitTyConApp_maybe $ exprType expr
+  = tc == handlerM
+isHandlerStmt _ _
   = False
 
-mkWithLocExpr :: Var -> Var -> SrcSpan -> CoreExpr -> CoreM CoreExpr
-mkWithLocExpr mkLocVar withLocVar (RealSrcSpan ss) expr = do
-  loc <- mkLocExpr mkLocVar ss
-  return $ mkCoreApps (Var withLocVar) (tys' ++ [loc, expr])
-  where
-  tys'     = map Type tys
-  (_, tys) = splitAppTys $ exprType expr
+mkWithLocExpr :: TyCon -> Var -> Var -> SrcSpan -> CoreExpr -> CoreM CoreExpr
+mkWithLocExpr handlerTyCon mkLocVar withLocVar (RealSrcSpan ss) expr
+  | isHandlerStmt handlerTyCon expr = do
+      loc <- mkLocExpr mkLocVar ss
+      return $ mkCoreApps (Var withLocVar) (tys' ++ [loc, expr])
+      where
+      tys'     = map Type tys
+      (_, tys) = splitAppTys $ exprType expr
 
-mkWithLocExpr _ _ _ expr = return expr
+mkWithLocExpr _ _ _ _ expr = return expr
 
 mkLocExpr :: Var -> RealSrcSpan -> CoreM CoreExpr
 mkLocExpr mkLocVar ss = do

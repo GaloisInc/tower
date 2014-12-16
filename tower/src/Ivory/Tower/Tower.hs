@@ -1,33 +1,117 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PostfixOperators #-}
 
 module Ivory.Tower.Tower
-  ( Tower
-  , towerArtifact
-  , towerDepends
+  ( Tower()
+  , GeneratedCode()
+  , runTower
+  , ChanInput()
+  , ChanOutput()
+  , channel
+  , signal
+  , signalUnsafe
+  , Signalable(..)
+  , module Ivory.Tower.Types.Time
+  , period
+  , periodPhase
+  , systemInit
+  , Monitor()
+  , monitor
   , towerModule
-  , towerGroup
+  , towerDepends
+  , towerArtifact
+
+  , getTime
+  , BaseUtils(..)
+  , Unique
+  , showUnique
+  , freshname
   ) where
 
-import Ivory.Language
-import Ivory.Tower.Types.Artifact
-import Ivory.Tower.Types.SystemCode
-import Ivory.Tower.Types.TaskCode
+import Ivory.Tower.Types.Chan
+import Ivory.Tower.Types.Time
+import Ivory.Tower.Types.GeneratedCode
+import Ivory.Tower.Types.Signalable
+import Ivory.Tower.Types.Unique
+
+import qualified Ivory.Tower.AST as AST
+
+import Ivory.Tower.Monad.Base
+import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
+import Ivory.Tower.Monad.Monitor
 
-towerArtifact :: Artifact -> Tower p ()
-towerArtifact = putArtifact
+import Ivory.Language
+import Ivory.Artifact
+import qualified Ivory.Language.Area as I
 
-towerModule :: Module -> Tower p ()
-towerModule = putModule
+channel :: forall e a . IvoryArea a => Tower e (ChanInput a, ChanOutput a)
+channel = do
+  f <- fresh
+  let ast = AST.SyncChan f (I.ivoryArea (Proxy :: Proxy a))
+  towerPutASTSyncChan ast
+  let c = Chan (AST.ChanSync ast)
+  return (ChanInput c, ChanOutput c)
 
-towerDepends :: Module -> Tower p ()
-towerDepends m = do
-  c <- getSystemCode
-  setSystemCode $ \sys ->
-    (c sys) { systemcode_tasks = map task_depend (systemcode_tasks (c sys))
-            , systemcode_moddef = depend m >> (systemcode_moddef (c sys))
-            }
+-- Note: signals are no longer tied to be the same type throughout
+-- a given Tower. We'd need to add another phantom type to make that
+-- work.
+signal :: (Time a, Signalable s)
+       => s -> a -> Tower e (ChanOutput (Stored ITime))
+signal s t = signalUnsafe s t (return ())
+
+signalUnsafe :: (Time a, Signalable s)
+       => s -> a -> (forall eff . Ivory eff ())
+       -> Tower e (ChanOutput (Stored ITime))
+signalUnsafe s t i = do
+  towerPutASTSignal ast
+  towerCodegen $ codegenSignal s i
+  return (ChanOutput (Chan (AST.ChanSignal ast)))
   where
-  task_depend tc = tc { taskcode_commprim = depend m >> taskcode_commprim tc }
+  n = signalName s
+  ast = AST.Signal
+    { AST.signal_name = n
+    , AST.signal_deadline = microseconds t
+    }
 
-towerGroup :: String -> Tower p a -> Tower p a
-towerGroup = group
+period :: Time a => a -> Tower e (ChanOutput (Stored ITime))
+period t = periodPhase t (0`us`)
+
+periodPhase :: (Time a, Time b)
+       => a
+       -> b
+       -> Tower e (ChanOutput (Stored ITime))
+periodPhase t ph = do
+  let ast = AST.Period (microseconds t) perTy (microseconds ph)
+  towerPutASTPeriod ast
+  return (ChanOutput (Chan (AST.ChanPeriod ast)))
+  where perTy = I.ivoryArea (Proxy :: I.AProxy (Stored ITime))
+
+systemInit :: ChanOutput (Stored ITime)
+systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
+
+monitor :: String -> Monitor e () -> Tower e ()
+monitor n m = do
+  (ast, mcode) <- runMonitor n m
+  towerPutASTMonitor ast
+  towerCodegen $ codegenMonitor ast (const mcode)
+
+towerModule :: Module -> Tower e ()
+towerModule = towerCodegen . codegenModule
+
+towerDepends :: Module -> Tower e ()
+towerDepends = towerCodegen . codegenDepends
+
+towerArtifact :: Artifact -> Tower e ()
+towerArtifact = towerCodegen . codegenArtifact
+
+getTime :: Ivory eff ITime
+getTime = call getTimeProc
+  where
+  -- Must be provided by the code generator:
+  getTimeProc :: Def('[]:->ITime)
+  getTimeProc = importProc "tower_get_time" "tower_time.h"
+

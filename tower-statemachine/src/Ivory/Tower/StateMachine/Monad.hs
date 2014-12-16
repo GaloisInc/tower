@@ -13,6 +13,10 @@ import MonadLib hiding (StateM)
 import Ivory.Language
 import Ivory.Tower
 
+newtype MachineState = MachineState Uint32
+  deriving ( IvoryType, IvoryVar, IvoryExpr, IvoryEq
+           , IvoryStore, IvoryInit, IvoryZeroVal )
+
 data CFlowAST = CFlowBranch IBool StateLabel
               | CFlowHalt   IBool
 
@@ -35,72 +39,101 @@ class CFlowable m where
 instance CFlowable CFlowM where
   cflow = writeCFlow
 
-data Stmt s = Stmt (Ivory (AllocEffects s) CFlow)
+mkCFlow :: CFlowM () -> Emitter (Stored MachineState)
+          -> Ivory (AllocEffects s) ()
+mkCFlow m e = foldr aux (return ()) (runCFlowM m)
+  where
+  aux (CFlowBranch b lbl) acc = ifte_ b (nextstate lbl) acc
+  aux (CFlowHalt   b)     acc = ifte_ b (nextstate inactiveState) acc
+  nextstate l = emitV e (stateLabel l)
 
-newtype StmtM s a =
-  StmtM
-    { unStmtM :: WriterT [Stmt s] Id a
-    } deriving (Functor, Monad, Applicative)
 
-writeStmt :: Stmt s -> StmtM s ()
-writeStmt s = StmtM $ put [s]
-
-runStmtM :: StmtM s () -> [Stmt s]
-runStmtM m = ss
-  where (_, ss) = runM (unStmtM m)
-
-instance CFlowable (StmtM s) where
-  cflow cf = writeStmt (Stmt (return (writeCFlow cf)))
-
-type Micros = Integer
-
-data Handler
-  = EntryHandler (ScopedStatements (Stored ITime))
-  | TimeoutHandler Micros (ScopedStatements (Stored ITime))
-  | PeriodHandler Micros (ScopedStatements (Stored ITime))
+data StateHandler e
+  = EntryStateHandler                (StmtM (Stored MachineState) e ())
+  | TimeoutStateHandler Microseconds (StmtM (Stored ITime) e ())
+  | PeriodStateHandler Microseconds  (StmtM (Stored ITime) e ())
   | forall a . (IvoryArea a, IvoryZero a)
-     => EventHandler (Event a) (ScopedStatements a)
+     => ChanStateHandler (ChanOutput a) (StmtM a e ())
 
-instance Show Handler where
-  show (EntryHandler _)     = "EntryHandler"
-  show (TimeoutHandler _ _) = "TimeoutHandler"
-  show (PeriodHandler _ _)  = "PeriodHandler"
-  show (EventHandler _ _)   = "EventHandler"
+instance Show (StateHandler e) where
+  show (EntryStateHandler _)     = "EntryStateHandler"
+  show (TimeoutStateHandler _ _) = "TimeoutStateHandler"
+  show (PeriodStateHandler _ _)  = "PeriodStateHandler"
+  show (ChanStateHandler _ _)    = "ChanStateHandler"
 
-data ScopedStatements a = ScopedStatements (forall s s' . ConstRef s' a -> [Stmt s])
+newtype ICflow = ICflow (forall eff . Ivory eff () -> Ivory eff ())
 
-scopedIvory :: (forall s s' . ConstRef s' a -> Ivory (AllocEffects s) ())
-            -> ScopedStatements a
-scopedIvory k = ScopedStatements (\r -> [ Stmt ( k r >> return (return ())) ] )
+newtype StmtM t e a =
+  StmtM
+    { unStmtM :: ReaderT ( Emitter (Stored MachineState), ICflow)
+                         (Handler t e) a
+    } deriving (Functor, Applicative, Monad)
 
+runStmtM :: StmtM t e ()
+         -> Emitter (Stored MachineState)
+         -> ICflow
+         -> Handler t e ()
+runStmtM m e r = runReaderT (e, r) (unStmtM m)
 
-data State = State StateLabel (Maybe String) [Handler]
+putStmtM :: (  Emitter (Stored MachineState)
+            -> (forall eff . Ivory eff () -> Ivory eff ())
+            -> Handler t e a)
+         -> StmtM t e a
+putStmtM k = StmtM $ do
+  (e, (ICflow r)) <- ask
+  lift (k e r)
+
+machineControl :: (IvoryArea a)
+               => (forall s s'. ConstRef s a -> Ivory (AllocEffects s') (CFlowM ()))
+               -> StmtM a e ()
+machineControl k = putStmtM $ \e r -> callback $ \a -> r $ do
+    cfM <- k a
+    mkCFlow cfM e
+
+machineEmitter :: (IvoryArea a)
+               => ChanInput a
+               -> Integer
+               -> StmtM b e (Emitter a)
+machineEmitter c b = putStmtM $ \_ _ -> emitter c b
+
+instance (IvoryArea a) => CFlowable (StmtM a e) where
+  cflow a = machineControl (const (return (cflow a)))
+
+data State e = State StateLabel (Maybe String) [StateHandler e]
      deriving (Show)
 
 data StateLabel = StateLabel { unStateLabel :: Int }
      deriving (Eq, Show)
 
-newtype MachineM p a =
+stateLabel :: StateLabel -> MachineState
+stateLabel (StateLabel s) = MachineState (fromIntegral s)
+
+newtype MachineM e a =
   MachineM
-    { unMachineM :: WriterT [State] (StateT StateLabel (Task p)) a
+    { unMachineM :: WriterT [State e] (StateT StateLabel (Monitor e)) a
     } deriving (Functor, Monad, MonadFix, Applicative)
 
 type Machine p = MachineM p StateLabel
 
-newtype StateM a =
+newtype StateM e a =
   StateM
-    { unStateM :: WriterT [Handler] Id a
+    { unStateM :: WriterT [StateHandler e] Id a
     } deriving (Functor, Monad, Applicative)
 
-runMachineM :: MachineM p StateLabel -> Task p (StateLabel, [State])
+-- Machine monad specifies a set of states and gives the label for the initial state.
+runMachineM :: MachineM e StateLabel
+            -> Monitor e (StateLabel, [State e])
 runMachineM sm = do
-  ((istate, states), _) <- runStateT (StateLabel 0) (runWriterT (unMachineM sm))
+  ((istate, states), _) <- runStateT (StateLabel 1) (runWriterT (unMachineM sm))
   return (istate, states)
+
+inactiveState :: StateLabel
+inactiveState = StateLabel 0
 
 label :: MachineM p StateLabel
 label = MachineM get
 
-writeState :: State -> MachineM p ()
+writeState :: State e -> MachineM e ()
 writeState sm = MachineM $ do
   put [sm]
   l <- get
@@ -110,17 +143,17 @@ writeState sm = MachineM $ do
   nextLabel (StateLabel i) = StateLabel (i+1)
 
 machineLocal :: (IvoryArea area, IvoryZero area)
-             => String -> MachineM p (Ref Global area)
-machineLocal n = MachineM $ lift $ lift $ taskLocal n
+             => String -> MachineM e (Ref Global area)
+machineLocal n = MachineM $ lift $ lift $ state n
 
 machineLocalInit :: (IvoryArea area)
-                 => String -> Init area -> MachineM p (Ref Global area)
-machineLocalInit n iv = MachineM $ lift $ lift $ taskLocalInit n iv
+                 => String -> Init area -> MachineM e (Ref Global area)
+machineLocalInit n iv = MachineM $ lift $ lift $ stateInit n iv
 
-writeHandler :: Handler -> StateM ()
-writeHandler h = StateM $ put [h]
+writeStateHandler :: StateHandler e -> StateM e ()
+writeStateHandler h = StateM $ put [h]
 
-runStateM :: StateM () -> StateLabel -> Maybe String -> State
+runStateM :: StateM e () -> StateLabel -> Maybe String -> State e
 runStateM sh lbl n = State lbl n handlers
   where (_, handlers) = runM (unStateM sh)
 

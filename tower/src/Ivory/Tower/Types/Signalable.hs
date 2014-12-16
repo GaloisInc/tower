@@ -1,17 +1,12 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Ivory.Tower.Types.Signalable
   ( Signalable(..)
-  , NoSignals(..)
   ) where
 
-class Signalable p where
-  data SignalType p
-  signalName :: SignalType p -> String
+import Ivory.Language
 
--- Utility class
-data NoSignals = NoSignals
-instance Signalable NoSignals where
-  data SignalType NoSignals = NoSignal deriving (Show)
-  signalName = show
+class Signalable s where
+  signalName    :: s -> String
+  signalHandler :: s -> (forall eff . Ivory eff ()) -> ModuleDef
 

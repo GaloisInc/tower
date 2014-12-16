@@ -1,0 +1,54 @@
+name:                tower-config
+version:             0.1.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+homepage:            http://ivorylang.org
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+source-repository    this
+  type:     git
+  location: https://github.com/GaloisInc/tower
+
+library
+  exposed-modules:      Tower.Config,
+                        Tower.Config.Document,
+                        Tower.Config.Extend,
+                        Tower.Config.Parser,
+                        Tower.Config.TOML,
+                        Tower.Config.Options,
+                        Tower.Config.Preprocess
+
+  build-depends:        base >= 4.6,
+                        attoparsec >= 0.12.1.2,
+                        bytestring,
+                        containers,
+                        directory,
+                        filepath,
+                        time,
+                        toml,
+                        scientific,
+                        ivory-backend-c,
+                        tower
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+
+  ghc-options:          -Wall
+
+test-suite tests
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is: Main.hs
+  default-language: Haskell98
+  ghc-options: -Wall
+  build-depends: base >= 4.6,
+                 bytestring,
+                 containers,
+                 directory,
+                 filepath,
+                 time,
+                 toml,
+                 tower,
+                 tower-config
+

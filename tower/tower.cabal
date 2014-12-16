@@ -1,5 +1,5 @@
 name:                tower
-version:             0.8.0.0
+version:             0.9.0.0
 author:              Galois, Inc.
 maintainer:          pat@galois.com
 category:            Language
@@ -8,46 +8,76 @@ cabal-version:       >= 1.10
 license:             BSD3
 
 library
+                        -- Exports
   exposed-modules:      Ivory.Tower,
-                        Ivory.Tower.AST,
-                        Ivory.Tower.AST.Chan,
-                        Ivory.Tower.AST.ChanEmitter,
-                        Ivory.Tower.AST.ChanReader,
-                        Ivory.Tower.AST.ChanReceiver,
-                        Ivory.Tower.AST.Directory,
-                        Ivory.Tower.AST.Event,
-                        Ivory.Tower.AST.EventHandler,
-                        Ivory.Tower.AST.SignalReceiver,
-                        Ivory.Tower.AST.System,
-                        Ivory.Tower.AST.Task,
-                        Ivory.Tower.AST.Timer,
-                        Ivory.Tower.Channel,
-                        Ivory.Tower.Compile,
-                        Ivory.Tower.Event,
-                        Ivory.Tower.Monad.Base,
-                        Ivory.Tower.Monad.Task,
-                        Ivory.Tower.Monad.Tower,
-                        Ivory.Tower.Signal,
-                        Ivory.Tower.Task,
-                        Ivory.Tower.Timer,
+
+                        -- Surface syntax:
                         Ivory.Tower.Tower,
-                        Ivory.Tower.Types,
-                        Ivory.Tower.Types.Artifact,
-                        Ivory.Tower.Types.Channels,
-                        Ivory.Tower.Types.Event,
-                        Ivory.Tower.Types.OS,
+                        Ivory.Tower.Monitor,
+                        Ivory.Tower.Handler,
+
+                        -- AST
+                        Ivory.Tower.AST,
+                        Ivory.Tower.AST.Comment,
+                        Ivory.Tower.AST.Chan,
+                        Ivory.Tower.AST.Emitter,
+                        Ivory.Tower.AST.Graph,
+                        Ivory.Tower.AST.Handler,
+                        Ivory.Tower.AST.Init,
+                        Ivory.Tower.AST.Monitor,
+                        Ivory.Tower.AST.Period,
+                        Ivory.Tower.AST.Signal,
+                        Ivory.Tower.AST.SyncChan,
+                        Ivory.Tower.AST.Thread,
+                        Ivory.Tower.AST.Tower,
+
+                        -- Code generation
+                        Ivory.Tower.Codegen.Emitter,
+                        Ivory.Tower.Codegen.Handler,
+                        Ivory.Tower.Codegen.Monitor,
+
+                        -- Compiler
+                        Ivory.Tower.Compile,
+                        Ivory.Tower.Compile.Options,
+
+                        -- Monads
+                        Ivory.Tower.Monad.Base,
+                        Ivory.Tower.Monad.Codegen,
+                        Ivory.Tower.Monad.Handler,
+                        Ivory.Tower.Monad.Monitor,
+                        Ivory.Tower.Monad.Tower,
+
+                        -- Types
+                        Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.Emitter,
+                        Ivory.Tower.Types.EmitterCode,
+                        Ivory.Tower.Types.GeneratedCode,
+                        Ivory.Tower.Types.HandlerCode,
+                        Ivory.Tower.Types.MonitorCode,
                         Ivory.Tower.Types.Signalable,
-                        Ivory.Tower.Types.SystemCode,
-                        Ivory.Tower.Types.TaskCode,
-                        Ivory.Tower.Types.SignalCode,
+                        Ivory.Tower.Types.ThreadCode,
                         Ivory.Tower.Types.Time,
+                        Ivory.Tower.Types.TowerPlatform,
                         Ivory.Tower.Types.Unique
+
+                        -- SrcLoc
+                        Ivory.Tower.SrcLoc.Location
 
   build-depends:        base >= 4.6,
                         monadLib,
+                        containers,
+                        mainland-pretty,
+                        text,
+                        filepath,
                         ivory,
-                        ivory-stdlib
+                        ivory-artifact,
+                        ivory-stdlib,
+                        ivory-backend-c
 
   hs-source-dirs:       src
   default-language:     Haskell2010
   ghc-options:          -Wall -fno-warn-orphans
+
+  if impl(ghc >= 7.8)
+    build-depends:      ghc, hpc, ghc-srcspan-plugin >= 0.2
+    exposed-modules:    Ivory.Tower.SrcLoc.Plugin

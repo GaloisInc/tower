@@ -3,12 +3,14 @@ module Ivory.Tower.AST.Chan
   ( Chan(..)
   ) where
 
-import qualified Ivory.Language.Syntax as I
+import Ivory.Tower.AST.SyncChan
+import Ivory.Tower.AST.Signal
+import Ivory.Tower.AST.Period
+import Ivory.Tower.AST.Init
 
-data Chan =
-  Chan
-    { chan_id :: Integer
-    , chan_size :: Integer
-    , chan_ityp :: I.Type
-    } deriving (Eq, Show)
-
+data Chan
+  = ChanSync   SyncChan
+  | ChanSignal Signal
+  | ChanPeriod Period
+  | ChanInit   Init
+  deriving (Eq, Show, Ord)

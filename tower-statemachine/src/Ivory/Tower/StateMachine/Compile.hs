@@ -2,169 +2,198 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
-module Ivory.Tower.StateMachine.Compile where
+module Ivory.Tower.StateMachine.Compile
+  ( StateMachine
+  , stateMachine_onChan
+  , stateMachine_active
+  , stateMachine
+  ) where
 
-import Control.Monad (forM_)
-import Data.List (find)
+import Unsafe.Coerce
+import Control.Monad (forM_, mapAndUnzipM)
 
 import Ivory.Tower.StateMachine.Monad
 
 import Ivory.Language
 import Ivory.Tower
-import Ivory.Tower.Types.Event (eventDescription)
+import Ivory.Tower.Monad.Monitor (liftTower)
 import Ivory.Stdlib
 
-data Runnable =
-  Runnable
-    { runnable_begin  :: Def ('[]:->())
-    , runnable_active :: Def ('[]:->IBool)
+data StateMachine e =
+  StateMachine
+    { stateMachine_onChan :: forall a . (IvoryArea a, IvoryZero a)
+                          => ChanOutput a -> Monitor e ()
+    , stateMachine_active :: forall eff . Ivory eff IBool
     }
 
-begin :: Runnable -> Ivory eff ()
-begin r = call_ (runnable_begin r)
+-- XXX: take advantage of labeled states by leaving comments with their names
 
-active :: Runnable -> Ivory eff IBool
-active r = call (runnable_active r)
-
-stateMachine :: forall p . String -> MachineM p StateLabel -> Task p Runnable
+stateMachine :: forall e . String -> MachineM e StateLabel
+             -> Monitor e (StateMachine e)
 stateMachine name machine = do
   uniq <- freshname ("machine_" ++ name)
-  tick <- withPeriodicEvent (Milliseconds 1)
-  newstate <- taskChannel' (Proxy :: Proxy 2) Nothing
-  newstate_emitter <- withChannelEmitter (src newstate) "newstateEmitter"
-  newstate_receiver <- withChannelEvent (snk newstate) "newstateEvent"
-  aux uniq tick newstate_emitter newstate_receiver
+  tick <- liftTower (period (Milliseconds 1))
+  newstate <- liftTower channel
+  aux uniq tick (fst newstate) (snd newstate)
   where
   aux :: Unique
-      -> Event (Stored ITime)
-      -> ChannelEmitter (Stored Uint32)
-      -> Event (Stored Uint32)
-      -> Task p Runnable
-  aux uniq tick newstate_emitter newstate_evt = do
+      -> ChanOutput (Stored ITime)
+      -> ChanInput  (Stored MachineState)
+      -> ChanOutput (Stored MachineState)
+      -> Monitor e (StateMachine e)
+  aux uniq tick newstate_in newstate_out = do
     (istate, states) <- runMachineM machine
-    let begin_proc = proc (named "begin") $ body $ do
-          a <- deref activeState
-          unless a $ noReturn $ do
-            store activeState true
-            nextstate istate
-
-        statename :: StateLabel -> String
-        statename lbl = case find aux' states of
-          Just (State _ (Just n) _) -> "state " ++ n
-          _ -> "unnamed state #" ++ show (unStateLabel lbl)
-          where
-          aux' (State l _ _) = l == lbl
-        runner = Runnable
-          { runnable_begin = begin_proc
-          , runnable_active = active_proc
-          }
-        moddef = do
-          incl begin_proc
-          incl active_proc
-          defMemArea active_area
-          defMemArea state_area
-
-        nextstate :: StateLabel -> Ivory (AllocEffects s) ()
-        nextstate lbl@(StateLabel ns) = do
-          -- The first use of nextstate in an event cycle will be the one to be
-          -- accepted, since newstate_emitter comes from a channel of size 1.
-          comment ("newstate " ++ statename lbl)
-          emitV_ newstate_emitter (fromIntegral ns)
-        mkState :: State -> Task p ()
-        mkState (State s maybename handlers) = do
-          ehs <- mapM mkHandler handlers
-          handle newstate_evt nsname $ \newstref -> noReturn $ do
-            comment ("newstate handler for " ++ namecomment)
-            newst <- deref newstref
-            when (newst ==? (fromIntegral (unStateLabel s))) $ do
-              store state newst
-              now <- getTime
-              currenttime <- local (ival now)
-              forM_ ehs $ \(ScopedStatements ss) ->
-                mapM_ mkStmt (ss (constRef currenttime))
-          where
-          namecomment = case maybename of
-            Just n -> "state " ++ n
-            Nothing -> "unnamed state " ++ show (unStateLabel s)
-          nsname = case maybename of
-            Just n -> "newstate_" ++ n
-            Nothing -> "newstate"
-          onEvt :: (IvoryArea area, IvoryZero area)
-                => Event area
-                -> (forall s s' . ConstRef s area -> Ivory (ProcEffects s' ()) ())
-                -> Task p ()
-          onEvt e k = case maybename of
-            Just n  -> handle e n k
-            Nothing -> handle e "statemachineevent" k
-          mkHandler (EntryHandler stmts) = return $ scopedIvory $ \starttimeRef ->
-            case stmts of
-              ScopedStatements ss -> do
-                comment ("entry handler for " ++ namecomment)
-                mapM_ mkStmt (ss starttimeRef)
-          mkHandler (TimeoutHandler i stmts) = do
-            due <- taskLocal (named ("timeoutDue" ++ show i))
-            onEvt tick $ \currenttime -> handleState s $ do
-              comment ("timeout " ++ show i ++ " handler for " ++ namecomment)
-              now <- deref currenttime
-              d <- deref due
-              when ((d >? 0) .&& (d <=? now)) $ case stmts of
-                ScopedStatements ss -> do
-                  mapM_ mkStmt (ss currenttime)
-                  store due 0
-            return $ scopedIvory $ \starttimeRef -> do
-              t <- deref starttimeRef
-              store due (t + (fromIntegral i))
-
-          mkHandler (PeriodHandler i stmts) = do
-            due <- taskLocal (named ("periodDue" ++ show i))
-            onEvt tick $ \currenttime -> case stmts of
-              ScopedStatements ss -> handleState s $ do
-                comment ("period " ++ show i ++ " handler for " ++ namecomment)
-                now <- deref currenttime
-                d   <- deref due
-                when (d <=? now) $ do
-                  mapM_ mkStmt (ss currenttime)
-                  store due (d + (fromIntegral i))
-            return $ scopedIvory $ \starttimeRef -> do
-              t <- deref starttimeRef
-              store due (t + (fromIntegral i))
-
-          mkHandler (EventHandler evt stmts) = do
-            onEvt evt $ case stmts of
-              ScopedStatements ss -> \v -> handleState s $ do
-                comment ("event " ++ eventDescription evt ++ " handler for " ++ namecomment)
-                mapM_ mkStmt (ss v)
-            return $ scopedIvory $ const (return ())
-
-        mkStmt :: Stmt s -> Ivory (AllocEffects s) ()
-        mkStmt (Stmt s) = do
-          cflowM <- s
-          foldr mkCFlow (return ()) (runCFlowM cflowM)
-
-        mkCFlow :: CFlowAST -> Ivory (AllocEffects s) () -> Ivory (AllocEffects s) ()
-        mkCFlow (CFlowBranch b lbl) acc = ifte_ b (nextstate lbl) acc
-        mkCFlow (CFlowHalt   b)     acc = ifte_ b (store activeState false) acc
-
-
-    mapM_ mkState states
-    taskModuleDef moddef
-    return runner
+    mstate       <- state (named "state")
+    handler systemInit (named "init") $ do
+      newstate_e <- emitter newstate_in 1
+      callback $ \_ -> emitV newstate_e (stateLabel istate)
+    makeHandlers mstate states
+    return StateMachine
+      { stateMachine_onChan = \c ->
+          makeChanHandler c mstate states
+      , stateMachine_active = do
+          s <- deref mstate
+          return (s /=? (MachineState 0))
+      }
     where
-    named n = (showUnique uniq) ++ "_" ++ n
+    named n = (showUnique uniq) ++ "_machine_" ++ n
 
-    active_area = area (named "state_active")      (Just (ival false))
-    state_area  = area (named "state")             (Just (ival 0))
+    zipHandlers a b = do
+      (cs, ds) <- mapAndUnzipM a b
+      return (sequence_ cs, \e s -> forM_ ds (\d -> d e s))
 
-    (activeState     :: Ref Global (Stored IBool))  = addrOf active_area
-    (state           :: Ref Global (Stored Uint32)) = addrOf state_area
+    makeHandlers :: Ref Global (Stored MachineState)
+                 -> [State e] -> Monitor e ()
+    makeHandlers mstate ss = do
+      (ns_timeout_hs, tick_timeout_hs) <- zipHandlers (timeoutHandler uniq)
+          (timeoutStateHandlers ss)
+      (ns_period_hs, tick_period_hs) <- zipHandlers (periodHandler uniq)
+          (periodStateHandlers ss)
 
-    active_proc = proc (named "active") $ body $
-      deref activeState >>= ret
+      handler newstate_out (named "newstate") $ do
+        newstate_e <- emitter newstate_in 1
+        callbackV $ \s -> do
+          store mstate s
+        ns_timeout_hs
+        ns_period_hs
+        forM_ (entryStateHandlers ss) $ \(lbl, stmtm) -> do
+          runStmtM stmtm newstate_e (labelCflow lbl mstate)
+
+      handler tick (named "tick") $ do
+        newstate_e <- emitter newstate_in 1
+        tick_timeout_hs newstate_e mstate
+        tick_period_hs newstate_e mstate
 
 
-    handleState :: StateLabel -> Ivory (AllocEffects s) () -> Ivory (ProcEffects s ()) ()
-    handleState (StateLabel s) k = do
-      current <- deref state
-      when (current ==? (fromIntegral s)) (noReturn k)
+    makeChanHandler :: (IvoryArea a, IvoryZero a)
+                     => ChanOutput a
+                     -> Ref Global (Stored MachineState)
+                     -> [State e] -> Monitor e ()
+    makeChanHandler cout mstate ss = do
+      handler cout (named "chan") $ do
+        newstate_e <- emitter newstate_in 1
+        forM_ (chanStateHandlers ss cout) $ \(lbl, stmtm) -> do
+          runStmtM stmtm newstate_e (labelCflow lbl mstate)
+
+    labelCflow :: StateLabel -> Ref Global (Stored MachineState) -> ICflow
+    labelCflow lbl mstate = ICflow $ \k -> do
+      st <- deref mstate
+      when (st ==? stateLabel lbl) k
+
+entryStateHandlers :: [State e]
+  -> [(StateLabel, StmtM (Stored MachineState) e ())]
+entryStateHandlers ss =
+  [ (lbl, m)
+  | (State lbl _ hs) <- ss
+  , (EntryStateHandler m) <- hs
+  ]
+
+timeoutStateHandlers :: [State e]
+  -> [(StateLabel, Microseconds, StmtM (Stored ITime) e ())]
+timeoutStateHandlers ss =
+  [ (lbl, t, m)
+  | (State lbl _ hs) <- ss
+  , (TimeoutStateHandler t m) <- hs
+  ]
+
+periodStateHandlers :: [State e]
+  -> [(StateLabel, Microseconds, StmtM (Stored ITime) e ())]
+periodStateHandlers ss =
+  [ (lbl, t, m)
+  | (State lbl _ hs) <- ss
+  , (PeriodStateHandler t m) <- hs
+  ]
+
+chanStateHandlers :: forall a e
+                   . [State e]
+                  -> ChanOutput a
+                  -> [(StateLabel, StmtM a e ())]
+chanStateHandlers ss c =
+  [ (lbl, unsafeCoerce m)
+  | (State lbl _ hs) <- ss
+  , (ChanStateHandler co m) <- hs
+  , unsafeCoerce co == c
+  ]
+
+
+timeoutHandler  :: Unique
+                -> ( StateLabel
+                   , Microseconds
+                   , StmtM (Stored ITime) e ())
+                -> Monitor e
+                      ( Handler (Stored MachineState) e ()
+                      ,    Emitter (Stored MachineState)
+                        -> Ref Global (Stored MachineState)
+                        -> Handler (Stored ITime) e ()
+                      )
+
+timeoutHandler uniq (lbl, t, stmtm) = do
+  has_run <- state (named "has_run")
+  deadline <- state (named "deadline")
+  let reset = callback $ \_ -> do
+        now <- getTime
+        store deadline (now + toITime t)
+        store has_run false
+      trigger e mstate = runStmtM stmtm e $ ICflow $ \k -> do
+        st <- deref mstate
+        r <- deref has_run
+        dl <- deref deadline
+        now <- getTime
+        when ( st ==? stateLabel lbl
+              .&& iNot r
+              .&& now >=? dl) $
+          store has_run true >> k
+
+  return (reset, trigger)
+  where
+  named n = showUnique uniq ++ "_machine_tout_" ++ prettyTime t ++ "_" ++ n
+
+periodHandler :: Unique
+              -> ( StateLabel
+                 , Microseconds
+                 , StmtM (Stored ITime) e ())
+              -> Monitor e
+                   ( Handler (Stored MachineState) e ()
+                   ,    Emitter (Stored MachineState)
+                     -> Ref Global (Stored MachineState)
+                     -> Handler (Stored ITime) e ()
+                   )
+periodHandler uniq (lbl, t, stmtm) = do
+  deadline <- state (named "deadline")
+  let reset = callback $ \_ -> do
+        now <- getTime
+        store deadline (now + toITime t)
+      trigger e mstate = runStmtM stmtm e $ ICflow $ \k -> do
+        st <- deref mstate
+        dl <- deref deadline
+        now <- getTime
+        when ( st ==? stateLabel lbl
+              .&& now >=? dl) $
+          store deadline (now + toITime t) >> k
+
+  return (reset, trigger)
+  where
+  named n = showUnique uniq ++ "_machine_per_" ++ prettyTime t ++ "_" ++ n
 

@@ -1,2 +1,2 @@
-dist
-cabal-dev/
+aadl-files
+src/Tower/AADL/Simple.hs

@@ -1,28 +1,50 @@
 name:                tower-aadl
-version:             0.8.0.0
+version:             0.0.1.0
 author:              Galois, Inc.
-maintainer:          pat@galois.com
+maintainer:          leepike@galois.com
 category:            Language
 build-type:          Simple
 cabal-version:       >= 1.10
 license:             BSD3
 
-data-files: ivory-aadl-headers/tower_gettimemillis.h
-
 library
-  exposed-modules:      Ivory.Tower.Compile.AADL,
-                        Ivory.Tower.Compile.AADL.SystemDoc,
-                        Ivory.Tower.Compile.AADL.SearchDir
-  other-modules:        Paths_tower_aadl
-  build-depends:        base >= 4.6,
-                        template-haskell >= 2.8,
-                        filepath,
-                        ivory,
-                        ivory-stdlib,
-                        ivory-backend-aadl,
-                        tower        >= 0.8
+  exposed-modules: Tower.AADL
+                 , Tower.AADL.AST
+                 , Tower.AADL.AST.Common
+                 , Tower.AADL.Config
+                 , Tower.AADL.CmdlineFrontend
+                 , Tower.AADL.FromTower
+                 , Tower.AADL.Monad
+                 , Tower.AADL.Render
+                 , Tower.AADL.Render.Common
+                 , Tower.AADL.Render.Types
+
+  build-depends: base >= 4.6
+               , transformers
+               , containers
+               , monadLib
+               , directory
+               , filepath
+               , wl-pprint
+               , ivory >= 0.1.0.2
+               , ivory-artifact
+               , tower
 
   hs-source-dirs:       src
   default-language:     Haskell2010
-  ghc-options:          -Wall
+  ghc-options:          -Wall -fno-warn-orphans
 
+executable test
+  hs-source-dirs:   test
+  main-is:          Simple.hs
+  build-depends: base >= 4.6
+               , ivory >= 0.1.0.1
+               , tower
+               , tower-aadl
+  default-language: Haskell2010
+  if impl(ghc >= 7.8)
+    ghc-options:        -Wall -fhpc -fplugin=Ivory.Tower.SrcLoc.Plugin -fplugin-opt=Ivory.Tower.SrcLoc.Plugin:kill-foreign-stubs
+  else
+    ghc-options:        -Wall
+
+  ghc-options:      -Wall

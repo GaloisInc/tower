@@ -5,29 +5,28 @@
 
 module Ivory.Tower.StateMachine
   ( on
-  , period
+  , periodic
   , timeout
   , entry
 
-  , Runnable
-  , active
-  , begin
-  , stateMachine
-
   , MachineM
-  , Stmt
   , StateLabel
 
-  , state
-  , stateNamed
+  , machineState
+  , machineStateNamed
   , branch
   , goto
   , haltWhen
   , halt
-  , liftIvory
-  , liftIvory_
+
   , machineLocal
   , machineLocalInit
+
+  , machineControl
+  , machineCallback
+  , machineEmitter
+
+  , module Ivory.Tower.StateMachine.Compile
   ) where
 
 import Ivory.Language
@@ -35,34 +34,34 @@ import Ivory.Tower
 import Ivory.Tower.StateMachine.Monad
 import Ivory.Tower.StateMachine.Compile
 
-on :: forall area
-         . (IvoryArea area, IvoryZero area)
-        => Event area
-        -> (forall s s' . ConstRef s' area -> StmtM s ())
-        -> StateM ()
-on e stmtM = writeHandler $ EventHandler e (ScopedStatements stmts)
-  where
-  stmts :: ConstRef s' area -> [Stmt s]
-  stmts ref = runStmtM (stmtM ref)
+on :: forall area e
+    . (IvoryArea area, IvoryZero area)
+   => ChanOutput area
+   -> StmtM area e ()
+   -> StateM e ()
+on c s = writeStateHandler
+       $ ChanStateHandler c
+       $ s
 
-entry :: (forall s . StmtM s ()) -> StateM ()
-entry stmtM = writeHandler $ EntryHandler (ScopedStatements (const (runStmtM stmtM)))
+entry :: StmtM (Stored MachineState) e () -> StateM e ()
+entry s = writeStateHandler
+        $ EntryStateHandler s
 
-timeout :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
-timeout t stmtM = writeHandler $ TimeoutHandler (toMicroseconds t)
-                                    (ScopedStatements (const (runStmtM stmtM)))
+timeout :: Time a => a -> StmtM (Stored ITime) e () -> StateM e ()
+timeout t s = writeStateHandler
+            $ TimeoutStateHandler (microseconds t) s
 
-period :: Time a => a -> (forall s . StmtM s ()) -> StateM ()
-period t stmtM = writeHandler $ PeriodHandler (toMicroseconds t)
-                                    (ScopedStatements (const (runStmtM stmtM)))
+periodic :: Time a => a -> StmtM (Stored ITime) e () -> StateM e ()
+periodic t s = writeStateHandler
+             $ PeriodStateHandler (microseconds t) s
 
-state :: StateM () -> MachineM p StateLabel
-state sh = stateAux sh Nothing
+machineState :: StateM e () -> MachineM e StateLabel
+machineState sh = stateAux sh Nothing
 
-stateNamed :: String -> StateM () -> MachineM p StateLabel
-stateNamed n sh = stateAux sh (Just n)
+machineStateNamed :: String -> StateM e () -> MachineM e StateLabel
+machineStateNamed n sh = stateAux sh (Just n)
 
-stateAux :: StateM () -> Maybe String-> MachineM p StateLabel
+stateAux :: StateM e () -> Maybe String-> MachineM e StateLabel
 stateAux sh name = do
   l <- label
   writeState $ runStateM sh l name
@@ -80,9 +79,8 @@ haltWhen p = cflow $ CFlowHalt p
 halt :: (CFlowable m) => m ()
 halt = haltWhen true
 
-liftIvory_ :: Ivory (AllocEffects s) () -> StmtM s ()
-liftIvory_ i = writeStmt $ Stmt (i >> return (return ()))
-
-liftIvory :: Ivory (AllocEffects s) CFlow-> StmtM s ()
-liftIvory i = writeStmt $ Stmt i
+machineCallback :: (IvoryArea a)
+                => (forall s s'. ConstRef s a -> Ivory (AllocEffects s') ())
+                -> StmtM a e ()
+machineCallback k = machineControl (\a -> k a >> return (return ()))
 

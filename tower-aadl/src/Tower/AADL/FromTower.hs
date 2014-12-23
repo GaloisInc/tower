@@ -40,11 +40,11 @@ fromTower c t = System { .. }
 mkProcess :: Config -> A.Tower -> Process
 mkProcess c t = Process { .. }
   where
-  processName = (configSystemName c) ++ "_process"
+  processName       = configSystemName c ++ "_process"
   processComponents = activeThreads ++ passiveThreads
-  activeThreads  = map (fromThread t) (skipInitThread (A.towerThreads t))
-  passiveThreads = map (fromMonitor c) (A.tower_monitors t)
-  skipInitThread = filter (("thread_init" /=) . A.threadName)
+  activeThreads     = map (fromThread t) (skipInitThread (A.towerThreads t))
+  passiveThreads    = map (fromMonitor c) (A.tower_monitors t)
+  skipInitThread    = filter (("thread_init" /=) . A.threadName)
 
 fromThread :: A.Tower -> A.Thread -> Thread
 fromThread twr t = Thread { .. }
@@ -57,7 +57,7 @@ fromThread twr t = Thread { .. }
     , DispatchProtocol (dispatch (A.threadChan t))
 
     -- XXX made up for now
-     , ExecTime 10 100
+    , ExecTime 10 100
     , StackSize 100
     , Priority 1
     ]

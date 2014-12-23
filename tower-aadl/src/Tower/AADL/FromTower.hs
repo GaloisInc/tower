@@ -18,7 +18,7 @@ import           Data.Monoid (mconcat)
 
 import qualified Ivory.Tower.AST as A
 import qualified Ivory.Tower.Types.Time as T
-import           Ivory.Tower.Types.Unique (showUnique)
+import           Ivory.Tower.Codegen.Handler (callbackProcName)
 import qualified Ivory.Tower.AST.Graph as G
 
 import           Tower.AADL.AST
@@ -43,7 +43,7 @@ mkProcess c t = Process { .. }
   processName       = configSystemName c ++ "_process"
   processComponents = activeThreads ++ passiveThreads
   activeThreads     = map (fromThread t) (skipInitThread (A.towerThreads t))
-  passiveThreads    = map (fromMonitor c) (A.tower_monitors t)
+  passiveThreads    = map (fromMonitor c t) (A.tower_monitors t)
   skipInitThread    = filter (("thread_init" /=) . A.threadName)
 
 fromThread :: A.Tower -> A.Thread -> Thread
@@ -86,12 +86,14 @@ chanFeature twr t = case c of
   chanCallbacks = Prim (map A.monitorName chanMonitors)
   chanMonitors  = map fst (G.towerChanHandlers twr c)
 
-fromMonitor :: Config -> A.Monitor -> Thread
-fromMonitor c m = Thread { .. }
+fromMonitor :: Config -> A.Tower -> A.Monitor -> Thread
+fromMonitor c t m = Thread { .. }
   where
   hs               = A.monitor_handlers m
-  threadComments   = catHandlerSrcLocs (concatMap A.handler_comments hs)
-  (fs, ps)         = concatPair (map (fromHandler c threadName) hs)
+  threadComments   =
+    catHandlerSrcLocs (concatMap A.handler_comments hs)
+  (fs, ps)         =
+    concatPair (map (fromHandler c threadName (A.towerThreads t)) hs)
   threadName       = A.monitorName m
   threadFeatures   = fs
   threadProperties = ps ++
@@ -104,12 +106,17 @@ fromMonitor c m = Thread { .. }
     , Priority 1
     ]
 
-fromHandler :: Config -> String -> A.Handler -> ([Feature], [ThreadProperty])
-fromHandler c threadName h = (cf:fs, ps)
+fromHandler :: Config
+            -> String
+            -> [A.Thread]
+            -> A.Handler
+            -> ([Feature], [ThreadProperty])
+fromHandler c threadName thds h = (cf:fs, ps)
   where
-  callbacks = map showUnique (A.handler_callbacks h)
-  cf        = fromInputChan c threadName callbacks (A.handler_chan h)
-  (fs, ps)  = concatPair (map fromEmitter (A.handler_emitters h))
+  callbacks   = concatMap mkCbName (A.handler_callbacks h)
+  mkCbName cb = map (callbackProcName cb (A.handler_name h)) thds
+  cf          = fromInputChan c threadName callbacks (A.handler_chan h)
+  (fs, ps)    = concatPair (map fromEmitter (A.handler_emitters h))
 
 -- | Process Tower handlers which take inputs and run callbacks.
 fromInputChan :: Config -> String -> [String] -> A.Chan -> Feature

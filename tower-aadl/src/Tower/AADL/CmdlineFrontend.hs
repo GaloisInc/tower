@@ -56,10 +56,6 @@ initialOpts = Opts
 
 --------------------------------------------------------------------------------
 
-setMonitorSrcs :: String -> OptParser Opts
-setMonitorSrcs s = success
-  (\opts -> opts { configOpts = (configOpts opts) { configMonitorSrcs = s }})
-
 setSrcsDir :: FilePath -> OptParser Opts
 setSrcsDir s = success (\opts -> opts { configOpts = (configOpts opts) { configSrcsDir = s }})
 
@@ -91,9 +87,7 @@ mkOptArg o setter arg help = Option "" [o] (ReqArg setter arg) help
 
 options :: [OptDescr (OptParser Opts)]
 options =
-  [ mkOptArg "monitor-srcs" setMonitorSrcs "PATH"
-      "construct .c filename for callbacks from monitor name."
-  , mkOptArg "srcs-dir" setSrcsDir "PATH"
+  [ mkOptArg "srcs-dir" setSrcsDir "PATH"
       "path to C sources"
   , mkOptArg "system" setSystemName "NAME"
       "system name"

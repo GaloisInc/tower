@@ -11,9 +11,7 @@ module Tower.AADL.Config where
 --------------------------------------------------------------------------------
 
 data Config = Config
-  { configMonitorSrcs :: String
-  -- ^ Extension for the monitor name.
-  , configSrcsDir     :: FilePath
+  { configSrcsDir     :: FilePath
   -- ^ Directory for output files (or standard out).
   , configSystemName  :: String
   -- ^ System name.
@@ -25,8 +23,7 @@ data Config = Config
 
 initialConfig :: Config
 initialConfig = Config
-  { configMonitorSrcs = ".c"
-  , configSrcsDir     = ""
+  { configSrcsDir     = ""
   , configSystemName  = "system"
   , configSystemOS    = "OS"
   , configSystemHW    = "HW"

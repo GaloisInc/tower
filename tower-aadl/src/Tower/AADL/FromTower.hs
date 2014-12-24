@@ -12,14 +12,16 @@ module Tower.AADL.FromTower
   ) where
 
 import           Prelude hiding (init)
-import           System.FilePath ((</>))
+import           System.FilePath ((</>), addExtension)
 import           Data.List (partition)
 import           Data.Monoid (mconcat)
 
 import qualified Ivory.Tower.AST as A
-import qualified Ivory.Tower.Types.Time as T
-import           Ivory.Tower.Codegen.Handler (callbackProcName)
 import qualified Ivory.Tower.AST.Graph as G
+import qualified Ivory.Tower.Types.Time as T
+import qualified Ivory.Tower.Types.Unique as U
+import           Ivory.Tower.Codegen.Handler (callbackProcName)
+
 
 import           Tower.AADL.AST
 import           Tower.AADL.Config
@@ -90,10 +92,9 @@ fromMonitor :: Config -> A.Tower -> A.Monitor -> Thread
 fromMonitor c t m = Thread { .. }
   where
   hs               = A.monitor_handlers m
-  threadComments   =
-    catHandlerSrcLocs (concatMap A.handler_comments hs)
-  (fs, ps)         =
-    concatPair (map (fromHandler c threadName (A.towerThreads t)) hs)
+  threadComments   = catHandlerSrcLocs
+                       (concatMap A.handler_comments hs)
+  (fs, ps)         = concatPair (map (fromHandler c t) hs)
   threadName       = A.monitorName m
   threadFeatures   = fs
   threadProperties = ps ++
@@ -106,21 +107,36 @@ fromMonitor c t m = Thread { .. }
     , Priority 1
     ]
 
+type Sym = String
+type Src = String
+
+-- | Create the feature groups and thread properties from a Tower handler. A
+-- handler is a collection of emitters and callbacks associated with a single
+-- input channel.
 fromHandler :: Config
-            -> String
-            -> [A.Thread]
+            -> A.Tower
             -> A.Handler
             -> ([Feature], [ThreadProperty])
-fromHandler c threadName thds h = (cf:fs, ps)
+fromHandler c t h = (cf:fs, ps)
   where
-  callbacks   = concatMap mkCbName (A.handler_callbacks h)
-  mkCbName cb = map (callbackProcName cb (A.handler_name h)) thds
-  cf          = fromInputChan c threadName callbacks (A.handler_chan h)
-  (fs, ps)    = concatPair (map fromEmitter (A.handler_emitters h))
+  (fs, ps) = concatPair (map fromEmitter (A.handler_emitters h))
+  cf       = fromInputChan cbs (A.handler_chan h)
+  cbs      = concatMap mkCbNames (A.handler_callbacks h)
 
--- | Process Tower handlers which take inputs and run callbacks.
-fromInputChan :: Config -> String -> [String] -> A.Chan -> Feature
-fromInputChan config threadName callbacks c = case c of
+  -- Use Tower's API to create a callback function symbol based on the callback
+  -- (a `Unique`) and the Tower threads that call it. Those functions are
+  -- defined in .c files named after their active threads.
+  mkCbNames :: U.Unique -> [(Src, Sym)]
+  mkCbNames cb = map (mkSrc &&& mkSym) cbThds
+    where
+    mkSrc thd = (flip addExtension) "c"
+              $ configSrcsDir c
+            </> A.threadUserCodeModName thd ++ A.threadName thd
+    mkSym     = callbackProcName cb (A.handler_name h)
+    cbThds    = G.handlerThreads t h
+
+fromInputChan :: [(Src, Sym)] -> A.Chan -> Feature
+fromInputChan callbacks c = case c of
   A.ChanSync s
     -> let chanType  = A.sync_chan_type  s in
        let chanLabel = syncChanLabel s in
@@ -135,8 +151,7 @@ fromInputChan config threadName callbacks c = case c of
     -> error "Impossible ChanInit in fromInputChan."
   where
   chanHandle    = Input
-  chanCallbacks = User (zip (repeat srcs) callbacks)
-  srcs = configSrcsDir config </> (threadName ++ configMonitorSrcs config)
+  chanCallbacks = User callbacks
 
 fromEmitter :: A.Emitter -> ([Feature], [ThreadProperty])
 fromEmitter e = (fs, ps)

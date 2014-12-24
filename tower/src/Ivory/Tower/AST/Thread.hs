@@ -1,6 +1,9 @@
 module Ivory.Tower.AST.Thread
   ( Thread(..)
   , threadName
+  , threadUserCodeModName
+  , threadGenCodeModName
+  , threadLoopProcName
   , threadChan
   ) where
 
@@ -26,6 +29,15 @@ threadName (PeriodThread p) =
        else "_phase_" ++ prettyTime ph
   where
   ph = period_phase p
+
+threadUserCodeModName :: Thread -> String
+threadUserCodeModName t = "tower_user_" ++ threadName t
+
+threadGenCodeModName :: Thread -> String
+threadGenCodeModName t = "tower_gen_" ++ threadName t
+
+threadLoopProcName :: Thread -> String
+threadLoopProcName t = "loop_" ++ threadName t
 
 threadChan :: Thread -> Chan
 threadChan (PeriodThread p) = ChanPeriod p

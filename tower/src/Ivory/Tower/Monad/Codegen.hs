@@ -69,6 +69,7 @@ codegenMonitor m f = do
 codegenSignal :: (Signalable s) => s -> (forall eff . Ivory eff ())
               -> Codegen e ()
 codegenSignal s i = withGeneratedCode $
+  generatedCodeInsertInitCode (signalInit s) .
   generatedCodeInsertSignalCode (signalName s) (\i' -> (signalHandler s) (i >> i'))
 
 codegenArtifact :: Artifact -> Codegen e ()

@@ -8,6 +8,7 @@ module Ivory.Tower.Types.GeneratedCode
   , generatedCodeInsertThreadCode
   , generatedCodeInsertMonitorCode
   , generatedCodeInsertSignalCode
+  , generatedCodeInsertInitCode
   , generatedCodeInsertArtifact
   , generatedCodeForSignal
   , emptyGeneratedCode
@@ -26,6 +27,7 @@ data GeneratedCode = GeneratedCode
   , generatedcode_threads   :: Map.Map AST.Thread ThreadCode
   , generatedcode_monitors  :: Map.Map AST.Monitor MonitorCode
   , generatedcode_signals   :: Map.Map String GeneratedSignal
+  , generatedcode_init      :: forall eff. Ivory eff ()
   , generatedcode_artifacts :: [Artifact]
   }
 
@@ -63,6 +65,11 @@ generatedCodeInsertSignalCode signame sigcode g =
   g { generatedcode_signals = ins (generatedcode_signals g) }
   where ins = Map.insert signame (GeneratedSignal sigcode)
 
+generatedCodeInsertInitCode :: (forall eff. Ivory eff ())
+                            -> GeneratedCode -> GeneratedCode
+generatedCodeInsertInitCode code g =
+  g { generatedcode_init = generatedcode_init g >> code }
+
 generatedCodeInsertArtifact :: Artifact
                             -> GeneratedCode -> GeneratedCode
 generatedCodeInsertArtifact a g =
@@ -84,6 +91,7 @@ emptyGeneratedCode = GeneratedCode
       [ (initThread, emptyThreadCode initThread) ]
   , generatedcode_monitors  = Map.empty
   , generatedcode_signals   = Map.empty
+  , generatedcode_init      = return ()
   , generatedcode_artifacts = []
   }
   where

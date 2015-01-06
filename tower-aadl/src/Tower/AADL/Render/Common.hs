@@ -27,6 +27,7 @@ tab = indent 2
 stmt :: Doc -> Doc
 stmt d = d <> semi
 
+-- @ns :: d1@
 nameSpace :: Doc -> Doc -> Doc
 nameSpace d0 d1 = d0 <> colon <> colon <> d1
 
@@ -38,6 +39,9 @@ fromBaseTypes = nameSpace (text "Base_Types")
 
 fromTypeDefs :: Doc -> Doc
 fromTypeDefs = nameSpace (text "TYPES")
+
+fromDataModel :: Doc -> Doc
+fromDataModel = nameSpace (text "Data_Model")
 
 (==>) :: Doc -> Doc -> Doc
 (==>) d0 d1 = d0 <+> equals <> rangle <+> d1

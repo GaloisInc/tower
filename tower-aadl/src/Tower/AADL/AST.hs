@@ -11,11 +11,28 @@ import qualified Ivory.Tower.AST.Comment    as C
 
 --------------------------------------------------------------------------------
 
-data Package = Packagek
+data Package = Package
   { packageName      :: Name
   , packageImports   :: [String]
   , packageSystems   :: [System]
   } deriving (Show, Eq)
+
+data System = System
+  { systemName       :: Name
+  , systemComponents :: [Process]
+  -- ^ For eChronos and seL4, there will be one process per system.
+  , systemProperties :: [SystemProperty]
+  } deriving (Show, Eq)
+
+data Process = Process
+  { processName        :: Name
+  , processComponents  :: [Thread]
+  } deriving (Show, Eq)
+
+data SystemProperty =
+    SystemOS String
+  | SystemHW String
+  deriving (Show, Eq)
 
 data Thread = Thread
   { threadName       :: Name
@@ -68,23 +85,6 @@ data DispatchProtocol =
 data ThreadType =
     Passive
   | Active
-  deriving (Show, Eq)
-
-data Process = Process
-  { processName        :: Name
-  , processComponents  :: [Thread]
-  } deriving (Show, Eq)
-
-data System = System
-  { systemName       :: Name
-  , systemComponents :: [Process]
-  -- ^ For eChronos and seL4, there will be one process per system.
-  , systemProperties :: [SystemProperty]
-  } deriving (Show, Eq)
-
-data SystemProperty =
-    SystemOS String
-  | SystemHW String
   deriving (Show, Eq)
 
 -- | An AADL variable.

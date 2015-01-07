@@ -12,7 +12,7 @@ module Tower.AADL.Config where
 
 data Config = Config
   { configSrcsDir     :: FilePath
-  -- ^ Directory for output files (or standard out).
+  -- ^ Location of C sources.
   , configSystemName  :: String
   -- ^ System name.
   , configSystemOS    :: String

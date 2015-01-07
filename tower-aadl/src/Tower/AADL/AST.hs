@@ -104,3 +104,20 @@ type FuncSym = String
 
 --------------------------------------------------------------------------------
 
+-- | Takes a `System` and decomposes the `Thread`s.
+decomposeThreads :: System -> (System, [Thread])
+decomposeThreads sys =
+  (sys', concat thds)
+  where
+  sys' = sys { systemName       = systemName sys
+             , systemComponents = comps
+             , systemProperties = systemProperties sys
+             }
+  (comps,thds) = unzip (map go (systemComponents sys))
+  go p = ( p { processName       = processName p
+             , processComponents = []
+             }
+         , processComponents p
+         )
+
+

@@ -74,13 +74,13 @@ chanFeature :: A.Tower -> A.Thread -> Channel
 chanFeature twr t = case c of
   A.ChanSync{}
     -> error "Impossible: in fromThread: active thread with ChanSync."
-  A.ChanSignal s
+  A.ChanSignal _s
     -> error $ "chanFeature " ++ show c
   A.ChanPeriod per
     -> let chanLabel = prettyPeriod per in
        let chanType  = A.period_ty per in
        Channel { .. }
-  A.ChanInit init
+  A.ChanInit _init
     -> error $ "chanFeature " ++ show c
   where
   c             = A.threadChan t

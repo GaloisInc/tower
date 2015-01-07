@@ -30,7 +30,9 @@ renderType ty = case ty of
     I.TyDouble            -> basetype "Double"
     I.TyStruct n          -> fromTypeDefs (text n)
     I.TyRef t             -> renderType t  -- LOSSY
-    I.TyArr len t         -> arrayType len t
+    I.TyArr sz t          -> text (arrayName sz t) --XXX namespace? issue with
+                                                   --multi-file (always put types in
+                                                   --own file?)
     I.TyConstRef _t       -> error "cannot translate TyConstRef"
     I.TyPtr _t            -> error "cannot translate TyPtr"
     I.TyCArray _t         -> error "cannot translate TyCArray"
@@ -51,9 +53,6 @@ renderType ty = case ty of
   wordSize I.Word16 = "Unsigned_16"
   wordSize I.Word32 = "Unsigned_32"
   wordSize I.Word64 = "Unsigned_64"
-
-arrayType :: Int -> I.Type -> Doc
-arrayType len basetype = error "arrays not implemented"
 
 --------------------------------------------------------------------------------
 -- Define structures

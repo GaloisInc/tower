@@ -13,6 +13,7 @@ module Tower.AADL
   , initialConfig
   ) where
 
+import           Control.Arrow
 import           System.IO (openFile, IOMode(..), hClose)
 import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))
@@ -37,22 +38,37 @@ compileAADL t = do
   runCompileAADL opts t
 
 runCompileAADL :: Opts -> Tower () () -> IO ()
-runCompileAADL opts t = do
-  let towerAST = fst (runTower t ())
-  let ast = fromTower (configOpts opts) towerAST
-  let doc = renderSystem ast
+runCompileAADL opts t =
   case genDirOpts opts of
-    Nothing  -> putDoc (header <$$> doc <$$> empty)
-    Just dir -> do createDirectoryIfMissing True dir
-                   outputAADL dir (A.systemName ast) doc
+    Nothing
+      -> putDoc (header <$$> renderSystem fullSys <$$> empty)
+    Just dir
+      -> do createDirectoryIfMissing True dir
+            if multiFile opts
+              then do
+                let (sys,thds) = A.decomposeThreads fullSys
+                let thdDocs :: [(String, Doc)]
+                    thdDocs = map (A.threadName &&& renderThread) thds
+                mapM_ (uncurry (outputAADL dir)) thdDocs
+                outSys sys
+              else outSys fullSys
+      where
+      outSys sys = outputAADL dir (A.systemName sys) (renderSystem sys)
+  where
+  fullSys = mkSystem opts t
+
+mkSystem :: Opts -> Tower () () -> A.System
+mkSystem opts t = fromTower (configOpts opts) towerAST
+  where
+  towerAST = fst (runTower t ())
 
 outputAADL :: FilePath -> String -> Doc -> IO ()
-outputAADL dir sys contents = do
+outputAADL dir nm contents = do
   h <- openFile fname WriteMode
   hPutDoc h contents
   hClose h
   where
-  fname = addExtension (dir </> sys) ".aadl"
+  fname = addExtension (dir </> nm) ".aadl"
 
 header :: Doc
 header = renderStringComment "File generated from Tower-AADL compiler" <$$> empty

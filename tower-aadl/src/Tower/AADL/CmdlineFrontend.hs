@@ -43,14 +43,20 @@ parseOptions opts args = case getOpt Permute opts args of
 
 data Opts = Opts
   { configOpts :: Config
+  -- ^ Config options.
   , genDirOpts :: Maybe FilePath
+  -- ^ Location to generate AADL files (or use standard out).
+  , multiFile  :: Bool
+  -- ^ Decompose AADL output into separate files. Useful for large models.
   , helpOpts   :: Bool
+  -- ^ Help.
   } deriving (Show, Read, Eq)
 
 initialOpts :: Opts
 initialOpts = Opts
   { configOpts = initialConfig
   , genDirOpts = Just ""
+  , multiFile  = False
   , helpOpts   = False
   }
 
@@ -73,6 +79,9 @@ setStdOut = success (\opts -> opts { genDirOpts = Nothing })
 
 setGenDir :: FilePath -> OptParser Opts
 setGenDir s = success (\opts -> opts { genDirOpts = Just s })
+
+setMultiFile :: OptParser Opts
+setMultiFile = success (\opts -> opts { multiFile = True })
 
 setHelp :: OptParser Opts
 setHelp = success (\opts -> opts { helpOpts = True })
@@ -99,6 +108,8 @@ options =
       "print AADL to standard out"
   , mkOptArg "aadl-dir" setGenDir "PATH"
       "path to save AADL files"
+  , mkOptNoArg "multiFile" setMultiFile
+      "set multi-file mode"
   , mkOptNoArg "help" setHelp
       "display this message"
   ]

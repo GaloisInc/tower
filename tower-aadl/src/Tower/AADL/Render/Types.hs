@@ -89,11 +89,13 @@ renderArray sz ty =
         renderCompoundTy nm empty
   <$$$> renderCompoundTyImp nm blk
   where
-  nm = "a_array" -- XXX
+  -- XXX Construct names by showing len and showing the type. If these names
+  -- become unweildy, we can add a state monad to add fresh names.
+  nm = arrayName sz ty
   blk =  text "properties"
     <$$> renderDataRep "Array"
     -- XXX
-    <$$> stmt (fromDataModel (text "BaseType") ==> renderClassifier)
+    <$$> stmt (fromDataModel (text "BaseType")  ==> renderClassifier)
     <$$> stmt (fromDataModel (text "Dimension") ==> parens (int sz))
   renderClassifier =
     -- XXX
@@ -101,6 +103,9 @@ renderArray sz ty =
 
 -- What else besides "Base_Type"?
 -- Data_Model::Base_Type => (classifier (Base_Types::Unsigned_32));
+
+arrayName :: Int -> I.Type -> String
+arrayName sz ty = "array_" ++ show sz ++ "_" ++ show ty
 
 --------------------------------------------------------------------------------
 

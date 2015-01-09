@@ -17,20 +17,20 @@ import Ivory.Tower.Monad.Base
 
 import Ivory.Language
 
-handler :: (IvoryArea a)
+handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
 handler (ChanOutput (Chan chanast)) name block = do
   runHandler name chanast block
 
-state :: (IvoryArea a)
+state :: (IvoryArea a, IvoryZero a)
       => String -> Monitor e (Ref Global a)
 state n = state' n Nothing
 
-stateInit :: (IvoryArea a)
+stateInit :: (IvoryArea a, IvoryZero a)
           => String -> Init a -> Monitor e (Ref Global a)
 stateInit n i = state' n (Just i)
 
-state' :: (IvoryArea a)
+state' :: (IvoryArea a, IvoryZero a)
        => String
        -> Maybe (Init a)
        -> Monitor e (Ref Global a)

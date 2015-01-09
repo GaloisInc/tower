@@ -79,7 +79,7 @@ haltWhen p = cflow $ CFlowHalt p
 halt :: (CFlowable m) => m ()
 halt = haltWhen true
 
-machineCallback :: (IvoryArea a)
+machineCallback :: (IvoryArea a, IvoryZero a)
                 => (forall s s'. ConstRef s a -> Ivory (AllocEffects s') ())
                 -> StmtM a e ()
 machineCallback k = machineControl (\a -> k a >> return (return ()))

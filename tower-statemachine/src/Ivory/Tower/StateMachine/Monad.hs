@@ -83,20 +83,20 @@ putStmtM k = StmtM $ do
   (e, (ICflow r)) <- ask
   lift (k e r)
 
-machineControl :: (IvoryArea a)
+machineControl :: (IvoryArea a, IvoryZero a)
                => (forall s s'. ConstRef s a -> Ivory (AllocEffects s') (CFlowM ()))
                -> StmtM a e ()
 machineControl k = putStmtM $ \e r -> callback $ \a -> r $ do
     cfM <- k a
     mkCFlow cfM e
 
-machineEmitter :: (IvoryArea a)
+machineEmitter :: (IvoryArea a, IvoryZero a)
                => ChanInput a
                -> Integer
                -> StmtM b e (Emitter a)
 machineEmitter c b = putStmtM $ \_ _ -> emitter c b
 
-instance (IvoryArea a) => CFlowable (StmtM a e) where
+instance (IvoryArea a, IvoryZero a) => CFlowable (StmtM a e) where
   cflow a = machineControl (const (return (cflow a)))
 
 data State e = State StateLabel (Maybe String) [StateHandler e]
@@ -146,7 +146,7 @@ machineLocal :: (IvoryArea area, IvoryZero area)
              => String -> MachineM e (Ref Global area)
 machineLocal n = MachineM $ lift $ lift $ state n
 
-machineLocalInit :: (IvoryArea area)
+machineLocalInit :: (IvoryArea area, IvoryZero area)
                  => String -> Init area -> MachineM e (Ref Global area)
 machineLocalInit n iv = MachineM $ lift $ lift $ stateInit n iv
 

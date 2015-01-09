@@ -30,7 +30,7 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 
 emitter :: forall a b e
-         . (IvoryArea a)
+         . (IvoryArea a, IvoryZero a)
         => ChanInput a -> Integer -> Handler b e (Emitter a)
 emitter (ChanInput (Chan chanast)) bound = do
   n <- fresh
@@ -42,7 +42,7 @@ emitter (ChanInput (Chan chanast)) bound = do
   return e
 
 callback :: forall s a e
-          . (IvoryArea a)
+          . (IvoryArea a, IvoryZero a)
          => (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
          -> Handler a e ()
 callback b = do
@@ -53,7 +53,7 @@ callback b = do
     incl (callbackProc (callbackProcName u hname t) b)
 
 callbackV :: forall a e
-           . (IvoryArea (Stored a), IvoryVar a)
+           . (IvoryArea (Stored a), IvoryVar a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())
           -> Handler (Stored a) e ()
 callbackV b = callback (\bref -> deref bref >>= b)
@@ -66,12 +66,12 @@ callbackProc :: forall s a
 callbackProc name f = proc name $ \m -> body $ noReturn $ f m
 
 emit :: forall eff s a
-      . (IvoryArea a)
+      . (IvoryArea a, IvoryZero a)
      => Emitter a -> ConstRef s a -> Ivory eff ()
 emit e = call_ (callbackProc (emitterProcName e) (const (return ())))
 
 emitV :: forall eff s a
-       . (IvoryArea (Stored a), IvoryInit a, GetAlloc eff ~ Scope s)
+       . (IvoryArea (Stored a), IvoryInit a, IvoryZeroVal a, GetAlloc eff ~ Scope s)
       => Emitter (Stored a) -> a -> Ivory eff ()
 emitV e v = do
   l <- local (ival v)

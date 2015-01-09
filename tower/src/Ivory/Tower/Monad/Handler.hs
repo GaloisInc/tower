@@ -42,7 +42,7 @@ newtype Handler (area :: Area *) e a = Handler
                     (Monitor e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runHandler :: (IvoryArea a)
+runHandler :: (IvoryArea a, IvoryZero a)
            => String -> AST.Chan -> Handler a e ()
            -> Monitor e ()
 runHandler n ch b = mdo

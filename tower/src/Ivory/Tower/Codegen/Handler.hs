@@ -29,7 +29,7 @@ emptyHandlerThreadCode handlerast towerast =
   | t <- AST.handlerThreads towerast handlerast
   ]
 
-generateHandlerThreadCode :: (IvoryArea a)
+generateHandlerThreadCode :: (IvoryArea a, IvoryZero a)
                           => (AST.Tower -> [(AST.Thread, HandlerCode a)])
                           -> AST.Tower -> AST.Handler -> [ThreadCode]
 generateHandlerThreadCode thcs twr h =
@@ -48,7 +48,7 @@ userHandlerCode hc = handlercode_callbacks hc >>
   appenduser acc ec = acc >> someemittercode_user ec
 
 generatedHandlerCode :: forall a
-                      . (IvoryArea a)
+                      . (IvoryArea a, IvoryZero a)
                      => HandlerCode a
                      -> AST.Thread -> AST.Monitor -> AST.Handler
                      -> ModuleDef
@@ -86,7 +86,7 @@ handlerProcName :: AST.Handler -> AST.Thread -> String
 handlerProcName h t = "handler_run_" ++ AST.handlerName h 
                      ++ "_" ++ AST.threadName t
 
-handlerCodeToThreadCode :: (IvoryArea a)
+handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)
                         => AST.Thread -> AST.Monitor -> AST.Handler
                         -> HandlerCode a -> ThreadCode
 handlerCodeToThreadCode t m h hc

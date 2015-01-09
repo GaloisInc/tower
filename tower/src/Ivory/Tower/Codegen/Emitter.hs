@@ -17,7 +17,7 @@ import Ivory.Language
 import Ivory.Stdlib (when)
 
 emitterCode :: forall a
-             . (IvoryArea a)
+             . (IvoryArea a, IvoryZero a)
             => Emitter a -> AST.Tower -> AST.Thread -> EmitterCode a
 emitterCode e@(Emitter ast) twr thr = EmitterCode
   { emittercode_init = iproc

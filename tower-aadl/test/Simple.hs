@@ -13,8 +13,6 @@ import Ivory.Tower
 import Ivory.Language
 import Tower.AADL
 
-import Text.Show.Pretty
-
 simpleTower :: Tower e ()
 simpleTower = do
   (c1in, c1out) <- channel
@@ -59,11 +57,6 @@ simpleTower2 = do
     handler c1out "chan1msg" $ do
       callback $ \m ->
         refCopy s m
-
-ppTower :: IO ()
-ppTower = do
-  let (ast, _code) = runTower simpleTower2 ()
-  putStrLn (ppShow ast)
 
 --------------------------------------------------------------------------------
 

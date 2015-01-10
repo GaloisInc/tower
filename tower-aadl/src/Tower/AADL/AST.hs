@@ -6,6 +6,8 @@
 
 module Tower.AADL.AST where
 
+import Data.List
+
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 
@@ -104,7 +106,8 @@ type FuncSym = String
 
 --------------------------------------------------------------------------------
 
--- | Takes a `System` and decomposes the `Thread`s.
+-- | Takes a `System` and decomposes the `Thread`s, returning the list of
+-- threads and the origional system with the threads extracted.
 decomposeThreads :: System -> (System, [Thread])
 decomposeThreads sys =
   (sys', concat thds)
@@ -120,4 +123,14 @@ decomposeThreads sys =
          , processComponents p
          )
 
-
+-- Extract a unique instance of the types defined in the system.
+extractTypes :: System -> [I.Type]
+extractTypes sys =
+    nub
+  $ map go
+  $ concatMap threadFeatures
+  $ concatMap processComponents
+  $ systemComponents sys
+  where
+  go cf = case cf of
+            ChannelFeature c -> chanType c

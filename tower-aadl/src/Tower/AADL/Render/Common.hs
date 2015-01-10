@@ -37,8 +37,11 @@ fromSMACCM = nameSpace (text "SMACCM_SYS")
 fromBaseTypes :: Doc -> Doc
 fromBaseTypes = nameSpace (text "Base_Types")
 
+typesPkg :: String
+typesPkg = "TYPES"
+
 fromTypeDefs :: Doc -> Doc
-fromTypeDefs = nameSpace (text "TYPES")
+fromTypeDefs = nameSpace (text typesPkg)
 
 fromDataModel :: Doc -> Doc
 fromDataModel = nameSpace (text "Data_Model")

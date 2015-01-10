@@ -114,7 +114,7 @@ renderDataPort c = stmt
     $ mkChan c <> colon
   <+> renderChannelHandle h
   <+> hsep (map text ["event", "data", "port"])
-  <+> renderType (chanType c)
+  <+> renderTypeNS (chanType c)
  <$$> tab lbrace
  <$$> tab (tab (vsep st))
  <$$> tab rbrace

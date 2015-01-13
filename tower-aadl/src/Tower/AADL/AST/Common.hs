@@ -7,9 +7,10 @@
 
 module Tower.AADL.AST.Common where
 
-import Tower.AADL.AST
+import           Tower.AADL.AST
+import qualified Ivory.Language.Syntax.Type as I
 
-import Data.List (nubBy)
+import Data.List (nubBy, nub)
 
 --------------------------------------------------------------------------------
 
@@ -58,3 +59,15 @@ filterChans h c ts =
   , c' <- filter (sameChannel c) (threadChans t)
   , chanHandle c' == h
   ]
+
+-- Extract a unique instance of the types defined in the system.
+extractTypes :: System -> [I.Type]
+extractTypes sys =
+    nub
+  $ map go
+  $ concatMap threadFeatures
+  $ concatMap processComponents
+  $ systemComponents sys
+  where
+  go cf = case cf of
+            ChannelFeature c -> chanType c

@@ -13,31 +13,27 @@ import qualified Ivory.Tower.AST.Comment    as C
 
 --------------------------------------------------------------------------------
 
-data Package = Package
-  { packageName      :: Name
-  , packageImports   :: [String]
-  , packageSystems   :: [System]
-  } deriving (Show, Eq)
+type Import = String
 
 data System = System
-  { systemName       :: Name
+  { systemName       :: !Name
   , systemComponents :: [Process]
   -- ^ For eChronos and seL4, there will be one process per system.
   , systemProperties :: [SystemProperty]
   } deriving (Show, Eq)
 
 data Process = Process
-  { processName        :: Name
+  { processName        :: !Name
   , processComponents  :: [Thread]
   } deriving (Show, Eq)
 
 data SystemProperty =
-    SystemOS String
-  | SystemHW String
+    SystemOS !String
+  | SystemHW !String
   deriving (Show, Eq)
 
 data Thread = Thread
-  { threadName       :: Name
+  { threadName       :: !Name
   , threadFeatures   :: [Feature]
   , threadProperties :: [ThreadProperty]
   , threadComments   :: [C.Comment]
@@ -49,9 +45,9 @@ data Feature =
 
 -- Integer corresponds to Tower's SyncChan integer label.
 data Channel = Channel
-  { chanLabel     :: ChanLabel
+  { chanLabel     :: !ChanLabel
   , chanHandle    :: ChannelHandle
-  , chanType      :: I.Type
+  , chanType      :: !I.Type
   -- ^ The Ivory AADL backend has converted an Ivory Type into an AADL type.
   , chanCallbacks :: SourceText
   } deriving (Show, Eq)
@@ -70,8 +66,8 @@ data SourceText =
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
-  | ThreadType ThreadType
-  | ExecTime Integer Integer
+  | ThreadType !ThreadType
+  | ExecTime !Integer !Integer
   -- ^ Min bound, max bound.
   | StackSize Integer
   | Priority Integer
@@ -80,7 +76,7 @@ data ThreadProperty =
   deriving (Show, Eq)
 
 data DispatchProtocol =
-    Periodic Integer
+    Periodic !Integer
   | Aperiodic
   deriving (Show, Eq)
 
@@ -106,22 +102,22 @@ type FuncSym = String
 
 --------------------------------------------------------------------------------
 
--- | Takes a `System` and decomposes the `Thread`s, returning the list of
--- threads and the origional system with the threads extracted.
-decomposeThreads :: System -> (System, [Thread])
-decomposeThreads sys =
-  (sys', concat thds)
-  where
-  sys' = sys { systemName       = systemName sys
-             , systemComponents = comps
-             , systemProperties = systemProperties sys
-             }
-  (comps,thds) = unzip (map go (systemComponents sys))
-  go p = ( p { processName       = processName p
-             , processComponents = []
-             }
-         , processComponents p
-         )
+-- -- | Takes a `System` and decomposes the `Thread`s, returning the list of
+-- -- threads and the origional system with the threads extracted.
+-- decomposeThreads :: System -> (System, [Thread])
+-- decomposeThreads sys =
+--   (sys', concat thds)
+--   where
+--   sys' = sys { systemName       = systemName sys
+--              , systemComponents = comps
+--              , systemProperties = systemProperties sys
+--              }
+--   (comps,thds) = unzip (map go (systemComponents sys))
+--   go p = ( p { processName       = processName p
+--              , processComponents = []
+--              }
+--          , processComponents p
+--          )
 
 -- Extract a unique instance of the types defined in the system.
 extractTypes :: System -> [I.Type]

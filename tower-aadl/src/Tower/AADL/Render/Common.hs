@@ -11,6 +11,47 @@ import Text.PrettyPrint.Leijen
 import Tower.AADL.AST
 
 --------------------------------------------------------------------------------
+-- NamesSpaces
+
+typesPkg, sMACCMPkg, dataModelPkg, baseTypesPkg :: String
+typesPkg     = "TYPES"
+sMACCMPkg    = "SMACCM_SYS"
+dataModelPkg = "Data_Model"
+baseTypesPkg = "Base_Types"
+
+-- @ns :: d1@
+nameSpace :: Doc -> Doc -> Doc
+nameSpace d0 d1 = d0 <> colon <> colon <> d1
+
+fromSMACCM :: Doc -> Doc
+fromSMACCM = nameSpace (text sMACCMPkg)
+
+fromBaseTypes :: Doc -> Doc
+fromBaseTypes = nameSpace (text baseTypesPkg)
+
+fromTypeDefs :: Doc -> Doc
+fromTypeDefs = nameSpace (text typesPkg)
+
+fromDataModel :: Doc -> Doc
+fromDataModel = nameSpace (text dataModelPkg)
+
+-- | Imports for all packages
+baseImports :: [String]
+baseImports =
+  [ baseTypesPkg
+  , dataModelPkg
+  ]
+
+-- | Imports for non-type definition packages
+defaultImports :: [String]
+defaultImports =
+  baseImports ++
+  [ typesPkg
+  , sMACCMPkg
+  ]
+
+--------------------------------------------------------------------------------
+-- Helpers
 
 primSrc :: Doc
 primSrc = text "CommPrim_Source_Text"
@@ -26,25 +67,6 @@ tab = indent 2
 
 stmt :: Doc -> Doc
 stmt d = d <> semi
-
--- @ns :: d1@
-nameSpace :: Doc -> Doc -> Doc
-nameSpace d0 d1 = d0 <> colon <> colon <> d1
-
-fromSMACCM :: Doc -> Doc
-fromSMACCM = nameSpace (text "SMACCM_SYS")
-
-fromBaseTypes :: Doc -> Doc
-fromBaseTypes = nameSpace (text "Base_Types")
-
-typesPkg :: String
-typesPkg = "TYPES"
-
-fromTypeDefs :: Doc -> Doc
-fromTypeDefs = nameSpace (text typesPkg)
-
-fromDataModel :: Doc -> Doc
-fromDataModel = nameSpace (text "Data_Model")
 
 (==>) :: Doc -> Doc -> Doc
 (==>) d0 d1 = d0 <+> equals <> rangle <+> d1

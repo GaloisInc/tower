@@ -102,23 +102,6 @@ type FuncSym = String
 
 --------------------------------------------------------------------------------
 
--- -- | Takes a `System` and decomposes the `Thread`s, returning the list of
--- -- threads and the origional system with the threads extracted.
--- decomposeThreads :: System -> (System, [Thread])
--- decomposeThreads sys =
---   (sys', concat thds)
---   where
---   sys' = sys { systemName       = systemName sys
---              , systemComponents = comps
---              , systemProperties = systemProperties sys
---              }
---   (comps,thds) = unzip (map go (systemComponents sys))
---   go p = ( p { processName       = processName p
---              , processComponents = []
---              }
---          , processComponents p
---          )
-
 -- Extract a unique instance of the types defined in the system.
 extractTypes :: System -> [I.Type]
 extractTypes sys =

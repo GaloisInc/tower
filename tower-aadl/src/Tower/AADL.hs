@@ -13,7 +13,6 @@ module Tower.AADL
   , initialConfig
   ) where
 
-import           Control.Arrow
 import           System.IO (openFile, IOMode(..), hClose)
 import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))

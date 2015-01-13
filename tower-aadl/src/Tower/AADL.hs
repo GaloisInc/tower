@@ -14,13 +14,12 @@ module Tower.AADL
   ) where
 
 import           Control.Arrow
-import           Control.Monad
 import           System.IO (openFile, IOMode(..), hClose)
 import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))
 import           System.Environment (getArgs)
 
-import           Text.PrettyPrint.Leijen ((<$$>), empty, putDoc, hPutDoc, Doc)
+import           Text.PrettyPrint.Leijen ((<$$>), putDoc, hPutDoc, Doc, linebreak)
 
 import           Ivory.Tower
 import qualified Ivory.Tower.Types.GeneratedCode as C
@@ -31,7 +30,6 @@ import qualified Tower.AADL.AST as A
 import           Tower.AADL.CmdlineFrontend
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
-import           Tower.AADL.Render.Common (typesPkg)
 import           Tower.AADL.Config
 
 --------------------------------------------------------------------------------
@@ -42,31 +40,42 @@ compileAADL t = do
   opts <- parseOpts args
   runCompileAADL opts t
 
+-- | Compile full AADL packages.
 runCompileAADL :: Opts -> Tower () () -> IO ()
 runCompileAADL opts t =
   case genDirOpts opts of
     Nothing
-      -> do putDoc $ mkTowerDoc $ renderSystem fullSys
-            mkTypes $ putDoc $ mkTowerDoc renderTys
+      -> mapM_ (putDoc . (<$$> linebreak) . docImpl) docLst
     Just dir
       -> do createDirectoryIfMissing True dir
-            mkTypesPkg
-            if multiFile opts
-              then do
-                let (sys,thds) = A.decomposeThreads fullSys
-                let thdDocs :: [(String, Doc)]
-                    thdDocs = map (A.threadName &&& renderThread) thds
-                mapM_ (uncurry (outputAADL dir)) thdDocs
-                outSys sys
-              else outSys fullSys
+            mapM_ go docLst
       where
-      outSys sys = outputAADL dir (A.systemName sys) (renderSystem sys)
-      mkTypesPkg = mkTypes (outputAADL dir typesPkg renderTys)
+      go d = outputAADL dir (docName d) (renderDocPkg thdNames d)
   where
-  (fullSys, strs) = mkSystem opts t
-  types           = A.extractTypes fullSys
-  mkTypes action  = unless (null types) action
-  renderTys       = defineTypes (types, strs)
+  docLst   = concatDocs docs
+  thdNames = map docName (thdDocs docs)
+  docs     = buildAADL opts t
+
+-- |Compile the types, threads, and system separately without building packages.
+buildAADL :: Opts -> Tower () () -> CompiledDocs
+buildAADL opts t = cds { tyDoc = typesDoc sys strs }
+  where
+  cds = renderSystem sys
+  -- Full system and code-gen structure implementations
+  (sys, strs) = mkSystem opts t
+
+  toCompDoc :: (String, Doc) -> CompiledDoc
+  toCompDoc = uncurry (compiledDoc ThreadDoc)
+
+-- | Compile user-defined types if there are any.
+typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc
+typesDoc sys strs =
+  if null types
+    then Nothing
+    else Just (compiledTypesDoc doc)
+  where
+  doc   = defineTypes (types, strs)
+  types = A.extractTypes sys
 
 mkSystem :: Opts -> Tower () () -> (A.System, [I.Struct])
 mkSystem opts t =
@@ -84,8 +93,4 @@ outputAADL dir nm contents = do
   where
   fname = addExtension (dir </> nm) ".aadl"
 
-header :: Doc
-header = renderStringComment "File generated from Tower-AADL compiler" <$$> empty
-
-mkTowerDoc :: Doc -> Doc
-mkTowerDoc doc = header <$$> doc <$$> empty
+--------------------------------------------------------------------------------

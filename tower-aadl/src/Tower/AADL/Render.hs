@@ -141,7 +141,9 @@ renderProcess p =
 
 renderProcessSubcomponent :: (Thread, LocalId) -> Doc
 renderProcessSubcomponent (t, var) = stmt $
-  text var <> colon <+> text "thread" <+> text (threadName t)
+  text var <> colon <+> text "thread" <+> nameSpace nm nm
+  where
+  nm = text (threadName t)
 
 renderConnection :: Connection -> Doc
 renderConnection c = vsep (allSynchConnect (connectionLabel c))
@@ -151,9 +153,8 @@ renderConnection c = vsep (allSynchConnect (connectionLabel c))
       $ synchConnectLabel tx rx
      <> colon
     <+> text "port"
-    <+> text tx <> dot <> mkTxChan i
-    <+> char '-' <> rangle
-    <+> text rx <> dot <> mkRxChan i
+    <+> (text tx <> dot <> mkTxChan i)
+    ->> (text rx <> dot <> mkRxChan i)
   allSynchConnect i = do
     tx <- connectionTxLabels c
     rx <- connectionRxLabels c

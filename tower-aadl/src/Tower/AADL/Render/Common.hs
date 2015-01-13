@@ -8,7 +8,9 @@ module Tower.AADL.Render.Common where
 
 import Text.PrettyPrint.Leijen
 
-import Tower.AADL.AST
+import           Tower.AADL.AST
+import qualified Ivory.Tower.AST.Comment as C
+import qualified Ivory.Tower.SrcLoc.Location as L
 
 --------------------------------------------------------------------------------
 -- NamesSpaces
@@ -42,13 +44,13 @@ baseImports =
   , dataModelPkg
   ]
 
--- | Imports for non-type definition packages
-defaultImports :: [String]
-defaultImports =
-  baseImports ++
-  [ typesPkg
-  , sMACCMPkg
-  ]
+-- | Imports for non-type definition packages. Include typesPkg only if data
+-- types defined.
+defaultImports :: Bool -> [String]
+defaultImports b =
+     baseImports
+  ++ if b then [typesPkg] else []
+  ++ [ sMACCMPkg ]
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -108,3 +110,32 @@ prettyTime i = t
   t = case i `mod` 1000 of
     0 -> integer (i `div` 1000) <+> text "ms"
     _ -> integer i <+> text "us"
+
+--------------------------------------------------------------------------------
+-- Comments
+
+renderStringComment :: String -> Doc
+renderStringComment = renderComment . C.UserComment
+
+renderComment :: C.Comment -> Doc
+renderComment c = text "--" <+> cm
+  where
+  cm = case c of
+    C.UserComment s -> text s
+    C.SourcePos   s -> renderSrcLoc s
+
+renderSrcLoc :: L.SrcLoc -> Doc
+renderSrcLoc s = case s of
+  L.NoLoc
+    -> text "No source location"
+  L.SrcLoc rng msrc
+    -> case msrc of
+      Nothing  -> renderRng rng
+      Just src -> text src <> colon <> renderRng rng
+
+-- Ignore the column.
+renderRng :: L.Range -> Doc
+renderRng (L.Range (L.Position _ ln0 _) (L.Position _ ln1 _)) =
+  if ln0 == ln1
+    then int ln0
+    else int ln0 <+> char '-' <+> int ln1

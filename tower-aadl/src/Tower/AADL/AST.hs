@@ -6,14 +6,10 @@
 
 module Tower.AADL.AST where
 
-import Data.List
-
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 
 --------------------------------------------------------------------------------
-
-type Import = String
 
 data System = System
   { systemName       :: !Name

@@ -28,6 +28,7 @@ import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST as A
 import qualified Tower.AADL.AST.Common as A
 import           Tower.AADL.CmdlineFrontend
+import           Tower.AADL.Compile
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
 import           Tower.AADL.Config
@@ -50,11 +51,11 @@ runCompileAADL opts t =
       -> do createDirectoryIfMissing True dir
             mapM_ go docLst
       where
-      go d = outputAADL dir (docName d) (renderDocPkg thdNames d)
+      go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
   where
-  docLst   = concatDocs docs
-  thdNames = map docName (thdDocs docs)
-  docs     = buildAADL opts t
+  docLst    = concatDocs docs
+  thdNames  = map docName (thdDocs docs)
+  docs      = buildAADL opts t
 
 -- |Compile the types, threads, and system separately without building packages.
 buildAADL :: Opts -> Tower () () -> CompiledDocs
@@ -67,9 +68,9 @@ buildAADL opts t = cds { tyDoc = typesDoc sys strs }
 -- | Compile user-defined types if there are any.
 typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc
 typesDoc sys strs =
-  if null types
-    then Nothing
-    else Just (compiledTypesDoc doc)
+  if any defType types
+    then Just (compiledTypesDoc doc)
+    else Nothing
   where
   doc   = defineTypes (types, strs)
   types = A.extractTypes sys

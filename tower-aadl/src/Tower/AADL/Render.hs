@@ -6,84 +6,13 @@
 
 module Tower.AADL.Render where
 
-import Data.Maybe
-
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
+import Tower.AADL.Compile
 import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
-import qualified Ivory.Tower.AST.Comment as C
-import qualified Ivory.Tower.SrcLoc.Location as L
-
 import Text.PrettyPrint.Leijen
-
---------------------------------------------------------------------------------
--- Packages
-
-header :: Doc
-header = renderStringComment "File generated from Tower-AADL compiler" <$$> empty
-
-mkTowerDoc :: Doc -> Doc
-mkTowerDoc doc = header <$$> doc <$$> empty
-
--- | Place the given construct into a package.
-renderPackage :: String -> Doc -> [Import] -> Doc
-renderPackage nm doc imports = mkTowerDoc $
-        text "package" <+> nm'
-   <$$> text "public"
-   <$$> vsep (map renderImport imports)
-  <$$$> doc
-  <$$$> stmt (text "end" <+> nm')
-  where nm' = text nm
-
-renderImport :: Import -> Doc
-renderImport i = tab (stmt (text "with" <+> text i))
-
-data DocType = TypeDoc | ThreadDoc | SystemDoc
-  deriving (Show, Eq)
-
-data CompiledDoc = CompiledDoc
-  { docType :: DocType
-  , docName :: !String
-  , docImpl :: Doc
-  } deriving Show
-
-data CompiledDocs = CompiledDocs
-  { sysDoc  :: CompiledDoc
-  , thdDocs :: [CompiledDoc]
-  , tyDoc   :: Maybe CompiledDoc
-  } deriving Show
-
-compiledDocs :: CompiledDoc
-             -> [CompiledDoc]
-             -> Maybe CompiledDoc
-             -> CompiledDocs
-compiledDocs = CompiledDocs
-
-compiledDoc :: DocType -> String -> Doc -> CompiledDoc
-compiledDoc = CompiledDoc
-
-concatDocs :: CompiledDocs -> [CompiledDoc]
-concatDocs ds = thdDocs ds ++ (sysDoc ds : maybeToList (tyDoc ds))
-
-compiledTypesDoc :: Doc -> CompiledDoc
-compiledTypesDoc = CompiledDoc TypeDoc typesPkg
-
--- | Render a packaged system, using the extra imports (thread names) if
--- compiling a system.
-renderDocPkg :: [Import] -> CompiledDoc -> Doc
-renderDocPkg extraImports d =
-  renderPackage (docName d) (docImpl d) imps
-  where
-  imps =
-    case docType d of
-      TypeDoc
-        -> baseImports
-      ThreadDoc
-        -> defaultImports
-      SystemDoc
-        -> defaultImports ++ extraImports
 
 --------------------------------------------------------------------------------
 
@@ -249,32 +178,3 @@ renderThreadProperty p = case p of
     where renderTy = case ty of
                        Passive -> text "Passive"
                        Active  -> text "Active"
-
---------------------------------------------------------------------------------
--- Comments
-
-renderStringComment :: String -> Doc
-renderStringComment = renderComment . C.UserComment
-
-renderComment :: C.Comment -> Doc
-renderComment c = text "--" <+> cm
-  where
-  cm = case c of
-    C.UserComment s -> text s
-    C.SourcePos   s -> renderSrcLoc s
-
-renderSrcLoc :: L.SrcLoc -> Doc
-renderSrcLoc s = case s of
-  L.NoLoc
-    -> text "No source location"
-  L.SrcLoc rng msrc
-    -> case msrc of
-      Nothing  -> renderRng rng
-      Just src -> text src <> colon <> renderRng rng
-
--- Ignore the column.
-renderRng :: L.Range -> Doc
-renderRng (L.Range (L.Position _ ln0 _) (L.Position _ ln1 _)) =
-  if ln0 == ln1
-    then int ln0
-    else int ln0 <+> char '-' <+> int ln1

@@ -11,6 +11,7 @@ library
   exposed-modules: Tower.AADL
                  , Tower.AADL.AST
                  , Tower.AADL.AST.Common
+                 , Tower.AADL.Compile
                  , Tower.AADL.Config
                  , Tower.AADL.CmdlineFrontend
                  , Tower.AADL.FromTower

@@ -14,7 +14,7 @@ import Tower.AADL.AST
 -- NamesSpaces
 
 typesPkg, sMACCMPkg, dataModelPkg, baseTypesPkg :: String
-typesPkg     = "TYPES"
+typesPkg     = "Data_Types"
 sMACCMPkg    = "SMACCM_SYS"
 dataModelPkg = "Data_Model"
 baseTypesPkg = "Base_Types"

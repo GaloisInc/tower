@@ -26,6 +26,7 @@ import qualified Ivory.Language.Syntax.AST as I
 
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST as A
+import qualified Tower.AADL.AST.Common as A
 import           Tower.AADL.CmdlineFrontend
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
@@ -62,9 +63,6 @@ buildAADL opts t = cds { tyDoc = typesDoc sys strs }
   cds = renderSystem sys
   -- Full system and code-gen structure implementations
   (sys, strs) = mkSystem opts t
-
-  toCompDoc :: (String, Doc) -> CompiledDoc
-  toCompDoc = uncurry (compiledDoc ThreadDoc)
 
 -- | Compile user-defined types if there are any.
 typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc

@@ -101,15 +101,3 @@ type Bound = Integer
 type FuncSym = String
 
 --------------------------------------------------------------------------------
-
--- Extract a unique instance of the types defined in the system.
-extractTypes :: System -> [I.Type]
-extractTypes sys =
-    nub
-  $ map go
-  $ concatMap threadFeatures
-  $ concatMap processComponents
-  $ systemComponents sys
-  where
-  go cf = case cf of
-            ChannelFeature c -> chanType c

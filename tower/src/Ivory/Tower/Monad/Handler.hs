@@ -14,6 +14,7 @@ module Ivory.Tower.Monad.Handler
   , handlerPutASTCallback
   , handlerPutCodeEmitter
   , handlerPutCodeCallback
+  , liftMonitor -- XXX UNSAFE TO USE
   -- Source Location
   , mkLocation
   , setLocation
@@ -43,17 +44,20 @@ newtype Handler (area :: Area *) e a = Handler
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runHandler :: (IvoryArea a, IvoryZero a)
-           => String -> AST.Chan -> Handler a e ()
-           -> Monitor e ()
+           => String -> AST.Chan -> Handler a e r
+           -> Monitor e r
 runHandler n ch b = mdo
   u <- freshname n
-  let h = AST.emptyHandler u ch
-  (handlerast, thcs) <- runStateT (emptyHandlerThreadCode handlerast)
-                      $ fmap snd (runStateT h (unHandler b))
+  ((r, handlerast), thcs)
+    <- runStateT (emptyHandlerThreadCode handlerast)
+     $ runStateT (AST.emptyHandler u ch)
+     $ unHandler b
 
   monitorPutASTHandler handlerast
   monitorPutThreadCode $ \twr ->
     generateHandlerThreadCode thcs twr handlerast
+
+  return r
 
 withAST :: (AST.Handler -> AST.Handler) -> Handler a e ()
 withAST f = Handler $ do
@@ -88,6 +92,9 @@ handlerPutCodeEmitter ms = withCode $ \a t -> insertHandlerCodeEmitter (ms a t)
 instance BaseUtils (Handler a) p where
   fresh  = Handler $ lift $ lift fresh
   getEnv = Handler $ lift $ lift getEnv
+
+liftMonitor :: Monitor e r -> Handler a e r
+liftMonitor a = Handler $ lift $ lift $ a
 
 --------------------------------------------------------------------------------
 -- SrcLoc stuff

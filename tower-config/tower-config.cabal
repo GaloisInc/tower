@@ -18,7 +18,10 @@ library
                         Ivory.Tower.Config.Parser,
                         Ivory.Tower.Config.TOML,
                         Ivory.Tower.Config.Options,
-                        Ivory.Tower.Config.Preprocess
+                        Ivory.Tower.Config.Preprocess,
+                        Text.TOML,
+                        Text.TOML.Parser,
+                        Text.TOML.Value
 
   build-depends:        base >= 4.6,
                         attoparsec >= 0.12.1.2,
@@ -27,7 +30,7 @@ library
                         directory,
                         filepath,
                         time,
-                        toml,
+                        old-locale,
                         scientific,
                         ivory-backend-c,
                         tower

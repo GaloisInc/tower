@@ -14,11 +14,14 @@ the [ivory-tower-stm32][] repo.
 [![Build Status](https://travis-ci.org/GaloisInc/tower.svg?branch=tower-9)](https://travis-ci.org/GaloisInc/tower)
 
 ## Copyright and license
-Copyright 2014 [Galois, Inc.][galois]
+Copyright 2015 [Galois, Inc.][galois]
 
 Licensed under the BSD 3-Clause License; you may not use this work except in
 compliance with the License. A copy of the License is included in the LICENSE
 file.
+
+Portions Copyright (c) 2013-2014, Spiros Eliopoulos, derived from the now
+unmaintained `toml` package.
 
 [ivory]: http://github.com/GaloisInc/ivory
 [tower]: http://github.com/GaloisInc/tower

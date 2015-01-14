@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Text.TOML.Value
   ( TOML (..)
   , TOMLV (..)
@@ -11,10 +12,14 @@ module Text.TOML.Value
 import Data.Map ( Map )
 import qualified Data.Map as M
 import Data.Time.Clock
+
+#if __GLASGOW_HASKELL__ < 708
+import System.Locale ()
 import Data.Time.Format
-
-import System.Locale
-
+#else
+import System.Locale ()
+import Data.Time.Format ()
+#endif
 
 type Value = Either TOML TOMLV
 

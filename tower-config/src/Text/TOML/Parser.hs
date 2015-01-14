@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 module Text.TOML.Parser
   ( module Text.TOML.Value
   , document
@@ -13,9 +14,14 @@ import Control.Applicative
 import qualified Data.ByteString.Char8 as B
 import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec.Combinator
-import Data.Time.Format
 
-import System.Locale
+#if __GLASGOW_HASKELL__ < 708
+import System.Locale ()
+import Data.Time.Format
+#else
+import System.Locale (defaultTimeLocale, iso8601DateFormat)
+import Data.Time.Format
+#endif
 
 import Text.TOML.Value
 

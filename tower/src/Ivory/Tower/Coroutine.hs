@@ -11,8 +11,8 @@ import Ivory.Tower.Monitor
 import Ivory.Tower.Tower
 import Ivory.Tower.Types.Chan
 
-coroutineHandler :: (IvoryArea a, IvoryZero a) => ChanOutput a -> (forall evt. Handler evt e (Coroutine a)) -> Monitor e ()
-coroutineHandler chan block = do
+coroutineHandler :: (IvoryArea init, IvoryZero init, IvoryArea a, IvoryZero a) => ChanOutput init -> ChanOutput a -> (forall evt. Handler evt e (Coroutine a)) -> Monitor e ()
+coroutineHandler chanInit chan block = do
   (doInitChan, (ChanOutput (Chan readyast))) <- liftTower channel
   lastValue <- state "last_value"
 
@@ -22,7 +22,7 @@ coroutineHandler chan block = do
     callbackV $ \ shouldInit -> coroutineRun coro shouldInit $ constRef lastValue
     return $ coroutineName coro
 
-  handler systemInit (name ++ "_init") $ do
+  handler chanInit (name ++ "_init") $ do
     doInit <- emitter doInitChan 1
     callback $ const $ emitV doInit true
 

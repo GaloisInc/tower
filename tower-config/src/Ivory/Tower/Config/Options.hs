@@ -1,5 +1,5 @@
 
-module Tower.Config.Options
+module Ivory.Tower.Config.Options
   ( CfgOpts(..)
   , getCfgOpts
   ) where

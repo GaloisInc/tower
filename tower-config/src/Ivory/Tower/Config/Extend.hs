@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Tower.Config.Extend where
+module Ivory.Tower.Config.Extend where
 
 import           Control.Applicative
 import           Data.Either (lefts, rights)

@@ -1,8 +1,8 @@
 
-module Tower.Config.Document where
+module Ivory.Tower.Config.Document where
 
-import Tower.Config.Preprocess
-import Tower.Config.TOML
+import Ivory.Tower.Config.Preprocess
+import Ivory.Tower.Config.TOML
 
 getDocument :: FilePath -> [FilePath] -> IO (Either String TOML)
 getDocument root path = do

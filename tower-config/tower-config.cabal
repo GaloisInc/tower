@@ -12,13 +12,16 @@ source-repository    this
   location: https://github.com/GaloisInc/tower
 
 library
-  exposed-modules:      Tower.Config,
-                        Tower.Config.Document,
-                        Tower.Config.Extend,
-                        Tower.Config.Parser,
-                        Tower.Config.TOML,
-                        Tower.Config.Options,
-                        Tower.Config.Preprocess
+  exposed-modules:      Ivory.Tower.Config,
+                        Ivory.Tower.Config.Document,
+                        Ivory.Tower.Config.Extend,
+                        Ivory.Tower.Config.Parser,
+                        Ivory.Tower.Config.TOML,
+                        Ivory.Tower.Config.Options,
+                        Ivory.Tower.Config.Preprocess,
+                        Text.TOML,
+                        Text.TOML.Parser,
+                        Text.TOML.Value
 
   build-depends:        base >= 4.6,
                         attoparsec >= 0.12.1.2,
@@ -26,8 +29,6 @@ library
                         containers,
                         directory,
                         filepath,
-                        time,
-                        toml,
                         scientific,
                         ivory-backend-c,
                         tower
@@ -47,8 +48,6 @@ test-suite tests
                  containers,
                  directory,
                  filepath,
-                 time,
-                 toml,
                  tower,
                  tower-config
 

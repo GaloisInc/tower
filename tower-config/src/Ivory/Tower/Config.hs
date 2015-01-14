@@ -1,17 +1,17 @@
 
-module Tower.Config
-  ( module Tower.Config.Parser
+module Ivory.Tower.Config
+  ( module Ivory.Tower.Config.Parser
   , getConfig'
   , getConfig
   ) where
 
 import Control.Monad (when)
 import Ivory.Tower.Compile.Options hiding (parseOpts)
-import Tower.Config.Parser
-import Tower.Config.Options
-import Tower.Config.Document
-import Tower.Config.Extend
-import Tower.Config.TOML
+import Ivory.Tower.Config.Parser
+import Ivory.Tower.Config.Options
+import Ivory.Tower.Config.Document
+import Ivory.Tower.Config.Extend
+import Ivory.Tower.Config.TOML
 
 -- XXX consider putting (Show a) constraint and debugging
 -- complete 'a'.

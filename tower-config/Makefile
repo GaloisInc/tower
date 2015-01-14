@@ -16,3 +16,8 @@ create-sandbox:
 	cabal sandbox add-source ../tower
 	cabal install --dependencies-only --enable-tests
 	cabal configure --enable-tests
+
+clean-sandbox:
+	-rm -rf .cabal-sandbox
+	-rm -rf dist
+	-rm cabal.sandbox.config

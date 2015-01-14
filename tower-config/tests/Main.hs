@@ -2,11 +2,11 @@
 
 module Main where
 
-import           Tower.Config
-import           Tower.Config.Preprocess
-import           Tower.Config.Document
-import           Tower.Config.Options
-import           Tower.Config.TOML
+import           Ivory.Tower.Config
+import           Ivory.Tower.Config.Preprocess
+import           Ivory.Tower.Config.Document
+import           Ivory.Tower.Config.Options
+import           Ivory.Tower.Config.TOML
 import           System.Exit
 import           Data.List (intercalate)
 import qualified Data.ByteString.Char8 as B

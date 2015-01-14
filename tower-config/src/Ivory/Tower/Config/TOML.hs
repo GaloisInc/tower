@@ -28,7 +28,6 @@ ppValue = aux []
   ppTOMLV (VBool False) = "false"
   ppTOMLV (VArray as) = "[ " ++ (intercalate ", " (map ppTOMLV as)) ++ " ]"
   ppTOMLV (VDocument _) = error "Tower.Config.ppValue VDocument not supported"
-  ppTOMLV (VDate a) = show a
 
   header [] = ""
   header sections = "[" ++ (intercalate "." sections) ++ "]\n"

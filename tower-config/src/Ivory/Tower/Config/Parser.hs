@@ -7,14 +7,12 @@ module Ivory.Tower.Config.Parser
   , double
   , bool
   , array
-  , utctime
   , subsection
   , withDefault
   ) where
 
 import           Control.Applicative
 import qualified Data.Map as M
-import           Data.Time.Clock
 import           Text.TOML.Value
 import           Data.Either (lefts, rights)
 import           Data.List (intercalate)
@@ -80,12 +78,6 @@ array p = ConfigParser $ \v ->
         es -> Left ("got following errors when parsing array elements: " ++ 
                     intercalate "; " es)
     _ -> Left ("expected array, got " ++ show v)
-
-utctime :: ConfigParser UTCTime
-utctime = configParser "utctime" $ \v ->
-  case v of
-    Right (VDate a) -> Just a
-    _ -> Nothing
 
 subsection :: String -> ConfigParser a -> ConfigParser a
 subsection key vparser = ConfigParser $ \v ->

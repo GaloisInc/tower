@@ -29,8 +29,6 @@ library
                         containers,
                         directory,
                         filepath,
-                        time,
-                        old-locale,
                         scientific,
                         ivory-backend-c,
                         tower
@@ -50,7 +48,6 @@ test-suite tests
                  containers,
                  directory,
                  filepath,
-                 time,
                  tower,
                  tower-config
 

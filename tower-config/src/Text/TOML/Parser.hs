@@ -15,14 +15,6 @@ import qualified Data.ByteString.Char8 as B
 import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec.Combinator
 
-#if __GLASGOW_HASKELL__ < 708
-import System.Locale ()
-import Data.Time.Format
-#else
-import System.Locale (defaultTimeLocale, iso8601DateFormat)
-import Data.Time.Format
-#endif
-
 import Text.TOML.Value
 
 
@@ -53,7 +45,6 @@ value :: Parser TOMLV
 value = (array <?> "array")
     <|> (bool  <?> "bool")
     <|> (str   <?> "string")
-    <|> (date  <?> "date")
     <|> (num   <?> "number")
   where
     array = VArray <$> between lbrace rbrace (value `sepBy` comma)
@@ -64,12 +55,6 @@ value = (array <?> "array")
         case n of
             I n -> return $ VInteger n
             D d -> return $ VDouble d
-    date = do
-        dstr <- takeTill (=='Z') <* zee
-        let mt = parseTime defaultTimeLocale (iso8601DateFormat (Just "%X")) (B.unpack dstr)
-        case mt of
-            Just t  -> return (VDate t)
-            Nothing -> fail "parse date failed"
 
 whatever p = p >> return ()
 lexeme p = do { x <- p; many spc; return x }

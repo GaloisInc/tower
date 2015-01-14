@@ -51,7 +51,6 @@ test-suite tests
                  directory,
                  filepath,
                  time,
-                 toml,
                  tower,
                  tower-config
 

@@ -1,5 +1,5 @@
 
-module Tower.Config.TOML
+module Ivory.Tower.Config.TOML
   ( TOML
   , TOMLV
   , Value

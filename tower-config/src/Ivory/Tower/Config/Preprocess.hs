@@ -1,5 +1,5 @@
 
-module Tower.Config.Preprocess
+module Ivory.Tower.Config.Preprocess
   ( getPreprocessedFile
   ) where
 

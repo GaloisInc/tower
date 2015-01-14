@@ -1,5 +1,5 @@
 
-module Tower.Config.Parser
+module Ivory.Tower.Config.Parser
   ( ConfigParser()
   , runConfigParser
   , string

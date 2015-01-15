@@ -13,7 +13,8 @@ import System.Exit (exitFailure)
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 
 data TOpts = TOpts
-  { topts_args :: [String]
+  { topts_outdir  :: Maybe FilePath
+  , topts_args    :: [String]
   , topts_error   :: forall a . String -> IO a
   }
 
@@ -28,15 +29,18 @@ parseOpts opts args =
     e' -> (unused, Left e')
 
 getOpts :: [String] -> IO (C.Opts, TOpts)
-getOpts args =
-  let (unused, mkCOpts) = parseOpts C.options args
-      topts = TOpts
-        { topts_args = unused
-        , topts_error = \s -> do
-            putStrLn ("Errors in ivory-backend-c options:\n" ++ s)
-            putStrLn $ usageInfo "" C.options
-            exitFailure
-        }
-  in case mkCOpts of
-    Right mkc -> return (mkc C.initialOpts, topts)
-    Left es -> topts_error topts (unlines es)
+getOpts args = case mkCOpts of
+  Left es -> err (unlines es)
+  Right mkc -> do
+    let copts = mkc C.initialOpts
+    return (copts, TOpts
+              { topts_outdir = C.outDir copts
+              , topts_args   = unusedArgs
+              , topts_error  = err
+              })
+  where
+  (unusedArgs, mkCOpts) = parseOpts C.options args
+  err s = do
+      putStrLn ("Errors in ivory-backend-c options:\n" ++ s)
+      putStrLn $ usageInfo "" C.options
+      exitFailure

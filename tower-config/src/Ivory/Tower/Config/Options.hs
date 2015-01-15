@@ -48,7 +48,7 @@ cfgOptions = [ Option "" ["conf-file"] (ReqArg setConfigFile "PATH")
 getCfgOpts :: TOpts -> IO (CfgOpts, TOpts)
 getCfgOpts topts =
   let (unused, mkCfgOpts)  = parseOpts cfgOptions (topts_args topts)
-      topts' = TOpts
+      topts' = topts
         { topts_args = unused
         , topts_error = \s -> do
             putStrLn ("Errors in tower-config options:\n" ++ s)

@@ -30,6 +30,7 @@ library
                         directory,
                         filepath,
                         scientific,
+                        ivory-artifact,
                         ivory-backend-c,
                         tower
   hs-source-dirs:       src

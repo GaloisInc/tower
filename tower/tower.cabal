@@ -12,6 +12,7 @@ library
   exposed-modules:      Ivory.Tower,
 
                         -- Surface syntax:
+                        Ivory.Tower.Coroutine,
                         Ivory.Tower.Tower,
                         Ivory.Tower.Monitor,
                         Ivory.Tower.Handler,

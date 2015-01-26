@@ -53,7 +53,7 @@ callback b = do
     incl (callbackProc (callbackProcName u hname t) b)
 
 callbackV :: forall a e
-           . (IvoryArea (Stored a), IvoryVar a, IvoryZeroVal a)
+           . (IvoryArea (Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())
           -> Handler (Stored a) e ()
 callbackV b = callback (\bref -> deref bref >>= b)

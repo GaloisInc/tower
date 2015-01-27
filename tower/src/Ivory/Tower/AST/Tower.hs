@@ -19,18 +19,20 @@ import Ivory.Tower.AST.Handler
 import Ivory.Tower.AST.Init
 
 data Tower = Tower
-  { tower_monitors  :: [Monitor]
-  , tower_syncchans :: [SyncChan]
-  , tower_signals   :: [Signal]
-  , tower_periods   :: [Period]
+  { tower_monitors    :: [Monitor]
+  , tower_syncchans   :: [SyncChan]
+  , tower_signals     :: [Signal]
+  , tower_periods     :: [Period]
+  , tower_artifact_fs :: [String]
   } deriving (Eq, Show)
 
 emptyTower :: Tower
 emptyTower  = Tower
-  { tower_monitors  = []
-  , tower_syncchans = []
-  , tower_signals   = []
-  , tower_periods   = []
+  { tower_monitors    = []
+  , tower_syncchans   = []
+  , tower_signals     = []
+  , tower_periods     = []
+  , tower_artifact_fs = []
   }
 
 towerThreads :: Tower -> [Thread]

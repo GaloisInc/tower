@@ -30,11 +30,12 @@ getConfig' topts p = do
       case runConfigParser p ext_toml of
         Left  e -> topts_error t' ("Error parsing config file: " ++ e)
         Right c -> do
-          case (topts_outdir t', cfgopts_debug cfgopts) of
-            (Just d, False) -> putArtifact_ d conf_artifact
-            (Just d, True)  -> putArtifact_ d conf_artifact
-                            >> printArtifact conf_artifact
-            (Nothing, _)    -> printArtifact conf_artifact
+          case topts_outdir t' of
+            Just d -> putArtifact_ d conf_artifact
+            Nothing -> return ()
+          case cfgopts_debug cfgopts of
+            True -> printArtifact conf_artifact
+            False -> return ()
           return (c, t')
 
 getConfig :: TOpts -> ConfigParser a -> IO a

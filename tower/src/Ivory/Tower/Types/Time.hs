@@ -54,9 +54,6 @@ newtype ITime = ITime Sint64
   deriving ( Num, IvoryType, IvoryVar, IvoryExpr, IvoryEq, IvoryOrd
            , IvoryIntegral, IvoryStore, IvoryInit, IvoryZeroVal, Bounded)
 
-instance IvorySizeOf (Stored ITime) where
-  sizeOfBytes _ = sizeOfBytes (Proxy :: Proxy (Stored Sint64))
-
 fromIMicroseconds :: (SafeCast a Sint64) => a -> ITime
 fromIMicroseconds = ITime . safeCast
 

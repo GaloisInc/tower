@@ -12,6 +12,5 @@ ghc:
   - 7.8
 env:
   - ENV_TEST_TARGET=tower
-  - ENV_TEST_TARGET=tower-statemachine
   - ENV_TEST_TARGET=tower-config
   - ENV_TEST_TARGET=tower-aadl

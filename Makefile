@@ -1,15 +1,10 @@
 
-default: tower tower-statemachine tower-config tower-aadl
+default: tower tower-config tower-aadl
 
 .PHONY: tower
 tower:
 	make -C tower create-sandbox
 	make -C tower
-
-.PHONY: tower-statemachine
-tower-statemachine:
-	make -C tower-statemachine create-sandbox
-	make -C tower-statemachine
 
 .PHONY: tower-config
 tower-config:

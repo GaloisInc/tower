@@ -1,3 +1,6 @@
+# Allow (faster) Docker builds
+sudo: false
+
 language: haskell
 before_install:
   - git clone https://github.com/galoisinc/ivory

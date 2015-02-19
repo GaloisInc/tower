@@ -11,7 +11,6 @@ import Ivory.Tower.Compile.Options hiding (parseOpts)
 import Ivory.Tower.Config.Parser
 import Ivory.Tower.Config.Options
 import Ivory.Tower.Config.Document
-import Ivory.Tower.Config.Extend
 import Ivory.Tower.Config.TOML
 
 getConfig' :: TOpts -> ConfigParser a -> IO (a, TOpts)
@@ -22,12 +21,8 @@ getConfig' topts p = do
   case d of
     Left e -> topts_error t' ("Error in tower getConfig: " ++ e)
     Right toml -> do
-      let extra_opts :: [String]
-          extra_opts = topts_args t'
-          ext_toml :: Value
-          ext_toml = Left (extendConfig toml extra_opts)
-          conf_artifact = artifactString "build.conf" (ppValue ext_toml)
-      case runConfigParser p ext_toml of
+      let conf_artifact = artifactString "build.conf" (ppValue (Left toml))
+      case runConfigParser p (Left toml) of
         Left  e -> topts_error t' ("Error parsing config file: " ++ e)
         Right c -> do
           case topts_outdir t' of
@@ -39,4 +34,7 @@ getConfig' topts p = do
           return (c, t')
 
 getConfig :: TOpts -> ConfigParser a -> IO a
-getConfig topts p = fmap fst (getConfig' topts p)
+getConfig topts p = do
+  (c, t') <- getConfig' topts p
+  finalizeOpts t'
+  return c

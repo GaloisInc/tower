@@ -4,6 +4,7 @@ module Ivory.Tower.Compile.Options
   ( TOpts(..)
   , parseOpts
   , getOpts
+  , finalizeOpts
   ) where
 
 import Data.Monoid (Monoid(..),mconcat)
@@ -14,9 +15,17 @@ import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 
 data TOpts = TOpts
   { topts_outdir  :: Maybe FilePath
+  , topts_help    :: Bool
   , topts_args    :: [String]
   , topts_error   :: forall a . String -> IO a
   }
+
+finalizeOpts :: TOpts -> IO ()
+finalizeOpts topts = case topts_args topts of
+  [] -> case topts_help topts of
+    True -> topts_error topts "Usage:"
+    False -> return ()
+  as -> topts_error topts ("Unrecognized arguments:\n" ++ unlines as)
 
 parseOpts :: [OptDescr (C.OptParser opt)] -> [String]
           -> ([String], (Either [String] (opt -> opt)))
@@ -35,12 +44,15 @@ getOpts args = case mkCOpts of
     let copts = mkc C.initialOpts
     return (copts, TOpts
               { topts_outdir = C.outDir copts
+              , topts_help   = C.help copts
               , topts_args   = unusedArgs
               , topts_error  = err
               })
   where
   (unusedArgs, mkCOpts) = parseOpts C.options args
   err s = do
-      putStrLn ("Errors in ivory-backend-c options:\n" ++ s)
+      putStrLn s
+      putStrLn ""
+      putStrLn "ivory-backend-c options:"
       putStrLn $ usageInfo "" C.options
       exitFailure

@@ -14,7 +14,6 @@ source-repository    this
 library
   exposed-modules:      Ivory.Tower.Config,
                         Ivory.Tower.Config.Document,
-                        Ivory.Tower.Config.Extend,
                         Ivory.Tower.Config.Parser,
                         Ivory.Tower.Config.TOML,
                         Ivory.Tower.Config.Options,

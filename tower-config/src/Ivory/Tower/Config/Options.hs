@@ -47,13 +47,15 @@ cfgOptions = [ Option "" ["conf-file"] (ReqArg setConfigFile "PATH")
 
 getCfgOpts :: TOpts -> IO (CfgOpts, TOpts)
 getCfgOpts topts =
-  let (unused, mkCfgOpts)  = parseOpts cfgOptions (topts_args topts)
+  let (unused, mkCfgOpts) = parseOpts cfgOptions (topts_args topts)
       topts' = topts
         { topts_args = unused
-        , topts_error = \s -> do
-            putStrLn ("Errors in tower-config options:\n" ++ s)
-            putStrLn $ usageInfo "" cfgOptions
-            topts_error topts "(none)"
+        , topts_error = \s -> topts_error topts $ unlines
+            [ s
+            , ""
+            , "tower-config options:"
+            , usageInfo "" cfgOptions
+            ]
         }
   in case mkCfgOpts of
     Right mkcfg -> return (mkcfg initialCfgOpts, topts')

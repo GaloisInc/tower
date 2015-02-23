@@ -22,16 +22,17 @@ import           Text.PrettyPrint.Leijen ((<$$>), putDoc, hPutDoc, Doc, linebrea
 
 import           Ivory.Tower
 import qualified Ivory.Tower.Types.GeneratedCode as C
-import qualified Ivory.Language.Syntax.AST as I
+import qualified Ivory.Language.Syntax.AST       as I
 
 import           Tower.AADL.FromTower
-import qualified Tower.AADL.AST as A
+import qualified Tower.AADL.AST        as A
 import qualified Tower.AADL.AST.Common as A
 import           Tower.AADL.CmdlineFrontend
+import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
+import           Tower.AADL.Config
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
-import           Tower.AADL.Config
 
 --------------------------------------------------------------------------------
 

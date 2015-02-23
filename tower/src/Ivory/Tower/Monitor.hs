@@ -40,6 +40,5 @@ state' n i = do
   monitorPutCode $ \_ -> defMemArea a
   return (addrOf a)
 
-
 monitorModuleDef :: ModuleDef -> Monitor e ()
 monitorModuleDef = monitorPutCode . const

@@ -20,8 +20,11 @@ import           System.Environment (getArgs)
 
 import           Text.PrettyPrint.Leijen ((<$$>), putDoc, hPutDoc, Doc, linebreak)
 
+import qualified Ivory.Compile.C.CmdlineFrontend as O
+
 import           Ivory.Tower
 import qualified Ivory.Tower.Types.GeneratedCode as C
+
 import qualified Ivory.Language.Syntax.AST       as I
 
 import           Tower.AADL.FromTower
@@ -44,7 +47,7 @@ compileAADL t = do
 
 -- | Compile full AADL packages.
 runCompileAADL :: Opts -> Tower () () -> IO ()
-runCompileAADL opts t =
+runCompileAADL opts t = do
   case genDirOpts opts of
     Nothing
       -> mapM_ (putDoc . (<$$> linebreak) . docImpl) docLst
@@ -53,18 +56,26 @@ runCompileAADL opts t =
             mapM_ go docLst
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
+
+  genIvoryCode ivoryOpts code
+
   where
+  ivoryOpts = O.initialOpts { O.outDir = genDirOpts opts }
   docLst    = concatDocs docs
   thdNames  = map docName (thdDocs docs)
-  docs      = buildAADL opts t
+  docs      = buildAADL opts sys code
+  (ast, code) = runTower t ()
+  sys = fromTower (configOpts opts) ast
 
--- |Compile the types, threads, and system separately without building packages.
-buildAADL :: Opts -> Tower () () -> CompiledDocs
-buildAADL opts t = cds { tyDoc = typesDoc sys strs }
+-- | Compile the types, threads, and system separately without building packages.
+buildAADL :: Opts -> A.System -> GeneratedCode  -> CompiledDocs
+buildAADL opts sys code = cds { tyDoc = typesDoc sys types }
   where
   cds = renderSystem sys
   -- Full system and code-gen structure implementations
-  (sys, strs) = mkSystem opts t
+  -- (ast, code) = runTower t ()
+  types       =
+    concatMap (I.public . I.modStructs) (C.generatedcode_modules code)
 
 -- | Compile user-defined types if there are any.
 typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc
@@ -73,16 +84,8 @@ typesDoc sys strs =
     then Just (compiledTypesDoc doc)
     else Nothing
   where
-  doc   = defineTypes (types, strs)
+  doc   = defineTypes types strs
   types = A.extractTypes sys
-
-mkSystem :: Opts -> Tower () () -> (A.System, [I.Struct])
-mkSystem opts t =
-  ( fromTower (configOpts opts) ast
-  , concatMap (I.public . I.modStructs) (C.generatedcode_modules code)
-  )
-  where
-  (ast,code) = runTower t ()
 
 outputAADL :: FilePath -> String -> Doc -> IO ()
 outputAADL dir nm contents = do

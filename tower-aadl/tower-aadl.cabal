@@ -29,6 +29,7 @@ library
                , wl-pprint
                , ivory >= 0.1.0.2
                , ivory-artifact
+               , ivory-backend-c
                , tower
 
   hs-source-dirs:       src

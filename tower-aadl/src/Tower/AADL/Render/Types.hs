@@ -86,8 +86,8 @@ renderType ty = case ty of
 
 -- | Define types. We treat structs specially since we need more than their
 -- implementation to define them.
-defineTypes :: ([I.Type], [I.Struct]) -> Doc
-defineTypes (tys,strs) = vcat (map go tys)
+defineTypes :: [I.Type] -> [I.Struct] -> Doc
+defineTypes tys strs = vcat (map go tys)
   where
   go ty =
     case ty of

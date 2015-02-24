@@ -36,7 +36,11 @@ renderPackage nm doc imports = mkTowerDoc $
 renderImport :: Import -> Doc
 renderImport i = tab (stmt (text "with" <+> text i))
 
-data DocType = TypeDoc | ThreadDoc | SystemDoc
+--------------------------------------------------------------------------------
+-- Compiled documents
+
+-- | Document type
+data DocType = TypeDoc | ThreadDoc | SystemDoc | CodeDoc
   deriving (Show, Eq)
 
 data CompiledDoc = CompiledDoc
@@ -83,3 +87,7 @@ renderDocPkg b extraImports d =
         -> defaultImports b
       SystemDoc
         -> defaultImports b ++ extraImports
+      CodeDoc
+        -> []
+
+--------------------------------------------------------------------------------

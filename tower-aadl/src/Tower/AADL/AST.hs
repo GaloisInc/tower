@@ -73,8 +73,17 @@ data ThreadProperty =
 
 data DispatchProtocol =
     Periodic !Integer
+  | Signal !SignalName !Address
   | Aperiodic
   deriving (Show, Eq)
+
+data SignalInfo = SignalInfo
+  { signalName     :: SignalName
+  , signalNumber   :: SignalNumber
+  , signalAddress  :: Address
+  , signalDeadline :: Integer
+  , signalInit     :: FuncSym
+  } deriving (Show, Eq)
 
 data ThreadType =
     Passive
@@ -95,5 +104,11 @@ type Bound = Integer
 
 -- | Function symbol.
 type FuncSym = String
+
+type SignalName = String
+
+type Address = Integer
+
+type SignalNumber = Integer
 
 --------------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import           Ivory.Tower.AST.Monitor
 import           Ivory.Tower.AST.Thread
 
 import           Ivory.Tower.Types.MonitorCode
+import           Ivory.Tower.Types.Signalable
 import           Ivory.Tower.Types.ThreadCode
 import           Ivory.Tower.Types.GeneratedCode as G
 
@@ -29,8 +30,8 @@ genIvoryCode opts
   , G.generatedcode_depends   = depends
   , G.generatedcode_threads   = threads
   , G.generatedcode_monitors  = monitors
-  -- , G.generatedcode_signals   = signals
---  , G.generatedcode_init      = init
+  , G.generatedcode_signals   = signals
+  , G.generatedcode_init      = init
   , G.generatedcode_artifacts = artifacts
   } = C.runCompiler modules artifacts opts
   where
@@ -38,27 +39,23 @@ genIvoryCode opts
          ++ depends
          ++ go mkThreadCode  threads
          ++ go mkMonitorCode monitors
---         ++ go mkSignalCode  signals
+         ++ go mkSignalCode  signals
   go c cs = M.elems $ M.mapWithKey c cs
 
--- Note: handler code "lives" in here.
+-- Note: handler code gets put into the thread by Tower front-end.
 mkThreadCode :: Thread -> ThreadCode -> I.Module
 mkThreadCode th
-  ThreadCode
-  { --threadcode_thread = threadAST
---    threadcode_user   = user
-    threadcode_gen    = gen
-  } = -- map (I.package (threadName th)) [user, gen]
---     [ I.package (threadName th ++ "user") user
-     I.package (threadName th ++ "gen") gen
---     ]
+  ThreadCode { threadcode_gen = gen }
+  = I.package (threadName th ++ "gen") gen
 
 mkMonitorCode :: Monitor -> MonitorCode -> I.Module
 mkMonitorCode m
   MonitorCode { monitorcode_moddef = code }
   = I.package (monitorName m) code
 
--- mkSignalCode :: String -> SignalCode -> [I.Module]
--- mkSignalCode s
---   SignalCode { signalcode_moddef = code }
---   = map (I.package (signalName s)) [code]
+mkSignalCode :: String -> G.GeneratedSignal -> I.Module
+mkSignalCode signalName
+  G.GeneratedSignal { G.unGeneratedSignal = s }
+  -- XXX assuming for now that we don't have unsafe signals. Pass the platform
+  -- signal continuation here for eChronos.
+  = I.package signalName (s (return ()))

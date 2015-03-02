@@ -34,6 +34,7 @@ data GeneratedCode = GeneratedCode
 newtype GeneratedSignal =
   GeneratedSignal
     { unGeneratedSignal :: (forall eff . Ivory eff ()) -> ModuleDef
+    -- ^ Unsafe signal continuation.
     }
 
 generatedCodeInsertModule :: Module

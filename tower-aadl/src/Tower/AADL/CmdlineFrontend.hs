@@ -48,7 +48,7 @@ data Opts = Opts
   -- ^ Location to generate AADL files (or use standard out).
   , helpOpts   :: Bool
   -- ^ Help.
-  } deriving (Show, Read, Eq)
+  } deriving Show
 
 initialOpts :: Opts
 initialOpts = Opts

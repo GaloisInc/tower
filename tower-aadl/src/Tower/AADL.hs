@@ -18,8 +18,9 @@ import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))
 import           System.Environment (getArgs)
 
-import           Text.PrettyPrint.Leijen ( (<$$>), putDoc, hPutDoc, Doc
-                                         , linebreak, text, (<+>), equals
+import           Text.PrettyPrint.Leijen ( (<$$>), putDoc, hPutDoc, Doc, equals
+                                         , linebreak, text, (<>)
+                                         , punctuate, dquotes, hcat, comma
                                          )
 
 import qualified Ivory.Compile.C.CmdlineFrontend as O
@@ -56,7 +57,7 @@ runCompileAADL opts t = do
     Just dir
       -> do createDirectoryIfMissing True dir
             mapM_ go docLst
-            outputAADLDeps (dir </> addExtension "AADL_FILES" "mk")
+            outputAADLDeps (dir </> "AADL_FILES")
                            (configSystemName c : thdNames)
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
@@ -103,10 +104,10 @@ outputAADL dir nm contents = do
 outputAADLDeps :: FilePath -> [String] -> IO ()
 outputAADLDeps fp nms = do
   h <- openFile fp WriteMode
-  hPutDoc h (text "AADL_FILES" <+> equals <+> text files)
+  hPutDoc h $ text "AADL_LIST" <> equals <> dquotes (hcat (punctuate comma files))
   hClose h
   where
-  files = unwords $ map (\nm -> addExtension nm aadlExt) nms
+  files = map (\nm -> text $ addExtension nm aadlExt) (reverse nms)
 
 aadlExt :: String
 aadlExt = "aadl"

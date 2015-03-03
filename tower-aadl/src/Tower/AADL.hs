@@ -18,7 +18,9 @@ import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))
 import           System.Environment (getArgs)
 
-import           Text.PrettyPrint.Leijen ((<$$>), putDoc, hPutDoc, Doc, linebreak)
+import           Text.PrettyPrint.Leijen ( (<$$>), putDoc, hPutDoc, Doc
+                                         , linebreak, text, (<+>), equals
+                                         )
 
 import qualified Ivory.Compile.C.CmdlineFrontend as O
 
@@ -54,28 +56,30 @@ runCompileAADL opts t = do
     Just dir
       -> do createDirectoryIfMissing True dir
             mapM_ go docLst
+            outputAADLDeps (dir </> addExtension "AADL_FILES" "mk")
+                           (configSystemName c : thdNames)
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
 
   genIvoryCode ivoryOpts code
 
   where
-  ivoryOpts = O.initialOpts { O.outDir = genDirOpts opts }
-  docLst    = concatDocs docs
-  thdNames  = map docName (thdDocs docs)
-  docs      = buildAADL opts sys code
+  ivoryOpts   = (configIvoryOpts c) { O.outDir = Just (configSrcsDir c)
+                                    , O.scErrors = False }
   (ast, code) = runTower t ()
-  sys = fromTower (configOpts opts) ast
+  c           = configOpts opts
+  sys         = fromTower c ast
+  docs        = buildAADL sys code
+  docLst      = concatDocs docs
+  -- Invariant: this list gives the dependency ordering for the files as well.
+  thdNames    = map docName (thdDocs docs)
 
 -- | Compile the types, threads, and system separately without building packages.
-buildAADL :: Opts -> A.System -> GeneratedCode  -> CompiledDocs
-buildAADL opts sys code = cds { tyDoc = typesDoc sys types }
+buildAADL :: A.System -> GeneratedCode  -> CompiledDocs
+buildAADL sys code = cds { tyDoc = typesDoc sys types }
   where
-  cds = renderSystem sys
-  -- Full system and code-gen structure implementations
-  -- (ast, code) = runTower t ()
-  types       =
-    concatMap (I.public . I.modStructs) (C.generatedcode_modules code)
+  cds   = renderSystem sys
+  types = concatMap (I.public . I.modStructs) (C.generatedcode_modules code)
 
 -- | Compile user-defined types if there are any.
 typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc
@@ -93,6 +97,18 @@ outputAADL dir nm contents = do
   hPutDoc h contents
   hClose h
   where
-  fname = addExtension (dir </> nm) ".aadl"
+  fname = addExtension (dir </> nm) aadlExt
+
+-- | Output a variable declaration with the AADL files generated, in order.
+outputAADLDeps :: FilePath -> [String] -> IO ()
+outputAADLDeps fp nms = do
+  h <- openFile fp WriteMode
+  hPutDoc h (text "AADL_FILES" <+> equals <+> text files)
+  hClose h
+  where
+  files = unwords $ map (\nm -> addExtension nm aadlExt) nms
+
+aadlExt :: String
+aadlExt = "aadl"
 
 --------------------------------------------------------------------------------

@@ -22,7 +22,6 @@ import qualified Ivory.Tower.Types.Time as T
 import qualified Ivory.Tower.Types.Unique as U
 import           Ivory.Tower.Codegen.Handler (callbackProcName)
 
-
 import           Tower.AADL.AST
 import           Tower.AADL.Config
 
@@ -46,6 +45,7 @@ mkProcess c t = Process { .. }
   processComponents = activeThreads ++ passiveThreads
   activeThreads     = map (fromThread t) (skipInitThread (A.towerThreads t))
   passiveThreads    = map (fromMonitor c t) (A.tower_monitors t)
+  -- XXX needed with signals?
   skipInitThread    = filter (("thread_init" /=) . A.threadName)
 
 fromThread :: A.Tower -> A.Thread -> Thread

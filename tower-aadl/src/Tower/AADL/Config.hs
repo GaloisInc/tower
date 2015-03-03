@@ -27,9 +27,8 @@ data Config = Config
 initialConfig :: Config
 initialConfig = Config
   { configSrcsDir     = ""
-  , configSystemName  = "system"
-  , configSystemOS    = "OS"
-  , configSystemHW    = "HW"
+  , configSystemName  = "sys"
+  , configSystemOS    = "CAmkES"
+  , configSystemHW    = "QEMU"
   , configIvoryOpts   = C.initialOpts
   }
-

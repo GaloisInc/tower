@@ -83,7 +83,7 @@ generatedHandlerCode hc t m h =
                        (const (body (return ())))
 
 handlerProcName :: AST.Handler -> AST.Thread -> String
-handlerProcName h t = "handler_run_" ++ AST.handlerName h 
+handlerProcName h t = "handler_run_" ++ AST.handlerName h
                      ++ "_" ++ AST.threadName t
 
 handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)

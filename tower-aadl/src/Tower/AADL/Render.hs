@@ -128,18 +128,19 @@ renderChannelHandle h = text $ case h of
   Input  -> "in"
   Output -> "out"
 
--- | Takes the kind of source text (e.g. "Compute_Entrypoint_Source_Text" or
--- "CommPrim_Source_Text"), source text, and makes the property.
 renderSourceText :: Doc -> SourceText -> [Doc]
 renderSourceText h st = case st of
-  Prim fns
-    -> [ mkSrcText fns ]
+  Prim srcTxt
+    -> [ stmt $ fromSMACCM h ==> dquotes (text srcTxt) ]
   User srcs
-    ->   let (fps, fns) = unzip srcs in
-         [ mkSrcText fns
-         , stmt (text "Source_Text" ==> mkLs fps) ]
+    -> renderEntryText h srcs
+
+renderEntryText :: Doc -> [SourcePath] -> [Doc]
+renderEntryText h srcs =
+  let (srcTxts, entries) = unzip srcs in
+  [ stmt $ fromSMACCM h       ==> mkLs entries
+  , stmt $ text "Source_Text" ==> mkLs srcTxts ]
   where
-  mkSrcText fns = stmt $ fromSMACCM h ==> mkLs fns
   mkLs s = lparen
         <> hsep (punctuate comma (map (dquotes . text) s))
         <> rparen
@@ -158,8 +159,8 @@ renderThreadProperty p = case p of
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
   Priority pri
     -> stmt (text "Priority" ==> integer pri)
-  PropertySourceText st
-    -> vsep (renderSourceText entrySrc st)
+  PropertySourceText srcTxt
+    -> vsep (renderEntryText entrySrc [srcTxt])
   SendEvents chans
     -> stmt
      $ fromSMACCM (text "Sends_Events_To")

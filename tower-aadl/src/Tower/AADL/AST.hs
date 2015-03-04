@@ -50,14 +50,17 @@ data Channel = Channel
 
 data ChannelHandle =
     Input
-  -- ^ AADL semantics: input into channel.
+  -- ^ AADL semantics: input to handler. Associated with an entry source and a
   | Output
-  -- ^ AADL semantics: output from channel.
+  -- ^ AADL semantics: output from of handler. Associated an output function.
   deriving (Show, Eq)
 
+-- | Path to a .c file and a function symbol in the file.
+type SourcePath = (FilePath, FuncSym)
+
 data SourceText =
-    Prim [FuncSym]
-  | User [(FilePath, FuncSym)]
+    Prim FuncSym
+  | User [SourcePath]
   deriving (Show, Eq)
 
 data ThreadProperty =
@@ -67,7 +70,8 @@ data ThreadProperty =
   -- ^ Min bound, max bound.
   | StackSize Integer
   | Priority Integer
-  | PropertySourceText SourceText
+  | PropertySourceText !SourcePath
+  -- ^ Path to a .c file
   | SendEvents [(ChanLabel, Bound)]
   deriving (Show, Eq)
 

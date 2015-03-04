@@ -14,10 +14,10 @@ module Tower.AADL.FromTower
 import           Prelude hiding (init)
 import           System.FilePath ((</>), addExtension)
 
-import qualified Ivory.Tower.AST as A
-import qualified Ivory.Tower.AST.Graph as G
-import qualified Ivory.Tower.Types.Time as T
-import qualified Ivory.Tower.Types.Unique as U
+import qualified Ivory.Tower.AST           as A
+import qualified Ivory.Tower.AST.Graph     as G
+import qualified Ivory.Tower.Types.Time    as T
+import qualified Ivory.Tower.Types.Unique  as U
 import           Ivory.Tower.Codegen.Handler (callbackProcName,handlerProcName)
 
 import           Tower.AADL.AST
@@ -60,36 +60,40 @@ fromHandler c t h = Thread { .. }
   (fs, ps)         = concatPair (map fromEmitter (A.handler_emitters h))
   cf               = fromInputChan cbs (A.handler_chan h)
   cbs              = concatMap mkCbNames (A.handler_callbacks h)
-  (threadType, dispatch)
-    = case A.handler_chan h of
-        A.ChanSignal sig -- XXX address is a lie
-            -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
-        A.ChanPeriod per
-            -> ( Active
-               , Periodic (T.toMicroseconds (A.period_dt per))
-               )
-        A.ChanInit{} -- XXX is Aperiodic right? We're ignoring init
-                     -- chans for now, anyways
-            -> (Active, Aperiodic)
-        A.ChanSync{}
-            -> (Passive, Aperiodic)
-  threadPriority   = case threadType of
-                       Active  -> [Priority 1] -- XXX made up for now
-                       Passive -> []
-  stackSize        = case threadType of
-                       Active  -> [StackSize 100] -- XXX made up for now
-                       Passive -> []
+  (threadType, dispatch) =
+    case A.handler_chan h of
+      A.ChanSignal sig -- XXX address is a lie
+          -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
+      A.ChanPeriod per
+          -> ( Active, Periodic (T.toMicroseconds (A.period_dt per)))
+      A.ChanInit{}
+          -- XXX is Aperiodic right? We're ignoring init chans for now, anyways
+          -> (Active, Aperiodic)
+      A.ChanSync{}
+          -> (Passive, Aperiodic)
+  threadPriority =
+    case threadType of
+      Active  -> [Priority 1] -- XXX made up for now
+      Passive -> []
+  stackSize =
+    case threadType of
+      Active  -> [StackSize 100] -- XXX made up for now
+      Passive -> []
   propertySrcText  =
     case threadType of
       Active
-        -> [PropertySourceText ("foobar", handlerProcName h t')]
+        -> [PropertySourceText (f, s)]
            where
-           t' = case A.handler_chan h of
-                  A.ChanSignal sig -> A.SignalThread sig
-                  A.ChanPeriod per -> A.PeriodThread per
-                  A.ChanInit i     -> A.InitThread   i
-
-      Passive -> []
+           s  = handlerProcName h th
+           f  = mkCFile c (A.threadName th)
+           th =
+             case A.handler_chan h of
+               A.ChanSignal sig -> A.SignalThread sig
+               A.ChanPeriod per -> A.PeriodThread per
+               A.ChanInit i     -> A.InitThread   i
+               A.ChanSync{}     -> error "Impossible in fromHandler"
+      Passive
+        -> []
   threadProperties =
       ThreadType threadType
     : DispatchProtocol dispatch
@@ -102,9 +106,7 @@ fromHandler c t h = Thread { .. }
   mkCbNames :: U.Unique -> [SourcePath]
   mkCbNames cb = map (mkSrc &&& mkSym) cbThds
     where
-    mkSrc thd = (flip addExtension) "c"
-              $ configSrcsDir c
-            </> A.threadUserCodeModName thd ++ A.threadName thd
+    mkSrc thd = mkCFile c (A.threadName thd)
     mkSym     = callbackProcName cb (A.handler_name h)
     cbThds    = G.handlerThreads t h
 
@@ -160,3 +162,7 @@ concatPair = (concat *** concat) . unzip
 
 prettyPeriod :: A.Period -> String
 prettyPeriod = T.prettyTime . A.period_dt
+
+-- From a name, add the '.c' extension and file path.
+mkCFile :: Config -> FilePath -> FilePath
+mkCFile c fp = ".." </> configSrcsDir c </> addExtension fp "c"

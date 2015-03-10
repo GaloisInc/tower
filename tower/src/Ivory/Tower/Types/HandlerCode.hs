@@ -28,5 +28,5 @@ insertHandlerCodeCallback m c =
 
 insertHandlerCodeEmitter :: EmitterCode a -> HandlerCode b -> HandlerCode b
 insertHandlerCodeEmitter e c =
-  c { handlercode_emitters = SomeEmitterCode e : handlercode_emitters c}
+  c { handlercode_emitters = handlercode_emitters c ++ [ SomeEmitterCode e ] }
 

@@ -55,10 +55,10 @@ fromHandler :: Config
 fromHandler c t h = Thread { .. }
   where
   threadName       = U.showUnique (A.handler_name h)
-  threadFeatures   = cf:fs
+  threadFeatures   = cfs ++ fs
   threadComments   = A.handler_comments h
   (fs, ps)         = concatPair (map fromEmitter (A.handler_emitters h))
-  cf               = fromInputChan cbs (A.handler_chan h)
+  cfs              = fromInputChan cbs (A.handler_chan h)
   cbs              = concatMap mkCbNames (A.handler_callbacks h)
   (threadType, dispatch) =
     case A.handler_chan h of
@@ -110,18 +110,16 @@ fromHandler c t h = Thread { .. }
     mkSym     = callbackProcName cb (A.handler_name h)
     cbThds    = G.handlerThreads t h
 
-fromInputChan :: [SourcePath] -> A.Chan -> Feature
+fromInputChan :: [SourcePath] -> A.Chan -> [Feature]
 fromInputChan callbacks c = case c of
   A.ChanSync s
     -> let chanType  = A.sync_chan_type  s in
        let chanLabel = syncChanLabel s in
-       ChannelFeature (Channel { .. })
+       [ChannelFeature (Channel { .. })]
   A.ChanSignal{}
     -> error $ "fromInputChan " ++ show c
-  A.ChanPeriod per
-    -> let chanLabel = prettyPeriod per in
-       let chanType  = A.period_ty per in
-       ChannelFeature (Channel { .. })
+  A.ChanPeriod{}
+    -> [] -- Input chans from clocks are implicit in AADL.
   A.ChanInit{}
     -> error "Impossible ChanInit in fromInputChan."
   where
@@ -159,9 +157,6 @@ syncChanLabel = show . A.sync_chan_label
 
 concatPair :: [([a],[b])] -> ([a],[b])
 concatPair = (concat *** concat) . unzip
-
-prettyPeriod :: A.Period -> String
-prettyPeriod = T.prettyTime . A.period_dt
 
 -- From a name, add the '.c' extension and file path.
 mkCFile :: Config -> FilePath -> FilePath

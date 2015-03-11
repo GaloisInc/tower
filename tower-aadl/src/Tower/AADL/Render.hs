@@ -60,13 +60,16 @@ renderProcess p =
   blk =
     [ text "subcomponents"
     , tab $ vsep $ map renderProcessSubcomponent namedThreads
-    , text "connections"
-    , tab $ vsep $ map renderConnection $ threadChannels namedThreads
-    ]
-
+    ] ++ connections
+  connections =
+    let chans = threadChannels namedThreads in
+    if null (filterEndpoints chans) then []
+      else [ text "connections"
+           , tab $ vsep $ map renderConnection chans
+           ]
   namedThreads = zip threads (map (("th"++) . show) [0::Integer ..])
-  threads = processComponents p
-  nm      = text (processName p)
+  threads      = processComponents p
+  nm           = text (processName p)
 
 renderProcessSubcomponent :: (Thread, LocalId) -> Doc
 renderProcessSubcomponent (t, var) = stmt $

@@ -23,6 +23,12 @@ data Connection = Connection
 sameChannel :: Channel -> Channel -> Bool
 sameChannel c0 c1 = chanLabel c0 == chanLabel c1
 
+-- | Remove connections that don't have both endpoints.
+filterEndpoints :: [Connection] -> [Connection]
+filterEndpoints = filter b
+  where
+  b c = not (null (connectionTxLabels c) || null (connectionRxLabels c))
+
 threadChannels :: [(Thread, LocalId)] -> [Connection]
 threadChannels ls = do
   c <- nubBy sameChannel (concatMap threadChans threads)

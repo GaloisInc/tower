@@ -158,6 +158,9 @@ syncChanLabel = show . A.sync_chan_label
 concatPair :: [([a],[b])] -> ([a],[b])
 concatPair = (concat *** concat) . unzip
 
--- From a name, add the '.c' extension and file path.
+-- From a name, add the '.c' extension and file path. Relative to the AADL source path.
 mkCFile :: Config -> FilePath -> FilePath
-mkCFile c fp = ".." </> configSrcsDir c </> addExtension fp "c"
+mkCFile c fp =
+      ".."
+  </> configSrcsDir c
+  </> addExtension fp "c"

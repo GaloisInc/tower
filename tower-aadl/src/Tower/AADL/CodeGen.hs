@@ -56,3 +56,4 @@ mkSignalCode sigNm
   -- XXX assuming for now that we don't have unsafe signals. Pass the platform
   -- signal continuation here for eChronos.
   = I.package sigNm (s (return ()))
+

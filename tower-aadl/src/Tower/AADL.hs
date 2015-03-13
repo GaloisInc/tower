@@ -59,21 +59,24 @@ runCompileAADL opts t = do
             mapM_ go docLst
             outputAADLDeps (dir </> "AADL_FILES")
                            (configSystemName c : thdNames)
+            genIvoryCode (ivoryOpts dir) code
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
 
-  genIvoryCode ivoryOpts code
-
   where
-  ivoryOpts   = (configIvoryOpts c) { O.outDir = Just (configSrcsDir c)
-                                    , O.scErrors = False }
-  (ast, code) = runTower t ()
-  c           = configOpts opts
-  sys         = fromTower c ast
-  docs        = buildAADL sys code
-  docLst      = concatDocs docs
+  ivoryOpts dir =
+    (configIvoryOpts c) { O.outDir    = Just (dir </> configSrcsDir c)
+                        , O.outHdrDir = Just (dir </> configHdrDir  c)
+                        -- XXX assuming that the only artifacts are headers.
+                        , O.outArtDir = Just (dir </> configHdrDir  c)
+                        , O.scErrors  = False }
+  (ast, code)   = runTower t ()
+  c             = configOpts opts
+  sys           = fromTower c ast
+  docs          = buildAADL sys code
+  docLst        = concatDocs docs
   -- Invariant: this list gives the dependency ordering for the files as well.
-  thdNames    = map docName (thdDocs docs)
+  thdNames      = map docName (thdDocs docs)
 
 -- | Compile the types, threads, and system separately without building packages.
 buildAADL :: A.System -> GeneratedCode  -> CompiledDocs

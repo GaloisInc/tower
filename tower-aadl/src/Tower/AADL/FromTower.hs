@@ -161,6 +161,5 @@ concatPair = (concat *** concat) . unzip
 -- From a name, add the '.c' extension and file path. Relative to the AADL source path.
 mkCFile :: Config -> FilePath -> FilePath
 mkCFile c fp =
-      ".."
-  </> configSrcsDir c
+      configSrcsDir c
   </> addExtension fp "c"

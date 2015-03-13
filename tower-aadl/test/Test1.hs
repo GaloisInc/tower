@@ -88,12 +88,8 @@ test1 = do
 main :: IO ()
 main =
   runCompileAADL
-    initialOpts { genDirOpts = Just "test1/src"
-                , configOpts = config
-                }
+    initialOpts { genDirOpts = Just "test1" }
     test1
-  where
-  config = initialConfig { configSrcsDir = "test1/user_code" }
 
 --------------------------------------------------------------------------------
 -- Helpers

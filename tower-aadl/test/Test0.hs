@@ -51,12 +51,9 @@ test1 = do
 main :: IO ()
 main =
   runCompileAADL
-    initialOpts { genDirOpts = Just "test0/src"
-                , configOpts = config
+    initialOpts { genDirOpts = Just "test0"
                 }
     test1
-  where
-  config = initialConfig { configSrcsDir = "test0/user_code" }
 
 --------------------------------------------------------------------------------
 -- Helpers

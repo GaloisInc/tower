@@ -14,7 +14,9 @@ import qualified Ivory.Compile.C.CmdlineFrontend as C
 
 data Config = Config
   { configSrcsDir     :: FilePath
-  -- ^ Location of/to put C sources.
+  -- ^ Location of/to put C sources relative to genDirOpts.
+  , configHdrDir      :: FilePath
+  -- ^ Location of/to put C headers relative to genDirOpts.
   , configSystemName  :: String
   -- ^ System name.
   , configSystemOS    :: String
@@ -26,7 +28,8 @@ data Config = Config
 
 initialConfig :: Config
 initialConfig = Config
-  { configSrcsDir     = ""
+  { configSrcsDir     = "user_code"
+  , configHdrDir      = "include"
   , configSystemName  = "sys"
   , configSystemOS    = "CAmkES"
   , configSystemHW    = "QEMU"

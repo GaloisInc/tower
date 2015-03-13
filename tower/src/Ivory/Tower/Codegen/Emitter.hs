@@ -20,9 +20,8 @@ emitterCode :: forall a
              . (IvoryArea a, IvoryZero a)
             => Emitter a -> AST.Tower -> AST.Thread -> EmitterCode a
 emitterCode e@(Emitter ast) twr thr = EmitterCode
-  { emittercode_init = iproc
-  , emittercode_emit = trampoline
-  , emittercode_deliver = dproc
+  { emittercode_init = call_ iproc
+  , emittercode_deliver = call_ dproc
   , emittercode_user = do
       private $ incl trampoline
   , emittercode_gen = do

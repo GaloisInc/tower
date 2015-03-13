@@ -61,7 +61,7 @@ generatedHandlerCode hc t m h =
   runner = proc (handlerProcName h t) $ \msg -> body $ do
     comment "init emitters"
     forM_ (handlercode_emitters hc)
-      (\e -> call_ (someemittercode_init e))
+      (\e -> someemittercode_init e)
     comment "take monitor lock"
     call_ monitorLockProc
     comment "run callbacks"
@@ -70,7 +70,7 @@ generatedHandlerCode hc t m h =
     call_ monitorUnlockProc
     comment "deliver emitters"
     forM_ (handlercode_emitters hc)
-      (\e -> call_ (someemittercode_deliver e))
+      (\e -> someemittercode_deliver e)
 
   monitorUnlockProc :: Def('[]:->())
   monitorUnlockProc = proc (monitorUnlockProcName m) (body (return ()))

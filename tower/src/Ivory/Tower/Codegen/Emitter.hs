@@ -33,11 +33,10 @@ emitterCode e@(Emitter ast) twr thr = EmitterCode
   }
   where
   max_messages = AST.emitter_bound ast - 1
-  tn = AST.threadName thr
   messageCount :: MemArea (Stored Uint32)
-  messageCount = area (e_per_thread "message_count") Nothing
+  messageCount = area (e_per_thread MsgCnt) Nothing
   messages :: [MemArea a]
-  messages = [ area (e_per_thread ("message_" ++ show d)) Nothing
+  messages = [ area (e_per_thread (Msg d)) Nothing
              | d <- [0..max_messages] ]
 
   messageAt :: Uint32 -> Ref Global a
@@ -50,10 +49,10 @@ emitterCode e@(Emitter ast) twr thr = EmitterCode
   trampoline :: Def('[ConstRef s a]:->())
   trampoline = proc ename $ \msg -> body $ call_ eproc msg
   iproc :: Def('[]:->())
-  iproc = proc (e_per_thread "init") $ body $
+  iproc = proc (e_per_thread Init) $ body $
                store (addrOf messageCount) 0
   eproc :: Def('[ConstRef s a]:->())
-  eproc = proc (e_per_thread "emit")  $ \msg -> body $ do
+  eproc = proc (e_per_thread Emit)  $ \msg -> body $ do
                mc <- deref (addrOf messageCount)
                when (mc <=? fromIntegral max_messages) $ do
                  store (addrOf messageCount) (mc + 1)
@@ -61,7 +60,7 @@ emitterCode e@(Emitter ast) twr thr = EmitterCode
                  refCopy storedmsg msg
 
   dproc :: Def('[]:->())
-  dproc = proc (e_per_thread "deliver") $ body $ do
+  dproc = proc (e_per_thread Deliver) $ body $ do
             mc <- deref (addrOf messageCount)
             forM_ (zip messages [0..]) $ \(m, (index :: Integer)) ->
                when (fromIntegral index <? mc) $
@@ -74,4 +73,10 @@ emitterCode e@(Emitter ast) twr thr = EmitterCode
 
   chanast = case e of Emitter (AST.Emitter _ chast _) -> chast
   ename = emitterProcName e
-  e_per_thread suffix = ename ++ "_" ++ tn ++ "_" ++ suffix
+  e_per_thread = emitterThreadProcName thr e
+
+emitterThreadProcName :: AST.Thread -> Emitter a -> EmitState -> String
+emitterThreadProcName thr e suffix =
+  emitterProcName e ++ "_" ++ tn ++ "_" ++ prettyEmitSuffix suffix
+  where
+  tn = AST.threadName thr

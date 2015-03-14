@@ -6,7 +6,9 @@
 
 module Ivory.Tower.Types.EmitterCode
   ( EmitterCode(..)
+  , EmitState(..)
   , SomeEmitterCode(..)
+  , prettyEmitSuffix
   , someemittercode_deliver
   , someemittercode_init
   , someemittercode_gen
@@ -32,3 +34,22 @@ data EmitterCode (a :: Area *) = EmitterCode
   , emittercode_user :: ModuleDef
   , emittercode_gen :: ModuleDef
   }
+
+-- | Emitter actions.
+data EmitState =
+    Init
+  | Emit
+  | Deliver
+  | Msg Integer
+  | MsgCnt
+  deriving (Show, Read, Eq)
+
+-- | Create consistent suffixes from actions.
+prettyEmitSuffix :: EmitState -> String
+prettyEmitSuffix e =
+  case e of
+    Init    -> "init"
+    Emit    -> "emit"
+    Deliver -> "deliver"
+    Msg bnd -> "message_" ++ show bnd
+    MsgCnt  -> "message_count"

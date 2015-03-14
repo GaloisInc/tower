@@ -13,6 +13,8 @@ module Tower.AADL.FromTower
 
 import           Prelude hiding (init)
 import           System.FilePath ((</>), addExtension)
+import           Control.Applicative
+import           Control.Arrow
 
 import qualified Ivory.Tower.AST           as A
 import qualified Ivory.Tower.AST.Graph     as G
@@ -22,8 +24,6 @@ import           Ivory.Tower.Codegen.Handler (callbackProcName,handlerProcName)
 
 import           Tower.AADL.AST
 import           Tower.AADL.Config
-
-import           Control.Arrow
 
 --------------------------------------------------------------------------------
 
@@ -55,11 +55,31 @@ fromHandler :: Config
 fromHandler c t h = Thread { .. }
   where
   threadName       = U.showUnique (A.handler_name h)
-  threadFeatures   = cfs ++ fs
+  threadFeatures   = rxChan ++ map OutputFeature txChans
   threadComments   = A.handler_comments h
-  (fs, ps)         = concatPair (map fromEmitter (A.handler_emitters h))
-  cfs              = fromInputChan cbs (A.handler_chan h)
+  es               = A.handler_emitters h
+  (txChans, bnds)  = unzip $ map fromEmitter es
+  sends            = SendEvents (zip txChans bnds)
+  rxChan           = fromInputChan cbs (A.handler_chan h)
   cbs              = concatMap mkCbNames (A.handler_callbacks h)
+  -- Use Tower's API to create a callback function symbol based on the callback
+  -- (a `Unique`) and the Tower threads that call it. Those functions are
+  -- defined in .c files named after their active threads.
+  mkCbNames :: U.Unique -> [SourcePath]
+  mkCbNames cb = map (mkSrc &&& mkSym) cbThds
+    where
+    mkSrc thd = mkCFile c (A.threadName thd)
+    mkSym     = callbackProcName cb (A.handler_name h)
+    cbThds    = G.handlerThreads t h
+
+  threadProperties =
+      ThreadType threadType
+    : DispatchProtocol dispatch
+    : ExecTime 10 100 -- XXX made up for now
+    : sends
+    : concat (    [propertySrcText c h, stackSize, threadPriority]
+              <*> pure threadType
+             )
   (threadType, dispatch) =
     case A.handler_chan h of
       A.ChanSignal sig -- XXX address is a lie
@@ -71,92 +91,73 @@ fromHandler c t h = Thread { .. }
           -> (Active, Aperiodic)
       A.ChanSync{}
           -> (Passive, Aperiodic)
-  threadPriority =
-    case threadType of
-      Active  -> [Priority 1] -- XXX made up for now
-      Passive -> []
-  stackSize =
-    case threadType of
-      Active  -> [StackSize 100] -- XXX made up for now
-      Passive -> []
-  propertySrcText  =
-    case threadType of
-      Active
-        -> [PropertySourceText (f, s)]
-           where
-           s  = handlerProcName h th
-           f  = mkCFile c (A.threadName th)
-           th =
-             case A.handler_chan h of
-               A.ChanSignal sig -> A.SignalThread sig
-               A.ChanPeriod per -> A.PeriodThread per
-               A.ChanInit i     -> A.InitThread   i
-               A.ChanSync{}     -> error "Impossible in fromHandler"
-      Passive
-        -> []
-  threadProperties =
-      ThreadType threadType
-    : DispatchProtocol dispatch
-    : ExecTime 10 100 -- XXX made up for now
-    : propertySrcText ++ stackSize ++ threadPriority ++ ps
 
-  -- Use Tower's API to create a callback function symbol based on the callback
-  -- (a `Unique`) and the Tower threads that call it. Those functions are
-  -- defined in .c files named after their active threads.
-  mkCbNames :: U.Unique -> [SourcePath]
-  mkCbNames cb = map (mkSrc &&& mkSym) cbThds
-    where
-    mkSrc thd = mkCFile c (A.threadName thd)
-    mkSym     = callbackProcName cb (A.handler_name h)
-    cbThds    = G.handlerThreads t h
+threadPriority :: ThreadType -> [ThreadProperty]
+threadPriority threadType =
+  case threadType of
+    Active  -> [Priority 1] -- XXX made up for now
+    Passive -> []
 
+stackSize :: ThreadType -> [ThreadProperty]
+stackSize threadType =
+  case threadType of
+    Active  -> [StackSize 100] -- XXX made up for now
+    Passive -> []
+
+propertySrcText :: Config -> A.Handler -> ThreadType -> [ThreadProperty]
+propertySrcText c h threadType =
+  case threadType of
+    Passive
+      -> []
+    Active
+      -> [PropertySourceText (f, s)]
+         where
+         s  = handlerProcName h th
+         f  = mkCFile c (A.threadName th)
+         th =
+           case A.handler_chan h of
+             A.ChanSignal sig -> A.SignalThread sig
+             A.ChanPeriod per -> A.PeriodThread per
+             A.ChanInit i     -> A.InitThread   i
+             A.ChanSync{}     -> error "Impossible in fromHandler"
+
+-- Return a list to have an mempty for active intputs (signals and periods).
 fromInputChan :: [SourcePath] -> A.Chan -> [Feature]
 fromInputChan callbacks c = case c of
-  A.ChanSync s
-    -> let chanType  = A.sync_chan_type  s in
-       let chanLabel = syncChanLabel s in
-       [ChannelFeature (Channel { .. })]
   A.ChanSignal{}
     -> error $ "fromInputChan " ++ show c
   A.ChanPeriod{}
     -> [] -- Input chans from clocks are implicit in AADL.
   A.ChanInit{}
     -> error "Impossible ChanInit in fromInputChan."
-  where
-  chanHandle    = Input
-  chanCallbacks = User callbacks
-
-fromEmitter :: A.Emitter -> ([Feature], [ThreadProperty])
-fromEmitter e = (fs, ps)
-  where
-  c  = A.emitter_chan e
-  fs = [ChannelFeature (emitterChan (A.emitterProcName e) c)]
-  ps = [SendEvents [(chanLabel, A.emitter_bound e)]]
-  chanLabel = case c of
-    A.ChanSync s
-      -> show (A.sync_chan_label s)
-    _ -> error $ "Impossible chan " ++ show c ++ " in fromEmitter."
-
-emitterChan :: String -> A.Chan -> Channel
-emitterChan proc c = case c of
   A.ChanSync s
-    -> Channel { .. }
-      where
-      chanLabel = syncChanLabel s
-      chanType  = A.sync_chan_type s
-  _ -> error $ "Impossible channel " ++ show c ++ " in emitterChan."
+    -> [InputFeature (Input { .. })]
+    where
+    inputType  = A.sync_chan_type s
+    inputLabel = syncChanLabel s
+    -- XXX Change when we move to single callbakcs
+    inputCallback =
+      case callbacks of
+        [] -> error "No callbacks"
+        _  -> head callbacks
+
+-- | From an emitter, return its output channel and bound.
+fromEmitter :: A.Emitter -> (Output, Bound)
+fromEmitter e = (Output { .. }, bnd)
   where
-  chanHandle    = Output
-  chanCallbacks = Prim proc
+  outputEmitter = A.emitterProcName e
+  bnd           = A.emitter_bound e
+  (outputLabel, outputType) =
+    case A.emitter_chan e of
+      A.ChanSync s
+        -> (show (A.sync_chan_label s), A.sync_chan_type s)
+      _ -> error $ "Impossible emitter " ++ show e ++ " in fromEmitter."
 
 syncChanLabel :: A.SyncChan -> String
 syncChanLabel = show . A.sync_chan_label
 
 --------------------------------------------------------------------------------
 -- Helpers
-
-concatPair :: [([a],[b])] -> ([a],[b])
-concatPair = (concat *** concat) . unzip
 
 -- From a name, add the '.c' extension and file path. Relative to the AADL source path.
 mkCFile :: Config -> FilePath -> FilePath

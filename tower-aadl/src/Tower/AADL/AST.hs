@@ -36,32 +36,26 @@ data Thread = Thread
   } deriving (Show, Eq)
 
 data Feature =
-  ChannelFeature Channel
-  deriving (Show, Eq)
+    InputFeature  Input
+  | OutputFeature Output
+  deriving (Show, Eq, Ord)
 
--- Integer corresponds to Tower's SyncChan integer label.
-data Channel = Channel
-  { chanLabel     :: !ChanLabel
-  , chanHandle    :: ChannelHandle
-  , chanType      :: !I.Type
-  -- ^ The Ivory AADL backend has converted an Ivory Type into an AADL type.
-  , chanCallbacks :: SourceText
-  } deriving (Show, Eq)
+-- | Input channels
+data Input = Input
+  { inputLabel    :: !ChanLabel
+  , inputType     :: !I.Type
+  , inputCallback :: SourcePath
+  } deriving (Show, Eq, Ord)
 
-data ChannelHandle =
-    Input
-  -- ^ AADL semantics: input to handler. Associated with an entry source and a
-  | Output
-  -- ^ AADL semantics: output from of handler. Associated an output function.
-  deriving (Show, Eq)
+-- | Output channels
+data Output = Output
+  { outputLabel   :: !ChanLabel
+  , outputType    :: !I.Type
+  , outputEmitter :: FuncSym
+  } deriving (Show, Eq, Ord)
 
 -- | Path to a .c file and a function symbol in the file.
 type SourcePath = (FilePath, FuncSym)
-
-data SourceText =
-    Prim FuncSym
-  | User [SourcePath]
-  deriving (Show, Eq)
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -72,7 +66,7 @@ data ThreadProperty =
   | Priority Integer
   | PropertySourceText !SourcePath
   -- ^ Path to a .c file
-  | SendEvents [(ChanLabel, Bound)]
+  | SendEvents [(Output, Bound)]
   deriving (Show, Eq)
 
 data DispatchProtocol =

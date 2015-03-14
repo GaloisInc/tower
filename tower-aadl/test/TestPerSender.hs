@@ -45,7 +45,7 @@ test0 = do
 main :: IO ()
 main =
   runCompileAADL
-    initialOpts { genDirOpts = Just "test0"
+    initialOpts { genDirOpts = Just "test-per"
                 }
     test0
 

@@ -84,18 +84,17 @@ stmt d = d <> semi
 skipLines :: [Doc] -> Doc
 skipLines = vsep . (punctuate linebreak)
 
-mkTxChan :: String -> Doc
-mkTxChan l = text "Output" <> text l
+txChan :: Doc
+txChan = text "Output"
 
-mkRxChan :: String -> Doc
-mkRxChan l = text "Input" <> text l
+mkTxChan :: ChanLabel -> Doc
+mkTxChan l = txChan <> text l
 
-mkChan :: Channel -> Doc
-mkChan c =
-  let l = chanLabel c in
-  case chanHandle c of
-    Input  -> mkRxChan l
-    Output -> mkTxChan l
+rxChan :: Doc
+rxChan = text "Input"
+
+mkRxChan :: ChanLabel -> Doc
+mkRxChan l = rxChan <> text l
 
 -- | Takes the kind of block, block name, statements (e.g., features/properties) etc.
 renderBlk :: Doc -> Doc -> [Doc] -> Doc

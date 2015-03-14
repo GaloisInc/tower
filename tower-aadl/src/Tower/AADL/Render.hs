@@ -4,7 +4,9 @@
 -- (c) 2014 Galois, Inc.
 --
 
-module Tower.AADL.Render where
+module Tower.AADL.Render
+ ( renderSystem
+ ) where
 
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
@@ -62,10 +64,10 @@ renderProcess p =
     , tab $ vsep $ map renderProcessSubcomponent namedThreads
     ] ++ connections
   connections =
-    let chans = threadChannels namedThreads in
-    if null (filterEndpoints chans) then []
+    let chans = threadsChannels namedThreads in
+    if emptyConnections (filterEndpoints chans) then []
       else [ text "connections"
-           , tab $ vsep $ map renderConnection chans
+           , tab $ vsep $ mapConnections renderConnection chans
            ]
   namedThreads = zip threads (map (("th"++) . show) [0::Integer ..])
   threads      = processComponents p
@@ -77,20 +79,23 @@ renderProcessSubcomponent (t, var) = stmt $
   where
   nm = text (threadName t)
 
-renderConnection :: Connection -> Doc
-renderConnection c = vsep (allSynchConnect (connectionLabel c))
+-- Channel connections in a process
+renderConnection :: ChanLabel -> ChanIds -> Doc
+renderConnection l labels = vsep allSynchConnect
   where
   synchConnectLabel tx rx = text (tx ++ "_to_" ++ rx)
-  synchConnection tx rx i = stmt
+
+  allSynchConnect = do
+    tx <- getTxLabels labels
+    rx <- getRxLabels labels
+    return (synchConnection tx rx)
+
+  synchConnection tx rx = stmt
       $ synchConnectLabel tx rx
      <> colon
     <+> text "port"
-    <+> (text tx <> dot <> mkTxChan i)
-    ->> (text rx <> dot <> mkRxChan i)
-  allSynchConnect i = do
-    tx <- connectionTxLabels c
-    rx <- connectionRxLabels c
-    return (synchConnection tx rx i)
+    <+> (text tx <> dot <> mkTxChan l)
+    ->> (text rx <> dot <> mkRxChan l)
 
 renderThread :: Thread -> Doc
 renderThread t =
@@ -105,47 +110,47 @@ renderThread t =
 
 renderThreadFeature :: Feature -> Doc
 renderThreadFeature f = case f of
-  ChannelFeature c
-    -> renderDataPort c
+  InputFeature  rx
+    -> renderInput rx
+  OutputFeature tx
+    -> renderOutput tx
 
-renderDataPort :: Channel -> Doc
-renderDataPort c = stmt
-    $ mkChan c <> colon
-  <+> renderChannelHandle h
-  <+> hsep (map text ["event", "data", "port"])
-  <+> renderTypeNS (chanType c)
- <$$> tab lbrace
- <$$> tab (tab (vsep st))
- <$$> tab rbrace
+renderInput :: Input -> Doc
+renderInput rx = stmt
+    $ mkRxChan (inputLabel rx) <> colon
+  <+> text "in"
+  <+> edp
+  <+> renderTypeNS (inputType rx)
+ <$$> chanSrc (vsep st)
   where
-  st = renderSourceText (renderChanBody h) (chanCallbacks c)
-  h  = chanHandle c
+  st = renderEntryText (inputCallback rx)
 
-renderChanBody :: ChannelHandle -> Doc
-renderChanBody h = case h of
-  Input  -> entrySrc
-  Output -> primSrc
+renderOutput :: Output -> Doc
+renderOutput tx = stmt
+    $ mkTxChan (outputLabel tx) <> colon
+  <+> text "out"
+  <+> edp
+  <+> renderTypeNS (outputType tx)
+ <$$> chanSrc st
+  where
+  st = stmt $ fromSMACCM primSrc ==> dquotes (text (outputEmitter tx))
 
-renderChannelHandle :: ChannelHandle -> Doc
-renderChannelHandle h = text $ case h of
-  Input  -> "in"
-  Output -> "out"
+edp :: Doc
+edp = hsep (map text ["event", "data", "port"])
 
-renderSourceText :: Doc -> SourceText -> [Doc]
-renderSourceText h st = case st of
-  Prim srcTxt
-    -> [ stmt $ fromSMACCM h ==> dquotes (text srcTxt) ]
-  User srcs
-    -> renderEntryText h srcs
+chanSrc :: Doc -> Doc
+chanSrc d =
+      tab lbrace
+ <$$> tab (tab d)
+ <$$> tab rbrace
 
-renderEntryText :: Doc -> [SourcePath] -> [Doc]
-renderEntryText h srcs =
-  let (srcTxts, entries) = unzip srcs in
-  [ stmt $ fromSMACCM h       ==> mkLs entries
-  , stmt $ text "Source_Text" ==> mkLs srcTxts ]
+renderEntryText :: SourcePath -> [Doc]
+renderEntryText (srcTxt, entry) =
+  [ stmt $ fromSMACCM entrySrc ==> mkLs entry
+  , stmt $ text "Source_Text"  ==> mkLs srcTxt ]
   where
   mkLs s = lparen
-        <> hsep (punctuate comma (map (dquotes . text) s))
+        <> dquotes (text s)
         <> rparen
 
 renderThreadProperty :: ThreadProperty -> Doc
@@ -163,14 +168,14 @@ renderThreadProperty p = case p of
   Priority pri
     -> stmt (text "Priority" ==> integer pri)
   PropertySourceText srcTxt
-    -> vsep (renderEntryText entrySrc [srcTxt])
-  SendEvents chans
+    -> vsep (renderEntryText srcTxt)
+  SendEvents txs
     -> stmt
      $ fromSMACCM (text "Sends_Events_To")
-   ==> dquotes (braces (braces (mkOuts chans)))
+   ==> dquotes (braces (braces (mkOuts txs)))
   where
-  mkOuts chans = hsep (punctuate comma (map go chans))
-    where go (l,m) = integer m <+> mkTxChan l
+  mkOuts txs = hsep (punctuate comma (map go txs))
+    where go (tx,bnd) = integer bnd <+> mkTxChan (outputLabel tx)
   mkDisptach per = case per of
     Periodic i
       ->   mkDispatchdec (text "Periodic")

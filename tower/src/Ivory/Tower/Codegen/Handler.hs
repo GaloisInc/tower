@@ -41,11 +41,8 @@ generateHandlerThreadCode thcs twr h =
   msg = "generateHandlerThreadCode: broken invariant, monitor of handler "
      ++ show h ++ "must exist in " ++ show twr
 
-userHandlerCode :: HandlerCode a -> ModuleDef
-userHandlerCode hc = handlercode_callbacks hc >>
-  foldl appenduser (return ()) (handlercode_emitters hc)
-  where
-  appenduser acc ec = acc >> someemittercode_user ec
+emitterCode :: HandlerCode a -> ModuleDef
+emitterCode hc = mapM_ someemittercode_user (handlercode_emitters hc)
 
 generatedHandlerCode :: forall a
                       . (IvoryArea a, IvoryZero a)
@@ -90,7 +87,8 @@ handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)
                         => AST.Thread -> AST.Monitor -> AST.Handler
                         -> HandlerCode a -> ThreadCode
 handlerCodeToThreadCode t m h hc
-  = insertUserThreadCode (userHandlerCode hc)
+  = insertUserThreadCode (handlercode_callbacks hc)
+  $ insertEmitterThreadCode (emitterCode hc)
   $ insertGenThreadCode (generatedHandlerCode hc t m h)
   $ emptyThreadCode t
 

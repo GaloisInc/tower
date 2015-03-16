@@ -8,7 +8,7 @@ module Ivory.Tower.Monad.Monitor
   ( Monitor
   , runMonitor
   , monitorPutASTHandler
-  , monitorPutCode
+  , monitorModuleDef
   , monitorPutThreadCode
   , liftTower -- XXX UNSAFE TO USE
   ) where
@@ -28,16 +28,15 @@ import Ivory.Language
 
 newtype Monitor e a = Monitor
   { unMonitor :: StateT AST.Monitor
-                    (StateT (AST.Monitor -> MonitorCode) (Tower e)) a
+                    (StateT MonitorCode (Tower e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runMonitor :: String -> Monitor e ()
            -> Tower e (AST.Monitor, MonitorCode)
 runMonitor n b = do
   u <- freshname n
-  (ast, mkmc) <- runStateT (const emptyMonitorCode)
+  runStateT emptyMonitorCode
                     (fmap snd (runStateT (AST.emptyMonitor u) (unMonitor b)))
-  return (ast, mkmc ast)
 
 monitorPutASTHandler :: AST.Handler -> Monitor e ()
 monitorPutASTHandler a = Monitor $ sets_ $
@@ -49,13 +48,8 @@ liftTower a = Monitor $ lift $ lift $ a
 monitorCodegen :: Codegen e a -> Monitor e a
 monitorCodegen a = liftTower $ towerCodegen a
 
-withCode :: (AST.Monitor -> MonitorCode -> MonitorCode) -> Monitor e ()
-withCode f = Monitor $ do
-  a <- lift get
-  lift (set (\ctx -> (f ctx (a ctx))))
-
-monitorPutCode :: (AST.Monitor -> ModuleDef) -> Monitor e ()
-monitorPutCode f = withCode $ \ctx mc -> insertMonitorCode (f ctx) mc
+monitorModuleDef :: ModuleDef -> Monitor e ()
+monitorModuleDef def = Monitor $ lift $ sets_ $ insertMonitorCode def
 
 monitorPutThreadCode :: (AST.Tower -> [ThreadCode]) -> Monitor e ()
 monitorPutThreadCode = monitorCodegen . codegenThreadCode

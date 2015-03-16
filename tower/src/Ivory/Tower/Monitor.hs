@@ -37,8 +37,5 @@ state' :: (IvoryArea a, IvoryZero a)
 state' n i = do
   f <- freshname n
   let a = area (showUnique f) i
-  monitorPutCode $ \_ -> defMemArea a
+  monitorModuleDef $ defMemArea a
   return (addrOf a)
-
-monitorModuleDef :: ModuleDef -> Monitor e ()
-monitorModuleDef = monitorPutCode . const

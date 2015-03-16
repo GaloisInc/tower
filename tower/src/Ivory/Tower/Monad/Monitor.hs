@@ -39,20 +39,15 @@ runMonitor n b = do
                     (fmap snd (runStateT (AST.emptyMonitor u) (unMonitor b)))
   return (ast, mkmc ast)
 
-withAST :: (AST.Monitor -> AST.Monitor) -> Monitor e ()
-withAST f = Monitor $ do
-  a <- get
-  set (f a)
-
 monitorPutASTHandler :: AST.Handler -> Monitor e ()
-monitorPutASTHandler a = withAST $
+monitorPutASTHandler a = Monitor $ sets_ $
   \s -> s { AST.monitor_handlers = a : AST.monitor_handlers s }
 
 liftTower :: Tower e a -> Monitor e a
 liftTower a = Monitor $ lift $ lift $ a
 
 monitorCodegen :: Codegen e a -> Monitor e a
-monitorCodegen = liftTower . towerCodegen
+monitorCodegen a = liftTower $ towerCodegen a
 
 withCode :: (AST.Monitor -> MonitorCode -> MonitorCode) -> Monitor e ()
 withCode f = Monitor $ do

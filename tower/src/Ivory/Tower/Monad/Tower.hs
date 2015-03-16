@@ -37,33 +37,29 @@ runTower t e = (a,b)
   outer = fmap snd (runStateT AST.emptyTower (unTower t))
 
 instance BaseUtils Tower e where
-  fresh = Tower $ lift fresh
-  getEnv = Tower $ lift getEnv
+  fresh = towerCodegen fresh
+  getEnv = towerCodegen getEnv
 
-withAST :: (AST.Tower -> AST.Tower) -> Tower e ()
-withAST f = Tower $ do
-  a <- get
-  set (f a)
 
 towerPutASTMonitor :: AST.Monitor -> Tower e ()
-towerPutASTMonitor m = withAST $
+towerPutASTMonitor m = Tower $ sets_ $
   \s -> s { AST.tower_monitors = m : AST.tower_monitors s }
 
 towerPutASTSyncChan :: AST.SyncChan -> Tower e ()
-towerPutASTSyncChan a = withAST $
+towerPutASTSyncChan a = Tower $ sets_ $
   \s -> s { AST.tower_syncchans = a : AST.tower_syncchans s }
 
 towerPutASTPeriod :: AST.Period -> Tower e ()
-towerPutASTPeriod a = withAST $ AST.towerInsertPeriod a
+towerPutASTPeriod a = Tower $ sets_ $ AST.towerInsertPeriod a
 
 towerPutASTSignal :: AST.Signal -> Tower e ()
-towerPutASTSignal a = withAST $
+towerPutASTSignal a = Tower $ sets_ $
   \s -> s { AST.tower_signals = a : AST.tower_signals s }
 
 towerCodegen :: Codegen e a -> Tower e a
-towerCodegen = Tower . lift
+towerCodegen x = Tower $ lift x
 
 towerPutASTArtifact :: Artifact -> Tower e ()
-towerPutASTArtifact a = withAST $
+towerPutASTArtifact a = Tower $ sets_ $
   \s -> s { AST.tower_artifact_fs = f : AST.tower_artifact_fs s }
   where f = artifactFileName a

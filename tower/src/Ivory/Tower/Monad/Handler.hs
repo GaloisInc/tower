@@ -35,9 +35,23 @@ import Ivory.Tower.SrcLoc.Location (SrcLoc(..), Position(..), Range(..))
 
 import Ivory.Language
 
+data PartialHandler = PartialHandler
+  { partialEmitters :: [AST.Emitter]
+  , partialCallbacks :: [Unique]
+  , partialComments :: [AST.Comment]
+  }
+
+instance Monoid PartialHandler where
+  mempty = PartialHandler mempty mempty mempty
+  mappend a b = PartialHandler
+    { partialEmitters = partialEmitters a `mappend` partialEmitters b
+    , partialCallbacks = partialCallbacks a `mappend` partialCallbacks b
+    , partialComments = partialComments a `mappend` partialComments b
+    }
+
 newtype Handler (area :: Area *) e a = Handler
-  { unHandler :: StateT AST.Handler
-                  (WriterT (HandlerCode area)
+  { unHandler :: ReaderT Unique
+                  (WriterT (PartialHandler, HandlerCode area)
                     (Monitor e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
@@ -46,10 +60,10 @@ runHandler :: (IvoryArea a, IvoryZero a)
            -> Monitor e r
 runHandler n ch b = do
   u <- freshname n
-  ((r, handlerast), hc)
-    <- runWriterT
-     $ runStateT (AST.emptyHandler u ch)
-     $ unHandler b
+  (r, (part, hc)) <- runWriterT $ runReaderT u $ unHandler b
+
+  let handlerast = AST.Handler u ch
+        (partialEmitters part) (partialCallbacks part) (partialComments part)
 
   monitorPutASTHandler handlerast
   monitorPutThreadCode $ \twr ->
@@ -58,24 +72,28 @@ runHandler n ch b = do
   return r
 
 handlerName :: Handler a e Unique
-handlerName = Handler $ do
-  a <- get
-  return (AST.handler_name a)
+handlerName = Handler ask
+
+handlerPutAST :: PartialHandler -> Handler a e ()
+handlerPutAST part = Handler $ put (part, mempty)
+
+handlerPutCode :: HandlerCode a -> Handler a e ()
+handlerPutCode hc = Handler $ put (mempty, hc)
 
 handlerPutASTEmitter :: AST.Emitter -> Handler a e ()
-handlerPutASTEmitter a = Handler $ sets_ (AST.handlerInsertEmitter a)
+handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
 
 handlerPutASTCallback :: Unique -> Handler a e ()
-handlerPutASTCallback a = Handler $ sets_ (AST.handlerInsertCallback a)
+handlerPutASTCallback a = handlerPutAST $ mempty { partialCallbacks = [a] }
 
 handlerPutCodeCallback :: (AST.Thread -> ModuleDef)
                        -> Handler a e ()
-handlerPutCodeCallback ms = Handler $ put $
+handlerPutCodeCallback ms = handlerPutCode $
   mempty { handlercode_callbacks = ms }
 
 handlerPutCodeEmitter :: (AST.Tower -> AST.Thread -> EmitterCode b)
                       -> Handler a e ()
-handlerPutCodeEmitter ms = Handler $ put $
+handlerPutCodeEmitter ms = handlerPutCode $
   mempty { handlercode_emitters = \ twr thd -> [SomeEmitterCode $ ms twr thd] }
 
 instance BaseUtils (Handler a) p where
@@ -93,7 +111,7 @@ mkLocation file l1 c1 l2 c2
   = SrcLoc (Range (Position 0 l1 c1) (Position 0 l2 c2)) (Just file)
 
 setLocation :: SrcLoc -> Handler a e ()
-setLocation src = Handler $ sets_ (AST.handlerInsertComment (AST.SourcePos src))
+setLocation l = handlerPutAST $ mempty { partialComments = [AST.SourcePos l] }
 
 withLocation :: SrcLoc -> Handler area e a -> Handler area e a
 withLocation src h = setLocation src >> h

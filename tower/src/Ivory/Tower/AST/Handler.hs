@@ -1,11 +1,7 @@
 
 module Ivory.Tower.AST.Handler
   ( Handler(..)
-  , emptyHandler
   , handlerName
-  , handlerInsertEmitter
-  , handlerInsertCallback
-  , handlerInsertComment
   ) where
 
 import Ivory.Tower.Types.Unique
@@ -22,27 +18,5 @@ data Handler = Handler
   , handler_comments  :: [Comment]
   } deriving (Eq, Show, Ord)
 
-emptyHandler :: Unique -> Chan -> Handler
-emptyHandler u c = Handler
-  { handler_name      = u
-  , handler_chan      = c
-  , handler_emitters  = []
-  , handler_callbacks = []
-  , handler_comments  = []
-  }
-
 handlerName :: Handler -> String
 handlerName = showUnique . handler_name
-
-handlerInsertEmitter :: Emitter -> Handler -> Handler
-handlerInsertEmitter a h =
-  h { handler_emitters = handler_emitters h ++ [a] }
-
-handlerInsertCallback :: Unique -> Handler -> Handler
-handlerInsertCallback a h =
-  h { handler_callbacks = handler_callbacks h ++ [a] }
-
-handlerInsertComment :: Comment -> Handler -> Handler
-handlerInsertComment c h =
-  h { handler_comments = c : (handler_comments h) }
-

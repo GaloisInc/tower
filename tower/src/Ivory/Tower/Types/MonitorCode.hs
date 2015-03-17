@@ -1,16 +1,15 @@
 
 module Ivory.Tower.Types.MonitorCode
   ( MonitorCode(..)
-  , addMonitorCode
   ) where
 
+import Data.Monoid
 import Ivory.Language
 
-data MonitorCode = MonitorCode
+newtype MonitorCode = MonitorCode
   { monitorcode_moddef :: ModuleDef
   }
 
-addMonitorCode :: MonitorCode -> MonitorCode -> MonitorCode
-addMonitorCode a b = MonitorCode
-  { monitorcode_moddef = monitorcode_moddef a >> monitorcode_moddef b
-  }
+instance Monoid MonitorCode where
+  mempty = MonitorCode $ return ()
+  MonitorCode a `mappend` MonitorCode b = MonitorCode $ a >> b

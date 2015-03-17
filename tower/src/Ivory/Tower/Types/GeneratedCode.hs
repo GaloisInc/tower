@@ -58,7 +58,7 @@ generatedCodeInsertMonitorCode :: AST.Monitor -> MonitorCode
                                -> GeneratedCode -> GeneratedCode
 generatedCodeInsertMonitorCode mast mc g =
   g { generatedcode_monitors = ins (generatedcode_monitors g) }
-  where ins = Map.insertWith addMonitorCode mast mc
+  where ins = Map.insertWith mappend mast mc
 
 generatedCodeInsertSignalCode :: String
                               -> ((forall eff . Ivory eff ()) -> ModuleDef)

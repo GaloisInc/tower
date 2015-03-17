@@ -1,14 +1,13 @@
 
 module Ivory.Tower.AST.Tower
   ( Tower(..)
-  , emptyTower
   , towerThreads
-  , towerInsertPeriod
   , towerFindMonitorByName
   , towerFindMonitorOfHandler
   ) where
 
-import Data.List (find)
+import Data.List (find, union)
+import Data.Monoid
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal
@@ -26,25 +25,27 @@ data Tower = Tower
   , tower_artifact_fs :: [String]
   } deriving (Eq, Show)
 
-emptyTower :: Tower
-emptyTower  = Tower
-  { tower_monitors    = []
-  , tower_syncchans   = []
-  , tower_signals     = []
-  , tower_periods     = []
-  , tower_artifact_fs = []
-  }
+instance Monoid Tower where
+  mempty = Tower
+    { tower_monitors    = []
+    , tower_syncchans   = []
+    , tower_signals     = []
+    , tower_periods     = []
+    , tower_artifact_fs = []
+    }
+  mappend a b = Tower
+    { tower_monitors    = tower_monitors    a `mappend` tower_monitors    b
+    , tower_syncchans   = tower_syncchans   a `mappend` tower_syncchans   b
+    , tower_signals     = tower_signals     a `mappend` tower_signals     b
+    -- Periods are a set
+    , tower_periods     = tower_periods     a `union`   tower_periods     b
+    , tower_artifact_fs = tower_artifact_fs a `mappend` tower_artifact_fs b
+    }
 
 towerThreads :: Tower -> [Thread]
 towerThreads t = map SignalThread (tower_signals t) ++
                  map PeriodThread (tower_periods t) ++
                  [ InitThread Init ]
-
--- Periods are a set
-towerInsertPeriod :: Period -> Tower -> Tower
-towerInsertPeriod p t
-  | p `elem` (tower_periods t) = t
-  | otherwise = t { tower_periods = p : tower_periods t }
 
 towerFindMonitorByName :: Unique -> Tower -> Maybe Monitor
 towerFindMonitorByName n t = find p (tower_monitors t)

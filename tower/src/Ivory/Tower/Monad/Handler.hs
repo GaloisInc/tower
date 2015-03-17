@@ -59,27 +59,21 @@ runHandler n ch b = mdo
 
   return r
 
-withAST :: (AST.Handler -> AST.Handler) -> Handler a e ()
-withAST f = Handler $ do
-  a <- get
-  set (f a)
-
 handlerName :: Handler a e Unique
 handlerName = Handler $ do
   a <- get
   return (AST.handler_name a)
 
 handlerPutASTEmitter :: AST.Emitter -> Handler a e ()
-handlerPutASTEmitter a = withAST (AST.handlerInsertEmitter a)
+handlerPutASTEmitter a = Handler $ sets_ (AST.handlerInsertEmitter a)
 
 handlerPutASTCallback :: Unique -> Handler a e ()
-handlerPutASTCallback a = withAST (AST.handlerInsertCallback a)
+handlerPutASTCallback a = Handler $ sets_ (AST.handlerInsertCallback a)
 
 withCode :: (AST.Tower -> AST.Thread -> HandlerCode a -> HandlerCode a)
          -> Handler a e ()
-withCode f = Handler $ do
-  tcs <- lift get
-  lift (set (\twr -> [(t, f twr t c) | (t, c) <- tcs twr ]))
+withCode f = Handler $ lift $
+  sets_ $ \ tcs twr -> [(t, f twr t c) | (t, c) <- tcs twr ]
 
 handlerPutCodeCallback :: (AST.Thread -> ModuleDef)
                        -> Handler a e ()
@@ -90,11 +84,11 @@ handlerPutCodeEmitter :: (AST.Tower -> AST.Thread -> EmitterCode b)
 handlerPutCodeEmitter ms = withCode $ \a t -> insertHandlerCodeEmitter (ms a t)
 
 instance BaseUtils (Handler a) p where
-  fresh  = Handler $ lift $ lift fresh
-  getEnv = Handler $ lift $ lift getEnv
+  fresh  = liftMonitor fresh
+  getEnv = liftMonitor getEnv
 
 liftMonitor :: Monitor e r -> Handler a e r
-liftMonitor a = Handler $ lift $ lift $ a
+liftMonitor a = Handler $ lift $ lift a
 
 --------------------------------------------------------------------------------
 -- SrcLoc stuff
@@ -104,7 +98,7 @@ mkLocation file l1 c1 l2 c2
   = SrcLoc (Range (Position 0 l1 c1) (Position 0 l2 c2)) (Just file)
 
 setLocation :: SrcLoc -> Handler a e ()
-setLocation src = withAST (AST.handlerInsertComment (AST.SourcePos src))
+setLocation src = Handler $ sets_ (AST.handlerInsertComment (AST.SourcePos src))
 
 withLocation :: SrcLoc -> Handler area e a -> Handler area e a
 withLocation src h = setLocation src >> h

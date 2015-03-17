@@ -3,15 +3,7 @@
 module Ivory.Tower.Types.GeneratedCode
   ( GeneratedCode(..)
   , GeneratedSignal(..)
-  , generatedCodeInsertModule
-  , generatedCodeInsertDepends
-  , generatedCodeInsertThreadCode
-  , generatedCodeInsertMonitorCode
-  , generatedCodeInsertSignalCode
-  , generatedCodeInsertInitCode
-  , generatedCodeInsertArtifact
   , generatedCodeForSignal
-  , emptyGeneratedCode
   ) where
 
 import qualified Data.Map as Map
@@ -32,50 +24,34 @@ data GeneratedCode = GeneratedCode
   , generatedcode_artifacts :: [Artifact]
   }
 
+instance Monoid GeneratedCode where
+  mempty = GeneratedCode
+    { generatedcode_modules   = []
+    , generatedcode_depends   = []
+    , generatedcode_threads   = Map.singleton initThread mempty
+    , generatedcode_monitors  = Map.empty
+    , generatedcode_signals   = Map.empty
+    , generatedcode_init      = return ()
+    , generatedcode_artifacts = []
+    }
+    where
+    initThread = AST.InitThread AST.Init
+
+  mappend a b = GeneratedCode
+    { generatedcode_modules = generatedcode_modules a `mappend` generatedcode_modules b
+    , generatedcode_depends = generatedcode_depends a `mappend` generatedcode_depends b
+    , generatedcode_threads = Map.unionWith mappend (generatedcode_threads a) (generatedcode_threads b)
+    , generatedcode_monitors = Map.unionWith mappend (generatedcode_monitors a) (generatedcode_monitors b)
+    , generatedcode_signals = generatedcode_signals a `Map.union` generatedcode_signals b
+    , generatedcode_init = generatedcode_init a >> generatedcode_init b
+    , generatedcode_artifacts = generatedcode_artifacts a `mappend` generatedcode_artifacts b
+    }
+
 newtype GeneratedSignal =
   GeneratedSignal
     { unGeneratedSignal :: (forall eff . Ivory eff ()) -> ModuleDef
     -- ^ Unsafe signal continuation.
     }
-
-generatedCodeInsertModule :: Module
-                          -> GeneratedCode -> GeneratedCode
-generatedCodeInsertModule m g =
-  g { generatedcode_modules = m : generatedcode_modules g }
-
-generatedCodeInsertDepends :: Module
-                          -> GeneratedCode -> GeneratedCode
-generatedCodeInsertDepends m g =
-  g { generatedcode_depends = m : generatedcode_depends g }
-
-generatedCodeInsertThreadCode :: AST.Thread -> ThreadCode
-                              -> GeneratedCode -> GeneratedCode
-generatedCodeInsertThreadCode t tc g =
-  g { generatedcode_threads = ins (generatedcode_threads g) }
-  where ins = Map.insertWith mappend t tc
-
-generatedCodeInsertMonitorCode :: AST.Monitor -> MonitorCode
-                               -> GeneratedCode -> GeneratedCode
-generatedCodeInsertMonitorCode mast mc g =
-  g { generatedcode_monitors = ins (generatedcode_monitors g) }
-  where ins = Map.insertWith mappend mast mc
-
-generatedCodeInsertSignalCode :: String
-                              -> ((forall eff . Ivory eff ()) -> ModuleDef)
-                              -> GeneratedCode -> GeneratedCode
-generatedCodeInsertSignalCode signame sigcode g =
-  g { generatedcode_signals = ins (generatedcode_signals g) }
-  where ins = Map.insert signame (GeneratedSignal sigcode)
-
-generatedCodeInsertInitCode :: (forall eff. Ivory eff ())
-                            -> GeneratedCode -> GeneratedCode
-generatedCodeInsertInitCode code g =
-  g { generatedcode_init = generatedcode_init g >> code }
-
-generatedCodeInsertArtifact :: Artifact
-                            -> GeneratedCode -> GeneratedCode
-generatedCodeInsertArtifact a g =
-  g { generatedcode_artifacts = a : generatedcode_artifacts g }
 
 generatedCodeForSignal :: AST.Signal -> GeneratedCode
                        -> GeneratedSignal
@@ -84,16 +60,3 @@ generatedCodeForSignal sig gc = maybe err id lkup
   lkup = Map.lookup (AST.signal_name sig) (generatedcode_signals gc)
   err = error ("generateCodeForSignal failed: could not find signal code for "
                 ++ "signal named " ++ AST.signal_name sig)
-
-emptyGeneratedCode :: GeneratedCode
-emptyGeneratedCode = GeneratedCode
-  { generatedcode_modules   = []
-  , generatedcode_depends   = []
-  , generatedcode_threads   = Map.singleton initThread mempty
-  , generatedcode_monitors  = Map.empty
-  , generatedcode_signals   = Map.empty
-  , generatedcode_init      = return ()
-  , generatedcode_artifacts = []
-  }
-  where
-  initThread = AST.InitThread AST.Init

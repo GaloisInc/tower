@@ -18,7 +18,8 @@ module Ivory.Tower.Monad.Codegen
 import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
-
+import qualified Data.Map as Map
+import Data.Monoid
 import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.ThreadCode
@@ -30,48 +31,38 @@ import Ivory.Language
 import Ivory.Artifact
 
 newtype Codegen env a = Codegen
-  { unCodegen :: ReaderT AST.Tower (StateT GeneratedCode (Base env)) a
+  { unCodegen :: ReaderT AST.Tower (WriterT GeneratedCode (Base env)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runCodegen :: Codegen env a -> AST.Tower -> Base env (a, GeneratedCode)
-runCodegen m ast = runStateT emptyGeneratedCode
+runCodegen m ast = runWriterT
                       $ runReaderT ast (unCodegen m)
 
-getAST :: Codegen e AST.Tower
-getAST = Codegen ask
-
-withGeneratedCode :: (GeneratedCode -> GeneratedCode) -> Codegen e ()
-withGeneratedCode f = Codegen $ do
-  gc <- get
-  set (f gc)
-
 codegenModule :: Module -> Codegen e ()
-codegenModule m =
-  withGeneratedCode $ \c -> generatedCodeInsertModule m c
+codegenModule m = Codegen $ put $ mempty { generatedcode_modules = [m] }
 
 codegenDepends :: Module -> Codegen e ()
-codegenDepends m =
-  withGeneratedCode $ \c -> generatedCodeInsertDepends m c
+codegenDepends m = Codegen $ put $ mempty { generatedcode_depends = [m] }
 
 codegenThreadCode :: (AST.Tower -> [(AST.Thread, ThreadCode)]) -> Codegen e ()
-codegenThreadCode f = do
-  a <- getAST
-  -- Don't replace this fold with a mapM - causes black hole
-  withGeneratedCode $ \c ->
-    foldl (flip $ uncurry generatedCodeInsertThreadCode) c (f a)
+codegenThreadCode f = Codegen $ do
+  a <- ask
+  put $ mempty { generatedcode_threads = Map.fromListWith mappend $ f a }
 
 codegenMonitor :: AST.Monitor -> MonitorCode -> Codegen e ()
-codegenMonitor m mc =
-  withGeneratedCode $ generatedCodeInsertMonitorCode m mc
+codegenMonitor m mc = Codegen $ put $
+  mempty { generatedcode_monitors = Map.singleton m mc }
 
 codegenSignal :: (Signalable s) => s -> (forall eff . Ivory eff ())
               -> Codegen e ()
-codegenSignal s i = withGeneratedCode $
-  generatedCodeInsertInitCode (signalInit s) .
-  generatedCodeInsertSignalCode (signalName s) (\i' -> (signalHandler s) (i >> i'))
+codegenSignal s i = Codegen $ put $ mempty
+  { generatedcode_init = signalInit s
+  , generatedcode_signals = Map.singleton (signalName s) $
+      GeneratedSignal $ \i' -> signalHandler s (i >> i')
+  }
 
 codegenArtifact :: Artifact -> Codegen e ()
-codegenArtifact = withGeneratedCode . generatedCodeInsertArtifact
+codegenArtifact a = Codegen $ put $ mempty { generatedcode_artifacts = [a] }
 
 instance BaseUtils Codegen e where
   fresh = Codegen $ lift $ lift fresh

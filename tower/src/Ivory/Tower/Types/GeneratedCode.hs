@@ -14,6 +14,7 @@ module Ivory.Tower.Types.GeneratedCode
   , emptyGeneratedCode
   ) where
 
+import Data.List (find)
 import qualified Data.Map as Map
 import qualified Ivory.Tower.AST as AST
 import Ivory.Language
@@ -75,7 +76,9 @@ generatedCodeInsertInitCode code g =
 generatedCodeInsertArtifact :: Artifact
                             -> GeneratedCode -> GeneratedCode
 generatedCodeInsertArtifact a g =
-  g { generatedcode_artifacts = a : generatedcode_artifacts g }
+  case find (mightBeEqArtifact a) (generatedcode_artifacts g) of
+    Nothing -> g { generatedcode_artifacts = a : generatedcode_artifacts g }
+    Just _ -> g
 
 generatedCodeForSignal :: AST.Signal -> GeneratedCode
                        -> GeneratedSignal

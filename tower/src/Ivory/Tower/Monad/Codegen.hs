@@ -60,11 +60,9 @@ codegenThreadCode f = do
   withGeneratedCode $ \c ->
     foldl (flip generatedCodeInsertThreadCode) c (f a)
 
--- might not even need AST.Tower continuation exposed here?
-codegenMonitor :: AST.Monitor -> (AST.Tower -> MonitorCode) -> Codegen e ()
-codegenMonitor m f = do
-  a <- getAST
-  withGeneratedCode $ generatedCodeInsertMonitorCode m (f a)
+codegenMonitor :: AST.Monitor -> MonitorCode -> Codegen e ()
+codegenMonitor m mc =
+  withGeneratedCode $ generatedCodeInsertMonitorCode m mc
 
 codegenSignal :: (Signalable s) => s -> (forall eff . Ivory eff ())
               -> Codegen e ()

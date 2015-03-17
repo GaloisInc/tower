@@ -16,6 +16,7 @@ module Ivory.Tower.Monad.Monitor
 import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
+import Data.Monoid
 
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
@@ -26,30 +27,43 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
 
+data MonitorContents = MonitorContents
+  { monitorcontents_moddef :: ModuleDef
+  , monitorcontents_handlers :: [AST.Handler]
+  }
+
+instance Monoid MonitorContents where
+  mempty = MonitorContents
+    { monitorcontents_moddef = return ()
+    , monitorcontents_handlers = mempty
+    }
+  mappend a b = MonitorContents
+    { monitorcontents_moddef = monitorcontents_moddef a >> monitorcontents_moddef b
+    , monitorcontents_handlers = monitorcontents_handlers a `mappend` monitorcontents_handlers b
+    }
+
 newtype Monitor e a = Monitor
-  { unMonitor :: StateT AST.Monitor
-                    (StateT MonitorCode (Tower e)) a
+  { unMonitor :: WriterT MonitorContents (Tower e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runMonitor :: String -> Monitor e ()
            -> Tower e (AST.Monitor, MonitorCode)
 runMonitor n b = do
   u <- freshname n
-  runStateT emptyMonitorCode
-                    (fmap snd (runStateT (AST.emptyMonitor u) (unMonitor b)))
+  ((), mc) <- runWriterT (unMonitor b)
+  return (AST.Monitor u $ monitorcontents_handlers mc, MonitorCode $ monitorcontents_moddef mc)
 
 monitorPutASTHandler :: AST.Handler -> Monitor e ()
-monitorPutASTHandler a = Monitor $ sets_ $
-  \s -> s { AST.monitor_handlers = a : AST.monitor_handlers s }
+monitorPutASTHandler h = Monitor $ put $ mempty { monitorcontents_handlers = [h] }
 
 liftTower :: Tower e a -> Monitor e a
-liftTower a = Monitor $ lift $ lift $ a
+liftTower a = Monitor $ lift a
 
 monitorCodegen :: Codegen e a -> Monitor e a
 monitorCodegen a = liftTower $ towerCodegen a
 
 monitorModuleDef :: ModuleDef -> Monitor e ()
-monitorModuleDef def = Monitor $ lift $ sets_ $ insertMonitorCode def
+monitorModuleDef m = Monitor $ put $ mempty { monitorcontents_moddef = m }
 
 monitorPutThreadCode :: (AST.Tower -> [ThreadCode]) -> Monitor e ()
 monitorPutThreadCode = monitorCodegen . codegenThreadCode

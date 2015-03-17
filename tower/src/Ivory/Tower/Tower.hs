@@ -97,7 +97,7 @@ monitor :: String -> Monitor e () -> Tower e ()
 monitor n m = do
   (ast, mcode) <- runMonitor n m
   towerPutASTMonitor ast
-  towerCodegen $ codegenMonitor ast (const mcode)
+  towerCodegen $ codegenMonitor ast mcode
 
 towerModule :: Module -> Tower e ()
 towerModule = towerCodegen . codegenModule

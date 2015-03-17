@@ -65,7 +65,7 @@ monitorCodegen a = liftTower $ towerCodegen a
 monitorModuleDef :: ModuleDef -> Monitor e ()
 monitorModuleDef m = Monitor $ put $ mempty { monitorcontents_moddef = m }
 
-monitorPutThreadCode :: (AST.Tower -> [ThreadCode]) -> Monitor e ()
+monitorPutThreadCode :: (AST.Tower -> [(AST.Thread, ThreadCode)]) -> Monitor e ()
 monitorPutThreadCode = monitorCodegen . codegenThreadCode
 
 instance BaseUtils Monitor e where

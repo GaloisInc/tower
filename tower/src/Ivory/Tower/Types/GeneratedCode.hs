@@ -15,6 +15,7 @@ module Ivory.Tower.Types.GeneratedCode
   ) where
 
 import qualified Data.Map as Map
+import Data.Monoid
 import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 import Ivory.Artifact
@@ -47,11 +48,11 @@ generatedCodeInsertDepends :: Module
 generatedCodeInsertDepends m g =
   g { generatedcode_depends = m : generatedcode_depends g }
 
-generatedCodeInsertThreadCode :: ThreadCode
+generatedCodeInsertThreadCode :: AST.Thread -> ThreadCode
                               -> GeneratedCode -> GeneratedCode
-generatedCodeInsertThreadCode tc g =
+generatedCodeInsertThreadCode t tc g =
   g { generatedcode_threads = ins (generatedcode_threads g) }
-  where ins = Map.insertWith addThreadCode (threadcode_thread tc) tc
+  where ins = Map.insertWith mappend t tc
 
 generatedCodeInsertMonitorCode :: AST.Monitor -> MonitorCode
                                -> GeneratedCode -> GeneratedCode
@@ -88,8 +89,7 @@ emptyGeneratedCode :: GeneratedCode
 emptyGeneratedCode = GeneratedCode
   { generatedcode_modules   = []
   , generatedcode_depends   = []
-  , generatedcode_threads   = Map.fromList
-      [ (initThread, emptyThreadCode initThread) ]
+  , generatedcode_threads   = Map.singleton initThread mempty
   , generatedcode_monitors  = Map.empty
   , generatedcode_signals   = Map.empty
   , generatedcode_init      = return ()

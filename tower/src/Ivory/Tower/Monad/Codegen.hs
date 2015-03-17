@@ -53,12 +53,12 @@ codegenDepends :: Module -> Codegen e ()
 codegenDepends m =
   withGeneratedCode $ \c -> generatedCodeInsertDepends m c
 
-codegenThreadCode :: (AST.Tower -> [ThreadCode]) -> Codegen e ()
+codegenThreadCode :: (AST.Tower -> [(AST.Thread, ThreadCode)]) -> Codegen e ()
 codegenThreadCode f = do
   a <- getAST
   -- Don't replace this fold with a mapM - causes black hole
   withGeneratedCode $ \c ->
-    foldl (flip generatedCodeInsertThreadCode) c (f a)
+    foldl (flip $ uncurry generatedCodeInsertThreadCode) c (f a)
 
 codegenMonitor :: AST.Monitor -> MonitorCode -> Codegen e ()
 codegenMonitor m mc =

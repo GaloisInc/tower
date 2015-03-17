@@ -23,9 +23,9 @@ import Ivory.Language
 
 generateHandlerThreadCode :: (IvoryArea a, IvoryZero a)
                           => HandlerCode a
-                          -> AST.Tower -> AST.Handler -> [ThreadCode]
+                          -> AST.Tower -> AST.Handler -> [(AST.Thread, ThreadCode)]
 generateHandlerThreadCode hc twr h =
-  [ handlerCodeToThreadCode twr t m h hc
+  [ (t, handlerCodeToThreadCode twr t m h hc)
   | t <- AST.handlerThreads twr h
   ]
   where
@@ -78,11 +78,11 @@ handlerProcName h t = "handler_run_" ++ AST.handlerName h
 handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)
                         => AST.Tower -> AST.Thread -> AST.Monitor -> AST.Handler
                         -> HandlerCode a -> ThreadCode
-handlerCodeToThreadCode twr t m h hc
-  = insertUserThreadCode (handlercode_callbacks hc t)
-  $ insertEmitterThreadCode (emitterCode twr t hc)
-  $ insertGenThreadCode (generatedHandlerCode hc twr t m h)
-  $ emptyThreadCode t
+handlerCodeToThreadCode twr t m h hc = ThreadCode
+  { threadcode_user = handlercode_callbacks hc t
+  , threadcode_emitter = emitterCode twr t hc
+  , threadcode_gen = generatedHandlerCode hc twr t m h
+  }
 
 callbackProcName :: Unique -> Unique -> AST.Thread -> String
 callbackProcName callbackname handlername tast

@@ -39,8 +39,9 @@ newtype GeneratedSignal =
 
 generatedCodeInsertModule :: Module
                           -> GeneratedCode -> GeneratedCode
-generatedCodeInsertModule m g =
-  g { generatedcode_modules = m : generatedcode_modules g }
+generatedCodeInsertModule m g = case m `elem` generatedcode_modules g of
+  True -> g
+  False -> g { generatedcode_modules = m : generatedcode_modules g }
 
 generatedCodeInsertDepends :: Module
                           -> GeneratedCode -> GeneratedCode

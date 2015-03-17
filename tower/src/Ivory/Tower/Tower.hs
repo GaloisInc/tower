@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE PostfixOperators #-}
 
 module Ivory.Tower.Tower
@@ -48,13 +47,16 @@ import Ivory.Language
 import Ivory.Artifact
 import qualified Ivory.Language.Area as I
 
-channel :: forall e a . IvoryArea a => Tower e (ChanInput a, ChanOutput a)
+channel :: IvoryArea a => Tower e (ChanInput a, ChanOutput a)
 channel = do
   f <- fresh
-  let ast = AST.SyncChan f (I.ivoryArea (Proxy :: Proxy a))
+  let ast = AST.SyncChan f (I.ivoryArea (chanProxy c))
+      c = Chan (AST.ChanSync ast)
   towerPutASTSyncChan ast
-  let c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)
+  where
+  chanProxy :: Chan a -> Proxy a
+  chanProxy _ = Proxy
 
 -- Note: signals are no longer tied to be the same type throughout
 -- a given Tower. We'd need to add another phantom type to make that

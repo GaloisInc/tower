@@ -9,11 +9,5 @@ data Monitor = Monitor
   , monitor_handlers :: [Handler]
   } deriving (Eq, Show, Ord)
 
-emptyMonitor :: Unique -> Monitor
-emptyMonitor u = Monitor
-  { monitor_name     = u
-  , monitor_handlers = []
-  }
-
 monitorName :: Monitor -> String
 monitorName = showUnique . monitor_name

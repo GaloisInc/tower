@@ -16,8 +16,9 @@ module Ivory.Tower.Monad.Codegen
   ) where
 
 import MonadLib
-import Control.Monad.Fix
 import Control.Applicative
+import Control.Arrow (second)
+import Control.Monad.Fix
 import qualified Data.Map as Map
 import Data.Monoid
 import Ivory.Tower.Types.GeneratedCode
@@ -35,7 +36,8 @@ newtype Codegen env a = Codegen
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runCodegen :: Codegen env a -> AST.Tower -> Base env (a, GeneratedCode)
-runCodegen m ast = runWriterT
+runCodegen m ast = fmap (second dedupArtifacts)
+                      $ runWriterT
                       $ runReaderT ast (unCodegen m)
 
 codegenModule :: Module -> Codegen e ()

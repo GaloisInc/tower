@@ -3,9 +3,11 @@
 module Ivory.Tower.Types.GeneratedCode
   ( GeneratedCode(..)
   , GeneratedSignal(..)
+  , dedupArtifacts
   , generatedCodeForSignal
   ) where
 
+import Data.List (nubBy)
 import qualified Data.Map as Map
 import Data.Monoid
 import qualified Ivory.Tower.AST as AST
@@ -52,6 +54,12 @@ newtype GeneratedSignal =
     { unGeneratedSignal :: (forall eff . Ivory eff ()) -> ModuleDef
     -- ^ Unsafe signal continuation.
     }
+
+dedupArtifacts :: GeneratedCode -> GeneratedCode
+dedupArtifacts g = g
+  { generatedcode_artifacts = nubBy mightBeEqArtifact $
+      generatedcode_artifacts g
+  }
 
 generatedCodeForSignal :: AST.Signal -> GeneratedCode
                        -> GeneratedSignal

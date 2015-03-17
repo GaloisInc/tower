@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
@@ -24,7 +22,7 @@ module Ivory.Tower.Monad.Handler
 import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
-
+import Data.Monoid
 import Ivory.Tower.Types.HandlerCode
 import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.Unique
@@ -39,23 +37,23 @@ import Ivory.Language
 
 newtype Handler (area :: Area *) e a = Handler
   { unHandler :: StateT AST.Handler
-                  (StateT (AST.Tower -> [(AST.Thread, HandlerCode area)])
+                  (WriterT (HandlerCode area)
                     (Monitor e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runHandler :: (IvoryArea a, IvoryZero a)
            => String -> AST.Chan -> Handler a e r
            -> Monitor e r
-runHandler n ch b = mdo
+runHandler n ch b = do
   u <- freshname n
-  ((r, handlerast), thcs)
-    <- runStateT (emptyHandlerThreadCode handlerast)
+  ((r, handlerast), hc)
+    <- runWriterT
      $ runStateT (AST.emptyHandler u ch)
      $ unHandler b
 
   monitorPutASTHandler handlerast
   monitorPutThreadCode $ \twr ->
-    generateHandlerThreadCode thcs twr handlerast
+    generateHandlerThreadCode hc twr handlerast
 
   return r
 
@@ -70,18 +68,15 @@ handlerPutASTEmitter a = Handler $ sets_ (AST.handlerInsertEmitter a)
 handlerPutASTCallback :: Unique -> Handler a e ()
 handlerPutASTCallback a = Handler $ sets_ (AST.handlerInsertCallback a)
 
-withCode :: (AST.Tower -> AST.Thread -> HandlerCode a -> HandlerCode a)
-         -> Handler a e ()
-withCode f = Handler $ lift $
-  sets_ $ \ tcs twr -> [(t, f twr t c) | (t, c) <- tcs twr ]
-
 handlerPutCodeCallback :: (AST.Thread -> ModuleDef)
                        -> Handler a e ()
-handlerPutCodeCallback ms = withCode $ \_ t -> insertHandlerCodeCallback (ms t)
+handlerPutCodeCallback ms = Handler $ put $
+  mempty { handlercode_callbacks = ms }
 
 handlerPutCodeEmitter :: (AST.Tower -> AST.Thread -> EmitterCode b)
                       -> Handler a e ()
-handlerPutCodeEmitter ms = withCode $ \a t -> insertHandlerCodeEmitter (ms a t)
+handlerPutCodeEmitter ms = Handler $ put $
+  mempty { handlercode_emitters = \ twr thd -> [SomeEmitterCode $ ms twr thd] }
 
 instance BaseUtils (Handler a) p where
   fresh  = liftMonitor fresh

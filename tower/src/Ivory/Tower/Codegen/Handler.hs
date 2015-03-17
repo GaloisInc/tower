@@ -3,8 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Codegen.Handler
-  ( emptyHandlerThreadCode
-  , generateHandlerThreadCode
+  ( generateHandlerThreadCode
   , handlerProcName
   , callbackProcName
   ) where
@@ -22,42 +21,35 @@ import Ivory.Tower.Codegen.Monitor
 
 import Ivory.Language
 
-emptyHandlerThreadCode :: AST.Handler -> AST.Tower
-                       -> [(AST.Thread, HandlerCode a)]
-emptyHandlerThreadCode handlerast towerast =
-  [ (t, emptyHandlerCode)
-  | t <- AST.handlerThreads towerast handlerast
-  ]
-
 generateHandlerThreadCode :: (IvoryArea a, IvoryZero a)
-                          => (AST.Tower -> [(AST.Thread, HandlerCode a)])
+                          => HandlerCode a
                           -> AST.Tower -> AST.Handler -> [ThreadCode]
-generateHandlerThreadCode thcs twr h =
-  [ handlerCodeToThreadCode t m h hc
-  | (t, hc) <- thcs twr
+generateHandlerThreadCode hc twr h =
+  [ handlerCodeToThreadCode twr t m h hc
+  | t <- AST.handlerThreads twr h
   ]
   where
   m = maybe (error msg) id (AST.towerFindMonitorOfHandler h twr)
   msg = "generateHandlerThreadCode: broken invariant, monitor of handler "
      ++ show h ++ "must exist in " ++ show twr
 
-emitterCode :: HandlerCode a -> ModuleDef
-emitterCode hc = mapM_ someemittercode_user (handlercode_emitters hc)
+emitterCode :: AST.Tower -> AST.Thread -> HandlerCode a -> ModuleDef
+emitterCode twr t hc = mapM_ someemittercode_user (handlercode_emitters hc twr t)
 
 generatedHandlerCode :: forall a
                       . (IvoryArea a, IvoryZero a)
                      => HandlerCode a
-                     -> AST.Thread -> AST.Monitor -> AST.Handler
+                     -> AST.Tower -> AST.Thread -> AST.Monitor -> AST.Handler
                      -> ModuleDef
-generatedHandlerCode hc t m h =
-  foldl appendgen (return ()) (handlercode_emitters hc)
+generatedHandlerCode hc twr t m h =
+  foldl appendgen (return ()) (handlercode_emitters hc twr t)
   >> incl runner
   where
   appendgen acc ec = acc >> someemittercode_gen ec
   runner :: Def('[ConstRef s a]:->())
   runner = proc (handlerProcName h t) $ \msg -> body $ do
     comment "init emitters"
-    forM_ (handlercode_emitters hc)
+    forM_ (handlercode_emitters hc twr t)
       (\e -> someemittercode_init e)
     comment "take monitor lock"
     call_ monitorLockProc
@@ -66,7 +58,7 @@ generatedHandlerCode hc t m h =
     comment "release monitor lock"
     call_ monitorUnlockProc
     comment "deliver emitters"
-    forM_ (handlercode_emitters hc)
+    forM_ (handlercode_emitters hc twr t)
       (\e -> someemittercode_deliver e)
 
   monitorUnlockProc :: Def('[]:->())
@@ -84,12 +76,12 @@ handlerProcName h t = "handler_run_" ++ AST.handlerName h
                      ++ "_" ++ AST.threadName t
 
 handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)
-                        => AST.Thread -> AST.Monitor -> AST.Handler
+                        => AST.Tower -> AST.Thread -> AST.Monitor -> AST.Handler
                         -> HandlerCode a -> ThreadCode
-handlerCodeToThreadCode t m h hc
-  = insertUserThreadCode (handlercode_callbacks hc)
-  $ insertEmitterThreadCode (emitterCode hc)
-  $ insertGenThreadCode (generatedHandlerCode hc t m h)
+handlerCodeToThreadCode twr t m h hc
+  = insertUserThreadCode (handlercode_callbacks hc t)
+  $ insertEmitterThreadCode (emitterCode twr t hc)
+  $ insertGenThreadCode (generatedHandlerCode hc twr t m h)
   $ emptyThreadCode t
 
 callbackProcName :: Unique -> Unique -> AST.Thread -> String

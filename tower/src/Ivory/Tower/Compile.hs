@@ -42,4 +42,5 @@ generateTowerCode gc twr p = (mods, as)
       ++ threadModules p gc twr
       ++ monitorModules p gc twr
       ++ systemModules p twr
-  as = systemArtifacts p twr mods ++ generatedcode_artifacts gc
+  gcas = generatedcode_artifacts gc
+  as = systemArtifacts p twr mods gcas ++ gcas

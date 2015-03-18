@@ -108,9 +108,7 @@ towerDepends :: Module -> Tower e ()
 towerDepends = towerCodegen . codegenDepends
 
 towerArtifact :: Artifact -> Tower e ()
-towerArtifact a = do
-  towerCodegen (codegenArtifact a)
-  towerPutASTArtifact a
+towerArtifact = towerCodegen . codegenArtifact
 
 getTime :: Ivory eff ITime
 getTime = call getTimeProc

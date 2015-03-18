@@ -11,7 +11,6 @@ module Ivory.Tower.Monad.Tower
   , towerPutASTSyncChan
   , towerPutASTSignal
   , towerPutASTPeriod
-  , towerPutASTArtifact
   , towerCodegen
   ) where
 
@@ -21,8 +20,6 @@ import Control.Applicative
 import Data.Monoid
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Codegen
-import Ivory.Artifact
-
 import Ivory.Tower.Types.GeneratedCode
 
 import qualified Ivory.Tower.AST as AST
@@ -55,7 +52,3 @@ towerPutASTSignal a = Tower $ put $ mempty { AST.tower_signals = [a] }
 
 towerCodegen :: Codegen e a -> Tower e a
 towerCodegen x = Tower $ lift x
-
-towerPutASTArtifact :: Artifact -> Tower e ()
-towerPutASTArtifact a = Tower $ put $
-  mempty { AST.tower_artifact_fs = [artifactFileName a] }

@@ -22,7 +22,6 @@ data Tower = Tower
   , tower_syncchans   :: [SyncChan]
   , tower_signals     :: [Signal]
   , tower_periods     :: [Period]
-  , tower_artifact_fs :: [String]
   } deriving (Eq, Show)
 
 instance Monoid Tower where
@@ -31,7 +30,6 @@ instance Monoid Tower where
     , tower_syncchans   = []
     , tower_signals     = []
     , tower_periods     = []
-    , tower_artifact_fs = []
     }
   mappend a b = Tower
     { tower_monitors    = tower_monitors    a `mappend` tower_monitors    b
@@ -39,7 +37,6 @@ instance Monoid Tower where
     , tower_signals     = tower_signals     a `mappend` tower_signals     b
     -- Periods are a set
     , tower_periods     = tower_periods     a `union`   tower_periods     b
-    , tower_artifact_fs = tower_artifact_fs a `mappend` tower_artifact_fs b
     }
 
 towerThreads :: Tower -> [Thread]

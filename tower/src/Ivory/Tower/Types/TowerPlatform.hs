@@ -15,7 +15,7 @@ data TowerPlatform a =
     { threadModules   :: GeneratedCode -> AST.Tower -> [Module]
     , monitorModules  :: GeneratedCode -> AST.Tower -> [Module]
     , systemModules   ::                  AST.Tower -> [Module]
-    , systemArtifacts ::                  AST.Tower -> [Module] -> [Artifact]
+    , systemArtifacts ::                  AST.Tower -> [Module] -> [Artifact] -> [Artifact]
     , platformEnv     :: a
     }
 

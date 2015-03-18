@@ -18,8 +18,8 @@ import Ivory.Stdlib (when)
 
 emitterCode :: forall a
              . (IvoryArea a, IvoryZero a)
-            => Emitter a -> AST.Tower -> AST.Thread -> EmitterCode a
-emitterCode e@(Emitter ast) twr thr = EmitterCode
+            => Emitter a -> AST.Emitter -> AST.Tower -> AST.Thread -> EmitterCode a
+emitterCode _ ast twr thr = EmitterCode
   { emittercode_init = call_ iproc
   , emittercode_deliver = call_ dproc
   , emittercode_user = do
@@ -71,12 +71,12 @@ emitterCode e@(Emitter ast) twr thr = EmitterCode
   handlerproc_stub h = proc (handlerProcName h thr) $ \_msg -> body $
     return ()
 
-  chanast = case e of Emitter (AST.Emitter _ chast _) -> chast
-  ename = emitterProcName e
-  e_per_thread = emitterThreadProcName thr e
+  chanast = case ast of AST.Emitter _ chast _ -> chast
+  ename = AST.emitterProcName ast
+  e_per_thread = emitterThreadProcName thr ast
 
-emitterThreadProcName :: AST.Thread -> Emitter a -> EmitState -> String
-emitterThreadProcName thr e suffix =
-  emitterProcName e ++ "_" ++ tn ++ "_" ++ prettyEmitSuffix suffix
+emitterThreadProcName :: AST.Thread -> AST.Emitter -> EmitState -> String
+emitterThreadProcName thr ast suffix =
+  AST.emitterProcName ast ++ "_" ++ tn ++ "_" ++ prettyEmitSuffix suffix
   where
   tn = AST.threadName thr

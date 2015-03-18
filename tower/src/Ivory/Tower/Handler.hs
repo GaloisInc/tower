@@ -32,9 +32,9 @@ emitter :: (IvoryArea a, IvoryZero a)
 emitter (ChanInput (Chan chanast)) bound = do
   n <- fresh
   let ast = AST.emitter n chanast bound
-      e = Emitter ast
+      e = Emitter $ call_ (callbackProc (AST.emitterProcName ast) (const (return ())))
   handlerPutASTEmitter ast
-  handlerPutCodeEmitter $ emitterCode e
+  handlerPutCodeEmitter $ emitterCode e ast
   return e
 
 callback :: (IvoryArea a, IvoryZero a)
@@ -57,10 +57,6 @@ callbackProc :: (IvoryArea a)
              -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
              -> Def('[ConstRef s a]:->())
 callbackProc name f = proc name $ \m -> body $ noReturn $ f m
-
-emit :: (IvoryArea a, IvoryZero a)
-     => Emitter a -> ConstRef s a -> Ivory eff ()
-emit e = call_ (callbackProc (emitterProcName e) (const (return ())))
 
 emitV :: (IvoryArea (Stored a), IvoryInit a, IvoryZeroVal a, GetAlloc eff ~ Scope s)
       => Emitter (Stored a) -> a -> Ivory eff ()

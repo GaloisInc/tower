@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Ivory.Tower.Monad.Handler
   ( Handler
@@ -86,10 +88,10 @@ handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
 handlerPutASTCallback :: Unique -> Handler a e ()
 handlerPutASTCallback a = handlerPutAST $ mempty { partialCallbacks = [a] }
 
-handlerPutCodeCallback :: (AST.Thread -> ModuleDef)
+handlerPutCodeCallback :: (forall s. AST.Thread -> (Def ('[ConstRef s a] :-> ()), ModuleDef))
                        -> Handler a e ()
 handlerPutCodeCallback ms = handlerPutCode $
-  mempty { handlercode_callbacks = ms }
+  mempty { handlercode_callbacks = \ t -> let (p, d) = ms t in ([p], d) }
 
 handlerPutCodeEmitter :: (AST.Tower -> AST.Thread -> EmitterCode b)
                       -> Handler a e ()

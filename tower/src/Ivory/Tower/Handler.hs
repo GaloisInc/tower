@@ -38,7 +38,7 @@ emitter (ChanInput (Chan chanast)) bound = do
   return e
 
 callback :: (IvoryArea a, IvoryZero a)
-         => (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
+         => (forall s s' . ConstRef s a -> Ivory (AllocEffects s') ())
          -> Handler a e ()
 callback b = do
   u <- freshname "callback"

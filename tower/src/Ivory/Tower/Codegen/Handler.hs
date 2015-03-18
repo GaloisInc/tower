@@ -56,7 +56,7 @@ generatedHandlerCode hc twr t m h =
     comment "take monitor lock"
     call_ monitorLockProc
     comment "run callbacks"
-    forM_ (AST.handler_callbacks h) (\ast -> call_ (cbproc ast) msg)
+    forM_ (fst $ handlercode_callbacks hc t) $ \ cb -> call_ cb msg
     comment "release monitor lock"
     call_ monitorUnlockProc
     comment "deliver emitters"
@@ -68,10 +68,6 @@ generatedHandlerCode hc twr t m h =
   monitorLockProc :: Def('[]:->())
   monitorLockProc = proc (monitorLockProcName m) (body (return ()))
 
-  -- Dummy proc body, just need to call by name
-  cbproc :: Unique -> Def('[ConstRef s a]:->())
-  cbproc cbname = callbackProc cbname (AST.handler_name h) (const $ return ()) t
-
 handlerProcName :: AST.Handler -> AST.Thread -> String
 handlerProcName h t = "handler_run_" ++ AST.handlerName h
                      ++ "_" ++ AST.threadName t
@@ -80,7 +76,7 @@ handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)
                         => AST.Tower -> AST.Thread -> AST.Monitor -> AST.Handler
                         -> HandlerCode a -> ThreadCode
 handlerCodeToThreadCode twr t m h hc = ThreadCode
-  { threadcode_user = handlercode_callbacks hc t
+  { threadcode_user = snd $ handlercode_callbacks hc t
   , threadcode_emitter = emitterCode twr t hc
   , threadcode_gen = generatedHandlerCode hc twr t m h
   }
@@ -90,17 +86,9 @@ callbackCode :: IvoryArea a
              -> Unique
              -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
              -> AST.Thread
-             -> ModuleDef
-callbackCode u hname f t = incl $ callbackProc u hname f t
-
-callbackProc :: IvoryArea a
-             => Unique
-             -> Unique
-             -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
-             -> AST.Thread
-             -> Def ('[ConstRef s a] :-> ())
-callbackProc u hname f t =
-  proc (callbackProcName u hname t) $ \ r -> body $ noReturn $ f r
+             -> (Def ('[ConstRef s a] :-> ()), ModuleDef)
+callbackCode u hname f t = (p, incl p)
+  where p = proc (callbackProcName u hname t) $ \ r -> body $ noReturn $ f r
 
 callbackProcName :: Unique -> Unique -> AST.Thread -> String
 callbackProcName callbackname handlername tast

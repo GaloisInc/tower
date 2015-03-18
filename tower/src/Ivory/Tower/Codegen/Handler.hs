@@ -1,10 +1,12 @@
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Ivory.Tower.Codegen.Handler
   ( generateHandlerThreadCode
   , handlerProcName
+  , callbackCode
   , callbackProcName
   ) where
 
@@ -68,8 +70,7 @@ generatedHandlerCode hc twr t m h =
 
   -- Dummy proc body, just need to call by name
   cbproc :: Unique -> Def('[ConstRef s a]:->())
-  cbproc cbname = proc (callbackProcName cbname (AST.handler_name h) t)
-                       (const (body (return ())))
+  cbproc cbname = callbackProc cbname (AST.handler_name h) (const $ return ()) t
 
 handlerProcName :: AST.Handler -> AST.Thread -> String
 handlerProcName h t = "handler_run_" ++ AST.handlerName h
@@ -83,6 +84,23 @@ handlerCodeToThreadCode twr t m h hc = ThreadCode
   , threadcode_emitter = emitterCode twr t hc
   , threadcode_gen = generatedHandlerCode hc twr t m h
   }
+
+callbackCode :: IvoryArea a
+             => Unique
+             -> Unique
+             -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
+             -> AST.Thread
+             -> ModuleDef
+callbackCode u hname f t = incl $ callbackProc u hname f t
+
+callbackProc :: IvoryArea a
+             => Unique
+             -> Unique
+             -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
+             -> AST.Thread
+             -> Def ('[ConstRef s a] :-> ())
+callbackProc u hname f t =
+  proc (callbackProcName u hname t) $ \ r -> body $ noReturn $ f r
 
 callbackProcName :: Unique -> Unique -> AST.Thread -> String
 callbackProcName callbackname handlername tast

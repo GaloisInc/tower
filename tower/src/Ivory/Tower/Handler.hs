@@ -44,19 +44,12 @@ callback b = do
   u <- freshname "callback"
   handlerPutASTCallback u
   hname <- handlerName
-  handlerPutCodeCallback $ \t -> do
-    incl (callbackProc (callbackProcName u hname t) b)
+  handlerPutCodeCallback $ callbackCode u hname b
 
 callbackV :: (IvoryArea (Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())
           -> Handler (Stored a) e ()
 callbackV b = callback (\bref -> deref bref >>= b)
-
-callbackProc :: (IvoryArea a)
-             => String
-             -> (forall s' . ConstRef s a -> Ivory (AllocEffects s') ())
-             -> Def('[ConstRef s a]:->())
-callbackProc name f = proc name $ \m -> body $ noReturn $ f m
 
 emitV :: (IvoryArea (Stored a), IvoryInit a, IvoryZeroVal a, GetAlloc eff ~ Scope s)
       => Emitter (Stored a) -> a -> Ivory eff ()

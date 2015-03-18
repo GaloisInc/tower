@@ -1,7 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Ivory.Tower.Codegen.Emitter where
 
@@ -16,10 +17,18 @@ import Ivory.Tower.Codegen.Handler
 import Ivory.Language
 import Ivory.Stdlib (when)
 
-emitterCode :: forall a
-             . (IvoryArea a, IvoryZero a)
-            => Emitter a -> AST.Emitter -> AST.Tower -> AST.Thread -> EmitterCode a
-emitterCode _ ast twr thr = EmitterCode
+emitterCode :: (IvoryArea a, IvoryZero a)
+            => AST.Emitter
+            -> (Emitter a, AST.Tower -> AST.Thread -> EmitterCode a)
+emitterCode ast =
+  ( Emitter $ call_ $ trampolineProc ast $ const $ return ()
+  , emitterCodePerThread ast
+  )
+
+emitterCodePerThread :: forall a
+                      . (IvoryArea a, IvoryZero a)
+                     => AST.Emitter -> AST.Tower -> AST.Thread -> EmitterCode a
+emitterCodePerThread ast twr thr = EmitterCode
   { emittercode_init = call_ iproc
   , emittercode_deliver = call_ dproc
   , emittercode_user = do
@@ -47,7 +56,7 @@ emitterCode _ ast twr thr = EmitterCode
       (fromIntegral (midx :: Integer) ==? idx) ? (addrOf msg, basecase)
 
   trampoline :: Def('[ConstRef s a]:->())
-  trampoline = proc ename $ \msg -> body $ call_ eproc msg
+  trampoline = trampolineProc ast $ call_ eproc
   iproc :: Def('[]:->())
   iproc = proc (e_per_thread Init) $ body $
                store (addrOf messageCount) 0
@@ -72,8 +81,13 @@ emitterCode _ ast twr thr = EmitterCode
     return ()
 
   chanast = case ast of AST.Emitter _ chast _ -> chast
-  ename = AST.emitterProcName ast
   e_per_thread = emitterThreadProcName thr ast
+
+trampolineProc :: IvoryArea a
+               => AST.Emitter
+               -> (forall eff. ConstRef s a -> Ivory eff ())
+               -> Def ('[ConstRef s a] :-> ())
+trampolineProc ast f = proc (AST.emitterProcName ast) $ \ r -> body $ f r
 
 emitterThreadProcName :: AST.Thread -> AST.Emitter -> EmitState -> String
 emitterThreadProcName thr ast suffix =

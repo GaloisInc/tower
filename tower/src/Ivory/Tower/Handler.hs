@@ -32,9 +32,9 @@ emitter :: (IvoryArea a, IvoryZero a)
 emitter (ChanInput (Chan chanast)) bound = do
   n <- fresh
   let ast = AST.emitter n chanast bound
-      e = Emitter $ call_ (callbackProc (AST.emitterProcName ast) (const (return ())))
   handlerPutASTEmitter ast
-  handlerPutCodeEmitter $ emitterCode e ast
+  let (e, code) = emitterCode ast
+  handlerPutCodeEmitter code
   return e
 
 callback :: (IvoryArea a, IvoryZero a)

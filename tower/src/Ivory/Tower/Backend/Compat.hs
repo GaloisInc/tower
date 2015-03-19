@@ -6,6 +6,7 @@
 module Ivory.Tower.Backend.Compat where
 
 import Control.Arrow (second)
+import qualified Data.Map as Map
 import Data.Monoid
 import Ivory.Language
 import qualified Ivory.Tower.AST as AST
@@ -13,7 +14,9 @@ import Ivory.Tower.Backend
 import Ivory.Tower.Codegen.Emitter
 import Ivory.Tower.Codegen.Handler
 import Ivory.Tower.Types.EmitterCode
+import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.HandlerCode
+import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.ThreadCode
 
 data CompatBackend = CompatBackend
@@ -21,7 +24,8 @@ data CompatBackend = CompatBackend
 instance TowerBackend CompatBackend where
   newtype TowerBackendCallback CompatBackend a = CompatCallback (forall s. AST.Handler -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ModuleDef))
   newtype TowerBackendEmitter CompatBackend = CompatEmitter (AST.Tower -> AST.Thread -> SomeEmitterCode)
-  newtype TowerBackendHandler CompatBackend a = CompatHandler (AST.Tower -> [(AST.Thread, ThreadCode)])
+  newtype TowerBackendHandler CompatBackend a = CompatHandler (AST.Tower -> Map.Map AST.Thread ThreadCode)
+  newtype TowerBackendMonitor CompatBackend = CompatMonitor (AST.Tower -> GeneratedCode)
 
   callbackImpl _ ast f = CompatCallback $ \ h -> callbackCode ast (AST.handler_name h) f
 
@@ -29,9 +33,14 @@ instance TowerBackend CompatBackend where
     let (e, code) = emitterCode ast
     in (e, CompatEmitter $ \ twr thd -> SomeEmitterCode $ code twr thd)
 
-  handlerImpl _ ast emitters callbacks = CompatHandler $ \ twr -> generateHandlerThreadCode hc twr ast
+  handlerImpl _ ast emitters callbacks = CompatHandler $ \ twr -> Map.fromListWith mappend $ generateHandlerThreadCode hc twr ast
     where
     hc = HandlerCode
       { handlercode_callbacks = \ t -> second mconcat $ unzip [ c ast t | CompatCallback c <- callbacks ]
       , handlercode_emitters = \ twr t -> [ e twr t | CompatEmitter e <- emitters ]
       }
+
+  monitorImpl _ ast handlers moddef = CompatMonitor $ \ twr -> mempty
+    { generatedcode_threads = Map.unionsWith mappend [ h twr | SomeHandler (CompatHandler h) <- handlers ]
+    , generatedcode_monitors = Map.singleton ast $ MonitorCode moddef
+    }

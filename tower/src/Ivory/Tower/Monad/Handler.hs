@@ -28,7 +28,6 @@ import Control.Monad.Fix
 import Control.Applicative
 import Data.Monoid
 import Ivory.Tower.Backend
-import Ivory.Tower.Backend.Compat
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
@@ -73,31 +72,30 @@ instance MonadFix (Handler area e) where
   mfix f = Handler $ mfix (unHandler . f)
 
 newtype Handler' backend (area :: Area *) e a = Handler'
-  { unHandler' :: ReaderT (Unique, backend)
+  { unHandler' :: ReaderT Unique
                   (WriterT (PartialHandler, [TowerBackendEmitter backend], [TowerBackendCallback backend area])
-                    (Monitor e)) a
+                    (Monitor' backend e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
-handler (ChanOutput (Chan chanast)) n b = do
+handler (ChanOutput (Chan chanast)) n b = Monitor $ do
   u <- freshname n
-  (r, (part, emitters, callbacks)) <- runWriterT $ runReaderT (u, CompatBackend) $ unHandler' $ unHandler b
+  (r, (part, emitters, callbacks)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
 
   let handlerast = AST.Handler u chanast
         (partialEmitters part) (partialCallbacks part) (partialComments part)
 
-  monitorPutASTHandler handlerast
-  let (CompatHandler code) = handlerImpl CompatBackend handlerast emitters callbacks
-  monitorPutThreadCode code
+  backend <- monitorGetBackend
+  monitorPutHandler handlerast $ handlerImpl backend handlerast emitters callbacks
 
   return r
 
 handlerName :: Handler a e Unique
-handlerName = Handler $ Handler' $ asks fst
+handlerName = Handler $ Handler' ask
 
 handlerGetBackend :: Handler' backend a e backend
-handlerGetBackend = Handler' $ asks snd
+handlerGetBackend = Handler' $ lift $ lift monitorGetBackend
 
 handlerPutAST :: PartialHandler -> Handler' backend a e ()
 handlerPutAST part = Handler' $ put (part, mempty, mempty)
@@ -125,7 +123,7 @@ instance BaseUtils (Handler a) p where
   getEnv = Handler getEnv
 
 liftMonitor :: Monitor e r -> Handler a e r
-liftMonitor a = Handler $ Handler' $ lift $ lift a
+liftMonitor a = Handler $ Handler' $ lift $ lift $ unMonitor a
 
 --------------------------------------------------------------------------------
 -- SrcLoc stuff

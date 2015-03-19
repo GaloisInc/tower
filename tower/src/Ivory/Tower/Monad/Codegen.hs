@@ -9,7 +9,6 @@ module Ivory.Tower.Monad.Codegen
   , runCodegen
   , codegenModule
   , codegenDepends
-  , codegenThreadCode
   , codegenMonitor
   , codegenSignal
   , codegenArtifact
@@ -22,8 +21,6 @@ import Control.Monad.Fix
 import qualified Data.Map as Map
 import Data.Monoid
 import Ivory.Tower.Types.GeneratedCode
-import Ivory.Tower.Types.MonitorCode
-import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Monad.Base
 import qualified Ivory.Tower.AST as AST
@@ -46,14 +43,10 @@ codegenModule m = Codegen $ put $ mempty { generatedcode_modules = [m] }
 codegenDepends :: Module -> Codegen e ()
 codegenDepends m = Codegen $ put $ mempty { generatedcode_depends = [m] }
 
-codegenThreadCode :: (AST.Tower -> [(AST.Thread, ThreadCode)]) -> Codegen e ()
-codegenThreadCode f = Codegen $ do
+codegenMonitor :: (AST.Tower -> GeneratedCode) -> Codegen e ()
+codegenMonitor f = Codegen $ do
   a <- ask
-  put $ mempty { generatedcode_threads = Map.fromListWith mappend $ f a }
-
-codegenMonitor :: AST.Monitor -> MonitorCode -> Codegen e ()
-codegenMonitor m mc = Codegen $ put $
-  mempty { generatedcode_monitors = Map.singleton m mc }
+  put $ f a
 
 codegenSignal :: (Signalable s) => s -> (forall eff . Ivory eff ())
               -> Codegen e ()

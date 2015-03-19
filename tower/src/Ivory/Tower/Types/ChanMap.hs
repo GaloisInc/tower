@@ -1,19 +1,16 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module Ivory.Tower.Types.ChanMap
   ( ChanMap()
+  , empty
   , singleton
   , lookup
+  , unionWith
   , keys
   ) where
 
 import qualified Data.Map as Map
-import Data.Monoid hiding (Any)
 import GHC.Prim (Any)
 import Ivory.Language
 import qualified Ivory.Tower.AST as AST
@@ -22,10 +19,6 @@ import Prelude hiding (lookup)
 import Unsafe.Coerce
 
 newtype ChanMap (v :: Area * -> *) = ChanMap (Map.Map AST.Chan Any)
-
-instance Monoid (v a) => Monoid (ChanMap v) where
-  mempty = empty
-  mappend = unionWith (mappend :: v a -> v a -> v a)
 
 empty :: ChanMap v
 empty = ChanMap Map.empty

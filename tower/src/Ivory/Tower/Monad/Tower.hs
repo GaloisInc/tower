@@ -51,6 +51,10 @@ instance MonadFix (Tower e) where
 newtype SinkList backend a = SinkList { unSinkList :: [TowerBackendHandler backend a] }
   deriving Monoid
 
+instance Monoid (ChanMap.ChanMap (SinkList backend)) where
+  mempty = ChanMap.empty
+  mappend = ChanMap.unionWith mappend
+
 type Sinks backend = ChanMap.ChanMap (SinkList backend)
 
 newtype Tower' backend e a = Tower'

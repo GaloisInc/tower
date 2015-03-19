@@ -67,8 +67,12 @@ runTower t e = (a, output `mappend` b)
     AST.ChanSignal c -> mempty { AST.tower_signals = [c] }
     AST.ChanPeriod c -> mempty { AST.tower_periods = [c] }
     AST.ChanInit _ -> mempty
-  ((sinks, mast, monitors), b) = runBase e (runCodegen outer a)
-  outer = fmap snd (runWriterT (runReaderT (CompatBackend, sinks) (unTower' (unTower t))))
+  (((), (sinks, mast, monitors)), b) = runBase e
+    $ runCodegen
+    $ runWriterT
+    $ runReaderT (CompatBackend, sinks)
+    $ unTower'
+    $ unTower t
 
 instance BaseUtils (Tower' backend) e where
   fresh = Tower' $ lift $ lift fresh

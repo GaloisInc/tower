@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Ivory.Tower.Codegen.Handler
-  ( generateHandlerThreadCode
+  ( handlerCodeToThreadCode
   , handlerProcName
   , callbackCode
   , callbackProcName
@@ -22,18 +22,6 @@ import Ivory.Tower.Types.Unique
 import Ivory.Tower.Codegen.Monitor
 
 import Ivory.Language
-
-generateHandlerThreadCode :: (IvoryArea a, IvoryZero a)
-                          => HandlerCode a
-                          -> AST.Tower -> AST.Handler -> [(AST.Thread, ThreadCode)]
-generateHandlerThreadCode hc twr h =
-  [ (t, handlerCodeToThreadCode twr t m h hc)
-  | t <- AST.handlerThreads twr h
-  ]
-  where
-  m = maybe (error msg) id (AST.towerFindMonitorOfHandler h twr)
-  msg = "generateHandlerThreadCode: broken invariant, monitor of handler "
-     ++ show h ++ "must exist in " ++ show twr
 
 emitterCode :: AST.Tower -> AST.Thread -> HandlerCode a -> ModuleDef
 emitterCode twr t hc = mapM_ someemittercode_user (handlercode_emitters hc twr t)

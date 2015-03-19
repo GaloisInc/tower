@@ -24,7 +24,7 @@ data CompatBackend = CompatBackend
 instance TowerBackend CompatBackend where
   newtype TowerBackendCallback CompatBackend a = CompatCallback (forall s. AST.Handler -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ModuleDef))
   newtype TowerBackendEmitter CompatBackend = CompatEmitter (AST.Tower -> AST.Thread -> SomeEmitterCode)
-  newtype TowerBackendHandler CompatBackend a = CompatHandler (AST.Tower -> Map.Map AST.Thread ThreadCode)
+  data TowerBackendHandler CompatBackend a = CompatHandler AST.Handler (AST.Monitor -> AST.Tower -> AST.Thread -> ThreadCode)
   newtype TowerBackendMonitor CompatBackend = CompatMonitor (AST.Tower -> GeneratedCode)
   newtype TowerBackendOutput CompatBackend = CompatOutput GeneratedCode
 
@@ -34,7 +34,7 @@ instance TowerBackend CompatBackend where
     let (e, code) = emitterCode ast
     in (e, CompatEmitter $ \ twr thd -> SomeEmitterCode $ code twr thd)
 
-  handlerImpl _ ast emitters callbacks = CompatHandler $ \ twr -> Map.fromListWith mappend $ generateHandlerThreadCode hc twr ast
+  handlerImpl _ ast emitters callbacks = CompatHandler ast $ \ mon twr thd -> handlerCodeToThreadCode twr thd mon ast hc
     where
     hc = HandlerCode
       { handlercode_callbacks = \ t -> second mconcat $ unzip [ c ast t | CompatCallback c <- callbacks ]
@@ -42,7 +42,12 @@ instance TowerBackend CompatBackend where
       }
 
   monitorImpl _ ast handlers moddef = CompatMonitor $ \ twr -> mempty
-    { generatedcode_threads = Map.unionsWith mappend [ h twr | SomeHandler (CompatHandler h) <- handlers ]
+    { generatedcode_threads = Map.fromListWith mappend
+        [ (thd, h ast twr thd)
+        -- handlers are reversed to match old output for convenient diffs
+        | SomeHandler (CompatHandler hast h) <- reverse handlers
+        , thd <- AST.handlerThreads twr hast
+        ]
     , generatedcode_monitors = Map.singleton ast $ MonitorCode moddef
     }
 

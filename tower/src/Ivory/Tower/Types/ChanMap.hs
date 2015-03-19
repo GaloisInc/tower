@@ -9,6 +9,7 @@ module Ivory.Tower.Types.ChanMap
   ( ChanMap()
   , singleton
   , lookup
+  , keys
   ) where
 
 import qualified Data.Map as Map
@@ -37,6 +38,9 @@ lookup (Chan chan) (ChanMap m) = fmap unsafeCoerce $ Map.lookup chan m
 
 unionWith :: (v a -> v a -> v a) -> ChanMap v -> ChanMap v -> ChanMap v
 unionWith f (ChanMap a) (ChanMap b) = ChanMap $ Map.unionWith (liftDyn f) a b
+
+keys :: ChanMap v -> [AST.Chan]
+keys (ChanMap m) = Map.keys m
 
 liftDyn :: (a -> a -> a) -> Any -> Any -> Any
 liftDyn f a b = unsafeCoerce $ f (unsafeCoerce a) (unsafeCoerce b)

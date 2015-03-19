@@ -52,7 +52,6 @@ channel = do
   f <- fresh
   let ast = AST.SyncChan f (I.ivoryArea (chanProxy c))
       c = Chan (AST.ChanSync ast)
-  towerPutASTSyncChan ast
   return (ChanInput c, ChanOutput c)
   where
   chanProxy :: Chan a -> Proxy a
@@ -69,7 +68,6 @@ signalUnsafe :: (Time a, Signalable s)
        => s -> a -> (forall eff . Ivory eff ())
        -> Tower e (ChanOutput (Stored ITime))
 signalUnsafe s t i = do
-  towerPutASTSignal ast
   towerCodegen $ codegenSignal s i
   return (ChanOutput (Chan (AST.ChanSignal ast)))
   where
@@ -88,7 +86,6 @@ periodPhase :: (Time a, Time b)
        -> Tower e (ChanOutput (Stored ITime))
 periodPhase t ph = do
   let ast = AST.Period (microseconds t) perTy (microseconds ph)
-  towerPutASTPeriod ast
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
   where perTy = I.ivoryArea (Proxy :: I.AProxy (Stored ITime))
 

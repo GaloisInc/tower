@@ -12,9 +12,6 @@ module Ivory.Tower.Monad.Tower
   , towerGetHandlers
   , towerPutHandler
   , towerPutMonitor
-  , towerPutASTSyncChan
-  , towerPutASTSignal
-  , towerPutASTPeriod
   , towerCodegen
   ) where
 
@@ -57,14 +54,20 @@ newtype SinkList backend a = SinkList { unSinkList :: [TowerBackendHandler backe
 type Sinks backend = ChanMap.ChanMap (SinkList backend)
 
 newtype Tower' backend e a = Tower'
-  { unTower' :: ReaderT (backend, Sinks backend) (WriterT (Sinks backend, AST.Tower, [TowerBackendMonitor backend]) (Codegen e)) a
+  { unTower' :: ReaderT (backend, Sinks backend) (WriterT (Sinks backend, [AST.Monitor], [TowerBackendMonitor backend]) (Codegen e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runTower :: Tower e () -> e -> (AST.Tower, GeneratedCode)
 runTower t e = (a, output `mappend` b)
   where
   CompatOutput output = towerImpl CompatBackend a monitors
-  ((sinks, a, monitors), b) = runBase e (runCodegen outer a)
+  a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
+    case key of
+    AST.ChanSync c -> mempty { AST.tower_syncchans = [c] }
+    AST.ChanSignal c -> mempty { AST.tower_signals = [c] }
+    AST.ChanPeriod c -> mempty { AST.tower_periods = [c] }
+    AST.ChanInit _ -> mempty
+  ((sinks, mast, monitors), b) = runBase e (runCodegen outer a)
   outer = fmap snd (runWriterT (runReaderT (CompatBackend, sinks) (unTower' (unTower t))))
 
 instance BaseUtils (Tower' backend) e where
@@ -87,16 +90,7 @@ towerPutHandler :: Chan a -> TowerBackendHandler backend a -> Tower' backend e (
 towerPutHandler chan h = Tower' $ put (ChanMap.singleton chan $ SinkList [h], mempty, mempty)
 
 towerPutMonitor :: AST.Monitor -> TowerBackendMonitor backend -> Tower' backend e ()
-towerPutMonitor ast m = Tower' $ put (mempty, mempty { AST.tower_monitors = [ast] }, [m])
-
-towerPutASTSyncChan :: AST.SyncChan -> Tower e ()
-towerPutASTSyncChan a = Tower $ Tower' $ put (mempty, mempty { AST.tower_syncchans = [a] }, mempty)
-
-towerPutASTPeriod :: AST.Period -> Tower e ()
-towerPutASTPeriod a = Tower $ Tower' $ put (mempty, mempty { AST.tower_periods = [a] }, mempty)
-
-towerPutASTSignal :: AST.Signal -> Tower e ()
-towerPutASTSignal a = Tower $ Tower' $ put (mempty, mempty { AST.tower_signals = [a] }, mempty)
+towerPutMonitor ast m = Tower' $ put (mempty, [ast], [m])
 
 towerCodegen :: Codegen e a -> Tower e a
 towerCodegen x = Tower $ Tower' $ lift $ lift x

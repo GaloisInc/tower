@@ -26,6 +26,7 @@ instance TowerBackend CompatBackend where
   newtype TowerBackendEmitter CompatBackend = CompatEmitter (AST.Tower -> AST.Thread -> SomeEmitterCode)
   newtype TowerBackendHandler CompatBackend a = CompatHandler (AST.Tower -> Map.Map AST.Thread ThreadCode)
   newtype TowerBackendMonitor CompatBackend = CompatMonitor (AST.Tower -> GeneratedCode)
+  newtype TowerBackendOutput CompatBackend = CompatOutput GeneratedCode
 
   callbackImpl _ ast f = CompatCallback $ \ h -> callbackCode ast (AST.handler_name h) f
 
@@ -44,3 +45,5 @@ instance TowerBackend CompatBackend where
     { generatedcode_threads = Map.unionsWith mappend [ h twr | SomeHandler (CompatHandler h) <- handlers ]
     , generatedcode_monitors = Map.singleton ast $ MonitorCode moddef
     }
+
+  towerImpl _ ast monitors = CompatOutput $ mconcat [ m ast | CompatMonitor m <- monitors ]

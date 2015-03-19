@@ -19,9 +19,7 @@ import Control.Monad.Fix
 import Control.Applicative
 import Data.Monoid
 import Ivory.Tower.Backend
-import Ivory.Tower.Backend.Compat
 import Ivory.Tower.Monad.Base
-import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
 
@@ -47,33 +45,32 @@ instance MonadFix (Monitor e) where
   mfix f = Monitor $ mfix (unMonitor . f)
 
 newtype Monitor' backend e a = Monitor'
-  { unMonitor' :: ReaderT backend (WriterT ([AST.Handler], [SomeHandler backend], ModuleDef) (Tower e)) a
+  { unMonitor' :: WriterT ([AST.Handler], [SomeHandler backend], ModuleDef) (Tower' backend e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 monitor :: String -> Monitor e () -> Tower e ()
-monitor n b = do
+monitor n b = Tower $ do
   u <- freshname n
-  ((), (hast, handlers, moddef)) <- runWriterT $ runReaderT CompatBackend $ unMonitor' $ unMonitor b
+  ((), (hast, handlers, moddef)) <- runWriterT $ unMonitor' $ unMonitor b
   let ast = AST.Monitor u hast
-  towerPutASTMonitor ast
-  let (CompatMonitor gc) = monitorImpl CompatBackend ast handlers moddef
-  towerCodegen $ codegenMonitor gc
+  backend <- towerGetBackend
+  towerPutMonitor ast $ monitorImpl backend ast handlers moddef
 
 monitorGetBackend :: Monitor' backend e backend
-monitorGetBackend = Monitor' ask
+monitorGetBackend = Monitor' $ lift towerGetBackend
 
 monitorPutHandler :: AST.Handler -> TowerBackendHandler backend a -> Monitor' backend e ()
 monitorPutHandler ast h = Monitor' $ put ([ast], [SomeHandler h], mempty)
 
 liftTower :: Tower e a -> Monitor e a
-liftTower a = Monitor $ Monitor' $ lift $ lift a
+liftTower a = Monitor $ Monitor' $ lift $ unTower a
 
 monitorModuleDef :: ModuleDef -> Monitor e ()
 monitorModuleDef m = Monitor $ Monitor' $ put (mempty, mempty, m)
 
 instance BaseUtils (Monitor' backend) e where
-  fresh = Monitor' $ lift $ lift fresh
-  getEnv = Monitor' $ lift $ lift getEnv
+  fresh = Monitor' $ lift fresh
+  getEnv = Monitor' $ lift getEnv
 
 instance BaseUtils Monitor e where
   fresh = Monitor fresh

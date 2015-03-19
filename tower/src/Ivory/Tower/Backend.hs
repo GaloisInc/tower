@@ -17,8 +17,10 @@ class TowerBackend backend where
   data TowerBackendEmitter backend :: *
   data TowerBackendHandler backend :: Area * -> *
   data TowerBackendMonitor backend :: *
+  data TowerBackendOutput backend :: *
 
   callbackImpl :: IvoryArea a => backend -> Unique -> (forall s s'. ConstRef s' a -> Ivory (AllocEffects s) ()) -> TowerBackendCallback backend a
   emitterImpl :: (IvoryArea b, IvoryZero b) => backend -> AST.Emitter -> (Emitter b, TowerBackendEmitter backend)
   handlerImpl :: (IvoryArea a, IvoryZero a) => backend -> AST.Handler -> [TowerBackendEmitter backend] -> [TowerBackendCallback backend a] -> TowerBackendHandler backend a
   monitorImpl :: backend -> AST.Monitor -> [SomeHandler backend] -> ModuleDef -> TowerBackendMonitor backend
+  towerImpl :: backend -> AST.Tower -> [TowerBackendMonitor backend] -> TowerBackendOutput backend

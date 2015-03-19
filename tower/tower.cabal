@@ -33,6 +33,8 @@ library
                         Ivory.Tower.AST.Tower,
 
                         -- Code generation
+                        Ivory.Tower.Backend,
+                        Ivory.Tower.Backend.Compat,
                         Ivory.Tower.Codegen.Emitter,
                         Ivory.Tower.Codegen.Handler,
                         Ivory.Tower.Codegen.Monitor,

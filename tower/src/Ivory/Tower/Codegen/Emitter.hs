@@ -12,23 +12,25 @@ import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.EmitterCode
-import Ivory.Tower.Codegen.Handler
 
 import Ivory.Language
 import Ivory.Stdlib (when)
 
 emitterCode :: (IvoryArea a, IvoryZero a)
             => AST.Emitter
-            -> (Emitter a, AST.Tower -> AST.Thread -> EmitterCode a)
-emitterCode ast =
+            -> (forall s. AST.Monitor -> AST.Tower -> AST.Thread -> [Def ('[ConstRef s a] :-> ())])
+            -> (Emitter a, AST.Monitor -> AST.Tower -> AST.Thread -> EmitterCode a)
+emitterCode ast sinks =
   ( Emitter $ call_ $ trampolineProc ast $ const $ return ()
-  , emitterCodePerThread ast
+  , emitterCodePerThread ast sinks
   )
 
 emitterCodePerThread :: forall a
                       . (IvoryArea a, IvoryZero a)
-                     => AST.Emitter -> AST.Tower -> AST.Thread -> EmitterCode a
-emitterCodePerThread ast twr thr = EmitterCode
+                     => AST.Emitter
+                     -> (forall s. AST.Monitor -> AST.Tower -> AST.Thread -> [Def ('[ConstRef s a] :-> ())])
+                     -> AST.Monitor -> AST.Tower -> AST.Thread -> EmitterCode a
+emitterCodePerThread ast sinks mon twr thr = EmitterCode
   { emittercode_init = call_ iproc
   , emittercode_deliver = call_ dproc
   , emittercode_user = do
@@ -73,14 +75,9 @@ emitterCodePerThread ast twr thr = EmitterCode
             mc <- deref (addrOf messageCount)
             forM_ (zip messages [0..]) $ \(m, (index :: Integer)) ->
                when (fromIntegral index <? mc) $
-                  forM_ (AST.towerChanHandlers twr chanast) $ \(_,h) ->
-                    call_ (handlerproc_stub h) (constRef (addrOf m))
+                  forM_ (sinks mon twr thr) $ \ p ->
+                    call_ p (constRef (addrOf m))
 
-  handlerproc_stub :: AST.Handler -> Def('[ConstRef s a]:->())
-  handlerproc_stub h = proc (handlerProcName h thr) $ \_msg -> body $
-    return ()
-
-  chanast = case ast of AST.Emitter _ chast _ -> chast
   e_per_thread = emitterThreadProcName thr ast
 
 trampolineProc :: IvoryArea a

@@ -66,9 +66,12 @@ library
                         -- SrcLoc
                         Ivory.Tower.SrcLoc.Location
 
+  other-modules:        Ivory.Tower.Types.ChanMap
+
   build-depends:        base >= 4.6,
                         monadLib,
                         containers,
+                        ghc-prim,
                         mainland-pretty,
                         text,
                         filepath,

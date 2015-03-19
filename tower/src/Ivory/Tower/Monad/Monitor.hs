@@ -9,6 +9,7 @@ module Ivory.Tower.Monad.Monitor
   , Monitor'
   , monitor
   , monitorGetBackend
+  , monitorGetHandlers
   , monitorPutHandler
   , monitorModuleDef
   , liftTower -- XXX UNSAFE TO USE
@@ -22,6 +23,7 @@ import Ivory.Tower.Backend
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
+import Ivory.Tower.Types.Chan
 
 import Ivory.Language
 
@@ -59,8 +61,13 @@ monitor n b = Tower $ do
 monitorGetBackend :: Monitor' backend e backend
 monitorGetBackend = Monitor' $ lift towerGetBackend
 
-monitorPutHandler :: AST.Handler -> TowerBackendHandler backend a -> Monitor' backend e ()
-monitorPutHandler ast h = Monitor' $ put ([ast], [SomeHandler h], mempty)
+monitorGetHandlers :: Chan b -> Monitor' backend e [TowerBackendHandler backend b]
+monitorGetHandlers chan = Monitor' $ lift $ towerGetHandlers chan
+
+monitorPutHandler :: AST.Handler -> Chan a -> TowerBackendHandler backend a -> Monitor' backend e ()
+monitorPutHandler ast chan h = Monitor' $ do
+  put ([ast], [SomeHandler h], mempty)
+  lift $ towerPutHandler chan h
 
 liftTower :: Tower e a -> Monitor e a
 liftTower a = Monitor $ Monitor' $ lift $ unTower a

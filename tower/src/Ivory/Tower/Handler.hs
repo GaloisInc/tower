@@ -26,12 +26,13 @@ import Ivory.Language
 
 emitter :: (IvoryArea a, IvoryZero a)
         => ChanInput a -> Integer -> Handler b e (Emitter a)
-emitter (ChanInput (Chan chanast)) bound = Handler $ do
+emitter (ChanInput chan@(Chan chanast)) bound = Handler $ do
   n <- fresh
   let ast = AST.emitter n chanast bound
   handlerPutASTEmitter ast
   backend <- handlerGetBackend
-  let (e, code) = emitterImpl backend ast
+  handlers <- handlerGetHandlers chan
+  let (e, code) = emitterImpl backend ast handlers
   handlerPutCodeEmitter code
   return e
 

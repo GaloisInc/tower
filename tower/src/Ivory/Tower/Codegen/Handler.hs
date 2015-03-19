@@ -26,14 +26,14 @@ import Ivory.Language
 emitterCode :: AST.Tower -> AST.Thread -> HandlerCode a -> ModuleDef
 emitterCode twr t hc = mapM_ someemittercode_user (handlercode_emitters hc twr t)
 
-generatedHandlerCode :: forall a
+generatedHandlerCode :: forall a s
                       . (IvoryArea a, IvoryZero a)
                      => HandlerCode a
                      -> AST.Tower -> AST.Thread -> AST.Monitor -> AST.Handler
-                     -> ModuleDef
-generatedHandlerCode hc twr t m h =
+                     -> (Def ('[ConstRef s a] :-> ()), ModuleDef)
+generatedHandlerCode hc twr t m h = (runner,
   foldl appendgen (return ()) (handlercode_emitters hc twr t)
-  >> incl runner
+  >> incl runner)
   where
   appendgen acc ec = acc >> someemittercode_gen ec
   runner :: Def('[ConstRef s a]:->())
@@ -62,12 +62,14 @@ handlerProcName h t = "handler_run_" ++ AST.handlerName h
 
 handlerCodeToThreadCode :: (IvoryArea a, IvoryZero a)
                         => AST.Tower -> AST.Thread -> AST.Monitor -> AST.Handler
-                        -> HandlerCode a -> ThreadCode
-handlerCodeToThreadCode twr t m h hc = ThreadCode
+                        -> HandlerCode a -> (Def ('[ConstRef s a] :-> ()), ThreadCode)
+handlerCodeToThreadCode twr t m h hc = (runner, ThreadCode
   { threadcode_user = snd $ handlercode_callbacks hc t
   , threadcode_emitter = emitterCode twr t hc
-  , threadcode_gen = generatedHandlerCode hc twr t m h
-  }
+  , threadcode_gen = def
+  })
+  where
+  (runner, def) = generatedHandlerCode hc twr t m h
 
 callbackCode :: IvoryArea a
              => Unique

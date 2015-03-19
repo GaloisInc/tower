@@ -23,27 +23,27 @@ data CompatBackend = CompatBackend
 
 instance TowerBackend CompatBackend where
   newtype TowerBackendCallback CompatBackend a = CompatCallback (forall s. AST.Handler -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ModuleDef))
-  newtype TowerBackendEmitter CompatBackend = CompatEmitter (AST.Tower -> AST.Thread -> SomeEmitterCode)
-  data TowerBackendHandler CompatBackend a = CompatHandler AST.Handler (AST.Monitor -> AST.Tower -> AST.Thread -> ThreadCode)
+  newtype TowerBackendEmitter CompatBackend = CompatEmitter (AST.Monitor -> AST.Tower -> AST.Thread -> SomeEmitterCode)
+  data TowerBackendHandler CompatBackend a = CompatHandler AST.Handler (forall s. AST.Monitor -> AST.Tower -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ThreadCode))
   newtype TowerBackendMonitor CompatBackend = CompatMonitor (AST.Tower -> GeneratedCode)
   newtype TowerBackendOutput CompatBackend = CompatOutput GeneratedCode
 
   callbackImpl _ ast f = CompatCallback $ \ h -> callbackCode ast (AST.handler_name h) f
 
-  emitterImpl _ ast =
-    let (e, code) = emitterCode ast
-    in (e, CompatEmitter $ \ twr thd -> SomeEmitterCode $ code twr thd)
+  emitterImpl _ ast handlers =
+    let (e, code) = emitterCode ast $ \ mon twr thd -> [ fst $ h mon twr thd | CompatHandler _ h <- handlers ]
+    in (e, CompatEmitter $ \ mon twr thd -> SomeEmitterCode $ code mon twr thd)
 
-  handlerImpl _ ast emitters callbacks = CompatHandler ast $ \ mon twr thd -> handlerCodeToThreadCode twr thd mon ast hc
+  handlerImpl _ ast emitters callbacks = CompatHandler ast $ \ mon twr thd -> handlerCodeToThreadCode twr thd mon ast $ hc mon
     where
-    hc = HandlerCode
+    hc mon = HandlerCode
       { handlercode_callbacks = \ t -> second mconcat $ unzip [ c ast t | CompatCallback c <- callbacks ]
-      , handlercode_emitters = \ twr t -> [ e twr t | CompatEmitter e <- emitters ]
+      , handlercode_emitters = \ twr t -> [ e mon twr t | CompatEmitter e <- emitters ]
       }
 
   monitorImpl _ ast handlers moddef = CompatMonitor $ \ twr -> mempty
     { generatedcode_threads = Map.fromListWith mappend
-        [ (thd, h ast twr thd)
+        [ (thd, snd $ h ast twr thd)
         -- handlers are reversed to match old output for convenient diffs
         | SomeHandler (CompatHandler hast h) <- reverse handlers
         , thd <- AST.handlerThreads twr hast

@@ -12,6 +12,7 @@ module Ivory.Tower.Monad.Handler
   , handler
   , handlerName
   , handlerGetBackend
+  , handlerGetHandlers
   , handlerPutASTEmitter
   , handlerPutASTCallback
   , handlerPutCodeEmitter
@@ -79,7 +80,7 @@ newtype Handler' backend (area :: Area *) e a = Handler'
 
 handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
-handler (ChanOutput (Chan chanast)) n b = Monitor $ do
+handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   u <- freshname n
   (r, (part, emitters, callbacks)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
 
@@ -87,7 +88,7 @@ handler (ChanOutput (Chan chanast)) n b = Monitor $ do
         (partialEmitters part) (partialCallbacks part) (partialComments part)
 
   backend <- monitorGetBackend
-  monitorPutHandler handlerast $ handlerImpl backend handlerast emitters callbacks
+  monitorPutHandler handlerast chan $ handlerImpl backend handlerast emitters callbacks
 
   return r
 
@@ -96,6 +97,9 @@ handlerName = Handler $ Handler' ask
 
 handlerGetBackend :: Handler' backend a e backend
 handlerGetBackend = Handler' $ lift $ lift monitorGetBackend
+
+handlerGetHandlers :: Chan b -> Handler' backend a e [TowerBackendHandler backend b]
+handlerGetHandlers chan = Handler' $ lift $ lift $ monitorGetHandlers chan
 
 handlerPutAST :: PartialHandler -> Handler' backend a e ()
 handlerPutAST part = Handler' $ put (part, mempty, mempty)

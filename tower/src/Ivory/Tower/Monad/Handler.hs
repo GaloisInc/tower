@@ -8,7 +8,7 @@
 
 module Ivory.Tower.Monad.Handler
   ( Handler
-  , runHandler
+  , handler
   , handlerName
   , handlerPutASTEmitter
   , handlerPutASTCallback
@@ -25,6 +25,7 @@ import MonadLib
 import Control.Monad.Fix
 import Control.Applicative
 import Data.Monoid
+import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.HandlerCode
 import Ivory.Tower.Types.EmitterCode
 import Ivory.Tower.Types.Unique
@@ -57,14 +58,13 @@ newtype Handler (area :: Area *) e a = Handler
                     (Monitor e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runHandler :: (IvoryArea a, IvoryZero a)
-           => String -> AST.Chan -> Handler a e r
-           -> Monitor e r
-runHandler n ch b = do
+handler :: (IvoryArea a, IvoryZero a)
+        => ChanOutput a -> String -> Handler a e () -> Monitor e ()
+handler (ChanOutput (Chan chanast)) n b = do
   u <- freshname n
   (r, (part, hc)) <- runWriterT $ runReaderT u $ unHandler b
 
-  let handlerast = AST.Handler u ch
+  let handlerast = AST.Handler u chanast
         (partialEmitters part) (partialCallbacks part) (partialComments part)
 
   monitorPutASTHandler handlerast

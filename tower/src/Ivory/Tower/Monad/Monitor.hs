@@ -6,7 +6,7 @@
 
 module Ivory.Tower.Monad.Monitor
   ( Monitor
-  , runMonitor
+  , monitor
   , monitorPutASTHandler
   , monitorModuleDef
   , monitorPutThreadCode
@@ -46,12 +46,13 @@ newtype Monitor e a = Monitor
   { unMonitor :: WriterT MonitorContents (Tower e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runMonitor :: String -> Monitor e ()
-           -> Tower e (AST.Monitor, MonitorCode)
-runMonitor n b = do
+monitor :: String -> Monitor e () -> Tower e ()
+monitor n b = do
   u <- freshname n
   ((), mc) <- runWriterT (unMonitor b)
-  return (AST.Monitor u $ monitorcontents_handlers mc, MonitorCode $ monitorcontents_moddef mc)
+  let ast = AST.Monitor u $ monitorcontents_handlers mc
+  towerPutASTMonitor ast
+  towerCodegen $ codegenMonitor ast $ MonitorCode $ monitorcontents_moddef mc
 
 monitorPutASTHandler :: AST.Handler -> Monitor e ()
 monitorPutASTHandler h = Monitor $ put $ mempty { monitorcontents_handlers = [h] }

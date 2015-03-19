@@ -95,12 +95,6 @@ periodPhase t ph = do
 systemInit :: ChanOutput (Stored ITime)
 systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
 
-monitor :: String -> Monitor e () -> Tower e ()
-monitor n m = do
-  (ast, mcode) <- runMonitor n m
-  towerPutASTMonitor ast
-  towerCodegen $ codegenMonitor ast mcode
-
 towerModule :: Module -> Tower e ()
 towerModule = towerCodegen . codegenModule
 

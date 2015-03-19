@@ -5,6 +5,8 @@ module Ivory.Tower.Compile
   , TOpts(..)
   ) where
 
+import Data.Monoid
+import Ivory.Tower.Backend.Compat
 import Ivory.Tower.Tower
 import Ivory.Tower.Types.GeneratedCode
 import qualified Ivory.Tower.AST as AST
@@ -26,8 +28,8 @@ towerCompile mkPlatform t = do
 
 runTowerCodegen :: Tower e () -> TowerPlatform e
                 -> ([Module], [Artifact])
-runTowerCodegen t p = generateTowerCode ast gc p
-  where (gc, ast) = runTower t (platformEnv p)
+runTowerCodegen t p = generateTowerCode (monitorGC `mappend` gc) ast p
+  where (ast, CompatOutput monitorGC, gc) = runTower CompatBackend t (platformEnv p)
 
 runTowerCompile :: Tower e () -> TowerPlatform e -> C.Opts -> IO ()
 runTowerCompile t p opts = do

@@ -13,6 +13,7 @@ module Tower.AADL
   , initialConfig
   ) where
 
+import           Data.Monoid (mappend)
 import           System.IO (openFile, IOMode(..), hClose)
 import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))
@@ -26,6 +27,7 @@ import           Text.PrettyPrint.Leijen ( (<$$>), putDoc, hPutDoc, Doc, equals
 import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import           Ivory.Tower
+import           Ivory.Tower.Backend.Compat
 import qualified Ivory.Tower.Types.GeneratedCode as C
 
 import qualified Ivory.Language.Syntax.AST       as I
@@ -70,7 +72,8 @@ runCompileAADL opts t = do
                         -- XXX assuming that the only artifacts are headers.
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
-  (ast, code)   = runTower t ()
+  (ast, CompatOutput gc1, gc2) = runTower CompatBackend t ()
+  code          = gc1 `mappend` gc2
   c             = configOpts opts
   sys           = fromTower c ast
   docs          = buildAADL sys code

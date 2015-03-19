@@ -20,7 +20,6 @@ import Control.Monad.Fix
 import Control.Applicative
 import Data.Monoid
 import Ivory.Tower.Backend
-import Ivory.Tower.Backend.Compat
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Types.Chan
@@ -61,10 +60,13 @@ newtype Tower' backend e a = Tower'
   { unTower' :: ReaderT (backend, Sinks backend) (WriterT (Sinks backend, [AST.Monitor], [TowerBackendMonitor backend]) (Codegen e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-runTower :: Tower e () -> e -> (AST.Tower, GeneratedCode)
-runTower t e = (a, output `mappend` b)
+runTower :: TowerBackend backend
+         => backend
+         -> Tower e ()
+         -> e
+         -> (AST.Tower, TowerBackendOutput backend, GeneratedCode)
+runTower backend t e = (a, towerImpl backend a monitors, b)
   where
-  CompatOutput output = towerImpl CompatBackend a monitors
   a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
     AST.ChanSync c -> mempty { AST.tower_syncchans = [c] }
@@ -74,7 +76,7 @@ runTower t e = (a, output `mappend` b)
   (((), (sinks, mast, monitors)), b) = runBase e
     $ runCodegen
     $ runWriterT
-    $ runReaderT (CompatBackend, sinks)
+    $ runReaderT (backend, sinks)
     $ unTower'
     $ unTower t
 

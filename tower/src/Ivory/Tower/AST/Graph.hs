@@ -105,7 +105,7 @@ monitorChanHandlers m c = filter p (monitor_handlers m)
   where p h = handler_chan h == c
 
 handlerOutboundChans :: Handler -> [Chan]
-handlerOutboundChans h = map emitter_chan (handler_emitters h)
+handlerOutboundChans h = map (ChanSync . emitter_chan) (handler_emitters h)
 
 handlerOutboundHandlers :: Tower -> Handler -> [(Monitor, Handler)]
 handlerOutboundHandlers t h = do

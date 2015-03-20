@@ -28,7 +28,9 @@ emitter :: (IvoryArea a, IvoryZero a)
         => ChanInput a -> Integer -> Handler b e (Emitter a)
 emitter (ChanInput chan@(Chan chanast)) bound = Handler $ do
   n <- fresh
-  let ast = AST.emitter n chanast bound
+  -- the only things that produce ChanInput will only put ChanSync in it.
+  let AST.ChanSync syncchan = chanast
+  let ast = AST.emitter n syncchan bound
   handlerPutASTEmitter ast
   backend <- handlerGetBackend
   handlers <- handlerGetHandlers chan

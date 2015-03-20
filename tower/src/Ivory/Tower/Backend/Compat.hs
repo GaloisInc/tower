@@ -164,9 +164,7 @@ handlerProc callbacks emitters t m h =
 
 emitterProcName :: AST.Emitter -> String
 emitterProcName e = showUnique (AST.emitter_name e)
-  ++ case AST.emitter_chan e of
-       AST.ChanSync c -> "_chan_" ++ show (AST.sync_chan_label c)
-       _ -> error ("impossible: emitterProcName invariant broken @ " ++ show e)
+  ++ "_chan_" ++ show (AST.sync_chan_label $ AST.emitter_chan e)
 
 callbackProcName :: Unique -> Unique -> AST.Thread -> String
 callbackProcName callbackname handlername tast

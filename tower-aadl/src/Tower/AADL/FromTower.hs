@@ -149,9 +149,7 @@ fromEmitter e = (Output { .. }, bnd)
   bnd           = A.emitter_bound e
   (outputLabel, outputType) =
     case A.emitter_chan e of
-      A.ChanSync s
-        -> (show (A.sync_chan_label s), A.sync_chan_type s)
-      _ -> error $ "Impossible emitter " ++ show e ++ " in fromEmitter."
+      s -> (show (A.sync_chan_label s), A.sync_chan_type s)
 
 syncChanLabel :: A.SyncChan -> String
 syncChanLabel = show . A.sync_chan_label

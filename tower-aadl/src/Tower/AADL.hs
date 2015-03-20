@@ -13,7 +13,6 @@ module Tower.AADL
   , initialConfig
   ) where
 
-import           Data.Monoid (mappend)
 import           System.IO (openFile, IOMode(..), hClose)
 import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath (addExtension,(</>))
@@ -28,7 +27,7 @@ import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import           Ivory.Tower
 import           Ivory.Tower.Backend.Compat
-import qualified Ivory.Tower.Types.GeneratedCode as C
+import           Ivory.Tower.Types.Dependencies
 
 import qualified Ivory.Language.Syntax.AST       as I
 
@@ -61,7 +60,7 @@ runCompileAADL opts t = do
             mapM_ go docLst
             outputAADLDeps (dir </> "AADL_FILES")
                            (configSystemName c : thdNames)
-            genIvoryCode (ivoryOpts dir) code
+            genIvoryCode (ivoryOpts dir) code deps sigs
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
 
@@ -72,21 +71,20 @@ runCompileAADL opts t = do
                         -- XXX assuming that the only artifacts are headers.
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
-  (ast, CompatOutput gc1, gc2) = runTower CompatBackend t ()
-  code          = gc1 `mappend` gc2
+  (ast, code, deps, sigs) = runTower CompatBackend t ()
   c             = configOpts opts
   sys           = fromTower c ast
-  docs          = buildAADL sys code
+  docs          = buildAADL sys deps
   docLst        = concatDocs docs
   -- Invariant: this list gives the dependency ordering for the files as well.
   thdNames      = map docName (thdDocs docs)
 
 -- | Compile the types, threads, and system separately without building packages.
-buildAADL :: A.System -> GeneratedCode  -> CompiledDocs
-buildAADL sys code = cds { tyDoc = typesDoc sys types }
+buildAADL :: A.System -> Dependencies  -> CompiledDocs
+buildAADL sys deps = cds { tyDoc = typesDoc sys types }
   where
   cds   = renderSystem sys
-  types = concatMap (I.public . I.modStructs) (C.generatedcode_modules code)
+  types = concatMap (I.public . I.modStructs) (dependencies_modules deps)
 
 -- | Compile user-defined types if there are any.
 typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc

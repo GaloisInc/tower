@@ -5,13 +5,17 @@ module Ivory.Tower.Compile
   , TOpts(..)
   ) where
 
+import qualified Data.Map as Map
 import Data.Monoid
-import Ivory.Tower.Backend.Compat
-import Ivory.Tower.Tower
-import Ivory.Tower.Types.GeneratedCode
 import qualified Ivory.Tower.AST as AST
-import Ivory.Tower.Types.TowerPlatform
+import Ivory.Tower.Backend.Compat
 import Ivory.Tower.Compile.Options
+import Ivory.Tower.Tower
+import Ivory.Tower.Types.Dependencies
+import Ivory.Tower.Types.GeneratedCode
+import Ivory.Tower.Types.MonitorCode
+import Ivory.Tower.Types.SignalCode
+import Ivory.Tower.Types.TowerPlatform
 
 import Ivory.Language
 import Ivory.Artifact
@@ -28,8 +32,19 @@ towerCompile mkPlatform t = do
 
 runTowerCodegen :: Tower e () -> TowerPlatform e
                 -> ([Module], [Artifact])
-runTowerCodegen t p = generateTowerCode (monitorGC `mappend` gc) ast p
-  where (ast, CompatOutput monitorGC, gc) = runTower CompatBackend t (platformEnv p)
+runTowerCodegen t p = generateTowerCode gc ast p
+  where
+  (ast, output, deps, sigs) = runTower CompatBackend t (platformEnv p)
+  gc = GeneratedCode
+    { generatedcode_modules = dependencies_modules deps
+    , generatedcode_depends = dependencies_depends deps
+    , generatedcode_threads = Map.insertWith mappend initThread mempty $ compatoutput_threads output
+    , generatedcode_monitors = Map.map MonitorCode $ compatoutput_monitors output
+    , generatedcode_signals = signalcode_signals sigs
+    , generatedcode_init = signalcode_init sigs
+    , generatedcode_artifacts = dependencies_artifacts deps
+    }
+  initThread = AST.InitThread AST.Init
 
 runTowerCompile :: Tower e () -> TowerPlatform e -> C.Opts -> IO ()
 runTowerCompile t p opts = do

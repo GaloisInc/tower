@@ -46,21 +46,22 @@ library
 
                         -- Monads
                         Ivory.Tower.Monad.Base,
-                        Ivory.Tower.Monad.Codegen,
                         Ivory.Tower.Monad.Handler,
                         Ivory.Tower.Monad.Monitor,
                         Ivory.Tower.Monad.Tower,
 
                         -- Types
                         Ivory.Tower.Types.Chan,
+                        Ivory.Tower.Types.Dependencies,
                         Ivory.Tower.Types.Emitter,
                         Ivory.Tower.Types.GeneratedCode,
                         Ivory.Tower.Types.MonitorCode,
+                        Ivory.Tower.Types.SignalCode,
                         Ivory.Tower.Types.Signalable,
                         Ivory.Tower.Types.ThreadCode,
                         Ivory.Tower.Types.Time,
                         Ivory.Tower.Types.TowerPlatform,
-                        Ivory.Tower.Types.Unique
+                        Ivory.Tower.Types.Unique,
 
                         -- SrcLoc
                         Ivory.Tower.SrcLoc.Location

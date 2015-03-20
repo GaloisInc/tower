@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -22,8 +23,6 @@ import Ivory.Stdlib (when)
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Backend
 import Ivory.Tower.Types.Emitter
-import Ivory.Tower.Types.GeneratedCode
-import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.Unique
 
@@ -35,8 +34,10 @@ instance TowerBackend CompatBackend where
   data TowerBackendHandler CompatBackend a = CompatHandler AST.Handler (forall s. AST.Monitor -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ThreadCode))
   newtype TowerBackendMonitor CompatBackend = CompatMonitor (AST.Tower -> TowerBackendOutput CompatBackend)
     deriving Monoid
-  newtype TowerBackendOutput CompatBackend = CompatOutput GeneratedCode
-    deriving Monoid
+  data TowerBackendOutput CompatBackend = CompatOutput
+    { compatoutput_threads :: Map.Map AST.Thread ThreadCode
+    , compatoutput_monitors :: Map.Map AST.Monitor ModuleDef
+    }
 
   callbackImpl _ ast f = CompatCallback $ \ h t ->
     let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
@@ -58,17 +59,24 @@ instance TowerBackend CompatBackend where
       , threadcode_gen = mapM_ emittercode_gen ems >> private (incl runner)
       })
 
-  monitorImpl _ ast handlers moddef = CompatMonitor $ \ twr -> CompatOutput mempty
-    { generatedcode_threads = Map.fromListWith mappend
+  monitorImpl _ ast handlers moddef = CompatMonitor $ \ twr -> CompatOutput
+    { compatoutput_threads = Map.fromListWith mappend
         [ (thd, snd $ h ast thd)
         -- handlers are reversed to match old output for convenient diffs
         | SomeHandler (CompatHandler hast h) <- reverse handlers
         , thd <- AST.handlerThreads twr hast
         ]
-    , generatedcode_monitors = Map.singleton ast $ MonitorCode moddef
+    , compatoutput_monitors = Map.singleton ast moddef
     }
 
   towerImpl _ ast monitors = case mconcat monitors of CompatMonitor f -> f ast
+
+instance Monoid (TowerBackendOutput CompatBackend) where
+  mempty = CompatOutput mempty mempty
+  mappend a b = CompatOutput
+    { compatoutput_threads = Map.unionWith mappend (compatoutput_threads a) (compatoutput_threads b)
+    , compatoutput_monitors = Map.unionWith (>>) (compatoutput_monitors a) (compatoutput_monitors b)
+    }
 
 data EmitterCode = EmitterCode
   { emittercode_init :: forall eff. Ivory eff ()

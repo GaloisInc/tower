@@ -11,25 +11,29 @@ import qualified Ivory.Compile.C.CmdlineFrontend as C
 
 import           Ivory.Tower.AST.Monitor
 import           Ivory.Tower.AST.Thread
-
-import           Ivory.Tower.Types.MonitorCode
+import           Ivory.Tower.Backend.Compat
+import           Ivory.Tower.Types.Dependencies
+import           Ivory.Tower.Types.SignalCode
 import           Ivory.Tower.Types.ThreadCode
-import           Ivory.Tower.Types.GeneratedCode as G
 
 import qualified Data.Map as M
 
 --------------------------------------------------------------------------------
 
-genIvoryCode :: C.Opts -> G.GeneratedCode -> IO ()
+genIvoryCode :: C.Opts -> TowerBackendOutput CompatBackend -> Dependencies -> SignalCode -> IO ()
 genIvoryCode opts
-  G.GeneratedCode
-  { G.generatedcode_modules   = mods
-  , G.generatedcode_depends   = depends
-  , G.generatedcode_threads   = threads
-  , G.generatedcode_monitors  = monitors
-  , G.generatedcode_signals   = signals
---  , G.generatedcode_init      = gcinit
-  , G.generatedcode_artifacts = artifacts
+  CompatOutput
+  { compatoutput_threads = threads
+  , compatoutput_monitors = monitors
+  }
+  Dependencies
+  { dependencies_modules = mods
+  , dependencies_depends = depends
+  , dependencies_artifacts = artifacts
+  }
+  SignalCode
+  { signalcode_signals = signals
+  --, signalcode_init = gcinit
   } = C.runCompiler modules artifacts opts
   where
   modules = mods
@@ -45,14 +49,13 @@ mkThreadCode th
   ThreadCode { threadcode_user = usr }
   = I.package (threadName th) usr
 
-mkMonitorCode :: Monitor -> MonitorCode -> I.Module
-mkMonitorCode m
-  MonitorCode { monitorcode_moddef = code }
+mkMonitorCode :: Monitor -> I.ModuleDef -> I.Module
+mkMonitorCode m code
   = I.package (monitorName m) code
 
-mkSignalCode :: String -> G.GeneratedSignal -> I.Module
+mkSignalCode :: String -> GeneratedSignal -> I.Module
 mkSignalCode sigNm
-  G.GeneratedSignal { G.unGeneratedSignal = s }
+  GeneratedSignal { unGeneratedSignal = s }
   -- XXX assuming for now that we don't have unsafe signals. Pass the platform
   -- signal continuation here for eChronos.
   = I.package sigNm (s (return ()))

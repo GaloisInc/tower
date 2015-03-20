@@ -30,16 +30,19 @@ module Ivory.Tower.Tower
   , freshname
   ) where
 
+import qualified Data.Map as Map
+import Data.Monoid
 import Ivory.Tower.Types.Chan
-import Ivory.Tower.Types.Time
+import Ivory.Tower.Types.Dependencies
 import Ivory.Tower.Types.GeneratedCode
+import Ivory.Tower.Types.SignalCode
 import Ivory.Tower.Types.Signalable
+import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.Unique
 
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Tower.Monad.Base
-import Ivory.Tower.Monad.Codegen
 import Ivory.Tower.Monad.Tower
 import Ivory.Tower.Monad.Monitor
 
@@ -68,7 +71,11 @@ signalUnsafe :: (Time a, Signalable s)
        => s -> a -> (forall eff . Ivory eff ())
        -> Tower e (ChanOutput (Stored ITime))
 signalUnsafe s t i = do
-  towerCodegen $ codegenSignal s i
+  towerPutSignalCode $ SignalCode
+    { signalcode_init = signalInit s
+    , signalcode_signals = Map.singleton n $
+        GeneratedSignal $ \i' -> signalHandler s (i >> i')
+    }
   return (ChanOutput (Chan (AST.ChanSignal ast)))
   where
   n = signalName s
@@ -93,13 +100,13 @@ systemInit :: ChanOutput (Stored ITime)
 systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
 
 towerModule :: Module -> Tower e ()
-towerModule = towerCodegen . codegenModule
+towerModule m = towerPutDependencies $ mempty { dependencies_modules = [m] }
 
 towerDepends :: Module -> Tower e ()
-towerDepends = towerCodegen . codegenDepends
+towerDepends m = towerPutDependencies $ mempty { dependencies_depends = [m] }
 
 towerArtifact :: Artifact -> Tower e ()
-towerArtifact = towerCodegen . codegenArtifact
+towerArtifact a = towerPutDependencies $ mempty { dependencies_artifacts = [a] }
 
 getTime :: Ivory eff ITime
 getTime = call getTimeProc

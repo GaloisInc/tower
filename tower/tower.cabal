@@ -35,7 +35,8 @@ library
                         -- Code generation
                         Ivory.Tower.Backend,
                         Ivory.Tower.Backend.Compat,
-                        Ivory.Tower.Codegen.Emitter,
+
+                        -- Compatibility re-exports for old backends
                         Ivory.Tower.Codegen.Handler,
                         Ivory.Tower.Codegen.Monitor,
 
@@ -53,9 +54,7 @@ library
                         -- Types
                         Ivory.Tower.Types.Chan,
                         Ivory.Tower.Types.Emitter,
-                        Ivory.Tower.Types.EmitterCode,
                         Ivory.Tower.Types.GeneratedCode,
-                        Ivory.Tower.Types.HandlerCode,
                         Ivory.Tower.Types.MonitorCode,
                         Ivory.Tower.Types.Signalable,
                         Ivory.Tower.Types.ThreadCode,

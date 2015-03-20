@@ -16,11 +16,11 @@ import           System.FilePath ((</>), addExtension)
 import           Control.Applicative
 import           Control.Arrow
 
-import qualified Ivory.Tower.AST           as A
-import qualified Ivory.Tower.AST.Graph     as G
-import qualified Ivory.Tower.Types.Time    as T
-import qualified Ivory.Tower.Types.Unique  as U
-import           Ivory.Tower.Codegen.Handler (callbackProcName,handlerProcName)
+import qualified Ivory.Tower.AST            as A
+import qualified Ivory.Tower.AST.Graph      as G
+import qualified Ivory.Tower.Backend.Compat as C
+import qualified Ivory.Tower.Types.Time     as T
+import qualified Ivory.Tower.Types.Unique   as U
 
 import           Tower.AADL.AST
 import           Tower.AADL.Config
@@ -69,7 +69,7 @@ fromHandler c t h = Thread { .. }
   mkCbNames cb = map (mkSrc &&& mkSym) cbThds
     where
     mkSrc thd = mkCFile c (A.threadName thd)
-    mkSym     = callbackProcName cb (A.handler_name h)
+    mkSym     = C.callbackProcName cb (A.handler_name h)
     cbThds    = G.handlerThreads t h
 
   threadProperties =
@@ -112,7 +112,7 @@ propertySrcText c h threadType =
     Active
       -> [PropertySourceText (f, s)]
          where
-         s  = handlerProcName h th
+         s  = C.handlerProcName h th
          f  = mkCFile c (A.threadName th)
          th =
            case A.handler_chan h of
@@ -145,7 +145,7 @@ fromInputChan callbacks c = case c of
 fromEmitter :: A.Emitter -> (Output, Bound)
 fromEmitter e = (Output { .. }, bnd)
   where
-  outputEmitter = A.emitterProcName e
+  outputEmitter = C.emitterProcName e
   bnd           = A.emitter_bound e
   (outputLabel, outputType) =
     case A.emitter_chan e of

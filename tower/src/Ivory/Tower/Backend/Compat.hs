@@ -31,7 +31,7 @@ data CompatBackend = CompatBackend
 
 instance TowerBackend CompatBackend where
   newtype TowerBackendCallback CompatBackend a = CompatCallback (forall s. AST.Handler -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ModuleDef))
-  newtype TowerBackendEmitter CompatBackend = CompatEmitter (AST.Monitor -> AST.Thread -> EmitterCode)
+  newtype TowerBackendEmitter CompatBackend = CompatEmitter (Maybe (AST.Monitor -> AST.Thread -> EmitterCode))
   data TowerBackendHandler CompatBackend a = CompatHandler AST.Handler (forall s. AST.Monitor -> AST.Thread -> (Def ('[ConstRef s a] :-> ()), ThreadCode))
   newtype TowerBackendMonitor CompatBackend = CompatMonitor (AST.Tower -> TowerBackendOutput CompatBackend)
     deriving Monoid
@@ -42,19 +42,20 @@ instance TowerBackend CompatBackend where
     let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
     in (p, incl p)
 
+  emitterImpl _ _ [] = (Emitter $ const $ return (), CompatEmitter Nothing)
   emitterImpl _ ast handlers =
     ( Emitter $ call_ $ trampolineProc ast $ const $ return ()
-    , CompatEmitter $ \ mon thd -> emitterCode ast thd [ fst $ h mon thd | CompatHandler _ h <- handlers ]
+    , CompatEmitter $ Just $ \ mon thd -> emitterCode ast thd [ fst $ h mon thd | CompatHandler _ h <- handlers ]
     )
 
   handlerImpl _ ast emitters callbacks = CompatHandler ast $ \ mon thd ->
-    let ems = [ e mon thd | CompatEmitter e <- emitters ]
+    let ems = [ e mon thd | CompatEmitter (Just e) <- emitters ]
         (cbs, cbdefs) = unzip [ c ast thd | CompatCallback c <- callbacks ]
         runner = handlerProc cbs ems thd mon ast
     in (runner, ThreadCode
       { threadcode_user = sequence_ cbdefs
       , threadcode_emitter = mapM_ emittercode_user ems
-      , threadcode_gen = mapM_ emittercode_gen ems >> incl runner
+      , threadcode_gen = mapM_ emittercode_gen ems >> private (incl runner)
       })
 
   monitorImpl _ ast handlers moddef = CompatMonitor $ \ twr -> CompatOutput mempty
@@ -82,16 +83,21 @@ emitterCode :: (IvoryArea a, IvoryZero a)
             -> (forall s. [Def ('[ConstRef s a] :-> ())])
             -> EmitterCode
 emitterCode ast thr sinks = EmitterCode
-  { emittercode_init = call_ iproc
-  , emittercode_deliver = call_ dproc
+  { emittercode_init = store (addrOf messageCount) 0
+  , emittercode_deliver = do
+      mc <- deref (addrOf messageCount)
+      forM_ (zip messages [0..]) $ \ (m, index) ->
+        when (fromInteger index <? mc) $
+          forM_ sinks $ \ p ->
+            call_ p (constRef (addrOf m))
+
   , emittercode_user = do
       private $ incl trampoline
   , emittercode_gen = do
-      mapM_ defMemArea messages
-      defMemArea messageCount
-      incl iproc
       incl eproc
-      incl dproc
+      private $ do
+        mapM_ defMemArea messages
+        defMemArea messageCount
   }
   where
   max_messages = AST.emitter_bound ast - 1
@@ -109,22 +115,12 @@ emitterCode ast thr sinks = EmitterCode
 
   trampoline = trampolineProc ast $ call_ eproc
 
-  iproc = voidProc (e_per_thread "init") $ body $
-               store (addrOf messageCount) 0
-
   eproc = voidProc (e_per_thread "emit")  $ \ msg -> body $ do
                mc <- deref (addrOf messageCount)
                when (mc <=? fromInteger max_messages) $ do
                  store (addrOf messageCount) (mc + 1)
                  storedmsg <- assign (messageAt mc)
                  refCopy storedmsg msg
-
-  dproc = voidProc (e_per_thread "deliver") $ body $ do
-            mc <- deref (addrOf messageCount)
-            forM_ (zip messages [0..]) $ \ (m, index) ->
-               when (fromInteger index <? mc) $
-                  forM_ sinks $ \ p ->
-                    call_ p (constRef (addrOf m))
 
   e_per_thread suffix =
     emitterProcName ast ++ "_" ++ AST.threadName thr ++ "_" ++ suffix

@@ -1,21 +1,16 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RankNTypes #-}
-
 module Ivory.Tower.Types.TowerPlatform
   ( TowerPlatform(..)
   ) where
 
-import Ivory.Language
 import Ivory.Artifact
-import Ivory.Tower.Types.GeneratedCode
-import qualified Ivory.Tower.AST as AST
+import Ivory.Language
+import Ivory.Tower.Backend
+import Ivory.Tower.Types.Dependencies
+import Ivory.Tower.Types.SignalCode
 
-data TowerPlatform a =
-  TowerPlatform
-    { threadModules   :: GeneratedCode -> AST.Tower -> [Module]
-    , monitorModules  :: GeneratedCode -> AST.Tower -> [Module]
-    , systemModules   ::                  AST.Tower -> [Module]
-    , systemArtifacts ::                  AST.Tower -> [Module] -> [Artifact] -> [Artifact]
-    , platformEnv     :: a
-    }
-
+data TowerPlatform backend a = TowerPlatform
+  { platformBackend :: backend
+  , platformEnv     :: a
+  , addModules      :: TowerBackendOutput backend -> Dependencies -> SignalCode -> [Module]
+  , addArtifacts    :: TowerBackendOutput backend -> Dependencies -> SignalCode -> [Module] -> [Artifact] -> [Artifact]
+  }

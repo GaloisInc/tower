@@ -20,20 +20,24 @@ import qualified Data.Map as M
 
 --------------------------------------------------------------------------------
 
-genIvoryCode :: C.Opts -> TowerBackendOutput CompatBackend -> Dependencies -> SignalCode -> IO ()
+genIvoryCode :: C.Opts
+             -> TowerBackendOutput CompatBackend
+             -> Dependencies
+             -> SignalCode
+             -> IO ()
 genIvoryCode opts
   CompatOutput
-  { compatoutput_threads = threads
-  , compatoutput_monitors = monitors
+  { compatoutput_threads   = threads
+  , compatoutput_monitors  = monitors
   }
   Dependencies
-  { dependencies_modules = mods
-  , dependencies_depends = depends
+  { dependencies_modules   = mods
+  , dependencies_depends   = depends
   , dependencies_artifacts = artifacts
   }
   SignalCode
-  { signalcode_signals = signals
-  --, signalcode_init = gcinit
+  { signalcode_signals     = signals
+  --, signalcode_init      = gcinit
   } = C.runCompiler modules artifacts opts
   where
   modules = mods

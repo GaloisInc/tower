@@ -123,7 +123,7 @@ renderInput rx = stmt
   <+> renderTypeNS (inputType rx)
  <$$> chanSrc (vsep st)
   where
-  st = renderEntryText (inputCallback rx)
+  st = renderEntryText [inputCallback rx]
 
 renderOutput :: Output -> Doc
 renderOutput tx = stmt
@@ -144,14 +144,16 @@ chanSrc d =
  <$$> tab (tab d)
  <$$> tab rbrace
 
-renderEntryText :: SourcePath -> [Doc]
-renderEntryText (srcTxt, entry) =
-  [ stmt $ fromSMACCM entrySrc ==> mkLs entry
-  , stmt $ text "Source_Text"  ==> mkLs srcTxt ]
+renderEntryText :: [SourcePath] -> [Doc]
+renderEntryText srcs =
+  [ stmt $ fromSMACCM entrySrc ==> mkLs cbs
+  , stmt $ text "Source_Text"  ==> mkLs fps
+  ]
   where
-  mkLs s = lparen
-        <> dquotes (text s)
-        <> rparen
+  (fps, cbs) = unzip srcs
+  mkLs ss = lparen
+         <> dquotes (vsep (punctuate comma (map text ss)))
+         <> rparen
 
 renderThreadProperty :: ThreadProperty -> Doc
 renderThreadProperty p = case p of
@@ -167,8 +169,8 @@ renderThreadProperty p = case p of
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
   Priority pri
     -> stmt (text "Priority" ==> integer pri)
-  PropertySourceText srcTxt
-    -> vsep (renderEntryText srcTxt)
+  PropertySourceText srcTxts
+    -> vsep (renderEntryText srcTxts)
   SendEvents txs
     -> stmt
      $ fromSMACCM (text "Sends_Events_To")

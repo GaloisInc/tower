@@ -64,7 +64,7 @@ data ThreadProperty =
   -- ^ Min bound, max bound.
   | StackSize Integer
   | Priority Integer
-  | PropertySourceText !SourcePath
+  | PropertySourceText [SourcePath]
   -- ^ Path to a .c file
   | SendEvents [(Output, Bound)]
   deriving (Show, Eq)

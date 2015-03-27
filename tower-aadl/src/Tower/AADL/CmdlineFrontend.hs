@@ -7,6 +7,8 @@
 module Tower.AADL.CmdlineFrontend where
 
 import Data.Monoid
+import Data.Maybe
+import Data.Either
 
 import System.Console.GetOpt
 import System.Exit (exitFailure,exitSuccess)
@@ -123,5 +125,17 @@ printUsage errs = do
         (errs ++ ["", "Usage: " ++ prog ++ " [OPTIONS]"])
   putStrLn (usageInfo banner options)
 
-
-
+-- | Checks that filepaths conform to Camkes requirements. Either Fails or
+-- Returns a no-op.
+validFPOpts :: Opts -> Opts
+validFPOpts opts =
+  let ls = lefts res in
+  if null ls
+    then opts
+    else error (unlines ls)
+  where
+  res :: [Either String FilePath]
+  res =
+       maybeToList (fmap validDirName (genDirOpts opts))
+    ++ fmap validDirName [ configSrcsDir c, configHdrDir c ]
+  c = configOpts opts

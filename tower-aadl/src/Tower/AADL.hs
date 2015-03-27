@@ -51,7 +51,7 @@ compileAADL t = do
 
 -- | Compile full AADL packages.
 runCompileAADL :: Opts -> Tower () () -> IO ()
-runCompileAADL opts t = do
+runCompileAADL opts' t = do
   case genDirOpts opts of
     Nothing
       -> mapM_ (putDoc . (<$$> linebreak) . docImpl) docLst
@@ -65,6 +65,7 @@ runCompileAADL opts t = do
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
 
   where
+  opts = validFPOpts opts'
   ivoryOpts dir =
     (configIvoryOpts c) { O.outDir    = Just (dir </> configSrcsDir c)
                         , O.outHdrDir = Just (dir </> configHdrDir  c)

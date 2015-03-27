@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiWayIf #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -7,6 +8,9 @@
 --
 
 module Tower.AADL.Config where
+
+import Data.Char
+import System.FilePath (isPathSeparator)
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
@@ -35,3 +39,19 @@ initialConfig = Config
   , configSystemHW    = "QEMU"
   , configIvoryOpts   = C.initialOpts
   }
+
+-- | Camkes needs filepaths, modulo '/', to be valid C identifiers.
+validDirName :: FilePath -> Either String FilePath
+validDirName fp =
+  if | null fp
+      -> Left "Empty filepath in AADL config."
+     | and $ isAlpha (head fp) : fmap go (tail fp)
+      -> Right fp
+     | otherwise
+      -> Left $ "Filepath " ++ fp
+             ++ " must contain only valid C identifiers for Camkes."
+  where
+  -- A character is a C identifier char or a path separator.
+  go c = isAlphaNum c
+      || (c == '_')
+      || isPathSeparator c

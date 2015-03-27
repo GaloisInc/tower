@@ -36,7 +36,7 @@ test0 = do
       e <- emitter cin 1
       callback $ \msg -> do
         m <- deref msg
-        call_ printf "Sender ping received %d. Writing to receiver.\n" m
+        call_ printf "Sender ping received %llu. Writing to receiver.\n" m
         emitV e (m+1)
 
 --------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ test0 = do
 main :: IO ()
 main =
   runCompileAADL
-    initialOpts { genDirOpts = Just "test-per"
+    initialOpts { genDirOpts = Just "test_per"
                 }
     test0
 

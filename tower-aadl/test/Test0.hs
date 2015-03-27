@@ -36,14 +36,14 @@ test1 = do
       e <- emitter c1in 1
       callback $ \msg -> do
         m <- deref msg
-        call_ printf "Sender ping received %d. Writing to receiver.\n" m
+        call_ printf "Sender ping received %llu. Writing to receiver.\n" m
         emitV e (m+1)
 
   monitor "rx_monitor" $ do
     handler c1out "receiver" $ do
       callback $ \msg -> do
         m <- deref msg
-        call_ printf "receiver1 msg received %d.\n" m
+        call_ printf "receiver1 msg received %llu.\n" m
 
 --------------------------------------------------------------------------------
 -- Compiler

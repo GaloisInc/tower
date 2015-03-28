@@ -81,7 +81,7 @@ runCompileAADL opts' t = do
   thdNames      = map docName (thdDocs docs)
 
 -- | Compile the types, threads, and system separately without building packages.
-buildAADL :: A.System -> Dependencies  -> CompiledDocs
+buildAADL :: A.System -> Dependencies -> CompiledDocs
 buildAADL sys deps = cds { tyDoc = typesDoc sys types }
   where
   cds   = renderSystem sys

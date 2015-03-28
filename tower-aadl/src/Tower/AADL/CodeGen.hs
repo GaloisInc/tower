@@ -6,7 +6,7 @@
 
 module Tower.AADL.CodeGen where
 
-import qualified Ivory.Language  as I
+import qualified Ivory.Language as I
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
 import           Ivory.Tower.AST.Monitor
@@ -42,20 +42,20 @@ genIvoryCode opts
   where
   modules = mods
          ++ depends
-         ++ go mkThreadCode  threads
-         ++ go mkMonitorCode monitors
+         ++ go (mkThreadCode  depends) threads
+         ++ go (mkMonitorCode depends) monitors
          ++ go mkSignalCode  signals
   go c cs = M.elems $ M.mapWithKey c cs
 
 -- Note: handler code gets put into the thread by Tower front-end.
-mkThreadCode :: Thread -> ThreadCode -> I.Module
-mkThreadCode th
+mkThreadCode :: [I.Module] -> Thread -> ThreadCode -> I.Module
+mkThreadCode deps th
   ThreadCode { threadcode_user = usr }
-  = I.package (threadName th) usr
+  = I.package (threadName th) (usr >> mapM_ I.depend deps)
 
-mkMonitorCode :: Monitor -> I.ModuleDef -> I.Module
-mkMonitorCode m code
-  = I.package (monitorName m) code
+mkMonitorCode :: [I.Module] -> Monitor -> I.ModuleDef -> I.Module
+mkMonitorCode deps m code
+  = I.package (monitorName m) (code >> mapM_ I.depend deps)
 
 mkSignalCode :: String -> GeneratedSignal -> I.Module
 mkSignalCode sigNm

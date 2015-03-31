@@ -44,7 +44,7 @@ data Feature =
 data Input = Input
   { inputLabel    :: !ChanLabel
   , inputType     :: !I.Type
-  , inputCallback :: SourcePath
+  , inputCallback :: !SourcePath
   } deriving (Show, Eq, Ord)
 
 -- | Output channels

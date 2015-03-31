@@ -72,7 +72,7 @@ runCompileAADL opts' t = do
                         -- XXX assuming that the only artifacts are headers.
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
-  (ast, code, deps, sigs) = runTower CompatBackend t ()
+  (ast, code, deps, sigs) = runTower AADLBackend t ()
   c             = configOpts opts
   sys           = fromTower c ast
   docs          = buildAADL sys deps

@@ -1,3 +1,8 @@
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 --
 -- Code generation of handler state machines, etc. for AADL targets.
 --
@@ -7,60 +12,103 @@
 module Tower.AADL.CodeGen where
 
 import qualified Ivory.Language as I
+import qualified Ivory.Language.Syntax.AST as I
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
-import           Ivory.Tower.AST.Monitor
-import           Ivory.Tower.AST.Thread
+import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.Backend.Compat
-import           Ivory.Tower.Types.Dependencies
-import           Ivory.Tower.Types.SignalCode
-import           Ivory.Tower.Types.ThreadCode
+import           Ivory.Tower.Backend
+import qualified Ivory.Tower.Types.Dependencies as T
+import qualified Ivory.Tower.Types.Emitter      as T
+import qualified Ivory.Tower.Types.SignalCode   as T
+import qualified Ivory.Tower.Types.Unique       as T
 
 import qualified Data.Map as M
+import qualified Data.Set as S
+import Data.Monoid
 
 --------------------------------------------------------------------------------
 
+data AADLBackend = AADLBackend
+
+instance TowerBackend AADLBackend where
+  newtype TowerBackendCallback AADLBackend a  = AADLCallback (AST.Handler -> I.ModuleDef)
+    deriving Monoid
+  data    TowerBackendEmitter  AADLBackend    = AADLEmitter
+  newtype TowerBackendHandler  AADLBackend  a = AADLHandler I.ModuleDef
+    deriving Monoid
+  newtype TowerBackendMonitor  AADLBackend    = AADLMonitor I.Module
+  -- Pass in dependency modules
+  newtype TowerBackendOutput   AADLBackend    = AADLOutput ([I.Module] -> [I.Module])
+
+  callbackImpl _ sym f =
+      AADLCallback
+    $ \h -> I.incl
+    $ I.voidProc (callbackSym sym (AST.handler_name h))
+    $ \r -> I.body
+    $ I.noReturn
+    $ f r
+
+  emitterImpl _be emitterAst _impl =
+    (T.Emitter $ \ref -> I.call_ procFromEmitter ref, AADLEmitter)
+    where
+    procFromEmitter :: I.IvoryArea b => I.Def('[I.ConstRef s b] I.:-> ())
+    procFromEmitter = I.voidProc sym $ \_ref -> I.body I.retVoid
+    sym = T.showUnique (AST.emitter_name emitterAst)
+
+  handlerImpl _be ast _emitters callbacks =
+    AADLHandler $ case mconcat callbacks of
+                    AADLCallback defs -> defs ast
+
+  monitorImpl _be ast handlers moddef =
+      AADLMonitor
+    $ I.package (AST.monitorName ast)
+    $ mconcat (map handlerModules handlers) >> moddef
+    where
+    handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
+    handlerModules (SomeHandler (AADLHandler h)) = h
+
+  towerImpl _be _ast monitors = AADLOutput
+    -- XXX Should be done in the ModuleDef monad, but not clear how through
+    -- backend API
+    $ \deps -> [ mkMod m deps | AADLMonitor m <- monitors ]
+    where
+    mkMod m deps = m { I.modDepends = I.modDepends m `S.union` depSet }
+      where
+      depSet = S.fromList (map I.modName deps)
+
 genIvoryCode :: C.Opts
-             -> TowerBackendOutput CompatBackend
-             -> Dependencies
-             -> SignalCode
+             -> TowerBackendOutput AADLBackend
+             -> T.Dependencies
+             -> T.SignalCode
              -> IO ()
 genIvoryCode opts
-  CompatOutput
-  { compatoutput_threads   = threads
-  , compatoutput_monitors  = monitors
+  (AADLOutput modsF)
+  T.Dependencies
+  { T.dependencies_modules   = mods
+  , T.dependencies_depends   = depends
+  , T.dependencies_artifacts = artifacts
   }
-  Dependencies
-  { dependencies_modules   = mods
-  , dependencies_depends   = depends
-  , dependencies_artifacts = artifacts
-  }
-  SignalCode
-  { signalcode_signals     = signals
-  --, signalcode_init      = gcinit
+  T.SignalCode
+  { T.signalcode_signals     = signals
   } = C.runCompiler modules artifacts opts
   where
   modules = mods
          ++ depends
-         ++ go (mkThreadCode  depends) threads
-         ++ go (mkMonitorCode depends) monitors
+         ++ modsF depends
          ++ go mkSignalCode  signals
   go c cs = M.elems $ M.mapWithKey c cs
 
--- Note: handler code gets put into the thread by Tower front-end.
-mkThreadCode :: [I.Module] -> Thread -> ThreadCode -> I.Module
-mkThreadCode deps th
-  ThreadCode { threadcode_user = usr }
-  = I.package (threadName th) (usr >> mapM_ I.depend deps)
-
-mkMonitorCode :: [I.Module] -> Monitor -> I.ModuleDef -> I.Module
-mkMonitorCode deps m code
-  = I.package (monitorName m) (code >> mapM_ I.depend deps)
-
-mkSignalCode :: String -> GeneratedSignal -> I.Module
+mkSignalCode :: String -> T.GeneratedSignal -> I.Module
 mkSignalCode sigNm
-  GeneratedSignal { unGeneratedSignal = s }
+  T.GeneratedSignal { T.unGeneratedSignal = s }
   -- XXX assuming for now that we don't have unsafe signals. Pass the platform
   -- signal continuation here for eChronos.
   = I.package sigNm (s (return ()))
 
+--------------------------------------------------------------------------------
+-- Helpers
+
+callbackSym :: T.Unique -> T.Unique -> String
+callbackSym callbackName handlerName =
+  T.showUnique callbackName ++ '_' : T.showUnique handlerName

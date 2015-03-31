@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -95,17 +96,14 @@ stackSize threadType =
     Active  -> [StackSize 100] -- XXX made up for now
     Passive -> []
 
--- Use Tower's API to create a callback function symbol based on the callback
--- (a `Unique`) and the Tower threads that call it. Those functions are
--- defined in .c files named after their active threads.
+-- A handler for a channel may contain multiple callbacks for the channel
+-- message. For a given handler, create the callback symbols and a C filename
+-- for the handler.
 mkCbNames :: Config -> A.Tower -> A.Handler -> [SourcePath]
-mkCbNames c t h = concatMap go (A.handler_callbacks h)
+mkCbNames c t h = map (mkCFile c nm,) (map go (A.handler_callbacks h))
   where
-  go cb = map (mkSrc &&& mkCb) cbThds
-    where
-    mkSrc thd = mkCFile c (A.threadName thd)
-    mkCb      = C.callbackProcName cb (A.handler_name h)
-    cbThds    = G.handlerThreads t h
+  nm    = A.handlerName h
+  go cb = U.showUnique cb ++ "_" ++ nm
 
 propertySrcText :: Config -> A.Tower -> A.Handler -> ThreadType -> [ThreadProperty]
 propertySrcText c t h threadType =

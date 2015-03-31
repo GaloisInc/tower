@@ -12,11 +12,9 @@
 module Tower.AADL.CodeGen where
 
 import qualified Ivory.Language as I
-import qualified Ivory.Language.Syntax.AST as I
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
 import qualified Ivory.Tower.AST as AST
-import           Ivory.Tower.Backend.Compat
 import           Ivory.Tower.Backend
 import qualified Ivory.Tower.Types.Dependencies as T
 import qualified Ivory.Tower.Types.Emitter      as T
@@ -24,7 +22,6 @@ import qualified Ivory.Tower.Types.SignalCode   as T
 import qualified Ivory.Tower.Types.Unique       as T
 
 import qualified Data.Map as M
-import qualified Data.Set as S
 import Data.Monoid
 
 --------------------------------------------------------------------------------
@@ -37,7 +34,8 @@ instance TowerBackend AADLBackend where
   data    TowerBackendEmitter  AADLBackend    = AADLEmitter
   newtype TowerBackendHandler  AADLBackend  a = AADLHandler I.ModuleDef
     deriving Monoid
-  newtype TowerBackendMonitor  AADLBackend    = AADLMonitor I.Module
+  -- Return monitor name and its module.
+  newtype TowerBackendMonitor  AADLBackend    = AADLMonitor (String, I.ModuleDef)
   -- Pass in dependency modules
   newtype TowerBackendOutput   AADLBackend    = AADLOutput ([I.Module] -> [I.Module])
 
@@ -61,21 +59,18 @@ instance TowerBackend AADLBackend where
                     AADLCallback defs -> defs ast
 
   monitorImpl _be ast handlers moddef =
-      AADLMonitor
-    $ I.package (AST.monitorName ast)
-    $ mconcat (map handlerModules handlers) >> moddef
+      AADLMonitor ( AST.monitorName ast
+                  , mconcat (map handlerModules handlers) >> moddef
+                  )
     where
     handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
     handlerModules (SomeHandler (AADLHandler h)) = h
 
-  towerImpl _be _ast monitors = AADLOutput
-    -- XXX Should be done in the ModuleDef monad, but not clear how through
-    -- backend API
-    $ \deps -> [ mkMod m deps | AADLMonitor m <- monitors ]
+  towerImpl _be _ast ms =
+      AADLOutput
+    $ \deps -> [ mkMod m deps | AADLMonitor m <- ms ]
     where
-    mkMod m deps = m { I.modDepends = I.modDepends m `S.union` depSet }
-      where
-      depSet = S.fromList (map I.modName deps)
+    mkMod (nm, mMod) deps = I.package nm $ mapM_ I.depend deps >> mMod
 
 genIvoryCode :: C.Opts
              -> TowerBackendOutput AADLBackend

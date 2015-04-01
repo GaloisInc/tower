@@ -15,15 +15,13 @@ module Tower.AADL.FromTower
 import           Prelude hiding (init)
 import           System.FilePath ((</>), addExtension)
 import           Control.Applicative
-import           Control.Arrow
 
 import qualified Ivory.Tower.AST            as A
-import qualified Ivory.Tower.AST.Graph      as G
-import qualified Ivory.Tower.Backend.Compat as C
 import qualified Ivory.Tower.Types.Time     as T
 import qualified Ivory.Tower.Types.Unique   as U
 
 import           Tower.AADL.AST
+import           Tower.AADL.CodeGen (callbackSym, emitterSym)
 import           Tower.AADL.Config
 
 --------------------------------------------------------------------------------
@@ -41,19 +39,20 @@ mkProcess :: Config -> A.Tower -> Process
 mkProcess c t = Process { .. }
   where
   processName       = configSystemName c ++ "_process"
-  processComponents = concatMap (fromMonitor c t) (A.tower_monitors t)
+  processComponents = concatMap (fromMonitor c) (A.tower_monitors t)
 
-fromMonitor :: Config -> A.Tower -> A.Monitor -> [Thread]
-fromMonitor c t m = map (fromHandler c t) (A.monitor_handlers m)
+fromMonitor :: Config -> A.Monitor -> [Thread]
+fromMonitor c m =
+  map (fromHandler c (A.monitorName m)) (A.monitor_handlers m)
 
 -- | Create the feature groups and thread properties from a Tower handler. A
 -- handler is a collection of emitters and callbacks associated with a single
 -- input channel.
 fromHandler :: Config
-            -> A.Tower
+            -> String
             -> A.Handler
             -> Thread
-fromHandler c t h = Thread { .. }
+fromHandler c monitorName h = Thread { .. }
   where
   threadName       = U.showUnique (A.handler_name h)
   threadFeatures   = rxChan ++ map OutputFeature txChans
@@ -62,14 +61,15 @@ fromHandler c t h = Thread { .. }
   (txChans, bnds)  = unzip $ map fromEmitter es
   sends            = SendEvents (zip txChans bnds)
   -- Create all the callback names for the handler.
-  rxChan           = fromInputChan (mkCbNames c t h) (A.handler_chan h)
+  rxChan           = fromInputChan (mkCallbacksHandler c h monitorName)
+                                   (A.handler_chan h)
 
   threadProperties =
       ThreadType threadType
     : DispatchProtocol dispatch
     : ExecTime 10 100 -- XXX made up for now
     : sends
-    : concat (    [propertySrcText c t h, stackSize, threadPriority]
+    : concat (    [propertySrcText c h monitorName, stackSize, threadPriority]
               <*> pure threadType
              )
   (threadType, dispatch) =
@@ -96,22 +96,19 @@ stackSize threadType =
     Active  -> [StackSize 100] -- XXX made up for now
     Passive -> []
 
--- A handler for a channel may contain multiple callbacks for the channel
--- message. For a given handler, create the callback symbols and a C filename
--- for the handler.
-mkCbNames :: Config -> A.Tower -> A.Handler -> [SourcePath]
-mkCbNames c t h = map (mkCFile c nm,) (map go (A.handler_callbacks h))
+mkCallbacksHandler :: Config -> A.Handler -> String -> [SourcePath]
+mkCallbacksHandler c h fileNm =
+  map (mkCFile c fileNm,) (map go (A.handler_callbacks h))
   where
-  nm    = A.handlerName h
-  go cb = U.showUnique cb ++ "_" ++ nm
+  go cb = callbackSym cb (A.handler_name h)
 
-propertySrcText :: Config -> A.Tower -> A.Handler -> ThreadType -> [ThreadProperty]
-propertySrcText c t h threadType =
+propertySrcText :: Config -> A.Handler -> String -> ThreadType -> [ThreadProperty]
+propertySrcText c h monitorName threadType =
   case threadType of
     Passive
       -> []
     Active
-      -> [PropertySourceText (mkCbNames c t h)]
+      -> [PropertySourceText (mkCallbacksHandler c h monitorName)]
 
 -- Create the input callback names in the handler for a given channel.
 fromInputChan :: [SourcePath] -> A.Chan -> [Feature]
@@ -126,7 +123,7 @@ fromInputChan callbacks c = case c of
     -> map mkInput callbacks
     where
     mkInput cb = InputFeature
-               $ Input { inputLabel    = syncChanLabel s
+               $ Input { inputLabel    = show (A.sync_chan_label s)
                        , inputType     = A.sync_chan_type s
                        , inputCallback = cb
                        }
@@ -135,17 +132,11 @@ fromInputChan callbacks c = case c of
 fromEmitter :: A.Emitter -> (Output, Bound)
 fromEmitter e = (Output { .. }, bnd)
   where
-  outputEmitter = C.emitterProcName e
+  outputEmitter = emitterSym e
   bnd           = A.emitter_bound e
   (outputLabel, outputType) =
     case A.emitter_chan e of
       s -> (show (A.sync_chan_label s), A.sync_chan_type s)
-
-syncChanLabel :: A.SyncChan -> String
-syncChanLabel = show . A.sync_chan_label
-
---------------------------------------------------------------------------------
--- Helpers
 
 -- From a name, add the '.c' extension and file path. Relative to the AADL source path.
 mkCFile :: Config -> FilePath -> FilePath

@@ -107,3 +107,6 @@ mkSignalCode sigNm
 callbackSym :: T.Unique -> T.Unique -> String
 callbackSym callbackName handlerName =
   T.showUnique callbackName ++ '_' : T.showUnique handlerName
+
+emitterSym :: AST.Emitter -> String
+emitterSym e = T.showUnique $ AST.emitter_name e

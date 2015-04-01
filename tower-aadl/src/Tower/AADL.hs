@@ -26,10 +26,9 @@ import           Text.PrettyPrint.Leijen ( (<$$>), putDoc, hPutDoc, Doc, equals
 import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import           Ivory.Tower
-import           Ivory.Tower.Backend.Compat
 import           Ivory.Tower.Types.Dependencies
 
-import qualified Ivory.Language.Syntax.AST       as I
+import qualified Ivory.Language.Syntax.AST as I
 
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A

@@ -15,6 +15,7 @@ import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
 import Text.PrettyPrint.Leijen
+import Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 
@@ -146,11 +147,14 @@ chanSrc d =
 
 renderEntryText :: [SourcePath] -> [Doc]
 renderEntryText srcs =
-  [ stmt $ fromSMACCM entrySrc ==> mkLs cbs
-  , stmt $ text "Source_Text"  ==> mkLs fps
-  ]
+  stmt (fromSMACCM entrySrc ==> mkLs cbs) : [stext]
+
   where
-  (fps, cbs) = unzip srcs
+  (mfps, cbs) = unzip srcs
+  stext =
+    let fps = catMaybes mfps in
+    if null fps then empty
+      else stmt $ text "Source_Text"  ==> mkLs fps
   mkLs ss = lparen
          <> dquotes (vsep (punctuate comma (map text ss)))
          <> rparen
@@ -161,6 +165,8 @@ renderThreadProperty p = case p of
     -> mkDisptach per
   ThreadType ty
     -> mkThreadType ty
+  External
+    -> stmt $ fromSMACCM (text "IsExternal") ==> text "true"
   ExecTime l h
     -> stmt
      $ text "Compute_Execution_Time"
@@ -183,7 +189,7 @@ renderThreadProperty p = case p of
       ->   mkDispatchdec (text "Periodic")
       <$$> stmt (text "Period" ==> prettyTime i)
     Aperiodic
-      -> mkDispatchdec (text "Aperiodic")
+      -> mkDispatchdec (text "Sporadic")
   mkDispatchdec dis = stmt (text "Dispatch_Protocol" ==> dis)
   mkThreadType ty = stmt (fromSMACCM (text "Thread_Type" ==> renderTy))
     where renderTy = case ty of

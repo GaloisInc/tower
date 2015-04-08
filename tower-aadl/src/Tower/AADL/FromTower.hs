@@ -15,6 +15,7 @@ module Tower.AADL.FromTower
 import           Prelude hiding (init)
 import           System.FilePath ((</>), addExtension)
 import           Control.Applicative
+import           Control.Monad
 
 import qualified Ivory.Tower.AST            as A
 import qualified Ivory.Tower.Types.Time     as T
@@ -39,20 +40,21 @@ mkProcess :: Config -> A.Tower -> Process
 mkProcess c t = Process { .. }
   where
   processName       = configSystemName c ++ "_process"
-  processComponents = concatMap (fromMonitor c) (A.tower_monitors t)
+  processComponents = concatMap (fromMonitor c t) (A.tower_monitors t)
 
-fromMonitor :: Config -> A.Monitor -> [Thread]
-fromMonitor c m =
-  map (fromHandler c (A.monitorName m)) (A.monitor_handlers m)
+fromMonitor :: Config -> A.Tower -> A.Monitor -> [Thread]
+fromMonitor c t m =
+  map (fromHandler c t (A.monitorName m)) (A.monitor_handlers m)
 
 -- | Create the feature groups and thread properties from a Tower handler. A
 -- handler is a collection of emitters and callbacks associated with a single
 -- input channel.
 fromHandler :: Config
+            -> A.Tower
             -> String
             -> A.Handler
             -> Thread
-fromHandler c monitorName h = Thread { .. }
+fromHandler c t monitorName h = Thread { .. }
   where
   threadName       = U.showUnique (A.handler_name h)
   threadFeatures   = rxChan ++ map OutputFeature txChans
@@ -60,29 +62,74 @@ fromHandler c monitorName h = Thread { .. }
   es               = A.handler_emitters h
   (txChans, bnds)  = unzip $ map fromEmitter es
   sends            = SendEvents (zip txChans bnds)
-  -- Create all the callback names for the handler.
-  rxChan           = fromInputChan (mkCallbacksHandler c h monitorName)
-                                   (A.handler_chan h)
+  -- Create each callback symbol associated with the handler.
+  cbs              = mkCallbacksHandler c h monitorName
+  rxChan           = fromInputChan cbs (A.handler_chan h)
 
   threadProperties =
       ThreadType threadType
     : DispatchProtocol dispatch
     : ExecTime 10 100 -- XXX made up for now
     : sends
-    : concat (    [propertySrcText c h monitorName, stackSize, threadPriority]
-              <*> pure threadType
-             )
+    : (if isAbstract h then [External] else propertySrcText)
+   ++ concat ([stackSize, threadPriority] <*> pure threadType)
   (threadType, dispatch) =
-    case A.handler_chan h of
-      A.ChanSignal sig -- XXX address is a lie
-          -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
-      A.ChanPeriod per
-          -> ( Active, Periodic (T.toMicroseconds (A.period_dt per)))
-      A.ChanInit{}
-          -- XXX is Aperiodic right? We're ignoring init chans for now, anyways
-          -> (Active, Aperiodic)
-      A.ChanSync{}
-          -> (Passive, Aperiodic)
+    if isAbstract h then (Active, Aperiodic)
+      else
+        case A.handler_chan h of
+          A.ChanSignal sig -- XXX address is a lie
+              -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
+          A.ChanPeriod per
+              -> ( Active, Periodic (T.toMicroseconds (A.period_dt per)))
+          A.ChanInit{}
+              -- XXX is Aperiodic right? We're ignoring init chans for now, anyways
+              -> (Active, Aperiodic)
+          A.ChanSync{}
+              -> ( -- abstract handlers affect dependents
+                   if fromAbstract t h
+                     then Active
+                     else Passive
+                 , Aperiodic
+                 )
+  propertySrcText :: [ThreadProperty]
+  propertySrcText =
+    case threadType of
+      Passive
+        -> []
+      Active
+        -> [PropertySourceText (mkCallbacksHandler c h monitorName)]
+
+isAbstract :: A.Handler -> Bool
+isAbstract h =
+  case A.handler_type h of
+    A.AbstractHandler
+      -> True
+    A.DefinedHandler
+      -> False
+
+-- For a given handler, sees if any callback emitting onto it comes from an
+-- abstract handler.
+--
+-- XXX this may be expensive to run for each handler. May want to compute all
+-- affected handlers up front.
+fromAbstract :: A.Tower -> A.Handler -> Bool
+fromAbstract t h = or $ do
+  -- Get the channel
+  let c = A.handler_chan h
+  -- Get all the monitors
+  m <- A.tower_monitors t
+  -- Get all of m's handlers
+  n <- A.monitor_handlers m
+  -- Filter the abstract ones
+  guard (A.handler_type n == A.AbstractHandler)
+  -- For each handler, get all of the emitters
+  e <- A.handler_emitters n
+  -- For each emitter, get the sync chan it emits on
+  let s = A.emitter_chan e
+  -- See if the channels match
+  return $ case c of
+             A.ChanSync s' -> s == s'
+             _             -> False
 
 threadPriority :: ThreadType -> [ThreadProperty]
 threadPriority threadType =
@@ -98,17 +145,11 @@ stackSize threadType =
 
 mkCallbacksHandler :: Config -> A.Handler -> String -> [SourcePath]
 mkCallbacksHandler c h fileNm =
-  map (mkCFile c fileNm,) (map go (A.handler_callbacks h))
+  if isAbstract h
+    then map (Nothing,)          (map mkName (A.handler_callbacks h))
+    else map (Just (mkCFile c fileNm),) (map mkName (A.handler_callbacks h))
   where
-  go cb = callbackSym cb (A.handler_name h)
-
-propertySrcText :: Config -> A.Handler -> String -> ThreadType -> [ThreadProperty]
-propertySrcText c h monitorName threadType =
-  case threadType of
-    Passive
-      -> []
-    Active
-      -> [PropertySourceText (mkCallbacksHandler c h monitorName)]
+  mkName cb = callbackSym cb (A.handler_name h)
 
 -- Create the input callback names in the handler for a given channel.
 fromInputChan :: [SourcePath] -> A.Chan -> [Feature]

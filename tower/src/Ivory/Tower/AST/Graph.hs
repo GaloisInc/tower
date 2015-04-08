@@ -94,19 +94,25 @@ graphviz (g, unvertex, _) = pretty 80 $ stack $
                 <+> text "->"
                 <+> ppHandlerNode (unvertex v2) <> semi
 
+-- For a given channel c, the list of all handlers (and their monitors) that
+-- handle c.
 towerChanHandlers :: Tower -> Chan -> [(Monitor, Handler)]
 towerChanHandlers t c = do
   m <- tower_monitors t
   h <- monitorChanHandlers m c
   return (m, h)
 
+-- For a given monitor and channel c, the list of handlers in the monitor that
+-- handle c.
 monitorChanHandlers :: Monitor -> Chan -> [Handler]
 monitorChanHandlers m c = filter p (monitor_handlers m)
   where p h = handler_chan h == c
 
+-- For a given handler, the list of all channels it emits on.
 handlerOutboundChans :: Handler -> [Chan]
 handlerOutboundChans h = map (ChanSync . emitter_chan) (handler_emitters h)
 
+-- For a given handler h, a list of all handlers (and their monitors) that handle messages emited by h.
 handlerOutboundHandlers :: Tower -> Handler -> [(Monitor, Handler)]
 handlerOutboundHandlers t h = do
   c <- handlerOutboundChans h

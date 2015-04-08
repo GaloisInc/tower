@@ -54,8 +54,9 @@ data Output = Output
   , outputEmitter :: FuncSym
   } deriving (Show, Eq, Ord)
 
--- | Path to a .c file and a function symbol in the file.
-type SourcePath = (FilePath, FuncSym)
+-- | Path to a .c file and a function symbol in the file.  If the funtion symbol
+-- is generated (i.e., in external threads), no filepath is given.
+type SourcePath = (Maybe FilePath, FuncSym)
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -67,6 +68,7 @@ data ThreadProperty =
   | PropertySourceText [SourcePath]
   -- ^ Path to a .c file
   | SendEvents [(Output, Bound)]
+  | External
   deriving (Show, Eq)
 
 data DispatchProtocol =

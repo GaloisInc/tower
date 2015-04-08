@@ -29,15 +29,18 @@ import Data.Monoid
 data AADLBackend = AADLBackend
 
 instance TowerBackend AADLBackend where
-  newtype TowerBackendCallback AADLBackend a  = AADLCallback (AST.Handler -> I.ModuleDef)
+  newtype TowerBackendCallback AADLBackend a
+    = AADLCallback (AST.Handler -> I.ModuleDef)
     deriving Monoid
   data    TowerBackendEmitter  AADLBackend    = AADLEmitter
   newtype TowerBackendHandler  AADLBackend  a = AADLHandler I.ModuleDef
     deriving Monoid
   -- Return monitor name and its module.
-  newtype TowerBackendMonitor  AADLBackend    = AADLMonitor (String, I.ModuleDef)
+  data TowerBackendMonitor     AADLBackend
+    = AADLMonitor (String, I.ModuleDef)
   -- Pass in dependency modules
-  newtype TowerBackendOutput   AADLBackend    = AADLOutput ([I.Module] -> [I.Module])
+  newtype TowerBackendOutput   AADLBackend
+    = AADLOutput ([I.Module] -> [I.Module])
 
   callbackImpl _ sym f =
       AADLCallback
@@ -54,14 +57,18 @@ instance TowerBackend AADLBackend where
     procFromEmitter = I.voidProc sym $ \_ref -> I.body I.retVoid
     sym = T.showUnique (AST.emitter_name emitterAst)
 
-  handlerImpl _be ast _emitters callbacks =
-    AADLHandler $ case mconcat callbacks of
-                    AADLCallback defs -> defs ast
+  handlerImpl _be ast _emitters callbacks = AADLHandler $
+    case AST.handler_type ast of
+      AST.DefinedHandler
+        -> case mconcat callbacks of
+             AADLCallback defs -> defs ast
+      AST.AbstractHandler
+        -> mempty
 
   monitorImpl _be ast handlers moddef =
-      AADLMonitor ( AST.monitorName ast
-                  , mconcat (map handlerModules handlers) >> moddef
-                  )
+    AADLMonitor ( AST.monitorName ast
+                , mconcat (map handlerModules handlers) >> moddef
+                )
     where
     handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
     handlerModules (SomeHandler (AADLHandler h)) = h

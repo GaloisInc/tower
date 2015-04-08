@@ -44,7 +44,7 @@ defType ty = case ty of
 renderTypeNS :: I.Type -> Doc
 renderTypeNS ty
   | baseType ty = fromBaseTypes d
-  | defType  ty = fromTypeDefs d
+  | defType  ty = mkImpl (fromTypeDefs d)
   | otherwise   = tyError ty
   where
   d = renderType ty

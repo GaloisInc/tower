@@ -8,6 +8,7 @@ module Ivory.Tower.Monad.Monitor
   ( Monitor(..)
   , Monitor'
   , monitor
+  , externalMonitor
   , monitorGetBackend
   , monitorGetHandlers
   , monitorPutHandler
@@ -50,13 +51,19 @@ newtype Monitor' backend e a = Monitor'
   { unMonitor' :: WriterT ([AST.Handler], [SomeHandler backend], ModuleDef) (Tower' backend e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-monitor :: String -> Monitor e () -> Tower e ()
-monitor n b = Tower $ do
+monitor' :: AST.MonitorExternal -> String -> Monitor e () -> Tower e ()
+monitor' t n b = Tower $ do
   u <- freshname n
   ((), (hast, handlers, moddef)) <- runWriterT $ unMonitor' $ unMonitor b
-  let ast = AST.Monitor u hast
+  let ast = AST.Monitor u hast t
   backend <- towerGetBackend
   towerPutMonitor ast $ monitorImpl backend ast handlers moddef
+
+monitor :: String -> Monitor e () -> Tower e ()
+monitor = monitor' AST.MonitorDefined
+
+externalMonitor :: String -> Monitor e () -> Tower e ()
+externalMonitor = monitor' AST.MonitorExternal
 
 monitorGetBackend :: Monitor' backend e backend
 monitorGetBackend = Monitor' $ lift towerGetBackend

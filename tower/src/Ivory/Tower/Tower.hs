@@ -19,6 +19,7 @@ module Ivory.Tower.Tower
   , systemInit
   , Monitor()
   , monitor
+  , externalMonitor
   , towerModule
   , towerDepends
   , towerArtifact

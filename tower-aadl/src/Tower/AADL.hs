@@ -33,6 +33,7 @@ import qualified Ivory.Language.Syntax.AST as I
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
 import qualified Tower.AADL.AST.Common as A
+import           Tower.AADL.Build
 import           Tower.AADL.CmdlineFrontend
 import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
@@ -60,6 +61,7 @@ runCompileAADL opts' t = do
             outputAADLDeps (dir </> "AADL_FILES")
                            (configSystemName c : thdNames)
             genIvoryCode (ivoryOpts dir) code deps sigs
+            writeFile (dir </> (addExtension "build" "sh")) buildScript
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
 

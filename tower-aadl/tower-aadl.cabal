@@ -11,6 +11,7 @@ library
   exposed-modules: Tower.AADL
                  , Tower.AADL.AST
                  , Tower.AADL.AST.Common
+                 , Tower.AADL.Build
                  , Tower.AADL.CodeGen
                  , Tower.AADL.Compile
                  , Tower.AADL.Config
@@ -31,6 +32,8 @@ library
                , ivory-artifact
                , ivory-backend-c
                , tower
+               -- XXX testing executables
+               , ivory-stdlib
 
   hs-source-dirs:       src
   default-language:     Haskell2010
@@ -41,6 +44,7 @@ executable test
   main-is:          Simple.hs
   build-depends: base >= 4.6
                , ivory >= 0.1.0.1
+               , ivory-stdlib
                , tower
                , tower-aadl
   default-language: Haskell2010

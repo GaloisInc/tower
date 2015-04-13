@@ -75,6 +75,7 @@ data DispatchProtocol =
     Periodic !Integer
   | Signal !SignalName !Address
   | Aperiodic
+  | Sporadic
   deriving (Show, Eq)
 
 data SignalInfo = SignalInfo

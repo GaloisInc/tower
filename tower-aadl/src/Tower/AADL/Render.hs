@@ -189,6 +189,8 @@ renderThreadProperty p = case p of
       ->   mkDispatchdec (text "Periodic")
       <$$> stmt (text "Period" ==> prettyTime i)
     Aperiodic
+      -> mkDispatchdec (text "Aperiodic")
+    Sporadic
       -> mkDispatchdec (text "Sporadic")
   mkDispatchdec dis = stmt (text "Dispatch_Protocol" ==> dis)
   mkThreadType ty = stmt (fromSMACCM (text "Thread_Type" ==> renderTy))

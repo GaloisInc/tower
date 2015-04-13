@@ -39,6 +39,7 @@ import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
 import           Tower.AADL.Config
 import           Tower.AADL.Render
+import           Tower.AADL.Render.Common (typesPkg)
 import           Tower.AADL.Render.Types
 
 --------------------------------------------------------------------------------
@@ -59,8 +60,9 @@ runCompileAADL opts' t = do
       -> do createDirectoryIfMissing True dir
             mapM_ go docLst
             outputAADLDeps (dir </> "AADL_FILES")
-                           (configSystemName c : thdNames)
+                           (tyPkg ++ thdNames ++ [configSystemName c])
             genIvoryCode (ivoryOpts dir) code deps sigs
+            writeFile (dir </> "Makefile") (makefile (configOpts opts'))
             writeFile (dir </> (addExtension "build" "sh")) buildScript
       where
       go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
@@ -76,27 +78,27 @@ runCompileAADL opts' t = do
   (ast, code, deps, sigs) = runTower AADLBackend t ()
   c             = configOpts opts
   sys           = fromTower c ast
-  docs          = buildAADL sys deps
+  docs          = buildAADL anyTys strs sys
   docLst        = concatDocs docs
   -- Invariant: this list gives the dependency ordering for the files as well.
   thdNames      = map docName (thdDocs docs)
+  -- types
+  types         = A.extractTypes sys
+  strs          = concatMap (I.public . I.modStructs) (dependencies_modules deps)
+  anyTys        = any defType types
+  tyPkg         = if anyTys then [typesPkg] else []
 
 -- | Compile the types, threads, and system separately without building packages.
-buildAADL :: A.System -> Dependencies -> CompiledDocs
-buildAADL sys deps = cds { tyDoc = typesDoc sys types }
+buildAADL :: Bool -> [I.Struct] -> A.System -> CompiledDocs
+buildAADL anyTypes tys sys =
+  (renderSystem sys) { tyDoc = typesDoc }
   where
-  cds   = renderSystem sys
-  types = concatMap (I.public . I.modStructs) (dependencies_modules deps)
-
--- | Compile user-defined types if there are any.
-typesDoc :: A.System -> [I.Struct] -> Maybe CompiledDoc
-typesDoc sys strs =
-  if any defType types
-    then Just (compiledTypesDoc doc)
-    else Nothing
-  where
-  doc   = defineTypes types strs
+  doc   = defineTypes types tys
   types = A.extractTypes sys
+  typesDoc =
+    if anyTypes
+      then Just (compiledTypesDoc doc)
+      else Nothing
 
 outputAADL :: FilePath -> String -> Doc -> IO ()
 outputAADL dir nm contents = do
@@ -113,7 +115,7 @@ outputAADLDeps fp nms = do
   hPutDoc h $ text "AADL_LIST" <> equals <> dquotes (hcat (punctuate comma files))
   hClose h
   where
-  files = map (\nm -> text $ addExtension nm aadlExt) (reverse nms)
+  files = map (\nm -> text $ addExtension nm aadlExt) nms
 
 aadlExt :: String
 aadlExt = "aadl"

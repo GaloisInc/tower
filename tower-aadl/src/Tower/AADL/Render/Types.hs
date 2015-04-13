@@ -5,7 +5,11 @@
 -- (c) 2014 Galois, Inc.
 --
 
-module Tower.AADL.Render.Types where
+module Tower.AADL.Render.Types
+  ( renderTypeNS
+  , defType
+  , defineTypes
+  ) where
 
 import Data.List
 

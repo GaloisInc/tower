@@ -49,11 +49,17 @@ baseImports =
 defaultImports :: Bool -> [String]
 defaultImports b =
      baseImports
-  ++ if b then [typesPkg] else []
+  ++ (if b then [typesPkg] else [])
   ++ [ sMACCMPkg ]
 
 --------------------------------------------------------------------------------
 -- Helpers
+
+sendsEventsTo :: Doc
+sendsEventsTo = text "Sends_Events_To"
+
+srcText :: Doc
+srcText = text "Source_Text"
 
 primSrc :: Doc
 primSrc = text "CommPrim_Source_Text"

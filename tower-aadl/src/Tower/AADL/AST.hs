@@ -57,6 +57,7 @@ data Output = Output
 -- | Path to a .c file and a function symbol in the file.  If the funtion symbol
 -- is generated (i.e., in external threads), no filepath is given.
 type SourcePath = (Maybe FilePath, FuncSym)
+type SendsEvents = [(Output, Bound)]
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -67,7 +68,7 @@ data ThreadProperty =
   | Priority Integer
   | PropertySourceText [SourcePath]
   -- ^ Path to a .c file
-  | SendEvents [(Output, Bound)]
+  | SendEvents SendsEvents
   | External
   deriving (Show, Eq)
 

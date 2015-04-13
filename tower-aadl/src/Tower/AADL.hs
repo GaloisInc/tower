@@ -65,7 +65,8 @@ runCompileAADL opts' t = do
             writeFile (dir </> "Makefile") (makefile (configOpts opts'))
             writeFile (dir </> (addExtension "build" "sh")) buildScript
       where
-      go d = outputAADL dir (docName d) (renderDocPkg (aTypesPkg docs) thdNames d)
+      go d = outputAADL dir (docName d) r
+        where r = renderDocPkg (aTypesPkg docs) thdNames d
 
   where
   opts = validFPOpts opts'

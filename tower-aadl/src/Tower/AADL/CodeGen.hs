@@ -58,12 +58,13 @@ instance TowerBackend AADLBackend where
     sym = T.showUnique (AST.emitter_name emitterAst)
 
   handlerImpl _be ast _emitters callbacks = AADLHandler $
-    case AST.handler_type ast of
-      AST.DefinedHandler
-        -> case mconcat callbacks of
-             AADLCallback defs -> defs ast
-      AST.AbstractHandler
-        -> mempty
+    case mconcat callbacks of
+      AADLCallback defs -> defs ast
+    -- case AST.handler_type ast of
+    --   AST.DefinedHandler
+    --     -> 
+    --   AST.AbstractHandler
+    --     -> mempty
 
   monitorImpl _be ast handlers moddef =
     AADLMonitor ( AST.monitorName ast

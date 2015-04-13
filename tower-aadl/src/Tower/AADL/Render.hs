@@ -166,7 +166,7 @@ renderThreadProperty p = case p of
   ThreadType ty
     -> mkThreadType ty
   External
-    -> stmt $ fromSMACCM (text "IsExternal") ==> text "true"
+    -> stmt $ fromSMACCM (text "Is_External") ==> text "true"
   ExecTime l h
     -> stmt
      $ text "Compute_Execution_Time"

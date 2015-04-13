@@ -149,15 +149,28 @@ renderEntryText :: [SourcePath] -> [Doc]
 renderEntryText srcs =
   stmt (fromSMACCM entrySrc ==> mkLs cbs) : [stext]
 
+-- SMACCM_SYS::Sends_Events_To => "{{}}";
+
   where
+  -- Maybe source files and callbacks. External threads have no source files.
   (mfps, cbs) = unzip srcs
   stext =
     let fps = catMaybes mfps in
-    if null fps then empty
-      else stmt $ text "Source_Text"  ==> mkLs fps
+    if null fps
+      then renderSendsEventsTo [] -- Send events nowhere for external threads
+      else stmt $ srcText ==> mkLs fps
   mkLs ss = lparen
          <> dquotes (vsep (punctuate comma (map text ss)))
          <> rparen
+
+renderSendsEventsTo :: SendsEvents -> Doc
+renderSendsEventsTo sevs =
+       stmt
+     $ fromSMACCM sendsEventsTo
+   ==> dquotes (braces (braces (mkOuts sevs)))
+  where
+  mkOuts txs = hsep (punctuate comma (map go txs))
+    where go (tx,bnd) = integer bnd <+> mkTxChan (outputLabel tx)
 
 renderThreadProperty :: ThreadProperty -> Doc
 renderThreadProperty p = case p of
@@ -177,13 +190,9 @@ renderThreadProperty p = case p of
     -> stmt (text "Priority" ==> integer pri)
   PropertySourceText srcTxts
     -> vsep (renderEntryText srcTxts)
-  SendEvents txs
-    -> stmt
-     $ fromSMACCM (text "Sends_Events_To")
-   ==> dquotes (braces (braces (mkOuts txs)))
+  SendEvents sevs
+    -> renderSendsEventsTo sevs
   where
-  mkOuts txs = hsep (punctuate comma (map go txs))
-    where go (tx,bnd) = integer bnd <+> mkTxChan (outputLabel tx)
   mkDisptach per = case per of
     Periodic i
       ->   mkDispatchdec (text "Periodic")

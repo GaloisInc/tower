@@ -76,7 +76,8 @@ externalMonitor c t m = Thread
 fromExternalHandler :: Config -> A.Tower -> String -> A.Handler -> [Feature]
 fromExternalHandler c t monitorName h =
   if fromAbstractChan t ch
-    -- Channel comes from external component. Omit the input portion and callback. Just list the emitters.
+    -- Channel comes from external component. Omit the input portion and
+    -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
     else rxChan

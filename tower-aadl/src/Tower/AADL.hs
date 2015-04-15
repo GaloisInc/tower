@@ -62,9 +62,15 @@ runCompileAADL opts' t = do
             outputAADLDeps (dir </> "AADL_FILES")
                            (tyPkg ++ thdNames ++ [configSystemName c])
             genIvoryCode (ivoryOpts dir) code deps sigs
-            writeFile (dir </> "Makefile") (makefile (configOpts opts'))
-            writeFile (dir </> (addExtension "build" "sh")) buildScript
+            wrFile ramsesMakefileName
+                   (ramsesMakefile (configOpts opts'))
+            wrFile buildScriptName buildScript
+            wrFile kbuildName   (kbuild dir)
+            wrFile kconfigName  (kconfig dir dir)
+            wrFile kconfigName  (kconfig dir dir)
+            wrFile makefileName makefile
       where
+      wrFile fName = writeFile (dir </> fName)
       go d = outputAADL dir (docName d) r
         where r = renderDocPkg (aTypesPkg docs) thdNames d
 

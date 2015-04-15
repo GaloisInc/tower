@@ -6,6 +6,7 @@
 module Tower.AADL.Build where
 
 import Data.Char
+import System.FilePath ((</>))
 import Tower.AADL.Config (Config(..))
 
 --------------------------------------------------------------------------------
@@ -38,6 +39,9 @@ ramsesMakefile c = unlines
   , "ramses:"
   , tab "sh " ++ buildScriptName
   , ""
+  , "camkesMakefileName: " ++ mkTp
+  , tab $ unwords ["cp ", mkTp, camkesMakefileName]
+  , ""
   , ".PHONY: tower-clean"
   , "tower-clean:"
   , tab "-rm build.sh"
@@ -47,6 +51,8 @@ ramsesMakefile c = unlines
   , tab "-rm -rf " ++ configSrcsDir c
   , tab "-rm -rf " ++ configHdrDir  c
   ]
+  where
+  mkTp = "make_template" </> makefileName
 
 ramsesMakefileName :: String
 ramsesMakefileName = "ramses.mk"
@@ -82,18 +88,14 @@ camkesMakefileName = "camkesmakefile.mk"
 otherCamkesTargets :: String
 otherCamkesTargets = "othercamkestargets.mk"
 
-makefile :: String
-makefile = unlines
-  [
-    incl ramsesMakefileName
-  , incl camkesMakefileName
+makefile :: String -> String
+makefile dir = unlines
+  [ "# Include assumes this is driven by seL4 build."
+  , incl "apps" </> dir </> camkesMakefileName
+  , incl ramsesMakefileName
   , incl otherCamkesTargets
-  , ""
-  , "camkesMakefileName: " ++ mkTp
-  , tab $ unwords ["cp ", mkTp, camkesMakefileName]
   ]
   where
-  mkTp = "make_template/Makefile"
   incl = ("-include " ++)
 
 makefileName :: String

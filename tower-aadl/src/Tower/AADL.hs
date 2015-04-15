@@ -68,7 +68,7 @@ runCompileAADL opts' t = do
             wrFile kbuildName   (kbuild dir)
             wrFile kconfigName  (kconfig dir dir)
             wrFile kconfigName  (kconfig dir dir)
-            wrFile makefileName makefile
+            wrFile makefileName (makefile dir)
       where
       wrFile fName = writeFile (dir </> fName)
       go d = outputAADL dir (docName d) r

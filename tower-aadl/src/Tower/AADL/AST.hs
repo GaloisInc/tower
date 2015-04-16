@@ -63,10 +63,6 @@ type SendsEvents = [(Output, Bound)]
 data SourceTexts = SourceTexts [FilePath]
   deriving (Show, Eq)
 
-instance Monoid SourceTexts where
-  mempty = SourceTexts []
-  (SourceTexts a) `mappend` (SourceTexts b) = SourceTexts (a++b)
-
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
   | ThreadType !ThreadType
@@ -75,7 +71,7 @@ data ThreadProperty =
   | StackSize Integer
   | Priority Integer
   | EntryPoint [FuncSym]
-  | SourceText SourceTexts
+  | SourceText [FilePath]
   -- ^ Path to a .c file
   | SendEvents SendsEvents
   | External

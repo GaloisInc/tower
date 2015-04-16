@@ -140,8 +140,7 @@ fromHandler c d monitorName h = Thread { .. }
         -> [SourceText towerDeps]
       Active
         -> [ EntryPoint syms
-           , SourceText
-           $ SourceTexts fps `mappend` depsSourceText c d
+           , SourceText $ fps `mappend` depsSourceText c d
            ]
     where
     (fps, syms) = unzip $ mkCallbacksHandler c h monitorName
@@ -220,7 +219,7 @@ mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
 
-depsSourceText :: Config -> D.Dependencies -> SourceTexts
-depsSourceText c d = SourceTexts $
+depsSourceText :: Config -> D.Dependencies -> [FilePath]
+depsSourceText c d =
      map (mkCFile c . I.moduleName) (D.dependencies_modules d)
   ++ map A.artifactFileName (D.dependencies_artifacts d)

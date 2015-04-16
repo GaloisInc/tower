@@ -148,4 +148,6 @@ renderRng (L.Range (L.Position _ ln0 _) (L.Position _ ln1 _)) =
 -- | Renders a list [foo, bar, ...] as `("foo", "bar", ...)`
 renderLs :: [String] -> Doc
 renderLs ls =
-  lparen <> dquotes (vsep (punctuate comma (map text ls))) <> rparen
+     lparen
+  <> (hsep $ punctuate comma $ map (dquotes . text) ls)
+  <> rparen

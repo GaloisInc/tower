@@ -121,10 +121,16 @@ renderInput rx = stmt
   <+> text "in"
   <+> edp
   <+> renderTypeNS (inputType rx)
- <$$> chanSrc (vsep st)
+ <$$> chanSrc (vsep $ entry : src ++ snds)
   where
   (fp, sym) = inputCallback rx
-  st = [renderEntryPoint [sym], renderSrcText [fp]]
+  entry = renderEntryPoint [sym]
+  src = if null fp then []
+          else [renderSrcText [fp]]
+  snds = if null fp
+           -- Send events nowhere for external threads
+           then [renderSendsEventsTo []]
+           else []
 
 renderOutput :: Output -> Doc
 renderOutput tx = stmt
@@ -172,7 +178,7 @@ renderThreadProperty p = case p of
     -> stmt (text "Priority" ==> integer pri)
   EntryPoint syms
     -> renderEntryPoint syms
-  SourceText (SourceTexts srcs)
+  SourceText srcs
     -> renderSrcText srcs
   SendEvents sevs
     -> renderSendsEventsTo sevs

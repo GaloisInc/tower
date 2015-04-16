@@ -44,9 +44,11 @@ ramsesMakefile c = unlines
   , ""
   , ".PHONY: tower-clean"
   , "tower-clean:"
-  , tab "-rm build.sh"
+  , tab "-rm " ++ buildScriptName
   , tab "-rm AADL_FILES"
-  , tab "-rm Makefile"
+  , tab "-rm " ++ kbuildName
+  , tab "-rm " ++ kconfigName
+  , tab "-rm " ++ camkesMakefileName
   , tab "-rm *.aadl"
   , tab "-rm -rf " ++ configSrcsDir c
   , tab "-rm -rf " ++ configHdrDir  c
@@ -91,8 +93,10 @@ otherCamkesTargets = "othercamkestargets.mk"
 makefile :: String -> String
 makefile dir = unlines
   [ "# Include assumes this is driven by seL4 build."
-  , incl (fromApps camkesMakefileName)
+  , "# " ++ otherCamkesTargets ++ " must come first: the main camkes makefile"
+  , "# is included at the end of " ++ camkesMakefileName
   , incl (fromApps otherCamkesTargets)
+  , incl (fromApps camkesMakefileName)
   , incl ramsesMakefileName
   ]
   where

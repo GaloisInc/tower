@@ -13,12 +13,17 @@ module Tower.AADL.FromTower
   ) where
 
 import           Prelude hiding (init)
+import           Data.Monoid
 import           System.FilePath ((</>), addExtension)
 import           Control.Applicative
 
-import qualified Ivory.Tower.AST            as A
-import qualified Ivory.Tower.Types.Time     as T
-import qualified Ivory.Tower.Types.Unique   as U
+import qualified Ivory.Tower.AST                as A
+import qualified Ivory.Tower.Types.Dependencies as D
+import qualified Ivory.Tower.Types.Time         as T
+import qualified Ivory.Tower.Types.Unique       as U
+
+import qualified Ivory.Language                 as I
+import qualified Ivory.Artifact                 as A
 
 import           Tower.AADL.AST
 import           Tower.AADL.CodeGen (callbackSym, emitterSym)
@@ -27,31 +32,31 @@ import           Tower.AADL.Config
 --------------------------------------------------------------------------------
 
 -- | Takes a name for the system, a Tower AST, and returns an AADL System AST.
-fromTower :: Config -> A.Tower -> System
-fromTower c t = System { .. }
+fromTower :: Config -> A.Tower -> D.Dependencies -> System
+fromTower c t d = System { .. }
   where
   systemName       = configSystemName c
   systemProperties = [ SystemOS (configSystemOS c)
                      , SystemHW (configSystemHW c) ]
-  systemComponents = [mkProcess c t]
+  systemComponents = [mkProcess c t d]
 
-mkProcess :: Config -> A.Tower -> Process
-mkProcess c t = Process { .. }
+mkProcess :: Config -> A.Tower -> D.Dependencies -> Process
+mkProcess c t d = Process { .. }
   where
   processName       = configSystemName c ++ "_process"
-  processComponents = concatMap (fromMonitor c t) (A.tower_monitors t)
+  processComponents = concatMap (fromMonitor c t d) (A.tower_monitors t)
 
-fromMonitor :: Config -> A.Tower -> A.Monitor -> [Thread]
-fromMonitor c t m =
+fromMonitor :: Config -> A.Tower ->  D.Dependencies -> A.Monitor ->[Thread]
+fromMonitor c t d m =
   case A.monitor_external m of
     A.MonitorExternal
-      -> [externalMonitor c t m]
+      -> [externalMonitor c t d m]
     A.MonitorDefined
-      -> map (fromHandler c (A.monitorName m)) (A.monitor_handlers m)
+      -> map (fromHandler c d (A.monitorName m)) (A.monitor_handlers m)
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
-externalMonitor :: Config -> A.Tower -> A.Monitor -> Thread
-externalMonitor c t m = Thread
+externalMonitor :: Config -> A.Tower -> D.Dependencies -> A.Monitor -> Thread
+externalMonitor c t d m = Thread
   { threadName       = nm
   , threadFeatures   = concatMap (fromExternalHandler c t nm) hs
   , threadProperties = props
@@ -67,6 +72,7 @@ externalMonitor c t m = Thread
     , StackSize 256
     , ThreadType Active
     , ExecTime 10 50
+    , SourceText (depsSourceText c d)
     ]
 
 -- Combine all the handlers into one AADL thread. Assume that for handlers
@@ -85,17 +91,19 @@ fromExternalHandler c t monitorName h =
   ch = A.handler_chan h
   mkOutFeatures = fst $ unzip $ map fromEmitter (A.handler_emitters h)
   rxChan = fromInputChan cbs ch
-    where cbs = map (\(_,b) -> (Nothing,b))
+    -- There is no source for external handlers---they're created.
+    where cbs = map (\(_,b) -> ("",b))
                     (mkCallbacksHandler c h monitorName)
 
 -- | Create the feature groups and thread properties from a Tower handler. A
 -- handler is a collection of emitters and callbacks associated with a single
 -- input channel.
 fromHandler :: Config
+            -> D.Dependencies
             -> String
             -> A.Handler
             -> Thread
-fromHandler c monitorName h = Thread { .. }
+fromHandler c d monitorName h = Thread { .. }
   where
   threadName       = U.showUnique (A.handler_name h)
   threadFeatures   = rxChan ++ (map OutputFeature txChans)
@@ -118,7 +126,7 @@ fromHandler c monitorName h = Thread { .. }
       A.ChanSignal sig -- XXX address is a lie
           -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
       A.ChanPeriod per
-          -> ( Active, Periodic (T.toMicroseconds (A.period_dt per)))
+          -> (Active, Periodic (T.toMicroseconds (A.period_dt per)))
       A.ChanInit{}
           -- XXX is Aperiodic right? We're ignoring init chans for now, anyways
           -> (Active, Aperiodic)
@@ -126,11 +134,18 @@ fromHandler c monitorName h = Thread { .. }
           -> (Passive, Aperiodic)
   propertySrcText :: [ThreadProperty]
   propertySrcText =
+    -- Everyone gets the Tower modules
     case threadType of
       Passive
-        -> []
+        -> [SourceText towerDeps]
       Active
-        -> [PropertySourceText (mkCallbacksHandler c h monitorName)]
+        -> [ EntryPoint syms
+           , SourceText
+           $ SourceTexts fps `mappend` depsSourceText c d
+           ]
+    where
+    (fps, syms) = unzip $ mkCallbacksHandler c h monitorName
+    towerDeps = depsSourceText c d
 
 -- For a given channel, see if it's source is abstract (i.e., a sync chan with
 -- no caller).
@@ -166,7 +181,7 @@ stackSize threadType =
 
 mkCallbacksHandler :: Config -> A.Handler -> String -> [SourcePath]
 mkCallbacksHandler c h fileNm =
-  map (Just (mkCFile c fileNm),) nms
+  map (mkCFile c fileNm,) nms
   where
   nms = map mkName (A.handler_callbacks h)
   mkName cb = callbackSym cb (A.handler_name h)
@@ -204,3 +219,8 @@ mkCFile :: Config -> FilePath -> FilePath
 mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
+
+depsSourceText :: Config -> D.Dependencies -> SourceTexts
+depsSourceText c d = SourceTexts $
+     map (mkCFile c . I.moduleName) (D.dependencies_modules d)
+  ++ map A.artifactFileName (D.dependencies_artifacts d)

@@ -84,7 +84,7 @@ runCompileAADL opts' t = do
                         , O.scErrors  = False }
   (ast, code, deps, sigs) = runTower AADLBackend t ()
   c             = configOpts opts
-  sys           = fromTower c ast
+  sys           = fromTower c ast deps
   docs          = buildAADL anyTys strs sys
   docLst        = concatDocs docs
   -- Invariant: this list gives the dependency ordering for the files as well.

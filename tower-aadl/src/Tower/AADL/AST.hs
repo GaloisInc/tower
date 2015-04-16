@@ -6,6 +6,8 @@
 
 module Tower.AADL.AST where
 
+import Data.Monoid
+
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 
@@ -56,8 +58,14 @@ data Output = Output
 
 -- | Path to a .c file and a function symbol in the file.  If the funtion symbol
 -- is generated (i.e., in external threads), no filepath is given.
-type SourcePath = (Maybe FilePath, FuncSym)
+type SourcePath = (FilePath, FuncSym)
 type SendsEvents = [(Output, Bound)]
+data SourceTexts = SourceTexts [FilePath]
+  deriving (Show, Eq)
+
+instance Monoid SourceTexts where
+  mempty = SourceTexts []
+  (SourceTexts a) `mappend` (SourceTexts b) = SourceTexts (a++b)
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -66,7 +74,8 @@ data ThreadProperty =
   -- ^ Min bound, max bound.
   | StackSize Integer
   | Priority Integer
-  | PropertySourceText [SourcePath]
+  | EntryPoint [FuncSym]
+  | SourceText SourceTexts
   -- ^ Path to a .c file
   | SendEvents SendsEvents
   | External

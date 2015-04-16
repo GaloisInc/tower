@@ -15,7 +15,6 @@ import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
 import Text.PrettyPrint.Leijen
-import Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 
@@ -124,7 +123,8 @@ renderInput rx = stmt
   <+> renderTypeNS (inputType rx)
  <$$> chanSrc (vsep st)
   where
-  st = renderEntryText [inputCallback rx]
+  (fp, sym) = inputCallback rx
+  st = [renderEntryPoint [sym], renderSrcText [fp]]
 
 renderOutput :: Output -> Doc
 renderOutput tx = stmt
@@ -144,24 +144,6 @@ chanSrc d =
       tab lbrace
  <$$> tab (tab d)
  <$$> tab rbrace
-
-renderEntryText :: [SourcePath] -> [Doc]
-renderEntryText srcs =
-  stmt (fromSMACCM entrySrc ==> mkLs cbs) : [stext]
-
--- SMACCM_SYS::Sends_Events_To => "{{}}";
-
-  where
-  -- Maybe source files and callbacks. External threads have no source files.
-  (mfps, cbs) = unzip srcs
-  stext =
-    let fps = catMaybes mfps in
-    if null fps
-      then renderSendsEventsTo [] -- Send events nowhere for external threads
-      else stmt $ srcText ==> mkLs fps
-  mkLs ss = lparen
-         <> dquotes (vsep (punctuate comma (map text ss)))
-         <> rparen
 
 renderSendsEventsTo :: SendsEvents -> Doc
 renderSendsEventsTo sevs =
@@ -188,8 +170,10 @@ renderThreadProperty p = case p of
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
   Priority pri
     -> stmt (text "Priority" ==> integer pri)
-  PropertySourceText srcTxts
-    -> vsep (renderEntryText srcTxts)
+  EntryPoint syms
+    -> renderEntryPoint syms
+  SourceText (SourceTexts srcs)
+    -> renderSrcText srcs
   SendEvents sevs
     -> renderSendsEventsTo sevs
   where
@@ -206,3 +190,11 @@ renderThreadProperty p = case p of
     where renderTy = case ty of
                        Passive -> text "Passive"
                        Active  -> text "Active"
+
+renderEntryPoint :: [FuncSym] -> Doc
+renderEntryPoint syms = stmt $ fromSMACCM entrySrc ==> renderLs syms
+
+renderSrcText :: [FilePath] -> Doc
+renderSrcText srcs = stmt $ srcText ==> renderLs srcs
+
+

@@ -39,7 +39,7 @@ ramsesMakefile c = unlines
   , "ramses:"
   , tab "sh " ++ buildScriptName
   , ""
-  , "camkesMakefileName: " ++ mkTp
+  , camkesMakefileName ++ ":" ++ mkTp
   , tab $ unwords ["cp ", mkTp, camkesMakefileName]
   , ""
   , ".PHONY: tower-clean"
@@ -91,11 +91,12 @@ otherCamkesTargets = "othercamkestargets.mk"
 makefile :: String -> String
 makefile dir = unlines
   [ "# Include assumes this is driven by seL4 build."
-  , incl "apps" </> dir </> camkesMakefileName
+  , incl (fromApps camkesMakefileName)
+  , incl (fromApps otherCamkesTargets)
   , incl ramsesMakefileName
-  , incl otherCamkesTargets
   ]
   where
+  fromApps fl = "apps" </> dir </> fl
   incl = ("-include " ++)
 
 makefileName :: String

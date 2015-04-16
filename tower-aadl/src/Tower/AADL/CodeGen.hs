@@ -35,7 +35,7 @@ instance TowerBackend AADLBackend where
   data    TowerBackendEmitter  AADLBackend    = AADLEmitter
   newtype TowerBackendHandler  AADLBackend  a = AADLHandler I.ModuleDef
     deriving Monoid
-  -- Return monitor name and its module.
+  -- Return monitor name and its modules.
   data TowerBackendMonitor     AADLBackend
     = AADLMonitor (String, I.ModuleDef)
   -- Pass in dependency modules
@@ -60,11 +60,6 @@ instance TowerBackend AADLBackend where
   handlerImpl _be ast _emitters callbacks = AADLHandler $
     case mconcat callbacks of
       AADLCallback defs -> defs ast
-    -- case AST.handler_type ast of
-    --   AST.DefinedHandler
-    --     -> 
-    --   AST.AbstractHandler
-    --     -> mempty
 
   monitorImpl _be ast handlers moddef =
     AADLMonitor ( AST.monitorName ast

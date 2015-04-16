@@ -144,3 +144,8 @@ renderRng (L.Range (L.Position _ ln0 _) (L.Position _ ln1 _)) =
   if ln0 == ln1
     then int ln0
     else int ln0 <+> char '-' <+> int ln1
+
+-- | Renders a list [foo, bar, ...] as `("foo", "bar", ...)`
+renderLs :: [String] -> Doc
+renderLs ls =
+  lparen <> dquotes (vsep (punctuate comma (map text ls))) <> rparen

@@ -10,9 +10,6 @@ data Monitor = Monitor
   , monitor_external  :: MonitorExternal
   } deriving (Eq, Show, Ord)
 
-monitorName :: Monitor -> String
-monitorName = showUnique . monitor_name
-
 data MonitorExternal =
     MonitorDefined
   | MonitorExternal

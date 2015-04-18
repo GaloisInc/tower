@@ -17,3 +17,4 @@ env:
   - ENV_TEST_TARGET=tower
   - ENV_TEST_TARGET=tower-config
   - ENV_TEST_TARGET=tower-aadl
+  - ENV_TEST_TARGET=tower-hal

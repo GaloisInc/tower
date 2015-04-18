@@ -9,7 +9,7 @@ module Ivory.Tower.Monitor
   , Monitor()
   ) where
 
-import Ivory.Tower.Types.Unique
+import Ivory.Tower.Backend
 import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Monad.Base
@@ -28,8 +28,9 @@ state' :: (IvoryArea a, IvoryZero a)
        => String
        -> Maybe (Init a)
        -> Monitor e (Ref Global a)
-state' n i = do
+state' n i = Monitor $ do
   f <- freshname n
-  let a = area (showUnique f) i
+  be <- monitorGetBackend
+  let a = area (uniqueImpl be f) i
   monitorModuleDef $ defMemArea a
   return (addrOf a)

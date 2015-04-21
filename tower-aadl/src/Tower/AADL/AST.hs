@@ -6,8 +6,6 @@
 
 module Tower.AADL.AST where
 
-import Data.Monoid
-
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 

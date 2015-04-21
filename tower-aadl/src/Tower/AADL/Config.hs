@@ -10,7 +10,6 @@
 module Tower.AADL.Config where
 
 import Data.Char
-import Data.Monoid
 import System.FilePath (isPathSeparator)
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C

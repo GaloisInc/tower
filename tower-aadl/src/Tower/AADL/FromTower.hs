@@ -20,51 +20,73 @@ import           Control.Applicative
 import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Dependencies as D
 import qualified Ivory.Tower.Types.Time         as T
-import qualified Ivory.Tower.Types.Unique       as U
 
 import qualified Ivory.Language                 as I
 import qualified Ivory.Artifact                 as A
 
 import           Tower.AADL.AST
-import           Tower.AADL.CodeGen (callbackSym, emitterSym)
+import           Tower.AADL.CodeGen
 import           Tower.AADL.Config
 
 --------------------------------------------------------------------------------
 
 -- | Takes a name for the system, a Tower AST, and returns an AADL System AST.
-fromTower :: Config -> A.Tower -> D.Dependencies -> System
-fromTower c t d = System { .. }
+fromTower :: Config -> AADLBackend -> A.Tower -> D.Dependencies -> (Warnings, System)
+fromTower c be t d =
+  ( warns
+  , System { systemName       = configSystemName c
+           , systemComponents = [sc]
+           , systemProperties = sps
+           }
+  )
   where
-  systemName       = configSystemName c
-  systemProperties = [ SystemOS (configSystemOS c)
-                     , SystemHW (configSystemHW c) ]
-  systemComponents = [mkProcess c t d]
+  sps = [ SystemOS (configSystemOS c)
+        , SystemHW (configSystemHW c) ]
+  (warns, sc) = mkProcess c be t d
 
-mkProcess :: Config -> A.Tower -> D.Dependencies -> Process
-mkProcess c t d = Process { .. }
+mkProcess :: Config
+          -> AADLBackend
+          -> A.Tower
+          -> D.Dependencies
+          -> (Warnings, Process)
+mkProcess c be t d = (warns, Process { .. })
   where
   processName       = configSystemName c ++ "_process"
-  processComponents = concatMap (fromMonitor c t d) (A.tower_monitors t)
+  (processComponents, (_st, warns)) =
+      runUnique be
+    $ fmap concat
+    $ mapM (fromMonitor c t d) (A.tower_monitors t)
 
-fromMonitor :: Config -> A.Tower ->  D.Dependencies -> A.Monitor ->[Thread]
+fromMonitor :: Config
+            -> A.Tower
+            -> D.Dependencies
+            -> A.Monitor
+            -> UniqueM [Thread]
 fromMonitor c t d m =
   case A.monitor_external m of
     A.MonitorExternal
-      -> [externalMonitor c t d m]
+      -> sequence [externalMonitor c t d m]
     A.MonitorDefined
-      -> map (fromHandler c d (A.monitorName m)) (A.monitor_handlers m)
+      -> do nm <- uniqueImplM (A.monitor_name m)
+            mapM (fromHandler c d nm) (A.monitor_handlers m)
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
-externalMonitor :: Config -> A.Tower -> D.Dependencies -> A.Monitor -> Thread
-externalMonitor c t d m = Thread
-  { threadName       = nm
-  , threadFeatures   = concatMap (fromExternalHandler c t nm) hs
-  , threadProperties = props
-  , threadComments   = concatMap A.handler_comments hs
-  }
+externalMonitor :: Config
+                -> A.Tower
+                -> D.Dependencies
+                -> A.Monitor
+                -> UniqueM Thread
+externalMonitor c t d m = do
+  nm <- uniqueImplM (A.monitor_name m)
+  features <- mapM (fromExternalHandler c t nm) hs
+  return $ Thread
+    { threadName       = nm
+    , threadFeatures   = concat features
+    , threadProperties = props
+    , threadComments   = concatMap A.handler_comments hs
+    }
   where
   hs = A.monitor_handlers m
-  nm = A.monitorName m
   props =
     [ External
     , DispatchProtocol Sporadic
@@ -79,21 +101,22 @@ externalMonitor c t d m = Thread
 -- coming from defined components, their emitters go to external
 -- components. Conversely, for handlers coming from external components, their
 -- emitters go to defined components.
-fromExternalHandler :: Config -> A.Tower -> String -> A.Handler -> [Feature]
-fromExternalHandler c t monitorName h =
+fromExternalHandler :: Config -> A.Tower -> String -> A.Handler -> UniqueM [Feature]
+fromExternalHandler c t monitorName h = do
+  es <- mapM fromEmitter (A.handler_emitters h)
+  let mkOutFeatures = fst $ unzip es
   if fromAbstractChan t ch
     -- Channel comes from external component. Omit the input portion and
     -- callback. Just list the emitters.
-    then map OutputFeature mkOutFeatures
+    then return $ map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
     else rxChan
   where
   ch = A.handler_chan h
-  mkOutFeatures = fst $ unzip $ map fromEmitter (A.handler_emitters h)
-  rxChan = fromInputChan cbs ch
+  rxChan = do
     -- There is no source for external handlers---they're created.
-    where cbs = map (\(_,b) -> ("",b))
-                    (mkCallbacksHandler c h monitorName)
+    cbs <- map (\(_,b) -> ("",b)) <$> (mkCallbacksHandler c h monitorName)
+    return $ fromInputChan cbs ch
 
 -- | Create the feature groups and thread properties from a Tower handler. A
 -- handler is a collection of emitters and callbacks associated with a single
@@ -102,25 +125,34 @@ fromHandler :: Config
             -> D.Dependencies
             -> String
             -> A.Handler
-            -> Thread
-fromHandler c d monitorName h = Thread { .. }
-  where
-  threadName       = U.showUnique (A.handler_name h)
-  threadFeatures   = rxChan ++ (map OutputFeature txChans)
-  threadComments   = A.handler_comments h
-  (txChans, bnds)  = unzip (map fromEmitter (A.handler_emitters h))
-  sends            = SendEvents (zip txChans bnds)
-  -- Create each callback symbol associated with the handler.
-  cbs              = mkCallbacksHandler c h monitorName
-  rxChan           = fromInputChan cbs (A.handler_chan h)
+            -> UniqueM Thread
+fromHandler c d monitorName h = do
+  cbs <- mkCallbacksHandler c h monitorName
+  thdNm <- uniqueImplM (A.handler_name h)
+  es <- mapM fromEmitter (A.handler_emitters h)
+  let (txChans, bnds)  = unzip es
+  let sends            = SendEvents (zip txChans bnds)
+  thdProps <- threadProperties sends
 
-  threadProperties =
-      ThreadType threadType
-    : DispatchProtocol dispatch
-    : ExecTime 10 100 -- XXX made up for now
-    : sends
-    : propertySrcText
-   ++ concat ([stackSize, threadPriority] <*> pure threadType)
+  return $ Thread
+    { threadName       = thdNm
+    , threadFeatures   = rxChan cbs ++ (map OutputFeature txChans)
+    , threadProperties = thdProps
+    , threadComments   = A.handler_comments h
+    }
+  where
+  -- Create each callback symbol associated with the handler.
+  rxChan cbs       = fromInputChan cbs (A.handler_chan h)
+
+  threadProperties sends = do
+    pst <- propertySrcText
+    return $
+        ThreadType threadType
+      : DispatchProtocol dispatch
+      : ExecTime 10 100 -- XXX made up for now
+      : sends
+      : pst
+     ++ concat ([stackSize, threadPriority] <*> pure threadType)
   (threadType, dispatch) =
     case A.handler_chan h of
       A.ChanSignal sig -- XXX address is a lie
@@ -132,10 +164,12 @@ fromHandler c d monitorName h = Thread { .. }
           -> (Active, Aperiodic)
       A.ChanSync{}
           -> (Passive, Aperiodic)
-  propertySrcText :: [ThreadProperty]
-  propertySrcText =
+  propertySrcText :: UniqueM [ThreadProperty]
+  propertySrcText = do
+    cbs <- mkCallbacksHandler c h monitorName
+    let (fps, syms) = unzip cbs
     -- Everyone gets the Tower modules
-    case threadType of
+    return $ case threadType of
       Passive
         -> [SourceText towerDeps]
       Active
@@ -143,7 +177,6 @@ fromHandler c d monitorName h = Thread { .. }
            , SourceText $ fps `mappend` depsSourceText c d
            ]
     where
-    (fps, syms) = unzip $ mkCallbacksHandler c h monitorName
     towerDeps = depsSourceText c d
 
 -- For a given channel, see if it's source is abstract (i.e., a sync chan with
@@ -178,12 +211,10 @@ stackSize threadType =
     Active  -> [StackSize 100] -- XXX made up for now
     Passive -> []
 
-mkCallbacksHandler :: Config -> A.Handler -> String -> [SourcePath]
-mkCallbacksHandler c h fileNm =
-  map (mkCFile c fileNm,) nms
-  where
-  nms = map mkName (A.handler_callbacks h)
-  mkName cb = callbackSym cb (A.handler_name h)
+mkCallbacksHandler :: Config -> A.Handler -> String -> UniqueM [SourcePath]
+mkCallbacksHandler c h fileNm = do
+  nms <- mapM uniqueImplM (A.handler_callbacks h)
+  return $ map (mkCFile c fileNm,) nms
 
 -- Create the input callback names in the handler for a given channel.
 fromInputChan :: [SourcePath] -> A.Chan -> [Feature]
@@ -204,11 +235,18 @@ fromInputChan callbacks c = case c of
                        }
 
 -- | From an emitter, return its output channel and bound.
-fromEmitter :: A.Emitter -> (Output, Bound)
-fromEmitter e = (Output { .. }, bnd)
+fromEmitter :: A.Emitter -> UniqueM (Output, Bound)
+fromEmitter e = do
+  sym <- uniqueImplM (A.emitter_name e)
+  return
+    ( Output
+        { outputLabel   = outputLabel
+        , outputType    = outputType
+        , outputEmitter = sym
+        }
+    , A.emitter_bound e
+    )
   where
-  outputEmitter = emitterSym e
-  bnd           = A.emitter_bound e
   (outputLabel, outputType) =
     case A.emitter_chan e of
       s -> (show (A.sync_chan_label s), A.sync_chan_type s)

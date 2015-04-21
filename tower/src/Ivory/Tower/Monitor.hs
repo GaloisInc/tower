@@ -29,8 +29,10 @@ state' :: (IvoryArea a, IvoryZero a)
        -> Maybe (Init a)
        -> Monitor e (Ref Global a)
 state' n i = Monitor $ do
-  f <- freshname n
+  u <- freshname n
   be <- monitorGetBackend
-  let a = area (uniqueImpl be f) i
+  let (be', nm) = uniqueImpl be u
+  monitorSetBackend be'
+  let a = area nm i
   monitorModuleDef $ defMemArea a
   return (addrOf a)

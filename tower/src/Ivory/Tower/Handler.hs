@@ -34,7 +34,8 @@ emitter (ChanInput chan@(Chan chanast)) bound = Handler $ do
   handlerPutASTEmitter ast
   backend <- handlerGetBackend
   handlers <- handlerGetHandlers chan
-  let (e, code) = emitterImpl backend ast handlers
+  let (be, e, code) = emitterImpl backend ast handlers
+  handlerSetBackend be
   handlerPutCodeEmitter code
   return e
 

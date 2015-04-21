@@ -1,0 +1,13 @@
+digraph {
+  idle -> sched [ label="taskReq(this)" ];
+  idle -> hw [ label="taskReq(this) / txReq(this)" ];
+  idle -> idle [ label="taskAbort(this)" ];
+  sched -> hw [ label="txComplete(other, _) / txReq(this)" ];
+  sched -> idle [ label="taskAbort(this) / taskComplete(this, failed)" ];
+  hw -> reassign [ label="taskReq(other) / txAbort(this)" ];
+  hw -> abort [ label="taskAbort(this) / txAbort(this)" ];
+  { reassign abort } -> abort [ label="taskAbort(this)" ];
+  reassign -> idle [ label="txComplete(this, success) / taskComplete(this, success)" ];
+  reassign -> sched [ label="txComplete(this, failed)" ];
+  { hw abort } -> idle [ label="txComplete(this, status) / taskComplete(this, status)" ];
+}

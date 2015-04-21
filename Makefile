@@ -1,5 +1,5 @@
 
-default: tower tower-config tower-aadl
+default: tower tower-config tower-aadl tower-hal
 
 .PHONY: tower
 tower:
@@ -17,3 +17,7 @@ tower-aadl:
 	make -C tower-aadl build
 	make -C tower-aadl runtest
 
+.PHONY: tower-hal
+tower-hal:
+	make -C tower-hal create-sandbox
+	make -C tower-hal

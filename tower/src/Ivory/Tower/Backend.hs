@@ -24,35 +24,34 @@ class TowerBackend backend where
   data TowerBackendMonitor   backend :: *
   data TowerBackendOutput    backend :: *
 
-  uniqueImpl   :: backend -> Unique -> String
+  uniqueImpl   :: backend
+               -> Unique
+               -> (backend, String)
   callbackImpl :: IvoryArea a
                => backend
                -- Callback identifier, used to construct full callback name
                -> Unique
                -- Implementation
                -> (forall s s'. ConstRef s' a -> Ivory (AllocEffects s) ())
-               -> TowerBackendCallback backend a
+               -> (backend, TowerBackendCallback backend a)
   emitterImpl :: (IvoryArea b, IvoryZero b)
               => backend
               -> AST.Emitter
               -> [TowerBackendHandler backend b]
-              -> (Emitter b, TowerBackendEmitter backend)
+              -> (backend, Emitter b, TowerBackendEmitter backend)
   handlerImpl :: (IvoryArea a, IvoryZero a)
               => backend
               -> AST.Handler
               -> [TowerBackendEmitter backend]
               -> [TowerBackendCallback backend a]
-              -> TowerBackendHandler backend a
+              -> (backend, TowerBackendHandler backend a)
   monitorImpl :: backend
               -> AST.Monitor
               -> [SomeHandler backend]
               -- Contains the state variable declarations for the monitor
               -> ModuleDef
-              -> TowerBackendMonitor backend
+              -> (backend, TowerBackendMonitor backend)
   towerImpl :: backend
             -> AST.Tower
             -> [TowerBackendMonitor backend]
-            -> TowerBackendOutput backend
-
-handlerName :: TowerBackend backend => backend -> AST.Handler -> String
-handlerName be h = (uniqueImpl be) (AST.handler_name h)
+            -> (backend, TowerBackendOutput backend)

@@ -1,7 +1,6 @@
 
 module Ivory.Tower.AST.Handler
   ( Handler(..)
-  , handlerName
   ) where
 
 import Ivory.Tower.Types.Unique
@@ -17,6 +16,3 @@ data Handler = Handler
   , handler_callbacks :: [Unique]
   , handler_comments  :: [Comment]
   } deriving (Eq, Show, Ord)
-
-handlerName :: Handler -> String
-handlerName = undefined

@@ -10,6 +10,7 @@ module Ivory.Tower.Monad.Monitor
   , monitor
   , externalMonitor
   , monitorGetBackend
+  , monitorSetBackend
   , monitorGetHandlers
   , monitorPutHandler
   , monitorModuleDef
@@ -68,12 +69,19 @@ externalMonitor = monitor' AST.MonitorExternal
 monitorGetBackend :: Monitor' backend e backend
 monitorGetBackend = Monitor' $ lift towerGetBackend
 
+monitorSetBackend :: backend -> Monitor' backend e ()
+monitorSetBackend be = Monitor' $ lift $ towerSetBackend be
+
 monitorGetHandlers :: Chan b -> Monitor' backend e [TowerBackendHandler backend b]
 monitorGetHandlers chan = Monitor' $ lift $ towerGetHandlers chan
 
-monitorPutHandler :: AST.Handler -> Chan a -> TowerBackendHandler backend a -> Monitor' backend e ()
-monitorPutHandler ast chan h = Monitor' $ do
+monitorPutHandler :: AST.Handler
+                  -> Chan a
+                  -> (backend, TowerBackendHandler backend a)
+                  -> Monitor' backend e ()
+monitorPutHandler ast chan (be, h) = Monitor' $ do
   put ([ast], [SomeHandler h], mempty)
+  lift $ towerSetBackend be
   lift $ towerPutHandler chan h
 
 liftTower :: Tower e a -> Monitor e a

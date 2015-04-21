@@ -9,6 +9,7 @@ module Ivory.Tower.Monad.Tower
   , Tower'
   , runTower
   , towerGetBackend
+  , towerSetBackend
   , towerGetHandlers
   , towerPutHandler
   , towerPutMonitor
@@ -75,55 +76,65 @@ instance Monoid (TowerOutput backend) where
     }
 
 newtype Tower' backend e a = Tower'
-  { unTower' :: ReaderT (backend, Sinks backend) (WriterT (TowerOutput backend) (Base e)) a
+  { unTower' :: StateT backend (ReaderT (Sinks backend) (WriterT (TowerOutput backend) (Base e))) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runTower :: TowerBackend backend
          => backend
          -> Tower e ()
          -> e
-         -> (AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
-runTower backend t e = (a, towerImpl backend a monitors, output_deps output, output_sigs output)
+         -> (AST.Tower, backend, TowerBackendOutput backend, Dependencies, SignalCode)
+runTower backend t e = (a, be, towerOut, output_deps output, output_sigs output)
   where
+  (be, towerOut) = towerImpl backend a monitors
   a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
-    AST.ChanSync c -> mempty { AST.tower_syncchans = [c] }
+    AST.ChanSync c   -> mempty { AST.tower_syncchans = [c] }
     AST.ChanSignal c -> mempty { AST.tower_signals = [c] }
     AST.ChanPeriod c -> mempty { AST.tower_periods = [c] }
-    AST.ChanInit _ -> mempty
+    AST.ChanInit _   -> mempty
   (mast, monitors) = unzip $ output_monitors output
   sinks = output_sinks output
-  ((), output) = runBase e
+  (((), _backend'), output) = runBase e
     $ runWriterT
-    $ runReaderT (backend, sinks)
+    $ runReaderT sinks
+    $ runStateT backend
     $ unTower'
     $ unTower t
 
 instance BaseUtils (Tower' backend) e where
-  fresh = Tower' $ lift $ lift fresh
-  getEnv = Tower' $ lift $ lift getEnv
+  fresh = Tower' $ lift $ lift $ lift fresh
+  getEnv = Tower' $ lift $ lift $ lift getEnv
 
 instance BaseUtils Tower e where
   fresh = Tower fresh
   getEnv = Tower getEnv
 
+instance WriterM (Tower' backend e) (TowerOutput backend) where
+  put = Tower' . put
+
 towerGetBackend :: Tower' backend e backend
-towerGetBackend = Tower' $ asks fst
+towerGetBackend = Tower' get
+
+towerSetBackend :: backend -> Tower' backend e ()
+towerSetBackend = Tower' . set
 
 towerGetHandlers :: Chan b -> Tower' backend e [TowerBackendHandler backend b]
 towerGetHandlers chan = Tower' $ do
-  sinks <- asks snd
+  sinks <- lift ask
   return $ maybe [] unSinkList $ ChanMap.lookup chan sinks
 
 towerPutHandler :: Chan a -> TowerBackendHandler backend a -> Tower' backend e ()
-towerPutHandler chan h = Tower' $ put $
+towerPutHandler chan h = put $
   mempty { output_sinks = ChanMap.singleton chan $ SinkList [h] }
 
-towerPutMonitor :: AST.Monitor -> TowerBackendMonitor backend -> Tower' backend e ()
-towerPutMonitor ast m = Tower' $ put $ mempty { output_monitors = [(ast, m)] }
+towerPutMonitor :: AST.Monitor -> (backend, TowerBackendMonitor backend) -> Tower' backend e ()
+towerPutMonitor ast (be, m) = do
+  towerSetBackend be
+  put $ mempty { output_monitors = [(ast, m)] }
 
 towerPutDependencies :: Dependencies -> Tower e ()
-towerPutDependencies d = Tower $ Tower' $ put $ mempty { output_deps = d }
+towerPutDependencies d = Tower $ put $ mempty { output_deps = d }
 
 towerPutSignalCode :: SignalCode -> Tower e ()
-towerPutSignalCode s = Tower $ Tower' $ put $ mempty { output_sigs = s }
+towerPutSignalCode s = Tower $ put $ mempty { output_sigs = s }

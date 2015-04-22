@@ -14,6 +14,7 @@ module Ivory.Tower.Monad.Monitor
   , monitorGetHandlers
   , monitorPutHandler
   , monitorModuleDef
+  , monitorModuleDef'
   , liftTower -- XXX UNSAFE TO USE
   ) where
 
@@ -87,8 +88,11 @@ monitorPutHandler ast chan (be, h) = Monitor' $ do
 liftTower :: Tower e a -> Monitor e a
 liftTower a = Monitor $ Monitor' $ lift $ unTower a
 
-monitorModuleDef :: ModuleDef -> Monitor' backend e ()
-monitorModuleDef m = Monitor' $ put (mempty, mempty, m)
+monitorModuleDef :: ModuleDef -> Monitor e ()
+monitorModuleDef m = Monitor (monitorModuleDef' m)
+
+monitorModuleDef' :: ModuleDef -> Monitor' backend e ()
+monitorModuleDef' m = Monitor' $ put (mempty, mempty, m)
 
 instance BaseUtils (Monitor' backend) e where
   fresh = Monitor' $ lift fresh

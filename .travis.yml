@@ -11,7 +11,6 @@ install:
 script:
   - IVORY_REPO=$IVORY_REPO make $ENV_TEST_TARGET
 ghc:
-  - 7.6
   - 7.8
 env:
   - ENV_TEST_TARGET=tower

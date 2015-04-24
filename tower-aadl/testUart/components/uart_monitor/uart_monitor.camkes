@@ -1,6 +1,6 @@
-import "../../interfaces/uart_monitor_11_interface.idl4";
+import "../../interfaces/uart_monitor_interface.idl4";
 import "../../interfaces/Data_Types__uart_packet_impl_writer.idl4";
-import "../../interfaces/receiverhandler_9_interface.idl4";
+import "../../interfaces/receiverhandler_interface.idl4";
 import "../uart_driver/uart_driver.camkes";
 
 component uartbase {
@@ -9,12 +9,12 @@ component uartbase {
     emits DataAvailable	irq;
 }
 
-component uart_monitor_11 {
-	uses Data_Types__uart_packet_impl_writer receiverhandler_9_inst;
-	provides Data_Types__uart_packet_impl_writer Input0; 
+component uart_monitor {
+	uses Data_Types__uart_packet_impl_writer receiverhandler_inst;
+	provides Data_Types__uart_packet_impl_writer Input0;
 
     composition {
-		component uartbase uartbase; 
+		component uartbase uartbase;
 		component uart_driver uart_driver;
 
 	/* hardware connection */
@@ -23,15 +23,14 @@ component uart_monitor_11 {
 
 	/* Software connections */
 		connection ExportRPC conn1(from Input0, to uart_driver.send);
-		connection ExportRPC conn2(from uart_driver.recv, to receiverhandler_9_inst);
-				
+		connection ExportRPC conn2(from uart_driver.recv, to receiverhandler_inst);
 	}
-	
+
    configuration {
         uartbase.mem_attributes 	= 	"0x12C10000:0x1000";    //UART1
         uartbase.irq_attributes 	= 	84;                     //UART1 interrupt
 		uart_driver.ID = 3;
-    }     
+    }
 }
 
 /**************************************************************************

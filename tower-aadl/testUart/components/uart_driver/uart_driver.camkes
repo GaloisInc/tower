@@ -1,4 +1,4 @@
-import "../../interfaces/uart_monitor_11_interface.idl4";
+import "../../interfaces/uart_monitor_interface.idl4";
 import "../../interfaces/Data_Types__uart_packet_impl_writer.idl4";
 
 component uart_driver {
@@ -9,15 +9,15 @@ component uart_driver {
   	uses Data_Types__uart_packet_impl_writer recv;
 
         provides Data_Types__uart_packet_impl_writer recv_handler;
-	has mutex smaccm_recv_handler_sem; 
+	has mutex smaccm_recv_handler_sem;
 
 	// information from native UART driver
 	consumes DataAvailable  interrupt;
     has semaphore           read_sem;
     has semaphore           write_sem;
 	attribute int           ID;
-	
-	// The first buffer is for shared memory.  
+
+	// The first buffer is for shared memory.
     dataport Buf            uart0base;
 }
 

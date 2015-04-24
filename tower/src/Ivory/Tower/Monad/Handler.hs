@@ -94,10 +94,12 @@ handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   let handlerast = AST.Handler u chanast
         (partialEmitters part) (partialCallbacks part) (partialComments part)
 
-  backend <- monitorGetBackend
-  monitorPutHandler handlerast chan
-    $ handlerImpl backend handlerast emitters callbacks
+  h <- handlerImpl handlerast emitters callbacks
+  monitorPutHandler handlerast chan h
   return r
+  -- monitorPutHandler handlerast chan
+  --   $ handlerImpl backend handlerast emitters callbacks
+  -- return r
 
 handlerUnique :: Handler' backend a e Unique
 handlerUnique = Handler' ask

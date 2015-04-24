@@ -84,9 +84,9 @@ runTower :: TowerBackend backend
          -> Tower e ()
          -> e
          -> (AST.Tower, backend, TowerBackendOutput backend, Dependencies, SignalCode)
-runTower backend t e = (a, be, towerOut, output_deps output, output_sigs output)
+runTower backend t e = (a, be, undefined, output_deps output, output_sigs output)
   where
-  (be, towerOut) = towerImpl backend a monitors
+  (be, towerOut) = towerImpl backend' a monitors
   a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
     AST.ChanSync c   -> mempty { AST.tower_syncchans = [c] }
@@ -95,7 +95,8 @@ runTower backend t e = (a, be, towerOut, output_deps output, output_sigs output)
     AST.ChanInit _   -> mempty
   (mast, monitors) = unzip $ output_monitors output
   sinks = output_sinks output
-  (((), _backend'), output) = runBase e
+  (((), backend'), output) =
+      runBase e
     $ runWriterT
     $ runReaderT sinks
     $ runStateT backend
@@ -113,6 +114,10 @@ instance BaseUtils Tower e where
 instance WriterM (Tower' backend e) (TowerOutput backend) where
   put = Tower' . put
 
+instance StateM (Tower' backend e) backend where
+  get = Tower' get
+  set = Tower' . set
+
 towerGetBackend :: Tower' backend e backend
 towerGetBackend = Tower' get
 
@@ -128,9 +133,8 @@ towerPutHandler :: Chan a -> TowerBackendHandler backend a -> Tower' backend e (
 towerPutHandler chan h = put $
   mempty { output_sinks = ChanMap.singleton chan $ SinkList [h] }
 
-towerPutMonitor :: AST.Monitor -> (backend, TowerBackendMonitor backend) -> Tower' backend e ()
-towerPutMonitor ast (be, m) = do
-  towerSetBackend be
+towerPutMonitor :: AST.Monitor -> TowerBackendMonitor backend -> Tower' backend e ()
+towerPutMonitor ast m =
   put $ mempty { output_monitors = [(ast, m)] }
 
 towerPutDependencies :: Dependencies -> Tower e ()

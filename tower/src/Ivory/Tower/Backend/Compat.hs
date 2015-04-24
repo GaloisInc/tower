@@ -13,7 +13,10 @@ module Ivory.Tower.Backend.Compat
   , handlerProcName
   , monitorLockProcName
   , monitorUnlockProcName
+  , monitorName
   ) where
+
+import MonadLib hiding (when)
 
 import Control.Monad (forM_)
 import qualified Data.Map as Map
@@ -39,49 +42,45 @@ instance TowerBackend CompatBackend where
     , compatoutput_monitors :: Map.Map AST.Monitor ModuleDef
     }
 
-  uniqueImpl be u = (be, showUnique u)
-  callbackImpl be ast f =
-    ( be
-    , CompatCallback $ \ h t ->
-        let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
-        in (p, incl p)
-    )
+  uniqueImpl u = return (showUnique u)
+  -- callbackImpl be ast f =
+  --   ( be
+  --   , CompatCallback $ \ h t ->
+  --       let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
+  --       in (p, incl p)
+  --   )
 
-  emitterImpl be _ [] = (be, Emitter $ const $ return (), CompatEmitter Nothing)
-  emitterImpl be ast handlers =
-    ( be
-    , Emitter $ call_ $ trampolineProc ast $ const $ return ()
-    , CompatEmitter $ Just $ \ mon thd -> emitterCode ast thd
-        [ fst $ h mon thd | CompatHandler _ h <- handlers ]
-    )
+  -- emitterImpl be _ [] = (be, Emitter $ const $ return (), CompatEmitter Nothing)
+  -- emitterImpl be ast handlers =
+  --   ( be
+  --   , Emitter $ call_ $ trampolineProc ast $ const $ return ()
+  --   , CompatEmitter $ Just $ \ mon thd -> emitterCode ast thd
+  --       [ fst $ h mon thd | CompatHandler _ h <- handlers ]
+  --   )
 
-  handlerImpl be ast emitters callbacks =
-    ( be
-    , CompatHandler ast $ \ mon thd ->
-        let ems = [ e mon thd | CompatEmitter (Just e) <- emitters ]
-            (cbs, cbdefs) = unzip [ c ast thd | CompatCallback c <- callbacks ]
-            runner = handlerProc cbs ems thd mon ast
-        in (runner, ThreadCode
-          { threadcode_user = sequence_ cbdefs
-          , threadcode_emitter = mapM_ emittercode_user ems
-          , threadcode_gen = mapM_ emittercode_gen ems >> private (incl runner)
-          })
-    )
+  handlerImpl be ast emitters callbacks = return $
+    CompatHandler ast $ \ mon thd ->
+      let ems = [ e mon thd | CompatEmitter (Just e) <- emitters ]
+          (cbs, cbdefs) = unzip [ c ast thd | CompatCallback c <- callbacks ]
+          runner = handlerProc cbs ems thd mon ast
+      in (runner, ThreadCode
+        { threadcode_user = sequence_ cbdefs
+        , threadcode_emitter = mapM_ emittercode_user ems
+        , threadcode_gen = mapM_ emittercode_gen ems >> private (incl runner)
+        })
 
-  monitorImpl be ast handlers moddef =
-    ( be
-    , CompatMonitor $ \ twr -> CompatOutput
-         { compatoutput_threads = Map.fromListWith mappend
-             [ (thd, snd $ h ast thd)
-               -- handlers are reversed to match old output for convenient diffs
-             | SomeHandler (CompatHandler hast h) <- reverse handlers
-             , thd <- AST.handlerThreads twr hast
-             ]
-         , compatoutput_monitors = Map.singleton ast moddef
-         }
-    )
+  monitorImpl ast handlers moddef = return $
+    CompatMonitor $ \ twr -> CompatOutput
+       { compatoutput_threads = Map.fromListWith mappend
+           [ (thd, snd $ h ast thd)
+             -- handlers are reversed to match old output for convenient diffs
+           | SomeHandler (CompatHandler hast h) <- reverse handlers
+           , thd <- AST.handlerThreads twr hast
+           ]
+       , compatoutput_monitors = Map.singleton ast moddef
+       }
 
-  towerImpl be ast monitors = case mconcat monitors of CompatMonitor f -> (be, f ast)
+  -- towerImpl be ast monitors = case mconcat monitors of CompatMonitor f -> (be, f ast)
 
 instance Monoid (TowerBackendOutput CompatBackend) where
   mempty = CompatOutput mempty mempty
@@ -187,10 +186,10 @@ callbackProcName callbackname handlername tast
   ++ AST.threadName tast
 
 handlerName :: AST.Handler -> String
-handlerName h = snd $ (uniqueImpl CompatBackend) (AST.handler_name h)
+handlerName h = fst $ runId $ runStateT CompatBackend $ uniqueImpl (AST.handler_name h)
 
 monitorName :: AST.Monitor -> String
-monitorName h = snd $ (uniqueImpl CompatBackend) (AST.monitor_name h)
+monitorName h = fst $ runId $ runStateT CompatBackend $ uniqueImpl (AST.monitor_name h)
 
 handlerProcName :: AST.Handler -> AST.Thread -> String
 handlerProcName h t = "handler_run_" ++ handlerName h

@@ -10,6 +10,8 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.Unique
 
+import MonadLib
+
 data SomeHandler backend = forall a. SomeHandler (TowerBackendHandler backend a)
 
 class TowerBackend backend where
@@ -24,33 +26,33 @@ class TowerBackend backend where
   data TowerBackendMonitor   backend :: *
   data TowerBackendOutput    backend :: *
 
-  uniqueImpl   :: backend
-               -> Unique
-               -> (backend, String)
-  callbackImpl :: IvoryArea a
-               => backend
+  uniqueImpl   :: StateM m backend
+               => Unique
+               -> m String
+  callbackImpl :: (StateM m backend, IvoryArea a)
+               =>
                -- Callback identifier, used to construct full callback name
-               -> Unique
+                  Unique
                -- Implementation
                -> (forall s s'. ConstRef s' a -> Ivory (AllocEffects s) ())
-               -> (backend, TowerBackendCallback backend a)
-  emitterImpl :: (IvoryArea b, IvoryZero b)
-              => backend
-              -> AST.Emitter
+               -> m (TowerBackendCallback backend a)
+  emitterImpl :: (StateM m backend, IvoryArea b, IvoryZero b)
+              => 
+                 AST.Emitter
               -> [TowerBackendHandler backend b]
-              -> (backend, Emitter b, TowerBackendEmitter backend)
-  handlerImpl :: (IvoryArea a, IvoryZero a)
-              => backend
-              -> AST.Handler
-              -> [TowerBackendEmitter backend]
+              -> m (Emitter b, TowerBackendEmitter backend )
+  handlerImpl :: (StateM m backend, IvoryArea a, IvoryZero a)
+              => 
+                 AST.Handler
+              -> [TowerBackendEmitter backend ]
               -> [TowerBackendCallback backend a]
-              -> (backend, TowerBackendHandler backend a)
-  monitorImpl :: backend
-              -> AST.Monitor
+              -> m (TowerBackendHandler backend a)
+  monitorImpl :: StateM m backend
+              => AST.Monitor
               -> [SomeHandler backend]
               -- Contains the state variable declarations for the monitor
               -> ModuleDef
-              -> (backend, TowerBackendMonitor backend)
+              -> m (TowerBackendMonitor backend)
   towerImpl :: backend
             -> AST.Tower
             -> [TowerBackendMonitor backend]

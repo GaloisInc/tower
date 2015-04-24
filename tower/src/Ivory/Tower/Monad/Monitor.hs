@@ -53,13 +53,17 @@ newtype Monitor' backend e a = Monitor'
   { unMonitor' :: WriterT ([AST.Handler], [SomeHandler backend], ModuleDef) (Tower' backend e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
+instance StateM (Monitor' backend e) backend where
+  get = Monitor' get
+  set = Monitor' . set
+
 monitor' :: AST.MonitorExternal -> String -> Monitor e () -> Tower e ()
 monitor' t n b = Tower $ do
   u <- freshname n
   ((), (hast, handlers, moddef)) <- runWriterT $ unMonitor' $ unMonitor b
   let ast = AST.Monitor u hast t
-  backend <- towerGetBackend
-  towerPutMonitor ast $ monitorImpl backend ast handlers moddef
+  m <- monitorImpl ast handlers moddef
+  towerPutMonitor ast m
 
 monitor :: String -> Monitor e () -> Tower e ()
 monitor = monitor' AST.MonitorDefined

@@ -8,7 +8,7 @@ before_install:
 install:
   - cabal install alex happy
 script:
-  - IVORY_REPO=$IVORY_REPO make $ENV_TEST_TARGET
+  - make $ENV_TEST_TARGET
 ghc:
   - 7.8
 env:

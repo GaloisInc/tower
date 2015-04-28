@@ -14,6 +14,8 @@ module Tower.AADL.FromTower
 
 import           Prelude hiding (init)
 import           Data.Monoid
+import           Data.List (find)
+import           Data.Maybe (isJust)
 import           System.FilePath ((</>), addExtension)
 import           Control.Applicative
 
@@ -68,7 +70,7 @@ fromMonitor c t d m =
       -> sequence [externalMonitor c t d m]
     A.MonitorDefined
       -> do nm <- uniqueImplM (A.monitor_name m)
-            mapM (fromHandler c d nm) (A.monitor_handlers m)
+            mapM (fromHandler c t d nm) (A.monitor_handlers m)
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
 externalMonitor :: Config
@@ -122,11 +124,12 @@ fromExternalHandler c t monitorName h = do
 -- handler is a collection of emitters and callbacks associated with a single
 -- input channel.
 fromHandler :: Config
+            -> A.Tower
             -> D.Dependencies
             -> String
             -> A.Handler
             -> UniqueM Thread
-fromHandler c d monitorName h = do
+fromHandler c t d monitorName h = do
   cbs <- mkCallbacksHandler c h monitorName
   thdNm <- uniqueImplM (A.handler_name h)
   es <- mapM fromEmitter (A.handler_emitters h)
@@ -153,17 +156,7 @@ fromHandler c d monitorName h = do
       : sends
       : pst
      ++ concat ([stackSize, threadPriority] <*> pure threadType)
-  (threadType, dispatch) =
-    case A.handler_chan h of
-      A.ChanSignal sig -- XXX address is a lie
-          -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
-      A.ChanPeriod per
-          -> (Active, Periodic (T.toMicroseconds (A.period_dt per)))
-      A.ChanInit{}
-          -- XXX is Aperiodic right? We're ignoring init chans for now, anyways
-          -> (Active, Aperiodic)
-      A.ChanSync{}
-          -> (Passive, Aperiodic)
+  (threadType, dispatch) = handlerType t h
   propertySrcText :: UniqueM [ThreadProperty]
   propertySrcText = do
     cbs <- mkCallbacksHandler c h monitorName
@@ -178,6 +171,33 @@ fromHandler c d monitorName h = do
            ]
     where
     towerDeps = depsSourceText c d
+
+handlerType :: A.Tower -> A.Handler -> (ThreadType, DispatchProtocol)
+handlerType t h
+  | fromAbstractMonitor t h
+  = (Active, Sporadic)
+  | otherwise
+  =
+  case A.handler_chan h of
+    A.ChanSignal sig -- XXX address is a lie
+        -> (Active, Signal (A.signal_name sig) 0xdeadbeef)
+    A.ChanPeriod per
+        -> (Active, Periodic (T.toMicroseconds (A.period_dt per)))
+    A.ChanInit{}
+        -- XXX is Aperiodic right? We're ignoring init chans for now, anyways
+        -> (Active, Aperiodic)
+    A.ChanSync{}
+        -> (Passive, Aperiodic)
+
+-- XXX expensive to recompute. Compute once.
+fromAbstractMonitor :: A.Tower -> A.Handler -> Bool
+fromAbstractMonitor t h =
+  isJust $ find (\h' -> A.handler_name h' == A.handler_name h) fromExts
+  where
+  ms = A.tower_monitors t
+  extMs = filter (\m -> A.monitor_external m == A.MonitorExternal) ms
+  extHs = concatMap A.monitor_handlers extMs
+  fromExts = map snd $ concatMap (A.handlerOutboundHandlers t) extHs
 
 -- For a given channel, see if it's source is abstract (i.e., a sync chan with
 -- no caller).

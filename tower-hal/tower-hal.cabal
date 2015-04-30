@@ -17,6 +17,7 @@ library
                        Ivory.Tower.HAL.Bus.Interface,
                        Ivory.Tower.HAL.Bus.Sched,
                        Ivory.Tower.HAL.Bus.I2C,
+                       Ivory.Tower.HAL.Bus.UART,
                        Ivory.Tower.HAL.Bus.SPI,
                        Ivory.Tower.HAL.Bus.SPI.DeviceHandle,
                        Ivory.Tower.HAL.Bus.CAN.Sched,

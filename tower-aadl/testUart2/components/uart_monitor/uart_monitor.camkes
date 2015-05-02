@@ -1,4 +1,5 @@
 import "../../interfaces/uart_monitor_interface.idl4";
+import "../../interfaces/uart_monitor.idl4";
 import "../../interfaces/Data_Types__uart_packet_impl_writer.idl4";
 import "../../interfaces/receiverhandler_interface.idl4";
 
@@ -14,6 +15,7 @@ component uart_monitor {
   provides Data_Types__uart_packet_impl_writer Input0;
   uses Data_Types__uart_packet_impl_writer uart_monitor_Output1;
 
+  provides uart_inf       uart;
   dataport Buf            vaddr;
   consumes DataAvailable  interrupt;
   has semaphore           read_sem;

@@ -15,7 +15,7 @@ import Tower.AADL.Config (Config(..))
 buildScript :: String
 buildScript = unlines
   [
-    "#!/bin/sh"
+    "#!/bin/bash"
   , ""
   , "# Source AADL_FILES"
   , ". AADL_FILES"

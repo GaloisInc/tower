@@ -5,6 +5,7 @@
 
 module Ivory.Tower.Tower
   ( Tower()
+  , TowerResult(..)
   , GeneratedCode()
   , runTower
   , ChanInput()

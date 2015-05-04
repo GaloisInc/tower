@@ -7,6 +7,7 @@
 module Ivory.Tower.Monad.Tower
   ( Tower(..)
   , Tower'
+  , TowerResult(..)
   , runTower
   , towerGetBackend
   , towerSetBackend
@@ -79,6 +80,14 @@ newtype Tower' backend e a = Tower'
   { unTower' :: StateT backend (ReaderT (Sinks backend) (WriterT (TowerOutput backend) (Base e))) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
+-- | The result of running the Tower monad.
+data TowerResult backend = TowerResult
+  { tower_AST            :: AST.Tower
+  , tower_backend        :: backend
+  , tower_backend_output :: TowerBackendOutput backend
+  , tower_depends        :: Dependencies
+  , tower_signalCode     :: SignalCode
+  }
 
 runTower :: TowerBackend backend
          => backend

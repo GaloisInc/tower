@@ -1,6 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -10,6 +13,7 @@
 
 module Tower.AADL.FromTower
   ( fromTower
+  , initUniqueSt
   ) where
 
 import           Prelude hiding (init)
@@ -18,7 +22,11 @@ import           Data.List (find)
 import           Data.Maybe (isJust)
 import           System.FilePath ((</>), addExtension)
 import           Control.Applicative
+import           MonadLib
+import qualified Data.DList      as D
+import qualified Data.Map.Strict as M
 
+import           Ivory.Tower.Backend
 import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Dependencies as D
 import qualified Ivory.Tower.Types.Time         as T
@@ -69,7 +77,7 @@ fromMonitor c t d m =
     A.MonitorExternal
       -> sequence [externalMonitor c t d m]
     A.MonitorDefined
-      -> do nm <- uniqueImplM (A.monitor_name m)
+      -> do nm <- uniqueImpl (A.monitor_name m)
             mapM (fromHandler c t d nm) (A.monitor_handlers m)
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
@@ -79,7 +87,7 @@ externalMonitor :: Config
                 -> A.Monitor
                 -> UniqueM Thread
 externalMonitor c t d m = do
-  nm <- uniqueImplM (A.monitor_name m)
+  nm <- uniqueImpl (A.monitor_name m)
   features <- mapM (fromExternalHandler c t nm) hs
   return $ Thread
     { threadName       = nm
@@ -131,7 +139,7 @@ fromHandler :: Config
             -> UniqueM Thread
 fromHandler c t d monitorName h = do
   cbs <- mkCallbacksHandler c h monitorName
-  thdNm <- uniqueImplM (A.handler_name h)
+  thdNm <- uniqueImpl (A.handler_name h)
   es <- mapM fromEmitter (A.handler_emitters h)
   let (txChans, bnds)  = unzip es
   let sends            = SendEvents (zip txChans bnds)
@@ -233,7 +241,7 @@ stackSize threadType =
 
 mkCallbacksHandler :: Config -> A.Handler -> String -> UniqueM [SourcePath]
 mkCallbacksHandler c h fileNm = do
-  nms <- mapM uniqueImplM (A.handler_callbacks h)
+  nms <- mapM uniqueImpl (A.handler_callbacks h)
   return $ map (mkCFile c fileNm,) nms
 
 -- Create the input callback names in the handler for a given channel.
@@ -257,7 +265,7 @@ fromInputChan callbacks c = case c of
 -- | From an emitter, return its output channel and bound.
 fromEmitter :: A.Emitter -> UniqueM (Output, Bound)
 fromEmitter e = do
-  sym <- uniqueImplM (A.emitter_name e)
+  sym <- uniqueImpl (A.emitter_name e)
   return
     ( Output
         { outputLabel   = outputLabel
@@ -281,3 +289,21 @@ depsSourceText :: Config -> D.Dependencies -> [FilePath]
 depsSourceText c d =
      map (mkCFile c . I.moduleName) (D.dependencies_modules d)
   ++ map A.artifactFileName (D.dependencies_artifacts d)
+
+--------------------------------------------------------------------------------
+
+-- A simple monad for unique names
+
+newtype UniqueM a = UniqueM
+  { unUnique :: (StateT AADLBackend Id) a
+  } deriving (Functor, Applicative, Monad)
+
+instance StateM UniqueM AADLBackend where
+  get = UniqueM get
+  set = UniqueM . set
+
+initUniqueSt :: AADLBackend
+initUniqueSt = (M.empty, D.empty)
+
+runUnique :: AADLBackend -> UniqueM a -> (a, (UniqueState, Warnings))
+runUnique be m = runId $ runStateT be (unUnique m)

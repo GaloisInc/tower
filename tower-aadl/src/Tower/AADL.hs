@@ -83,7 +83,7 @@ runCompileAADL opts' t = do
                         -- XXX assuming that the only artifacts are headers.
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
-  (ast, be, code, deps, sigs) = runTower initUniqueSt t ()
+  TowerResult ast be code deps sigs = runTower initUniqueSt t ()
   c             = configOpts opts
   (warns, sys)  = fromTower c be ast deps
   docs          = buildAADL anyTys strs sys

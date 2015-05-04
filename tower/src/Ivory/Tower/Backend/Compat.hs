@@ -18,7 +18,6 @@ module Ivory.Tower.Backend.Compat
 
 import MonadLib hiding (when)
 
-import Control.Monad (forM_)
 import qualified Data.Map as Map
 import Data.Monoid
 import Ivory.Language
@@ -43,22 +42,20 @@ instance TowerBackend CompatBackend where
     }
 
   uniqueImpl u = return (showUnique u)
-  -- callbackImpl be ast f =
-  --   ( be
-  --   , CompatCallback $ \ h t ->
-  --       let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
-  --       in (p, incl p)
-  --   )
 
-  -- emitterImpl be _ [] = (be, Emitter $ const $ return (), CompatEmitter Nothing)
-  -- emitterImpl be ast handlers =
-  --   ( be
-  --   , Emitter $ call_ $ trampolineProc ast $ const $ return ()
-  --   , CompatEmitter $ Just $ \ mon thd -> emitterCode ast thd
-  --       [ fst $ h mon thd | CompatHandler _ h <- handlers ]
-  --   )
+  callbackImpl ast f = return $
+    CompatCallback $ \ h t ->
+      let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
+      in (p, incl p)
 
-  handlerImpl be ast emitters callbacks = return $
+  emitterImpl _ [] = return (Emitter $ const $ return (), CompatEmitter Nothing)
+  emitterImpl ast handlers = return
+    ( Emitter $ call_ $ trampolineProc ast $ const $ return ()
+    , CompatEmitter $ Just $ \ mon thd -> emitterCode ast thd
+        [ fst $ h mon thd | CompatHandler _ h <- handlers ]
+    )
+
+  handlerImpl ast emitters callbacks = return $
     CompatHandler ast $ \ mon thd ->
       let ems = [ e mon thd | CompatEmitter (Just e) <- emitters ]
           (cbs, cbdefs) = unzip [ c ast thd | CompatCallback c <- callbacks ]
@@ -80,7 +77,7 @@ instance TowerBackend CompatBackend where
        , compatoutput_monitors = Map.singleton ast moddef
        }
 
-  -- towerImpl be ast monitors = case mconcat monitors of CompatMonitor f -> (be, f ast)
+  towerImpl be ast monitors = case mconcat monitors of CompatMonitor f -> (be, f ast)
 
 instance Monoid (TowerBackendOutput CompatBackend) where
   mempty = CompatOutput mempty mempty

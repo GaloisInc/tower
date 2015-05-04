@@ -32,10 +32,8 @@ emitter (ChanInput chan@(Chan chanast)) bound = Handler $ do
   let AST.ChanSync syncchan = chanast
   let ast = AST.emitter n syncchan bound
   handlerPutASTEmitter ast
-  backend <- handlerGetBackend
   handlers <- handlerGetHandlers chan
-  let (be, e, code) = emitterImpl backend ast handlers
-  handlerSetBackend be
+  (e, code) <- emitterImpl ast handlers
   handlerPutCodeEmitter code
   return e
 
@@ -45,8 +43,8 @@ callback :: (IvoryArea a, IvoryZero a)
 callback b = Handler $ do
   u <- freshname "callback"
   handlerPutASTCallback u
-  backend <- handlerGetBackend
-  handlerPutCodeCallback $ callbackImpl backend u b
+  cb <- callbackImpl u b
+  handlerPutCodeCallback cb
 
 callbackV :: (IvoryArea (Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())

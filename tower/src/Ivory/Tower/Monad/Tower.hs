@@ -79,14 +79,16 @@ newtype Tower' backend e a = Tower'
   { unTower' :: StateT backend (ReaderT (Sinks backend) (WriterT (TowerOutput backend) (Base e))) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
+
 runTower :: TowerBackend backend
          => backend
          -> Tower e ()
          -> e
-         -> (AST.Tower, backend, TowerBackendOutput backend, Dependencies, SignalCode)
-runTower backend t e = (a, be, undefined, output_deps output, output_sigs output)
+         -> TowerResult backend
+runTower backend t e =
+  TowerResult a backend2 towerOut (output_deps output) (output_sigs output)
   where
-  (be, towerOut) = towerImpl backend' a monitors
+  (backend2, towerOut) = towerImpl backend1 a monitors
   a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
     AST.ChanSync c   -> mempty { AST.tower_syncchans = [c] }
@@ -95,7 +97,8 @@ runTower backend t e = (a, be, undefined, output_deps output, output_sigs output
     AST.ChanInit _   -> mempty
   (mast, monitors) = unzip $ output_monitors output
   sinks = output_sinks output
-  (((), backend'), output) =
+
+  (((), backend1), output) =
       runBase e
     $ runWriterT
     $ runReaderT sinks

@@ -29,7 +29,11 @@ runTowerCompile :: TowerBackend backend
                 -> IO ()
 runTowerCompile t p opts = C.runCompilerWith Nothing mods as opts
   where
-  (_ast, _backend, output, deps, sigs) = runTower (platformBackend p) t (platformEnv p)
+--  (_ast, _backend, output, deps, sigs) = runTower (platformBackend p) t (platformEnv p)
+  res = runTower (platformBackend p) t (platformEnv p)
+  deps = tower_depends res
+  sigs = tower_signalCode res
+  output = tower_backend_output res
   mods = dependencies_modules deps ++ addModules p output deps sigs
   givenArtifacts = dependencies_artifacts deps
   as = addArtifacts p output deps sigs mods givenArtifacts ++ givenArtifacts

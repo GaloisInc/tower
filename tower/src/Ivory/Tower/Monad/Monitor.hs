@@ -82,11 +82,10 @@ monitorGetHandlers chan = Monitor' $ lift $ towerGetHandlers chan
 
 monitorPutHandler :: AST.Handler
                   -> Chan a
-                  -> (backend, TowerBackendHandler backend a)
+                  -> TowerBackendHandler backend a
                   -> Monitor' backend e ()
-monitorPutHandler ast chan (be, h) = Monitor' $ do
+monitorPutHandler ast chan h = Monitor' $ do
   put ([ast], [SomeHandler h], mempty)
-  lift $ towerSetBackend be
   lift $ towerPutHandler chan h
 
 liftTower :: Tower e a -> Monitor e a

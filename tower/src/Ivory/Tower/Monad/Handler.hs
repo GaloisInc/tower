@@ -82,6 +82,10 @@ newtype Handler' backend (area :: Area *) e a = Handler'
                     (Monitor' backend e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
+instance StateM (Handler' backend b e) backend where
+  get = Handler' get
+  set = Handler' . set
+
 handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
 handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
@@ -97,9 +101,6 @@ handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   h <- handlerImpl handlerast emitters callbacks
   monitorPutHandler handlerast chan h
   return r
-  -- monitorPutHandler handlerast chan
-  --   $ handlerImpl backend handlerast emitters callbacks
-  -- return r
 
 handlerUnique :: Handler' backend a e Unique
 handlerUnique = Handler' ask
@@ -123,10 +124,9 @@ handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
 handlerPutASTCallback :: Unique -> Handler' backend a e ()
 handlerPutASTCallback a = handlerPutAST $ mempty { partialCallbacks = [a] }
 
-handlerPutCodeCallback :: (backend, TowerBackendCallback backend a)
+handlerPutCodeCallback :: TowerBackendCallback backend a
                        -> Handler' backend a e ()
-handlerPutCodeCallback (be, ms) = Handler' $ do
-  lift $ lift $ monitorSetBackend be
+handlerPutCodeCallback ms = Handler' $
   put (mempty, mempty, [ms])
 
 handlerPutCodeEmitter :: TowerBackendEmitter backend

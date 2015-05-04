@@ -9,6 +9,8 @@ import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.Unique
+import Ivory.Tower.Types.Dependencies
+import Ivory.Tower.Types.SignalCode
 
 import MonadLib
 
@@ -30,20 +32,17 @@ class TowerBackend backend where
                => Unique
                -> m String
   callbackImpl :: (StateM m backend, IvoryArea a)
-               =>
-               -- Callback identifier, used to construct full callback name
+               => -- Callback identifier, used to construct full callback name
                   Unique
                -- Implementation
                -> (forall s s'. ConstRef s' a -> Ivory (AllocEffects s) ())
                -> m (TowerBackendCallback backend a)
   emitterImpl :: (StateM m backend, IvoryArea b, IvoryZero b)
-              => 
-                 AST.Emitter
+              => AST.Emitter
               -> [TowerBackendHandler backend b]
-              -> m (Emitter b, TowerBackendEmitter backend )
+              -> m (Emitter b, TowerBackendEmitter backend)
   handlerImpl :: (StateM m backend, IvoryArea a, IvoryZero a)
-              => 
-                 AST.Handler
+              => AST.Handler
               -> [TowerBackendEmitter backend ]
               -> [TowerBackendCallback backend a]
               -> m (TowerBackendHandler backend a)
@@ -57,3 +56,12 @@ class TowerBackend backend where
             -> AST.Tower
             -> [TowerBackendMonitor backend]
             -> (backend, TowerBackendOutput backend)
+
+-- | The result of running the Tower monad.
+data TowerResult backend = TowerResult
+  { tower_AST            :: AST.Tower
+  , tower_backend        :: backend
+  , tower_backend_output :: TowerBackendOutput backend
+  , tower_depends        :: Dependencies
+  , tower_signalCode     :: SignalCode
+  }

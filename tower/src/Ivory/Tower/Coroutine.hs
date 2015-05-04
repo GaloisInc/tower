@@ -35,10 +35,8 @@ coroutineHandler chanInit chan name block = do
   lastValue <- state "last_value"
 
   handler readyChan name $ Handler $ do
-    be <- handlerGetBackend
     u <- handlerUnique
-    let (be', nm) = uniqueImpl be u
-    handlerSetBackend be'
+    nm <- uniqueImpl u
     coro <- coroutine nm <$> (unHandler block)
     liftMonitor $ monitorModuleDef $ coroutineDef coro
     unHandler $ callbackV $ \ shouldInit -> coroutineRun coro shouldInit $ constRef lastValue

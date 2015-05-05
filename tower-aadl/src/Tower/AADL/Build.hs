@@ -12,52 +12,42 @@ import Tower.AADL.Config (Config(..))
 --------------------------------------------------------------------------------
 -- Ramses build
 
-buildScript :: String
-buildScript = unlines
-  [
-    "#!/bin/bash"
-  , ""
-  , "# Source AADL_FILES"
-  , ". AADL_FILES"
-  , ""
-  , "# Source Ramses path"
-  , ". ../RAMSES_PATH"
-  , ""
-  , "export RAMSES_DIR=$RAMSES_PATH/ramses_resource"
-  , "export AADL2RTOS_CONFIG_DIR=$RAMSES_PATH/aadl2rtos_resource"
-  , ""
-  , "java -jar $RAMSES_PATH/ramses.jar -g rtos -i $AADL2RTOS_CONFIG_DIR -o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$AADL_LIST"
-  ]
-
-buildScriptName :: String
-buildScriptName = "ramses-build.sh"
-
 ramsesMakefile :: Config -> String
 ramsesMakefile c = unlines
-  [
-    ".PHONY: ramses"
-  , "ramses:"
-  , tab "sh " ++ buildScriptName
+  [ "include " ++ aadlFilesMk
+  , ""
+  , "-include ../RAMSES_PATH.mk"
+  , "RAMSES_PATH ?= ./"
+  , ""
+  , "export RAMSES_DIR=$(RAMSES_PATH)/ramses_resource"
+  , "export AADL2RTOS_CONFIG_DIR=$(RAMSES_PATH)/aadl2rtos_resource"
+  , ""
+  , ".PHONY: ramses"
+  , "ramses: " ++ camkesMakefileName
+  , tab "java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR) -o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$(AADL_LIST)"
   , ""
   , camkesMakefileName ++ ":" ++ mkTp
   , tab $ unwords ["cp ", mkTp, camkesMakefileName]
   , ""
   , ".PHONY: tower-clean"
   , "tower-clean:"
-  , tab "-rm " ++ buildScriptName
-  , tab "-rm AADL_FILES"
-  , tab "-rm " ++ kbuildName
-  , tab "-rm " ++ kconfigName
-  , tab "-rm " ++ camkesMakefileName
-  , tab "-rm *.aadl"
-  , tab "-rm -rf " ++ configSrcsDir c
-  , tab "-rm -rf " ++ configHdrDir  c
+  , rm aadlFilesMk
+  , rm kbuildName
+  , rm kconfigName
+  , rm camkesMakefileName
+  , rm "*.aadl"
+  , rm (configSrcsDir c)
+  , rm (configHdrDir  c)
   ]
   where
+  rm s = tab "-rm -rf " ++ s
   mkTp = "make_template" </> makefileName
 
 ramsesMakefileName :: String
 ramsesMakefileName = "ramses.mk"
+
+aadlFilesMk :: String
+aadlFilesMk = "AADL_FILES.mk"
 
 --------------------------------------------------------------------------------
 -- Kbuild, Kconfig

@@ -191,6 +191,8 @@ renderThreadProperty p = case p of
       -> mkDispatchdec (text "Aperiodic")
     Sporadic
       -> mkDispatchdec (text "Sporadic")
+    Signal{}
+      -> error "Signals not implemented in AADL backend."
   mkDispatchdec dis = stmt (text "Dispatch_Protocol" ==> dis)
   mkThreadType ty = stmt (fromSMACCM (text "Thread_Type" ==> renderTy))
     where renderTy = case ty of

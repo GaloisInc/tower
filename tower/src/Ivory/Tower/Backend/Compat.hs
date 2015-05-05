@@ -164,13 +164,10 @@ handlerProc callbacks emitters t m h =
 
 emitterProcName :: AST.Emitter -> String
 emitterProcName e = showUnique (AST.emitter_name e)
-  ++ "_chan_" ++ show (AST.sync_chan_label $ AST.emitter_chan e)
 
 callbackProcName :: Unique -> Unique -> AST.Thread -> String
-callbackProcName callbackname handlername tast
+callbackProcName callbackname _handlername tast
   =  showUnique callbackname
-  ++ "_"
-  ++ showUnique handlername
   ++ "_"
   ++ AST.threadName tast
 

@@ -14,7 +14,7 @@ import System.Console.GetOpt
 import System.Exit (exitFailure,exitSuccess)
 import System.Environment (getProgName)
 
-import Tower.AADL.Config
+import           Tower.AADL.Config
 
 --------------------------------------------------------------------------------
 -- Option Parsing
@@ -50,7 +50,7 @@ data Opts = Opts
   -- ^ Location to generate AADL files (or use standard out).
   , helpOpts   :: Bool
   -- ^ Help.
-  } deriving Show
+  }
 
 initialOpts :: Opts
 initialOpts = Opts
@@ -68,10 +68,10 @@ setSystemName :: String ->  OptParser Opts
 setSystemName s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemName = s }})
 
 setSystemOS :: String -> OptParser Opts
-setSystemOS s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemOS = s }})
+setSystemOS s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemOS = read s }})
 
 setSystemHW :: String -> OptParser Opts
-setSystemHW s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemHW = s }})
+setSystemHW s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemHW = read s }})
 
 setStdOut :: OptParser Opts
 setStdOut = success (\opts -> opts { genDirOpts = Nothing })

@@ -24,7 +24,7 @@ import qualified Ivory.Tower.Types.Dependencies as D
 import qualified Ivory.Tower.Types.Time         as T
 
 import qualified Ivory.Language                 as I
-import qualified Ivory.Artifact                 as A
+import qualified Ivory.Artifact                 as R
 
 import           Tower.AADL.AST
 import           Tower.AADL.CodeGen
@@ -42,8 +42,8 @@ fromTower c be t d =
            }
   )
   where
-  sps = [ SystemOS (configSystemOS c)
-        , SystemHW (configSystemHW c) ]
+  sps = [ SystemOS $ show $ configSystemOS c
+        , SystemHW $ show $ configSystemHW c ]
   (warns, sc) = mkProcess c be t d
 
 mkProcess :: Config
@@ -280,4 +280,4 @@ mkCFile c fp =
 depsSourceText :: Config -> D.Dependencies -> [FilePath]
 depsSourceText c d =
      map (mkCFile c . I.moduleName) (D.dependencies_modules d)
-  ++ map A.artifactFileName (D.dependencies_artifacts d)
+  ++ map R.artifactFileName (D.dependencies_artifacts d)

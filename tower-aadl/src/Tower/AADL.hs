@@ -7,11 +7,17 @@
 module Tower.AADL
   ( compileAADL
   , runCompileAADL
+  -- command line options
   , Opts(..)
   , initialOpts
+  -- configuration
   , Config(..)
   , initialConfig
+  , HW(..)
+  , OS(..)
   ) where
+
+import           Data.Maybe
 
 import           System.IO (openFile, IOMode(..), hClose)
 import           System.Directory (createDirectoryIfMissing)
@@ -29,6 +35,7 @@ import           Ivory.Tower
 import           Ivory.Tower.Types.Dependencies
 
 import qualified Ivory.Language.Syntax.AST as I
+import qualified Ivory.Artifact            as R
 
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
@@ -59,16 +66,15 @@ runCompileAADL opts' t = do
     Just dir
       -> do createDirectoryIfMissing True dir
             mapM_ go docLst
-            outputAADLDeps (dir </> "AADL_FILES")
+            outputAADLDeps (dir </> aadlFilesMk)
                            (tyPkg ++ thdNames ++ [configSystemName c])
             genIvoryCode (ivoryOpts dir) code deps sigs
             wrFile ramsesMakefileName
                    (ramsesMakefile (configOpts opts'))
-            wrFile buildScriptName buildScript
             wrFile kbuildName   (kbuild dir)
             wrFile kconfigName  (kconfig dir dir)
-            wrFile kconfigName  (kconfig dir dir)
             wrFile makefileName (makefile dir)
+            putArtifacts dir (configArtifacts c)
             putStrLn $ showWarnings warns
       where
       wrFile fName = writeFile (dir </> fName)
@@ -127,5 +133,10 @@ outputAADLDeps fp nms = do
 
 aadlExt :: String
 aadlExt = "aadl"
+
+putArtifacts :: FilePath -> [R.Artifact] -> IO ()
+putArtifacts fp as = do
+  merrs <- mapM (R.putArtifact fp) as
+  mapM_ putStrLn (catMaybes merrs)
 
 --------------------------------------------------------------------------------

@@ -13,8 +13,18 @@ import Data.Char
 import System.FilePath (isPathSeparator)
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C
+import qualified Ivory.Artifact as A
 
 --------------------------------------------------------------------------------
+
+data HW =
+    QEMU
+  | ODROID
+  deriving (Show, Read, Eq)
+
+data OS =
+  CAmkES
+  deriving (Show, Read, Eq)
 
 data Config = Config
   { configSrcsDir     :: FilePath
@@ -23,22 +33,25 @@ data Config = Config
   -- ^ Location of/to put C headers relative to genDirOpts.
   , configSystemName  :: String
   -- ^ System name.
-  , configSystemOS    :: String
+  , configSystemOS    :: OS
   -- ^ Operating system name.
-  , configSystemHW    :: String
+  , configSystemHW    :: HW
   -- ^ HW name.
   , configIvoryOpts   :: C.Opts
   -- ^ Ivory options
-  } deriving Show
+  , configArtifacts   :: [A.Artifact]
+  -- ^ Artifacts to generate
+  }
 
 initialConfig :: Config
 initialConfig = Config
   { configSrcsDir     = "user_code"
   , configHdrDir      = "include"
   , configSystemName  = "sys"
-  , configSystemOS    = "CAmkES"
-  , configSystemHW    = "QEMU"
+  , configSystemOS    = CAmkES
+  , configSystemHW    = QEMU
   , configIvoryOpts   = C.initialOpts
+  , configArtifacts   = []
   }
 
 -- | Camkes needs filepaths, modulo '/', to be valid C identifiers.

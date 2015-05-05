@@ -76,9 +76,9 @@ monitorModuleDef :: ModuleDef -> Monitor e ()
 monitorModuleDef m = Monitor $ Monitor' $ put (mempty, mempty, m)
 
 instance BaseUtils (Monitor' backend) e where
-  fresh = Monitor' $ lift fresh
+  freshname n = Monitor' $ lift $ freshname n
   getEnv = Monitor' $ lift getEnv
 
 instance BaseUtils Monitor e where
-  fresh = Monitor fresh
+  freshname n = Monitor $ freshname n
   getEnv = Monitor getEnv

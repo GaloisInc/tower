@@ -103,11 +103,11 @@ runTower backend t e = (a, towerImpl backend a monitors, output_deps output, out
     $ unTower t
 
 instance BaseUtils (Tower' backend) e where
-  fresh = Tower' $ lift $ lift $ lift fresh
+  freshname n = Tower' $ lift $ lift $ lift $ freshname n
   getEnv = Tower' $ lift $ lift $ lift getEnv
 
 instance BaseUtils Tower e where
-  fresh = Tower fresh
+  freshname n = Tower $ freshname n
   getEnv = Tower getEnv
 
 towerGetBackend :: Tower' backend e backend

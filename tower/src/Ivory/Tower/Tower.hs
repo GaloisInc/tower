@@ -27,7 +27,6 @@ module Ivory.Tower.Tower
   , BaseUtils(..)
   , Unique
   , showUnique
-  , freshname
   ) where
 
 import qualified Data.Map as Map

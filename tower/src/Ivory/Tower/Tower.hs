@@ -52,7 +52,10 @@ import qualified Ivory.Language.Area as I
 
 channel :: IvoryArea a => Tower e (ChanInput a, ChanOutput a)
 channel = do
-  f <- fresh
+  -- Channels are anonymous so `freshname` is not an appropriate way to
+  -- give them unique names. Instead, keep a count of the number of
+  -- channels created in this Tower.
+  f <- towerNewChannel
   let ast = AST.SyncChan f (I.ivoryArea (chanProxy c))
       c = Chan (AST.ChanSync ast)
   return (ChanInput c, ChanOutput c)

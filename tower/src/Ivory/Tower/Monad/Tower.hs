@@ -10,6 +10,7 @@ module Ivory.Tower.Monad.Tower
   , runTower
   , towerGetBackend
   , towerGetHandlers
+  , towerNewChannel
   , towerPutHandler
   , towerPutMonitor
   , towerPutDependencies
@@ -75,7 +76,7 @@ instance Monoid (TowerOutput backend) where
     }
 
 newtype Tower' backend e a = Tower'
-  { unTower' :: ReaderT (backend, Sinks backend) (WriterT (TowerOutput backend) (Base e)) a
+  { unTower' :: ReaderT (backend, Sinks backend) (StateT Integer (WriterT (TowerOutput backend) (Base e))) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 runTower :: TowerBackend backend
@@ -95,13 +96,15 @@ runTower backend t e = (a, towerImpl backend a monitors, output_deps output, out
   sinks = output_sinks output
   ((), output) = runBase e
     $ runWriterT
+    $ fmap fst
+    $ runStateT 1
     $ runReaderT (backend, sinks)
     $ unTower'
     $ unTower t
 
 instance BaseUtils (Tower' backend) e where
-  fresh = Tower' $ lift $ lift fresh
-  getEnv = Tower' $ lift $ lift getEnv
+  fresh = Tower' $ lift $ lift $ lift fresh
+  getEnv = Tower' $ lift $ lift $ lift getEnv
 
 instance BaseUtils Tower e where
   fresh = Tower fresh
@@ -114,6 +117,9 @@ towerGetHandlers :: Chan b -> Tower' backend e [TowerBackendHandler backend b]
 towerGetHandlers chan = Tower' $ do
   sinks <- asks snd
   return $ maybe [] unSinkList $ ChanMap.lookup chan sinks
+
+towerNewChannel :: Tower e Integer
+towerNewChannel = Tower $ Tower' $ sets $ \ n -> (n, n + 1)
 
 towerPutHandler :: Chan a -> TowerBackendHandler backend a -> Tower' backend e ()
 towerPutHandler chan h = Tower' $ put $

@@ -12,7 +12,6 @@ module Ivory.Tower.Monad.Handler
   , handler
   , handlerUnique
   , handlerGetBackend
-  , handlerSetBackend
   , handlerGetHandlers
   , handlerPutASTEmitter
   , handlerPutASTCallback
@@ -105,9 +104,6 @@ handlerUnique = Handler' ask
 handlerGetBackend :: Handler' backend a e backend
 handlerGetBackend = Handler' $ lift $ lift monitorGetBackend
 
-handlerSetBackend :: backend -> Handler' backend a e ()
-handlerSetBackend be = Handler' $ lift $ lift $ monitorSetBackend be
-
 handlerGetHandlers :: Chan b
                    -> Handler' backend a e [TowerBackendHandler backend b]
 handlerGetHandlers chan = Handler' $ lift $ lift $ monitorGetHandlers chan
@@ -121,11 +117,9 @@ handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
 handlerPutASTCallback :: Unique -> Handler' backend a e ()
 handlerPutASTCallback a = handlerPutAST $ mempty { partialCallbacks = [a] }
 
-handlerPutCodeCallback :: (backend, TowerBackendCallback backend a)
+handlerPutCodeCallback :: TowerBackendCallback backend a
                        -> Handler' backend a e ()
-handlerPutCodeCallback (be, ms) = Handler' $ do
-  lift $ lift $ monitorSetBackend be
-  put (mempty, mempty, [ms])
+handlerPutCodeCallback ms = Handler' $ put (mempty, mempty, [ms])
 
 handlerPutCodeEmitter :: TowerBackendEmitter backend
                       -> Handler' backend a e ()

@@ -75,7 +75,6 @@ runCompileAADL opts' t = do
             wrFile kconfigName  (kconfig dir dir)
             wrFile makefileName (makefile dir)
             putArtifacts dir (configArtifacts c)
-            putStrLn $ showWarnings warns
       where
       wrFile fName = writeFile (dir </> fName)
       go d = outputAADL dir (docName d) r
@@ -89,9 +88,9 @@ runCompileAADL opts' t = do
                         -- XXX assuming that the only artifacts are headers.
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
-  (ast, be, code, deps, sigs) = runTower initUniqueSt t ()
+  (ast, code, deps, sigs) = runTower AADLBackend t ()
   c             = configOpts opts
-  (warns, sys)  = fromTower c be ast deps
+  sys           = fromTower c ast deps
   docs          = buildAADL anyTys strs sys
   docLst        = concatDocs docs
   -- Invariant: this list gives the dependency ordering for the files as well.

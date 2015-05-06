@@ -15,7 +15,6 @@ import GHC.TypeLits
 import Ivory.Language
 import Ivory.Stdlib
 import Ivory.Tower
-import Ivory.Tower.Types.Unique
 
 data RingBuffer (n :: Nat) a =
   RingBuffer

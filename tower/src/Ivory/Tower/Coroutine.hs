@@ -40,7 +40,7 @@ coroutineHandler chanInit chan name block = do
     let (be', nm) = uniqueImpl be u
     handlerSetBackend be'
     coro <- coroutine nm <$> (unHandler block)
-    liftMonitor $ monitorModuleDef $ coroutineDef coro
+    liftMonitor $ Monitor $ monitorModuleDef $ coroutineDef coro
     unHandler $ callbackV $ \ shouldInit -> coroutineRun coro shouldInit $ constRef lastValue
 
   handler chanInit (name ++ "_init") $ do

@@ -34,5 +34,5 @@ state' n i = Monitor $ do
   let (be', nm) = uniqueImpl be u
   monitorSetBackend be'
   let a = area nm i
-  monitorModuleDef' $ defMemArea a
+  monitorModuleDef $ defMemArea a
   return (addrOf a)

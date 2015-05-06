@@ -27,6 +27,7 @@ module Ivory.Tower.Tower
   , getTime
   , BaseUtils(..)
   , Unique
+  , showUnique
   , freshname
   ) where
 

@@ -19,4 +19,4 @@ data Handler = Handler
   } deriving (Eq, Show, Ord)
 
 handlerName :: Handler -> String
-handlerName = undefined
+handlerName = showUnique . handler_name

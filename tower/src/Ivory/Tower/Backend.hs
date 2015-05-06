@@ -24,7 +24,6 @@ class TowerBackend backend where
   data TowerBackendMonitor   backend :: *
   data TowerBackendOutput    backend :: *
 
-  uniqueImpl   :: backend -> Unique -> String
   callbackImpl :: IvoryArea a
                => backend
                -- Callback identifier, used to construct full callback name
@@ -53,6 +52,3 @@ class TowerBackend backend where
             -> AST.Tower
             -> [TowerBackendMonitor backend]
             -> TowerBackendOutput backend
-
-handlerName :: TowerBackend backend => backend -> AST.Handler -> String
-handlerName be h = (uniqueImpl be) (AST.handler_name h)

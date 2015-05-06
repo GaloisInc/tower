@@ -10,7 +10,7 @@ module Ivory.Tower.Monad.Handler
   ( Handler(..)
   , Handler'
   , handler
-  , handlerUnique
+  , handlerName
   , handlerGetBackend
   , handlerGetHandlers
   , handlerPutASTEmitter
@@ -74,10 +74,7 @@ instance MonadFix (Handler area e) where
 
 newtype Handler' backend (area :: Area *) e a = Handler'
   { unHandler' :: ReaderT Unique
-                  (WriterT ( PartialHandler
-                           , [TowerBackendEmitter backend]
-                           , [TowerBackendCallback backend area]
-                           )
+                  (WriterT (PartialHandler, [TowerBackendEmitter backend], [TowerBackendCallback backend area])
                     (Monitor' backend e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
@@ -85,27 +82,23 @@ handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
 handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   u <- freshname n
-  (r, (part, emitters, callbacks)) <- runWriterT
-                                    $ runReaderT u
-                                    $ unHandler'
-                                    $ unHandler b
+  (r, (part, emitters, callbacks)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
 
   let handlerast = AST.Handler u chanast
         (partialEmitters part) (partialCallbacks part) (partialComments part)
 
   backend <- monitorGetBackend
-  monitorPutHandler handlerast chan
-    $ handlerImpl backend handlerast emitters callbacks
+  monitorPutHandler handlerast chan $ handlerImpl backend handlerast emitters callbacks
+
   return r
 
-handlerUnique :: Handler' backend a e Unique
-handlerUnique = Handler' ask
+handlerName :: Handler a e Unique
+handlerName = Handler $ Handler' ask
 
 handlerGetBackend :: Handler' backend a e backend
 handlerGetBackend = Handler' $ lift $ lift monitorGetBackend
 
-handlerGetHandlers :: Chan b
-                   -> Handler' backend a e [TowerBackendHandler backend b]
+handlerGetHandlers :: Chan b -> Handler' backend a e [TowerBackendHandler backend b]
 handlerGetHandlers chan = Handler' $ lift $ lift $ monitorGetHandlers chan
 
 handlerPutAST :: PartialHandler -> Handler' backend a e ()
@@ -133,10 +126,8 @@ instance BaseUtils (Handler a) p where
   fresh  = Handler fresh
   getEnv = Handler getEnv
 
-liftMonitor :: TowerBackend backend
-            => Monitor e r
-            -> Handler' backend a e r
-liftMonitor a = Handler' $ lift $ lift $ unMonitor a
+liftMonitor :: Monitor e r -> Handler a e r
+liftMonitor a = Handler $ Handler' $ lift $ lift $ unMonitor a
 
 --------------------------------------------------------------------------------
 -- SrcLoc stuff

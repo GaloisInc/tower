@@ -9,7 +9,7 @@ import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Monitor
 import Ivory.Tower.Monitor
 import Ivory.Tower.Tower
-import Ivory.Tower.Backend
+
 
 -- | Lifts an Ivory coroutine into a set of Tower handlers. Takes the sink of
 -- two channels: (1) whether the coroutine should be initialized @chanInit@, and
@@ -34,12 +34,10 @@ coroutineHandler chanInit chan name block = do
   (doInitChan, readyChan) <- liftTower channel
   lastValue <- state "last_value"
 
-  handler readyChan name $ Handler $ do
-    be <- handlerGetBackend
-
-    coro <- coroutine <$> fmap (uniqueImpl be) handlerUnique <*> unHandler block
-    liftMonitor $ Monitor $ monitorModuleDef $ coroutineDef coro
-    unHandler $ callbackV $ \ shouldInit -> coroutineRun coro shouldInit $ constRef lastValue
+  handler readyChan name $ do
+    coro <- coroutine <$> fmap showUnique handlerName <*> block
+    liftMonitor $ monitorModuleDef $ coroutineDef coro
+    callbackV $ \ shouldInit -> coroutineRun coro shouldInit $ constRef lastValue
 
   handler chanInit (name ++ "_init") $ do
     doInit <- emitter doInitChan 1

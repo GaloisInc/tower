@@ -79,8 +79,8 @@ monitorPutHandler ast chan h = Monitor' $ do
 liftTower :: Tower e a -> Monitor e a
 liftTower a = Monitor $ Monitor' $ lift $ unTower a
 
-monitorModuleDef :: ModuleDef -> Monitor' backend e ()
-monitorModuleDef m = Monitor' $ put (mempty, mempty, m)
+monitorModuleDef :: ModuleDef -> Monitor e ()
+monitorModuleDef m = Monitor $ Monitor' $ put (mempty, mempty, m)
 
 instance BaseUtils (Monitor' backend) e where
   fresh = Monitor' $ lift fresh

@@ -39,7 +39,6 @@ instance TowerBackend CompatBackend where
     , compatoutput_monitors :: Map.Map AST.Monitor ModuleDef
     }
 
-  uniqueImpl _ = showUnique
   callbackImpl _ ast f = CompatCallback $ \ h t ->
     let p = proc (callbackProcName ast (AST.handler_name h) t) $ \ r -> body $ noReturn $ f r
     in (p, incl p)
@@ -50,7 +49,7 @@ instance TowerBackend CompatBackend where
     , CompatEmitter $ Just $ \ mon thd -> emitterCode ast thd [ fst $ h mon thd | CompatHandler _ h <- handlers ]
     )
 
-  handlerImpl _be ast emitters callbacks = CompatHandler ast $ \ mon thd ->
+  handlerImpl _ ast emitters callbacks = CompatHandler ast $ \ mon thd ->
     let ems = [ e mon thd | CompatEmitter (Just e) <- emitters ]
         (cbs, cbdefs) = unzip [ c ast thd | CompatCallback c <- callbacks ]
         runner = handlerProc cbs ems thd mon ast
@@ -176,14 +175,11 @@ callbackProcName callbackname handlername tast
   ++ AST.threadName tast
 
 handlerProcName :: AST.Handler -> AST.Thread -> String
-handlerProcName h t = "handler_run_" ++ handlerName CompatBackend h
+handlerProcName h t = "handler_run_" ++ AST.handlerName h
                      ++ "_" ++ AST.threadName t
 
 monitorUnlockProcName :: AST.Monitor -> String
-monitorUnlockProcName mon = "monitor_unlock_" ++ monitorName mon
+monitorUnlockProcName mon = "monitor_unlock_" ++ AST.monitorName mon
 
 monitorLockProcName :: AST.Monitor -> String
-monitorLockProcName mon = "monitor_lock_" ++ monitorName mon
-
-monitorName :: AST.Monitor -> String
-monitorName = showUnique . AST.monitor_name
+monitorLockProcName mon = "monitor_lock_" ++ AST.monitorName mon

@@ -10,9 +10,9 @@ data Emitter = Emitter
   , emitter_bound :: Integer
   } deriving (Eq, Show, Ord)
 
-emitter :: Integer -> SyncChan -> Integer -> Emitter
+emitter :: Unique -> SyncChan -> Integer -> Emitter
 emitter i c b = Emitter
-  { emitter_name  = Unique "emitter" i
+  { emitter_name  = i
   , emitter_chan  = c
   , emitter_bound = b
   }

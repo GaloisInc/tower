@@ -119,11 +119,11 @@ handlerPutCodeEmitter :: TowerBackendEmitter backend
 handlerPutCodeEmitter ms = Handler' $ put (mempty, [ms], mempty)
 
 instance BaseUtils (Handler' backend a) p where
-  fresh  = Handler' $ lift $ lift fresh
+  freshname n = Handler' $ lift $ lift $ freshname n
   getEnv = Handler' $ lift $ lift getEnv
 
 instance BaseUtils (Handler a) p where
-  fresh  = Handler fresh
+  freshname n = Handler $ freshname n
   getEnv = Handler getEnv
 
 liftMonitor :: Monitor e r -> Handler a e r

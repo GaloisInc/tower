@@ -17,6 +17,7 @@ module Ivory.Tower.Handler
 import Ivory.Tower.Backend
 import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.Chan
+import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Base
 
@@ -26,10 +27,10 @@ import Ivory.Language
 
 emitter :: (IvoryArea a, IvoryZero a)
         => ChanInput a -> Integer -> Handler b e (Emitter a)
-emitter (ChanInput chan@(Chan chanast)) bound = Handler $ do
-  n <- fresh
+emitter (ChanInput chan@(Chan chanast)) bound = handlerName >>= \ nm -> Handler $ do
   -- the only things that produce ChanInput will only put ChanSync in it.
   let AST.ChanSync syncchan = chanast
+  n <- freshname $ "emitter_" ++ showUnique nm ++ "_chan_" ++ show (AST.sync_chan_label syncchan)
   let ast = AST.emitter n syncchan bound
   handlerPutASTEmitter ast
   backend <- handlerGetBackend
@@ -41,8 +42,8 @@ emitter (ChanInput chan@(Chan chanast)) bound = Handler $ do
 callback :: (IvoryArea a, IvoryZero a)
          => (forall s s' . ConstRef s a -> Ivory (AllocEffects s') ())
          -> Handler a e ()
-callback b = Handler $ do
-  u <- freshname "callback"
+callback b = handlerName >>= \ nm -> Handler $ do
+  u <- freshname $ "callback_" ++ showUnique nm
   handlerPutASTCallback u
   backend <- handlerGetBackend
   handlerPutCodeCallback $ callbackImpl backend u b

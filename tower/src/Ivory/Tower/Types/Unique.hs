@@ -10,5 +10,6 @@ data Unique =
     } deriving (Eq, Show, Ord)
 
 showUnique :: Unique -> String
+showUnique (Unique n 1) = n
 showUnique u = unique_name u ++ "_" ++ show (unique_fresh u)
 

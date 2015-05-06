@@ -47,7 +47,7 @@ data Opts = Opts
   { configOpts :: Config
   -- ^ Config options.
   , genDirOpts :: Maybe FilePath
-  -- ^ Location to generate AADL files (or use standard out).
+  -- ^ Location to generate files (or use standard out).
   , helpOpts   :: Bool
   -- ^ Help.
   }
@@ -102,7 +102,7 @@ options =
       "hardware name"
   , mkOptNoArg "std-out" setStdOut
       "print AADL to standard out"
-  , mkOptArg "aadl-dir" setGenDir "PATH"
+  , mkOptArg "out-dir" setGenDir "PATH"
       "path to save AADL files"
   , mkOptNoArg "help" setHelp
       "display this message"

@@ -22,11 +22,16 @@ ramsesMakefile c = unlines
   , "export RAMSES_DIR=$(RAMSES_PATH)/ramses_resource"
   , "export AADL2RTOS_CONFIG_DIR=$(RAMSES_PATH)/aadl2rtos_resource"
   , ""
+  , ".PHONY: all"
+  , "all: " ++ camkesMakefileName
+  , ""
   , ".PHONY: ramses"
-  , "ramses: " ++ camkesMakefileName
+  , "ramses: "
   , tab "java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR) -o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$(AADL_LIST)"
   , ""
-  , camkesMakefileName ++ ":" ++ mkTp
+  , ".PHONY: " ++ camkesMakefileName
+  , camkesMakefileName ++ ":"
+  , tab $ "make ramses"
   , tab $ unwords ["cp ", mkTp, camkesMakefileName]
   , ""
   , ".PHONY: tower-clean"

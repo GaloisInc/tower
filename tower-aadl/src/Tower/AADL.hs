@@ -10,9 +10,11 @@ module Tower.AADL
   -- command line options
   , Opts(..)
   , initialOpts
+  , parseOpts
   -- configuration
   , Config(..)
   , initialConfig
+  , appendArtifacts
   , HW(..)
   , OS(..)
   ) where

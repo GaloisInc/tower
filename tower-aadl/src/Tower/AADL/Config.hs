@@ -43,6 +43,12 @@ data Config = Config
   -- ^ Artifacts to generate
   }
 
+-- | Append two configs, prefering the options of the first, appending the
+-- artifacts.
+appendArtifacts :: Config -> Config -> Config
+appendArtifacts c0 c1 =
+  c0 { configArtifacts = configArtifacts c0 ++ configArtifacts c1 }
+
 initialConfig :: Config
 initialConfig = Config
   { configSrcsDir     = "user_code"

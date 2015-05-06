@@ -11,6 +11,8 @@ import Ivory.Tower.AST.Tower
 import Ivory.Tower.AST.Chan
 import Ivory.Tower.AST.Emitter
 
+import Ivory.Tower.Types.Unique
+
 import Text.PrettyPrint.Mainland
 
 data MessageSource = ThreadMessage Thread
@@ -79,13 +81,13 @@ graphviz (g, unvertex, _) = pretty 80 $ stack $
     , indent 4 $ text "label =" <+> dquotes (text "monitor" <+> mname) <> semi
     , text "}"
     ]
-    where mname = text (monitorName m)
+    where mname = text (showUnique (monitor_name m))
   ppSubgraph ([((ThreadMessage t),_,_)]) =
     tname <+> text "[style=filled]" <> semi
     where tname = text (threadName t)
 
   ppSubgraph _ = empty -- should be impossible.
-  ppHandlerNode ((HandlerMessage _ h),_,_) = text (handlerName h)
+  ppHandlerNode ((HandlerMessage _ h),_,_) = text (showUnique (handler_name h))
   ppHandlerNode ((ThreadMessage t),_,_) = text (threadName t)
   ppEdge :: Edge -> Doc
   ppEdge (v1,v2) = ppHandlerNode (unvertex v1)

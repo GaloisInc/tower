@@ -9,10 +9,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Ivory.Tower.HAL.RingBuffer,
-                       Ivory.Tower.HAL.Sensor.Magnetometer,
-                       Ivory.Tower.HAL.Sensor.Gyroscope,
-                       Ivory.Tower.HAL.Sensor.Barometer,
-                       Ivory.Tower.HAL.Sensor.Accelerometer,
                        Ivory.Tower.HAL.Bus.CAN,
                        Ivory.Tower.HAL.Bus.Interface,
                        Ivory.Tower.HAL.Bus.Sched,

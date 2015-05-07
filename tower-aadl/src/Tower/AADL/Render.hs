@@ -99,7 +99,7 @@ renderConnection thds = vsep allSynchConnect
       $ synchConnectId ltx lrx
      <> colon
     <+> text "port"
-    <+> (text lrx <> dot <> mkTxChan (snd txThd))
+    <+> (text ltx <> dot <> mkTxChan (snd txThd))
     ->> (text lrx <> dot <> mkRxChan (snd rxThd))
     where
     ltx = fst txThd

@@ -6,7 +6,8 @@
 --
 
 module Tower.AADL.Render.Types
-  ( renderTypeNS
+  ( NS(..)
+  , renderTypeNS
   , defType
   , defineTypes
   ) where
@@ -44,14 +45,22 @@ defType ty = case ty of
   I.TyRef t             -> defType t
   _                     -> False
 
--- | Render the *use* of a type, including namespace.
-renderTypeNS :: I.Type -> Doc
-renderTypeNS ty
-  | baseType ty = fromBaseTypes d
-  | defType  ty = mkImpl (fromTypeDefs d)
+-- What namespace is the caller in?
+data NS =
+    Base
+  | Types
+  | Other
+  deriving (Show, Read, Eq)
+
+-- | Render the *use* of a type, and namespace if true.
+renderTypeNS :: NS -> I.Type -> Doc
+renderTypeNS ns ty
+  | baseType ty = if ns == Base  then d else fromBaseTypes d
+  | defType  ty = if ns == Types then di else fromTypeDefs di
   | otherwise   = tyError ty
   where
-  d = renderType ty
+  d  = renderType ty
+  di = mkImpl d
 
 -- | Render the *use* of a type.
 renderType :: I.Type -> Doc
@@ -88,10 +97,10 @@ renderType ty = case ty of
 
 --------------------------------------------------------------------------------
 
--- | Define types. We treat structs specially since we need more than their
+-- | Define types. We treat structs specially since we need than their
 -- implementation to define them.
 defineTypes :: [I.Type] -> [I.Struct] -> Doc
-defineTypes tys strs = vcat (map go tys)
+defineTypes tys strs = vcat $ map go tys'
   where
   go ty =
     case ty of
@@ -99,6 +108,20 @@ defineTypes tys strs = vcat (map go tys)
       I.TyStruct n -> renderStruct (structImpl strs n)
       I.TyArr sz t -> renderArray sz t
       _            -> empty
+
+  -- These are all the types, recursively expanded, in the dependency order.
+  tys' :: [I.Type]
+  tys' = nub (concatMap flatten tys)
+  flatten ty =
+    case ty of
+      I.TyRef t    -> flatten t
+      I.TyStruct n ->
+        case structImpl strs n of
+          I.Struct _nm fields
+            -> concatMap (flatten . I.tType) fields ++ [ty]
+          _ -> [ty]
+      I.TyArr _sz t -> flatten t ++ [ty]
+      _             -> []
 
 --------------------------------------------------------------------------------
 -- Define structures
@@ -125,7 +148,7 @@ renderStructImp nm fields = renderCompoundTyImp nm body
                     $ text (I.tValue field)
                   <+> colon
                   <+> text "data"
-                  <+> renderTypeNS (I.tType field)
+                  <+> renderTypeNS Types (I.tType field)
 
 structImpl :: [I.Struct] -> String -> I.Struct
 structImpl structs nm =
@@ -150,15 +173,15 @@ renderArray sz ty =
   nm = arrayName sz ty
   blk =  tab (text "properties")
     <$$> renderDataRep "Array"
-    <$$> dm (text "BaseType") renderClassifier
+    <$$> dm (text "Base_Type") renderClassifier
     <$$> dm (text "Dimension") (parens (int sz))
   renderClassifier =
     -- Only worry about BaseTypes namespace, since all defined types go in the
     -- same package.
     parens (    text "classifier"
-            <+> parens (if baseType ty then fromBaseTypes t else t)
+            <+> parens t
            )
-  t = renderType ty
+  t = renderTypeNS Types ty
   dm doc res =
     tab $ tab $ stmt (fromDataModel doc  ==> res)
 

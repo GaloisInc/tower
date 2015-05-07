@@ -128,7 +128,7 @@ renderInput rx = stmt
     $ mkRxChan (inputLabel rx) <> colon
   <+> text "in"
   <+> edp
-  <+> renderTypeNS (inputType rx)
+  <+> renderTypeNS Other (inputType rx)
  <$$> chanSrc (vsep $ entry : src ++ snds)
   where
   (fp, sym) = inputCallback rx
@@ -145,7 +145,7 @@ renderOutput tx = stmt
     $ mkTxChan (outputLabel tx) <> colon
   <+> text "out"
   <+> edp
-  <+> renderTypeNS (outputType tx)
+  <+> renderTypeNS Other (outputType tx)
  <$$> chanSrc st
   where
   st = stmt $ fromSMACCM primSrc ==> dquotes (text (outputEmitter tx))

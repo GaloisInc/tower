@@ -91,13 +91,13 @@ skipLines :: [Doc] -> Doc
 skipLines = vsep . (punctuate linebreak)
 
 txChan :: Doc
-txChan = text "Output"
+txChan = text "Output_"
 
 mkTxChan :: ChanLabel -> Doc
 mkTxChan l = txChan <> text l
 
 rxChan :: Doc
-rxChan = text "Input"
+rxChan = text "Input_"
 
 mkRxChan :: ChanLabel -> Doc
 mkRxChan l = rxChan <> text l

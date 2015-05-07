@@ -8,6 +8,8 @@ module Tower.AADL.Render
  ( renderSystem
  ) where
 
+import Prelude hiding (id)
+
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
 import Tower.AADL.Compile
@@ -63,6 +65,8 @@ renderProcess p =
     [ text "subcomponents"
     , tab $ vsep $ map renderProcessSubcomponent namedThreads
     ] ++ connections
+--  map (thdIds chans)
+
   connections =
     let chans = threadsChannels namedThreads in
     if emptyConnections (filterEndpoints chans) then []
@@ -80,22 +84,26 @@ renderProcessSubcomponent (t, var) = stmt $
   nm = text (threadName t)
 
 -- Channel connections in a process
-renderConnection :: ChanLabel -> ChanIds -> Doc
-renderConnection l labels = vsep allSynchConnect
+renderConnection :: ThdIds
+                 -> Doc
+renderConnection thds = vsep allSynchConnect
   where
-  synchConnectLabel tx rx = text (tx ++ "_to_" ++ rx)
+  synchConnectId txThd rxThd = text (txThd ++ "_to_" ++ rxThd)
 
   allSynchConnect = do
-    tx <- getTxLabels labels
-    rx <- getRxLabels labels
+    tx <- getTxThds thds
+    rx <- getRxThds thds
     return (synchConnection tx rx)
 
-  synchConnection tx rx = stmt
-      $ synchConnectLabel tx rx
+  synchConnection txThd rxThd = stmt
+      $ synchConnectId ltx lrx
      <> colon
     <+> text "port"
-    <+> (text tx <> dot <> mkTxChan l)
-    ->> (text rx <> dot <> mkRxChan l)
+    <+> (text lrx <> dot <> mkTxChan (snd txThd))
+    ->> (text lrx <> dot <> mkRxChan (snd rxThd))
+    where
+    ltx = fst txThd
+    lrx = fst rxThd
 
 renderThread :: Thread -> Doc
 renderThread t =

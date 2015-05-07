@@ -42,14 +42,16 @@ data Feature =
 
 -- | Input channels
 data Input = Input
-  { inputLabel    :: !ChanLabel
+  { inputId       :: !ChanId
+  , inputLabel    :: !ChanLabel
   , inputType     :: !I.Type
   , inputCallback :: !SourcePath
   } deriving (Show, Eq, Ord)
 
 -- | Output channels
 data Output = Output
-  { outputLabel   :: !ChanLabel
+  { outputId      :: !ChanId
+  , outputLabel   :: !ChanLabel
   , outputType    :: !I.Type
   , outputEmitter :: FuncSym
   } deriving (Show, Eq, Ord)
@@ -101,7 +103,9 @@ type LocalId = String
 -- | An AADL identifier.
 type Name = String
 
--- | Channel label.
+-- Unique through the system.
+type ChanId = Integer
+
 type ChanLabel = String
 
 -- | Channel bound.

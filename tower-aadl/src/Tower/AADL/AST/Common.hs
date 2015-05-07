@@ -6,9 +6,9 @@
 --
 
 module Tower.AADL.AST.Common
-  ( ChanIds
-  , getTxLabels
-  , getRxLabels
+  ( ThdIds
+  , getTxThds
+  , getRxThds
   , filterEndpoints
   , threadsChannels
   , extractTypes
@@ -27,29 +27,35 @@ import           Data.List (foldl')
 
 --------------------------------------------------------------------------------
 
-data ChanIds = ChanIds
-  { chanTxLabels :: S.Set LocalId
-  , chanRxLabels :: S.Set LocalId
+type ThreadChans = (LocalId, ChanLabel)
+
+-- For system composition
+data ThdIds = ThdIds
+  { chanTxThds :: S.Set ThreadChans
+  , chanRxThds :: S.Set ThreadChans
   } deriving (Show, Eq)
 
-instance Monoid ChanIds where
-  mempty = ChanIds mempty mempty
+instance Monoid ThdIds where
+  mempty = ThdIds mempty mempty
   c0 `mappend` c1 =
-    ChanIds (chanTxLabels c0 `mappend` chanTxLabels c1)
-            (chanRxLabels c0 `mappend` chanRxLabels c1)
+    ThdIds (chanTxThds c0 `mappend` chanTxThds c1)
+            (chanRxThds c0 `mappend` chanRxThds c1)
 
-getTxLabels :: ChanIds -> [LocalId]
-getTxLabels = S.toList . chanTxLabels
+getTxThds :: ThdIds -> [ThreadChans]
+getTxThds = S.toList . chanTxThds
 
-getRxLabels :: ChanIds -> [LocalId]
-getRxLabels = S.toList . chanRxLabels
+getRxThds :: ThdIds -> [ThreadChans]
+getRxThds = S.toList . chanRxThds
 
-type Connections = M.Map ChanLabel ChanIds
+-- A mapping from channels to the sending and receiving threads on the channel.
+type Connections = M.Map ChanId ThdIds
 
 -- Interface below hides the data structure.
 
-mapConnections :: (ChanLabel -> ChanIds -> a) -> Connections -> [a]
-mapConnections cs = M.elems . M.mapWithKey cs
+mapConnections :: (ThdIds -> a)
+               -> Connections
+               -> [a]
+mapConnections cs = M.elems . M.map cs
 
 emptyConnections :: Connections -> Bool
 emptyConnections = M.null
@@ -58,7 +64,7 @@ emptyConnections = M.null
 filterEndpoints :: Connections -> Connections
 filterEndpoints = M.filter go
   where
-  go c = not (S.null (chanTxLabels c) || S.null (chanRxLabels c))
+  go c = not (S.null (chanTxThds c) || S.null (chanRxThds c))
 
 -- Given a list of pairs of AADL threads and local variables, Create their
 -- connections.
@@ -73,28 +79,28 @@ threadChannels :: Thread -> LocalId -> Connections
 threadChannels th id = foldl' go M.empty (getThreadEndpoints th)
     where
     go :: Connections -> Endpoint -> Connections
-    go cs = insertConnectionLabel id cs
+    go cs = insertConnectionId id cs
 
 data Endpoint =
     InputEp  Input
   | OutputEp Output
   deriving (Show, Eq)
 
-endPointLabel :: Endpoint -> ChanLabel
-endPointLabel ep = case ep of
-  InputEp  rx -> inputLabel  rx
-  OutputEp tx -> outputLabel tx
+endPointId :: Endpoint -> ChanId
+endPointId ep = case ep of
+  InputEp  rx -> inputId  rx
+  OutputEp tx -> outputId tx
 
-newChan :: LocalId -> Endpoint -> ChanIds
+newChan :: LocalId -> Endpoint -> ThdIds
 newChan l ep =
   case ep of
-    InputEp{}  -> ChanIds S.empty (S.singleton l)
-    OutputEp{} -> ChanIds (S.singleton l) S.empty
+    InputEp  c -> ThdIds S.empty (S.singleton (l, inputLabel c))
+    OutputEp c -> ThdIds (S.singleton (l, outputLabel c)) S.empty
 
 -- Add the id to the connections map, creating a new channel if needed.
-insertConnectionLabel :: LocalId -> Connections -> Endpoint -> Connections
-insertConnectionLabel l cs ep =
-  M.insertWith mappend (endPointLabel ep) (newChan l ep) cs
+insertConnectionId :: LocalId -> Connections -> Endpoint -> Connections
+insertConnectionId l cs ep =
+  M.insertWith mappend (endPointId ep) (newChan l ep) cs
 
 getThreadEndpoints :: Thread -> [Endpoint]
 getThreadEndpoints t =

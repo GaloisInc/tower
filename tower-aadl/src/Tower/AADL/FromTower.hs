@@ -107,13 +107,12 @@ fromExternalHandler c t monitorName h =
     -- Input portion of the channel comes from a defined component.
     else rxChan
   where
-  es = map fromEmitter (A.handler_emitters h)
-  mkOutFeatures = fst $ unzip es
+  mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
   rxChan =
     -- There is no source for external handlers---they're created.
     let cbs = map (\(_,b) -> ("",b)) (mkCallbacksHandler c h monitorName) in
-    fromInputChan cbs ch
+    fromInputChan (A.handlerName h) cbs ch
 
 -- | Create the feature groups and thread properties from a Tower handler. A
 -- handler is a collection of emitters and callbacks associated with a single
@@ -126,19 +125,19 @@ fromHandler :: Config
             -> Thread
 fromHandler c t d monitorName h =
   Thread
-    { threadName       = A.handlerName h
+    { threadName       = nm
     , threadFeatures   = rxChan ++ (map OutputFeature txChans)
     , threadProperties = thdProps
     , threadComments   = A.handler_comments h
     }
   where
+  nm       = A.handlerName h
   cbs      = mkCallbacksHandler c h monitorName
-  es       = map fromEmitter (A.handler_emitters h)
   thdProps = threadProperties
-  (txChans, bnds)  = unzip es
+  (txChans, bnds)  = unzip $ fromEmitters h
   sends            = SendEvents (zip txChans bnds)
   -- Create each callback symbol associated with the handler.
-  rxChan           = fromInputChan cbs (A.handler_chan h)
+  rxChan           = fromInputChan nm cbs (A.handler_chan h)
 
   threadProperties =
         ThreadType threadType
@@ -229,8 +228,8 @@ mkCallbacksHandler c h fileNm =
   nms = map U.showUnique (A.handler_callbacks h)
 
 -- Create the input callback names in the handler for a given channel.
-fromInputChan :: [SourcePath] -> A.Chan -> [Feature]
-fromInputChan callbacks c = case c of
+fromInputChan :: String -> [SourcePath] -> A.Chan -> [Feature]
+fromInputChan h callbacks c = case c of
   A.ChanSignal{}
     -> error $ "fromInputChan " ++ show c
   A.ChanPeriod{}
@@ -241,16 +240,24 @@ fromInputChan callbacks c = case c of
     -> map mkInput callbacks
     where
     mkInput cb = InputFeature
-               $ Input { inputLabel    = show (A.sync_chan_label s)
+               $ Input { inputId       = A.sync_chan_label s
+                       , inputLabel    = h
                        , inputType     = A.sync_chan_type s
                        , inputCallback = cb
                        }
 
+fromEmitters :: A.Handler -> [(Output, Bound)]
+fromEmitters h =
+  zipWith fromEmitter ids (A.handler_emitters h)
+  where
+  ids = map (\i -> A.handlerName h ++ '_': show i) [0::Int ..]
+
 -- | From an emitter, return its output channel and bound.
-fromEmitter :: A.Emitter -> (Output, Bound)
-fromEmitter e =
+fromEmitter :: String -> A.Emitter -> (Output, Bound)
+fromEmitter label e =
     ( Output
-        { outputLabel   = outputLabel
+        { outputId      = A.sync_chan_label (A.emitter_chan e)
+        , outputLabel   = label
         , outputType    = outputType
         , outputEmitter = sym
         }
@@ -258,9 +265,7 @@ fromEmitter e =
     )
   where
   sym = U.showUnique (A.emitter_name e)
-  (outputLabel, outputType) =
-    case A.emitter_chan e of
-      s -> (show (A.sync_chan_label s), A.sync_chan_type s)
+  outputType = A.sync_chan_type $ A.emitter_chan e
 
 -- From a name, add the '.c' extension and file path. Relative to the AADL source path.
 mkCFile :: Config -> FilePath -> FilePath

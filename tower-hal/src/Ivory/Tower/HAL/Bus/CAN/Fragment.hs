@@ -198,7 +198,7 @@ fragmentReceiver src handlers = do
       buf <- stateInit ("reassembly_buf_" ++ idstr) (izerolen bound)
 
       let last_fragment_idx = fromInteger $ (arrayLen buf - 1) `div` 8
-      let last_fragment_length = fromInteger $ arrayLen buf `mod` 8
+      let last_fragment_length = fromInteger $ ((arrayLen buf + 7) `mod` 8) + 1
 
       return $ do
         e <- emitter chan 1

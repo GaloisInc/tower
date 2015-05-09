@@ -55,7 +55,7 @@ data Opts = Opts
 initialOpts :: Opts
 initialOpts = Opts
   { configOpts = initialConfig
-  , genDirOpts = Just ""
+  , genDirOpts = Just "tower_aadl_out"
   , helpOpts   = False
   }
 

@@ -228,8 +228,9 @@ fragmentReceiver src handlers = do
       (ext, std) <- fmap partitionEithers $ sequence emitters
       callback $ \ msg -> do
         arbitration <- deref $ msg ~> can_message_id
-        let msgID = toRep $ arbitration #. can_arbitration_id
+        let rawMsgID = toRep $ arbitration #. can_arbitration_id
+        let ide = bitToBool $ arbitration #. can_arbitration_ide
+        let msgID = ide ? (rawMsgID, rawMsgID `iShiftR` 18)
         let one (GeneratedHandler baseID f) = (msgID >=? fromIntegral baseID) ==> f (castDefault $ msgID - fromIntegral baseID) msg
         let handle = cond_ . map one . sortBy (flip $ comparing generatedBaseID)
-        let ide = bitToBool $ arbitration #. can_arbitration_ide
         ifte_ ide (handle ext) (handle std)

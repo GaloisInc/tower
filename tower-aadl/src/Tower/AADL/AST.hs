@@ -40,6 +40,11 @@ data Feature =
   | OutputFeature Output
   deriving (Show, Eq, Ord)
 
+-- | Init Channel
+data Init = Init
+  { initCallback :: [SourcePath]
+  } deriving (Show, Eq, Ord)
+
 -- | Input channels
 data Input = Input
   { inputId       :: !ChanId
@@ -75,6 +80,7 @@ data ThreadProperty =
   -- ^ Path to a .c file
   | SendEvents SendsEvents
   | External
+  | InitProperty FuncSym
   deriving (Show, Eq)
 
 data DispatchProtocol =

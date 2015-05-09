@@ -67,6 +67,9 @@ primSrc = text "CommPrim_Source_Text"
 entrySrc :: Doc
 entrySrc = text "Compute_Entrypoint_Source_Text"
 
+initEntryPoint :: Doc
+initEntryPoint = text "Initialize_Entrypoint_Source_Text"
+
 mkImpl :: Doc -> Doc
 mkImpl d = d <> dot <> text "impl"
 

@@ -14,7 +14,8 @@ module Tower.AADL.FromTower
 
 import           Prelude hiding (init)
 import           Data.Maybe (catMaybes, isJust)
-import           Data.List (find, any)
+import           Data.Either
+import           Data.List (find)
 import           System.FilePath ((</>), addExtension)
 
 import qualified Ivory.Tower.AST                as A
@@ -112,7 +113,7 @@ fromDefinedMonitor :: Config
 fromDefinedMonitor c t d m =
   Thread
   { threadName       = nm
-  , threadFeatures   = handlerInputs ++ handlerEmitters
+  , threadFeatures   = lefts handlerInputs ++ handlerEmitters
   , threadProperties = props
   , threadComments   = concatMap A.handler_comments handlers
   }
@@ -128,17 +129,27 @@ fromDefinedMonitor c t d m =
   props = props' ++
     [ ExecTime 10 100
     , SendEvents $ zip (map outputLabel outs) bnds
-    , SourceText (depsSourceText c d)
+    , SourceText srcTxts
     ]
     where
-    props' =
-      if any (fromExternalMonitor t) handlers
-        then [ ThreadType Active
-             , DispatchProtocol Sporadic
-             , StackSize 100
-             , Priority 11
-             ]
-        else [ ThreadType Passive, DispatchProtocol Aperiodic ]
+    (initFps, initSyms) = unzip
+                        $ concatMap initCallback
+                        $ rights handlerInputs
+    srcTxts = depsSourceText c d ++ initFps
+    activeProps =
+      [ ThreadType Active
+      , DispatchProtocol Sporadic
+      , StackSize 100
+      , Priority 11
+      ]
+    initProps = activeProps ++ map InitProperty initSyms
+    props'
+      | any (fromExternalMonitor t) handlers
+      = activeProps
+      | any fromInit handlers
+      = initProps
+      | otherwise
+      = [ ThreadType Passive, DispatchProtocol Aperiodic ]
     (outs,bnds) = unzip allEmitters
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
@@ -168,6 +179,12 @@ externalMonitor c t d m =
     , SourceText (depsSourceText c d)
     ]
 
+fromInit :: A.Handler -> Bool
+fromInit h =
+  case A.handler_chan h of
+    A.ChanInit{} -> True
+    _            -> False
+
 -- Combine all the handlers into one AADL thread. Assume that for handlers
 -- coming from defined components, their emitters go to external
 -- components. Conversely, for handlers coming from external components, their
@@ -179,12 +196,10 @@ fromExternalHandler c t monitorName h =
     -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
-    else [rxChan]
+    else lefts [fromInputChan c NoFile monitorName h]
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
-  rxChan =
-    fromInputChan c NoFile monitorName h
 
 -- XXX expensive to recompute. Compute once.
 fromExternalMonitor :: A.Tower -> A.Handler -> Bool
@@ -227,23 +242,25 @@ mkCallbacksHandler c f h fileNm =
   where
   nms = map U.showUnique (A.handler_callbacks h)
 
-fromInputChan :: Config -> Files -> String -> A.Handler -> Feature
+fromInputChan :: Config -> Files -> String -> A.Handler -> Either Feature Init
 fromInputChan c f monitorName h =
   case A.handler_chan h of
     A.ChanSignal{}
       -> error "fromInputChan: Singal"
     A.ChanPeriod p
-      -> InputFeature
+      -> Left
+       $ InputFeature
        $ Input { inputId       = periodId p
                , inputLabel    = T.prettyTime (A.period_dt p)
                , inputType     = A.period_ty p
                , inputCallback = cbs
                }
-      where
     A.ChanInit{}
-      -> error "Impossible ChanInit in fromInputChan."
+      -> Right
+       $ Init { initCallback = cbs }
     A.ChanSync s
-      -> InputFeature
+      -> Left
+       $ InputFeature
        $ Input { inputId       = A.sync_chan_label s
                , inputLabel    = A.handlerName h
                , inputType     = A.sync_chan_type s

@@ -191,6 +191,8 @@ renderThreadProperty p = case p of
     -> renderSrcText srcs
   SendEvents sevs
     -> renderSendsEventsTo sevs
+  InitProperty sym
+    -> stmt $ initEntryPoint ==> dquotes (text sym)
   where
   mkDisptach per = case per of
     Periodic i

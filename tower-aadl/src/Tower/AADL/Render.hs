@@ -133,12 +133,13 @@ renderInput rx = stmt
   where
   (fps, syms) = unzip $ inputCallback rx
   entry = renderEntryPoint syms
-  src = if null fps then []
+  src = if emptyStrs fps then []
           else [renderSrcText fps]
-  snds = if null fps
+  snds = if emptyStrs fps
            -- Send events nowhere for external threads
            then [renderSendsEventsTo []]
            else []
+  emptyStrs = all null
 
 renderOutput :: Output -> Doc
 renderOutput tx = stmt

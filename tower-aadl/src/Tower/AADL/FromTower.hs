@@ -13,7 +13,8 @@ module Tower.AADL.FromTower
   ) where
 
 import           Prelude hiding (init)
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, isJust)
+import           Data.List (find, any)
 import           System.FilePath ((</>), addExtension)
 
 import qualified Ivory.Tower.AST                as A
@@ -101,13 +102,14 @@ fromMonitor c t d m =
     A.MonitorExternal
       -> externalMonitor c t d m
     A.MonitorDefined
-      -> fromDefinedMonitor c d m
+      -> fromDefinedMonitor c t d m
 
 fromDefinedMonitor :: Config
+                   -> A.Tower
                    -> D.Dependencies
                    -> A.Monitor
                    -> Thread
-fromDefinedMonitor c d m =
+fromDefinedMonitor c t d m =
   Thread
   { threadName       = nm
   , threadFeatures   = handlerInputs ++ handlerEmitters
@@ -123,14 +125,20 @@ fromDefinedMonitor c d m =
                   $ unzip
                   $ allEmitters
   allEmitters = concatMap fromEmitters handlers
-  props =
-    [ ThreadType Passive
-    , DispatchProtocol Aperiodic
-    , ExecTime 10 100
+  props = props' ++
+    [ ExecTime 10 100
     , SendEvents $ zip (map outputLabel outs) bnds
     , SourceText (depsSourceText c d)
     ]
     where
+    props' =
+      if any (fromExternalMonitor t) handlers
+        then [ ThreadType Active
+             , DispatchProtocol Sporadic
+             , StackSize 100
+             , Priority 11
+             ]
+        else [ ThreadType Passive, DispatchProtocol Aperiodic ]
     (outs,bnds) = unzip allEmitters
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
@@ -177,6 +185,16 @@ fromExternalHandler c t monitorName h =
   ch = A.handler_chan h
   rxChan =
     fromInputChan c NoFile monitorName h
+
+-- XXX expensive to recompute. Compute once.
+fromExternalMonitor :: A.Tower -> A.Handler -> Bool
+fromExternalMonitor t h =
+  isJust $ find (\h' -> A.handler_name h' == A.handler_name h) fromExts
+  where
+  ms = A.tower_monitors t
+  extMs = filter (\m -> A.monitor_external m == A.MonitorExternal) ms
+  extHs = concatMap A.monitor_handlers extMs
+  fromExts = map snd $ concatMap (A.handlerOutboundHandlers t) extHs
 
 -- For a given channel, see if it's source is abstract (i.e., a sync chan with
 -- no caller).

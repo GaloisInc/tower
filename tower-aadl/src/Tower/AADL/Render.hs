@@ -131,11 +131,11 @@ renderInput rx = stmt
   <+> renderTypeNS Other (inputType rx)
  <$$> chanSrc (vsep $ entry : src ++ snds)
   where
-  (fp, sym) = inputCallback rx
-  entry = renderEntryPoint [sym]
-  src = if null fp then []
-          else [renderSrcText [fp]]
-  snds = if null fp
+  (fps, syms) = unzip $ inputCallback rx
+  entry = renderEntryPoint syms
+  src = if null fps then []
+          else [renderSrcText fps]
+  snds = if null fps
            -- Send events nowhere for external threads
            then [renderSendsEventsTo []]
            else []
@@ -166,7 +166,7 @@ renderSendsEventsTo sevs =
    ==> dquotes (braces (braces (mkOuts sevs)))
   where
   mkOuts txs = hsep (punctuate comma (map go txs))
-    where go (tx,bnd) = integer bnd <+> mkTxChan (outputLabel tx)
+    where go (chanLabel,bnd) = integer bnd <+> mkTxChan chanLabel
 
 renderThreadProperty :: ThreadProperty -> Doc
 renderThreadProperty p = case p of

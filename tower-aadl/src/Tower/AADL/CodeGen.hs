@@ -6,7 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 --
--- Code generation of handler state machines, etc. for AADL targets.
+-- Code generation for AADL targets.
 --
 -- (c) 2015 Galois, Inc.
 --
@@ -16,15 +16,18 @@ module Tower.AADL.CodeGen where
 import qualified Ivory.Language as I
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 
-import qualified Ivory.Tower.AST as AST
+import qualified Ivory.Tower.AST                as A
 import           Ivory.Tower.Backend
 import qualified Ivory.Tower.Types.Dependencies as T
 import qualified Ivory.Tower.Types.Emitter      as T
 import qualified Ivory.Tower.Types.SignalCode   as T
 import qualified Ivory.Tower.Types.Unique       as T
 
+import           Tower.AADL.Names
+
 import qualified Data.Map.Strict as M
 import           Data.Monoid
+import           Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 
@@ -57,7 +60,7 @@ instance TowerBackend AADLBackend where
     , AADLEmitter
     )
     where
-    sym = T.showUnique (AST.emitter_name emitterAst)
+    sym = T.showUnique (A.emitter_name emitterAst)
     procFromEmitter :: I.IvoryArea b
                     => I.Def('[I.ConstRef s b] I.:-> ())
     procFromEmitter = I.voidProc sym $ \_ref -> I.body I.retVoid
@@ -70,14 +73,35 @@ instance TowerBackend AADLBackend where
   monitorImpl _be ast handlers moddef =
     AADLMonitor (nm, mconcat (map handlerModules handlers) >> moddef)
     where
-    nm = T.showUnique (AST.monitor_name ast)
+    nm = T.showUnique (A.monitor_name ast)
     handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
     handlerModules (SomeHandler (AADLHandler h)) = h
 
-  towerImpl _be _ast ms =
-    AADLOutput $ \deps -> [ mkMod m deps | AADLMonitor m <- ms ]
+  towerImpl _be ast ms =
+      AADLOutput
+    $ \deps -> [ mkMod m deps | AADLMonitor m <- ms ]
+      ++ activeSrcs ast
     where
     mkMod (nm, mMod) deps = I.package nm $ mapM_ I.depend deps >> mMod
+
+activeSrcs :: A.Tower -> [I.Module]
+activeSrcs t = catMaybes $ map activeSrc (A.towerThreads t)
+
+activeSrc :: A.Thread -> Maybe I.Module
+activeSrc t =
+  case t of
+    A.PeriodThread p
+      -> Just $ I.package (periodicCallback p) $ I.incl $ mkPerCallback p
+    _ -> Nothing
+  where
+  mkPerCallback :: A.Period
+                -> I.Def ('[I.ConstRef s (I.Stored I.Sint64)] I.:-> ())
+  mkPerCallback p =
+    I.proc (periodicCallback p)
+    $ \time -> I.body
+    $ I.call_ (emitter p) time
+  emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored I.Sint64)] I.:-> ())
+  emitter p = I.externProc (periodicEmitter p)
 
 genIvoryCode :: C.Opts
              -> TowerBackendOutput AADLBackend
@@ -98,7 +122,7 @@ genIvoryCode opts
   modules = mods
          ++ depends
          ++ modsF depends
-         ++ go mkSignalCode  signals
+         ++ go mkSignalCode signals
   go c cs = M.elems $ M.mapWithKey c cs
 
 mkSignalCode :: String -> T.GeneratedSignal -> I.Module

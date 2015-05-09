@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -15,19 +16,33 @@ import Tower.AADL
 
 simpleTower :: Tower e ()
 simpleTower = do
-  (c1in, c1out) <- channel
-  per <- period (Microseconds 1000)
-  monitor "m1" $ do
-    s <- state "local_st"
-    handler per "tick" $ do
-      e <- emitter c1in 1
-      callback $ \_ -> emit e (constRef (s :: Ref Global (Stored Uint8)))
+  towerModule  towerDepModule
+  towerDepends towerDepModule
 
-  monitor "m2" $ do
+  (c1in, c1out) <- channel
+  (chtx, chrx) <- channel
+  per <- period (Microseconds 1000)
+
+  monitor "periodicM" $ do
+    s <- state "local_st"
+    handler per "tickh" $ do
+      e <- emitter c1in 1
+      callback $ \_ -> do
+        emit e (constRef (s :: Ref Global (Stored Uint8)))
+
+  monitor "withsharedM" $ do
     s <- state "last_m2_chan1_message"
-    handler c1out "chan1msg" $ do
-      callback $ \m ->
+
+    handler c1out "fromActiveh" $ do
+      e <- emitter chtx 1
+      callback $ \m -> do
         refCopy s m
+        emitV e true
+
+    handler chrx "readStateh" $ do
+      callback $ \_m -> do
+        s' <- deref s
+        call_ printf "rsh: %u\n" s'
 
 --------------------------------------------------------------------------------
 
@@ -63,4 +78,12 @@ simpleTower2 = do
 main :: IO ()
 main = do
   runCompileAADL initialOpts { genDirOpts = Just "simpletower_out" }  simpleTower
-  runCompileAADL initialOpts { genDirOpts = Just "simpletower2_out" } simpleTower2
+  -- runCompileAADL initialOpts { genDirOpts = Just "simpletower2_out" } simpleTower2
+
+[ivory|
+import (stdio.h, printf) void printf(string x, uint8_t y)
+|]
+
+towerDepModule :: Module
+towerDepModule = package "towerDeps" $ do
+  incl printf

@@ -17,6 +17,7 @@ library
                  , Tower.AADL.Config
                  , Tower.AADL.CmdlineFrontend
                  , Tower.AADL.FromTower
+                 , Tower.AADL.Names
                  , Tower.AADL.Render
                  , Tower.AADL.Render.Common
                  , Tower.AADL.Render.Types

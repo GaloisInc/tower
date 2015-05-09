@@ -45,7 +45,7 @@ data Input = Input
   { inputId       :: !ChanId
   , inputLabel    :: !ChanLabel
   , inputType     :: !I.Type
-  , inputCallback :: !SourcePath
+  , inputCallback :: [SourcePath]
   } deriving (Show, Eq, Ord)
 
 -- | Output channels
@@ -59,7 +59,7 @@ data Output = Output
 -- | Path to a .c file and a function symbol in the file.  If the funtion symbol
 -- is generated (i.e., in external threads), no filepath is given.
 type SourcePath = (FilePath, FuncSym)
-type SendsEvents = [(Output, Bound)]
+type SendsEvents = [(ChanLabel, Bound)]
 data SourceTexts = SourceTexts [FilePath]
   deriving (Show, Eq)
 

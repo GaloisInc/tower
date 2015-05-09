@@ -55,11 +55,19 @@ messageType' baseID ide bound rep
       , fragmentPackRep = rep
       }
 
+serializeDeps :: Tower e ()
+serializeDeps = do
+  towerDepends serializeModule
+  towerModule serializeModule
+  mapM_ towerArtifact serializeArtifacts
+
 fragmentSender :: (IvoryArea a, IvoryZero a)
                => MessageType a
                -> AbortableTransmit (Struct "can_message") (Stored IBool)
                -> Tower e (ChanInput a, ChanInput (Stored IBool), ChanOutput (Stored IBool))
 fragmentSender (MessageType baseID ide bound rep) tx = do
+  serializeDeps
+
   (reqChan, reqSrc) <- channel
   (abortChan, abortSrc) <- channel
   (resDst, resChan) <- channel
@@ -181,6 +189,8 @@ fragmentReceiver :: ChanOutput (Struct "can_message")
                  -> [FragmentReceiveHandler]
                  -> Tower e ()
 fragmentReceiver src handlers = do
+  serializeDeps
+
   monitor "fragment_reassembly" $ do
     emitters <- forM handlers $ \ (FragmentReceiveHandler chan (MessageType baseID ide bound rep)) -> do
       let idstr = "0x" ++ showHex baseID ""

@@ -112,15 +112,14 @@ fromDefinedMonitor :: Config
                    -> Thread
 fromDefinedMonitor c t d m =
   Thread
-  { threadName       = nm
+  { threadName       = A.monitorName m
   , threadFeatures   = lefts handlerInputs ++ handlerEmitters
   , threadProperties = props
   , threadComments   = concatMap A.handler_comments handlers
   }
   where
-  nm = A.monitorName m
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile nm) handlers
+  handlerInputs = map (fromInputChan c WithFile m) handlers
   handlerEmitters = map OutputFeature
                   $ fst
                   $ unzip
@@ -160,14 +159,13 @@ externalMonitor :: Config
                 -> Thread
 externalMonitor c t d m =
   Thread
-    { threadName       = nm
+    { threadName       = A.monitorName m
     , threadFeatures   = concat features
     , threadProperties = props
     , threadComments   = concatMap A.handler_comments hs
     }
   where
-  nm = A.monitorName m
-  features = map (fromExternalHandler c t nm) hs
+  features = map (fromExternalHandler c t m) hs
   hs = A.monitor_handlers m
   props =
     [ External
@@ -189,14 +187,14 @@ fromInit h =
 -- coming from defined components, their emitters go to external
 -- components. Conversely, for handlers coming from external components, their
 -- emitters go to defined components.
-fromExternalHandler :: Config -> A.Tower -> String -> A.Handler -> [Feature]
-fromExternalHandler c t monitorName h =
+fromExternalHandler :: Config -> A.Tower -> A.Monitor -> A.Handler -> [Feature]
+fromExternalHandler c t m h =
   if fromAbstractChan t ch
     -- Channel comes from external component. Omit the input portion and
     -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
-    else lefts [fromInputChan c NoFile monitorName h]
+    else lefts [fromInputChan c NoFile m h]
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
@@ -242,8 +240,12 @@ mkCallbacksHandler c f h fileNm =
   where
   nms = map U.showUnique (A.handler_callbacks h)
 
-fromInputChan :: Config -> Files -> String -> A.Handler -> Either Feature Init
-fromInputChan c f monitorName h =
+fromInputChan :: Config
+              -> Files
+              -> A.Monitor
+              -> A.Handler
+              -> Either Feature Init
+fromInputChan c f m h =
   case A.handler_chan h of
     A.ChanSignal{}
       -> error "fromInputChan: Singal"
@@ -267,7 +269,7 @@ fromInputChan c f monitorName h =
                , inputCallback = cbs
                }
   where
-  cbs = mkCallbacksHandler c f h monitorName
+  cbs = mkCallbacksHandler c f h (threadFile m)
 
 periodId :: A.Period -> ChanId
 periodId p =

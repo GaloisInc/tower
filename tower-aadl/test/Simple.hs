@@ -77,7 +77,7 @@ simpleTower2 = do
 
 main :: IO ()
 main = do
-  runCompileAADL initialOpts { genDirOpts = Just "simpletower_out" }  simpleTower
+  runCompileAADL initialOpts { genDirOpts = Just "simpletower_out" } initialConfig simpleTower
   -- runCompileAADL initialOpts { genDirOpts = Just "simpletower2_out" } simpleTower2
 
 [ivory|

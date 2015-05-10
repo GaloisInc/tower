@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiWayIf #-}
+
 --
 -- Command line for AADL generator.
 --
@@ -7,14 +9,12 @@
 module Tower.AADL.CmdlineFrontend where
 
 import Data.Monoid
-import Data.Maybe
-import Data.Either
+import Data.Char
 
 import System.Console.GetOpt
 import System.Exit (exitFailure,exitSuccess)
 import System.Environment (getProgName)
-
-import           Tower.AADL.Config
+import System.FilePath (isPathSeparator)
 
 --------------------------------------------------------------------------------
 -- Option Parsing
@@ -44,9 +44,7 @@ parseOptions opts args = case getOpt Permute opts args of
 --------------------------------------------------------------------------------
 
 data Opts = Opts
-  { configOpts :: Config
-  -- ^ Config options.
-  , genDirOpts :: Maybe FilePath
+  { genDirOpts :: Maybe FilePath
   -- ^ Location to generate files (or use standard out).
   , helpOpts   :: Bool
   -- ^ Help.
@@ -54,30 +52,17 @@ data Opts = Opts
 
 initialOpts :: Opts
 initialOpts = Opts
-  { configOpts = initialConfig
-  , genDirOpts = Just "tower_aadl_out"
+  { genDirOpts = Just "tower_aadl_out"
   , helpOpts   = False
   }
 
 --------------------------------------------------------------------------------
 
-setSrcsDir :: FilePath -> OptParser Opts
-setSrcsDir s = success (\opts -> opts { configOpts = (configOpts opts) { configSrcsDir = s }})
-
-setSystemName :: String ->  OptParser Opts
-setSystemName s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemName = s }})
-
-setSystemOS :: String -> OptParser Opts
-setSystemOS s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemOS = read s }})
-
-setSystemHW :: String -> OptParser Opts
-setSystemHW s = success (\opts -> opts { configOpts = (configOpts opts) { configSystemHW = read s }})
+setGenDir :: FilePath -> OptParser Opts
+setGenDir s = success (\opts -> opts { genDirOpts = Just s })
 
 setStdOut :: OptParser Opts
 setStdOut = success (\opts -> opts { genDirOpts = Nothing })
-
-setGenDir :: FilePath -> OptParser Opts
-setGenDir s = success (\opts -> opts { genDirOpts = Just s })
 
 setHelp :: OptParser Opts
 setHelp = success (\opts -> opts { helpOpts = True })
@@ -92,15 +77,7 @@ mkOptArg o setter arg help = Option "" [o] (ReqArg setter arg) help
 
 options :: [OptDescr (OptParser Opts)]
 options =
-  [ mkOptArg "srcs-dir" setSrcsDir "PATH"
-      "path to C sources"
-  , mkOptArg "system" setSystemName "NAME"
-      "system name"
-  , mkOptArg "system" setSystemOS "NAME"
-      "OS name"
-  , mkOptArg "system" setSystemHW "NAME"
-      "hardware name"
-  , mkOptNoArg "std-out" setStdOut
+  [ mkOptNoArg "std-out" setStdOut
       "print AADL to standard out"
   , mkOptArg "out-dir" setGenDir "PATH"
       "path to save AADL files"
@@ -125,17 +102,25 @@ printUsage errs = do
         (errs ++ ["", "Usage: " ++ prog ++ " [OPTIONS]"])
   putStrLn (usageInfo banner options)
 
--- | Checks that filepaths conform to Camkes requirements. Either Fails or
--- Returns a no-op.
+-- | Checks that filepaths conform to Camkes requirements (a C identifier).
 validFPOpts :: Opts -> Opts
 validFPOpts opts =
-  let ls = lefts res in
-  if null ls
-    then opts
-    else error (unlines ls)
+  case genDirOpts opts of
+    Nothing  -> opts
+    Just fp  -> opts { genDirOpts = Just (validDirName fp) }
+
+-- | Camkes needs filepaths, modulo '/', to be valid C identifiers.
+validDirName :: FilePath -> FilePath
+validDirName fp =
+  if | null fp
+      -> error "Empty out-dir in AADL options."
+     | and $ isAlpha (head fp) : fmap go (tail fp)
+      -> fp
+     | otherwise
+      -> error $ "out-dir " ++ fp
+             ++ " must contain only valid C identifiers for Camkes."
   where
-  res :: [Either String FilePath]
-  res =
-       maybeToList (fmap validDirName (genDirOpts opts))
-    ++ fmap validDirName [ configSrcsDir c, configHdrDir c ]
-  c = configOpts opts
+  -- A character is a C identifier char or a path separator.
+  go c = isAlphaNum c
+      || (c == '_')
+      || isPathSeparator c

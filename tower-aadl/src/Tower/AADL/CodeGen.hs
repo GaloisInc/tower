@@ -73,7 +73,7 @@ instance TowerBackend AADLBackend where
   monitorImpl _be ast handlers moddef =
     AADLMonitor (nm, mconcat (map handlerModules handlers) >> moddef)
     where
-    nm = T.showUnique (A.monitor_name ast)
+    nm = threadFile ast
     handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
     handlerModules (SomeHandler (AADLHandler h)) = h
 

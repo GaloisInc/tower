@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE MultiWayIf #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -8,9 +7,6 @@
 --
 
 module Tower.AADL.Config where
-
-import Data.Char
-import System.FilePath (isPathSeparator)
 
 import qualified Ivory.Compile.C.CmdlineFrontend as C
 import qualified Ivory.Artifact as A
@@ -43,11 +39,15 @@ data Config = Config
   -- ^ Artifacts to generate
   }
 
--- | Append two configs, prefering the options of the first, appending the
--- artifacts.
-appendArtifacts :: Config -> Config -> Config
-appendArtifacts c0 c1 =
-  c0 { configArtifacts = configArtifacts c0 ++ configArtifacts c1 }
+-- | Overwrite Ivory options.
+setConfigIvoryOpts :: C.Opts -> Config -> Config
+setConfigIvoryOpts opts c =
+  c { configIvoryOpts = opts }
+
+-- | Appends AADL artifacts.
+addAadlArtifacts :: [A.Artifact] ->Config -> Config
+addAadlArtifacts artifacts c =
+  c { configArtifacts = configArtifacts c ++ artifacts }
 
 initialConfig :: Config
 initialConfig = Config
@@ -59,19 +59,3 @@ initialConfig = Config
   , configIvoryOpts   = C.initialOpts
   , configArtifacts   = []
   }
-
--- | Camkes needs filepaths, modulo '/', to be valid C identifiers.
-validDirName :: FilePath -> Either String FilePath
-validDirName fp =
-  if | null fp
-      -> Left "Empty filepath in AADL config."
-     | and $ isAlpha (head fp) : fmap go (tail fp)
-      -> Right fp
-     | otherwise
-      -> Left $ "Filepath " ++ fp
-             ++ " must contain only valid C identifiers for Camkes."
-  where
-  -- A character is a C identifier char or a path separator.
-  go c = isAlphaNum c
-      || (c == '_')
-      || isPathSeparator c

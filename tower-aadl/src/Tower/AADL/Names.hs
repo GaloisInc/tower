@@ -8,8 +8,10 @@ module Tower.AADL.Names
   ( periodicEmitter
   , periodicCallback
   , prettyTime
+  , threadFile
   ) where
 
+import qualified Ivory.Tower.AST        as A
 import qualified Ivory.Tower.Types.Time as T
 import           Ivory.Tower.AST.Period as P
 
@@ -22,3 +24,6 @@ periodicCallback p = "callback_" ++ prettyTime p
 
 prettyTime :: P.Period -> String
 prettyTime p = T.prettyTime (P.period_dt p)
+
+threadFile :: A.Monitor -> String
+threadFile m = A.monitorName m ++ "_monitor"

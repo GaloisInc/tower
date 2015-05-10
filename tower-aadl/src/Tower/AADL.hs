@@ -14,7 +14,7 @@ module Tower.AADL
   -- configuration
   , Config(..)
   , initialConfig
-  , appendArtifacts
+  , addAadlArtifacts
   , HW(..)
   , OS(..)
   ) where
@@ -53,15 +53,15 @@ import           Tower.AADL.Render.Types
 
 --------------------------------------------------------------------------------
 
-compileAADL :: Tower () () -> IO ()
-compileAADL t = do
+compileAADL :: Config -> Tower () () -> IO ()
+compileAADL c t = do
   args <- getArgs
   opts <- parseOpts args
-  runCompileAADL opts t
+  runCompileAADL opts c t
 
 -- | Compile full AADL packages.
-runCompileAADL :: Opts -> Tower () () -> IO ()
-runCompileAADL opts' t = do
+runCompileAADL :: Opts -> Config -> Tower () () -> IO ()
+runCompileAADL opts' c t = do
   case genDirOpts opts of
     Nothing
       -> mapM_ (putDoc . (<$$> linebreak) . docImpl) docLst
@@ -72,7 +72,7 @@ runCompileAADL opts' t = do
                            (tyPkg ++ thdNames ++ [configSystemName c])
             genIvoryCode (ivoryOpts dir) code deps sigs
             wrFile ramsesMakefileName
-                   (ramsesMakefile (configOpts opts'))
+                   (ramsesMakefile c)
             wrFile kbuildName   (kbuild dir)
             wrFile kconfigName  (kconfig dir dir)
             wrFile makefileName (makefile dir)
@@ -91,7 +91,6 @@ runCompileAADL opts' t = do
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
   (ast, code, deps, sigs) = runTower AADLBackend t ()
-  c             = configOpts opts
   sys           = fromTower c ast deps
   docs          = buildAADL anyTys strs sys
   docLst        = concatDocs docs

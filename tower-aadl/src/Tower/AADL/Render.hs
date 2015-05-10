@@ -65,13 +65,14 @@ renderProcess p =
     [ text "subcomponents"
     , tab $ vsep $ map renderProcessSubcomponent namedThreads
     ] ++ connections
---  map (thdIds chans)
 
   connections =
     let chans = threadsChannels namedThreads in
     if emptyConnections (filterEndpoints chans) then []
       else [ text "connections"
-           , tab $ vsep $ mapConnections renderConnection chans
+           , tab $ vsep
+                 $ mapConnections renderConnection
+                 $ chans
            ]
   namedThreads = zip threads (map (("th"++) . show) [0::Integer ..])
   threads      = processComponents p
@@ -84,11 +85,13 @@ renderProcessSubcomponent (t, var) = stmt $
   nm = text (threadName t)
 
 -- Channel connections in a process
-renderConnection :: ThdIds
+renderConnection :: Integer
+                 -> ThdIds
                  -> Doc
-renderConnection thds = vsep allSynchConnect
+renderConnection i thds = vsep allSynchConnect
   where
-  synchConnectId txThd rxThd = text (txThd ++ "_to_" ++ rxThd)
+  synchConnectId txThd rxThd =
+    text (txThd ++ "_to_" ++ rxThd ++ "_" ++ show i)
 
   allSynchConnect = do
     tx <- getTxThds thds

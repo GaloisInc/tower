@@ -52,10 +52,13 @@ type Connections = M.Map ChanId ThdIds
 
 -- Interface below hides the data structure.
 
-mapConnections :: (ThdIds -> a)
+mapConnections :: (Integer -> ThdIds -> a)
                -> Connections
                -> [a]
-mapConnections cs = M.elems . M.map cs
+mapConnections f cs =
+  let fs = map f [0::Integer ..] in
+  let cs' = M.elems cs in
+  zipWith ($) fs cs'
 
 emptyConnections :: Connections -> Bool
 emptyConnections = M.null

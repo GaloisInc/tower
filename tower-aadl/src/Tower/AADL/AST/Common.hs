@@ -12,7 +12,8 @@ module Tower.AADL.AST.Common
   , filterEndpoints
   , threadsChannels
   , extractTypes
-  , mapConnections
+  , allConnections
+  , connectedThreadsSize
   , emptyConnections
   ) where
 
@@ -29,7 +30,7 @@ import           Data.List (foldl')
 
 type ThreadChans = (LocalId, ChanLabel)
 
--- For system composition
+-- Used in system composition. All the threads that are connected.
 data ThdIds = ThdIds
   { chanTxThds :: S.Set ThreadChans
   , chanRxThds :: S.Set ThreadChans
@@ -52,13 +53,12 @@ type Connections = M.Map ChanId ThdIds
 
 -- Interface below hides the data structure.
 
-mapConnections :: (Integer -> ThdIds -> a)
-               -> Connections
-               -> [a]
-mapConnections f cs =
-  let fs = map f [0::Integer ..] in
-  let cs' = M.elems cs in
-  zipWith ($) fs cs'
+allConnections :: Connections -> [ThdIds]
+allConnections = M.elems
+
+connectedThreadsSize :: ThdIds -> Int
+connectedThreadsSize thds =
+  S.size (chanTxThds thds) * S.size (chanRxThds thds)
 
 emptyConnections :: Connections -> Bool
 emptyConnections = M.null

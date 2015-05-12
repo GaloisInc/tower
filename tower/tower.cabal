@@ -60,7 +60,6 @@ library
                         Ivory.Tower.Types.Signalable,
                         Ivory.Tower.Types.ThreadCode,
                         Ivory.Tower.Types.Time,
-                        Ivory.Tower.Types.TowerPlatform,
                         Ivory.Tower.Types.Unique,
 
                         -- SrcLoc

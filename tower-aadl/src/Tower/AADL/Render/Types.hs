@@ -146,10 +146,15 @@ renderStructImp nm fields = renderCompoundTyImp nm body
     <$$> tab (tab (vcat (map renderField fields)))
   renderField :: I.Typed String -> Doc
   renderField field = stmt
-                    $ text (I.tValue field)
+                    $ text (escape_str $ I.tValue field)
                   <+> colon
                   <+> text "data"
                   <+> renderTypeNS Types (I.tType field)
+
+-- Escape a string to avoid collision with AADL reserved words.
+-- XXX This should be done uniformally over all generated strings.
+escape_str :: String -> String
+escape_str = ("aadl_" ++)
 
 structImpl :: [I.Struct] -> String -> I.Struct
 structImpl structs nm =

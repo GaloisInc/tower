@@ -1,7 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 
-module Ivory.Tower.Compile.Options
+module Ivory.Tower.Options
   ( TOpts(..)
+  , towerGetOpts
   , parseOpts
   , getOpts
   , finalizeOpts
@@ -11,6 +12,7 @@ import Data.Monoid (Monoid(..),mconcat)
 import System.Console.GetOpt
   (ArgOrder(Permute), OptDescr(..), getOpt', usageInfo)
 import System.Exit (exitFailure)
+import System.Environment (getArgs)
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C
 
 data TOpts = TOpts
@@ -19,6 +21,9 @@ data TOpts = TOpts
   , topts_args    :: [String]
   , topts_error   :: forall a . String -> IO a
   }
+
+towerGetOpts :: IO (C.Opts, TOpts)
+towerGetOpts = getArgs >>= getOpts
 
 finalizeOpts :: TOpts -> IO ()
 finalizeOpts topts = case topts_args topts of

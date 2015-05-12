@@ -9,9 +9,11 @@ import Ivory.Artifact
 import Ivory.Tower.Compile.Options
 import System.Environment (getArgs)
 
-towerCompile :: IO (TOpts, [Module] -> [Artifact] -> IO ())
+towerCompile :: IO (TOpts, (C.Opts -> C.Opts) -> [Module] -> [Artifact] -> IO ())
 towerCompile = do
   args <- getArgs
   (copts, topts) <- getOpts args
-  return (topts, \mods as -> C.runCompilerWith Nothing mods as copts)
+  let runc updateopts mods as =
+        C.runCompilerWith Nothing mods as (updateopts copts)
+  return (topts, runc)
 

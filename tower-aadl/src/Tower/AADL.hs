@@ -12,9 +12,8 @@ module Tower.AADL
   , initialOpts
   , parseOpts
   -- configuration
-  , Config(..)
-  , initialConfig
-  , addAadlArtifacts
+  , AADLConfig(..)
+  , initialAADLConfig
   , HW(..)
   , OS(..)
   ) where
@@ -53,14 +52,14 @@ import           Tower.AADL.Render.Types
 
 --------------------------------------------------------------------------------
 
-compileAADL :: Config -> Tower () () -> IO ()
+compileAADL :: AADLConfig -> Tower () () -> IO ()
 compileAADL c t = do
   args <- getArgs
   opts <- parseOpts args
   runCompileAADL opts c t
 
 -- | Compile full AADL packages.
-runCompileAADL :: Opts -> Config -> Tower () () -> IO ()
+runCompileAADL :: Opts -> AADLConfig -> Tower () () -> IO ()
 runCompileAADL opts' c t = do
   case genDirOpts opts of
     Nothing
@@ -76,7 +75,6 @@ runCompileAADL opts' c t = do
             wrFile kbuildName   (kbuild dir)
             wrFile kconfigName  (kconfig dir dir)
             wrFile makefileName (makefile dir)
-            putArtifacts dir (configArtifacts c)
       where
       wrFile fName = writeFile (dir </> fName)
       go d = outputAADL dir (docName d) r
@@ -84,12 +82,14 @@ runCompileAADL opts' c t = do
 
   where
   opts = validFPOpts opts'
-  ivoryOpts dir =
+  ivoryOpts dir = undefined
+  {-
     (configIvoryOpts c) { O.outDir    = Just (dir </> configSrcsDir c)
                         , O.outHdrDir = Just (dir </> configHdrDir  c)
                         -- XXX assuming that the only artifacts are headers.
                         , O.outArtDir = Just (dir </> configHdrDir  c)
                         , O.scErrors  = False }
+  -}
   (ast, code, deps, sigs) = runTower AADLBackend t ()
   sys           = fromTower c ast deps
   docs          = buildAADL anyTys strs sys

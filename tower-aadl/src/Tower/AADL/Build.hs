@@ -7,12 +7,12 @@ module Tower.AADL.Build where
 
 import Data.Char
 import System.FilePath ((</>))
-import Tower.AADL.Config (Config(..))
+import Tower.AADL.Config (AADLConfig(..))
 
 --------------------------------------------------------------------------------
 -- Ramses build
 
-ramsesMakefile :: Config -> String
+ramsesMakefile :: AADLConfig -> String
 ramsesMakefile c = unlines
   [ "include " ++ aadlFilesMk
   , ""

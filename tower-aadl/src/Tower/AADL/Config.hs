@@ -22,7 +22,7 @@ data OS =
   CAmkES
   deriving (Show, Read, Eq)
 
-data Config = Config
+data AADLConfig = AADLConfig
   { configSrcsDir     :: FilePath
   -- ^ Location of/to put C sources relative to genDirOpts.
   , configHdrDir      :: FilePath
@@ -33,29 +33,13 @@ data Config = Config
   -- ^ Operating system name.
   , configSystemHW    :: HW
   -- ^ HW name.
-  , configIvoryOpts   :: C.Opts
-  -- ^ Ivory options
-  , configArtifacts   :: [A.Artifact]
-  -- ^ Artifacts to generate
   }
 
--- | Overwrite Ivory options.
-setConfigIvoryOpts :: C.Opts -> Config -> Config
-setConfigIvoryOpts opts c =
-  c { configIvoryOpts = opts }
-
--- | Appends AADL artifacts.
-addAadlArtifacts :: [A.Artifact] ->Config -> Config
-addAadlArtifacts artifacts c =
-  c { configArtifacts = configArtifacts c ++ artifacts }
-
-initialConfig :: Config
-initialConfig = Config
+initialAADLConfig :: AADLConfig
+initialAADLConfig = AADLConfig
   { configSrcsDir     = "user_code"
   , configHdrDir      = "include"
   , configSystemName  = "sys"
   , configSystemOS    = CAmkES
   , configSystemHW    = QEMU
-  , configIvoryOpts   = C.initialOpts
-  , configArtifacts   = []
   }

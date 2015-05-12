@@ -33,7 +33,7 @@ import           Tower.AADL.Names
 --------------------------------------------------------------------------------
 
 -- | Takes a name for the system, a Tower AST, and returns an AADL System AST.
-fromTower :: Config -> A.Tower -> D.Dependencies -> System
+fromTower :: AADLConfig -> A.Tower -> D.Dependencies -> System
 fromTower c t d =
   System { systemName       = configSystemName c
          , systemComponents = [sc]
@@ -44,7 +44,7 @@ fromTower c t d =
         , SystemHW $ show $ configSystemHW c ]
   sc = mkProcess c t d
 
-mkProcess :: Config
+mkProcess :: AADLConfig
           -> A.Tower
           -> D.Dependencies
           -> Process
@@ -55,13 +55,13 @@ mkProcess c t d = Process { .. }
        activeMonitors c t
     ++ map (fromMonitor c t d) (A.tower_monitors t)
 
-activeMonitors :: Config
+activeMonitors :: AADLConfig
                -> A.Tower
                -> [Thread]
 activeMonitors c t =
   catMaybes $ map (activeMonitor c) (A.towerThreads t)
 
-activeMonitor :: Config
+activeMonitor :: AADLConfig
               -> A.Thread
               -> Maybe Thread
 activeMonitor c t =
@@ -93,7 +93,7 @@ activeMonitor c t =
     , SourceText [mkCFile c (periodicCallback p)]
     ]
 
-fromMonitor :: Config
+fromMonitor :: AADLConfig
             -> A.Tower
             -> D.Dependencies
             -> A.Monitor
@@ -105,7 +105,7 @@ fromMonitor c t d m =
     A.MonitorDefined
       -> fromDefinedMonitor c t d m
 
-fromDefinedMonitor :: Config
+fromDefinedMonitor :: AADLConfig
                    -> A.Tower
                    -> D.Dependencies
                    -> A.Monitor
@@ -152,7 +152,7 @@ fromDefinedMonitor c t d m =
     (outs,bnds) = unzip allEmitters
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
-externalMonitor :: Config
+externalMonitor :: AADLConfig
                 -> A.Tower
                 -> D.Dependencies
                 -> A.Monitor
@@ -187,7 +187,7 @@ fromInit h =
 -- coming from defined components, their emitters go to external
 -- components. Conversely, for handlers coming from external components, their
 -- emitters go to defined components.
-fromExternalHandler :: Config -> A.Tower -> A.Monitor -> A.Handler -> [Feature]
+fromExternalHandler :: AADLConfig -> A.Tower -> A.Monitor -> A.Handler -> [Feature]
 fromExternalHandler c t m h =
   if fromAbstractChan t ch
     -- Channel comes from external component. Omit the input portion and
@@ -232,7 +232,7 @@ fromAbstractChan t (A.ChanSync c)   = and $ do
 data Files = WithFile | NoFile
   deriving (Show, Read, Eq)
 
-mkCallbacksHandler :: Config -> Files -> A.Handler -> String -> [SourcePath]
+mkCallbacksHandler :: AADLConfig -> Files -> A.Handler -> String -> [SourcePath]
 mkCallbacksHandler c f h fileNm =
   case f of
     WithFile -> map (mkCFile c fileNm,) nms
@@ -240,7 +240,7 @@ mkCallbacksHandler c f h fileNm =
   where
   nms = map U.showUnique (A.handler_callbacks h)
 
-fromInputChan :: Config
+fromInputChan :: AADLConfig
               -> Files
               -> A.Monitor
               -> A.Handler
@@ -298,12 +298,12 @@ fromEmitter label e =
   outputType = A.sync_chan_type $ A.emitter_chan e
 
 -- From a name, add the '.c' extension and file path. Relative to the AADL source path.
-mkCFile :: Config -> FilePath -> FilePath
+mkCFile :: AADLConfig -> FilePath -> FilePath
 mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
 
-depsSourceText :: Config -> D.Dependencies -> [FilePath]
+depsSourceText :: AADLConfig -> D.Dependencies -> [FilePath]
 depsSourceText c d =
      map (mkCFile c . I.moduleName) (D.dependencies_modules d)
   ++ map R.artifactFileName (D.dependencies_artifacts d)

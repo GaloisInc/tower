@@ -13,6 +13,7 @@ module Main where
 import Ivory.Tower
 import Ivory.Language
 import Tower.AADL
+import Ivory.Tower.Config
 
 simpleTower :: Tower e ()
 simpleTower = do
@@ -76,9 +77,9 @@ simpleTower2 = do
 --------------------------------------------------------------------------------
 
 main :: IO ()
-main = do
-  runCompileAADL initialOpts { genDirOpts = Just "simpletower_out" } initialConfig simpleTower
-  -- runCompileAADL initialOpts { genDirOpts = Just "simpletower2_out" } simpleTower2
+main = compileTowerAADL id p simpleTower
+  where
+  p topts = getConfig topts $ aadlConfigParser defaultAADLConfig
 
 [ivory|
 import (stdio.h, printf) void printf(string x, uint8_t y)

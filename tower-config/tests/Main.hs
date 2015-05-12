@@ -10,7 +10,7 @@ import           Ivory.Tower.Config.TOML
 import           System.Exit
 import           Data.List (intercalate)
 import qualified Data.ByteString.Char8 as B
-import qualified Ivory.Tower.Compile.Options as O
+import qualified Ivory.Tower.Options as O
 
 data ClockConfig = ClockConfig Integer Integer deriving (Eq, Show)
 

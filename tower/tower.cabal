@@ -41,8 +41,7 @@ library
                         Ivory.Tower.Codegen.Monitor,
 
                         -- Compiler
-                        Ivory.Tower.Compile,
-                        Ivory.Tower.Compile.Options,
+                        Ivory.Tower.Options,
 
                         -- Monads
                         Ivory.Tower.Monad.Base,

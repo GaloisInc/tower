@@ -3,5 +3,4 @@ TOWER_REPO ?= ..
 include ../Makefile.sandbox
 
 test:
-	cabal run test -- --help
-	cabal run test -- --aadl-dir="aadl-files"
+	cabal run test -- --src-dir=test_codegen

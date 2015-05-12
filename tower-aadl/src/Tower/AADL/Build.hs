@@ -7,12 +7,12 @@ module Tower.AADL.Build where
 
 import Data.Char
 import System.FilePath ((</>))
-import Tower.AADL.Config (Config(..))
+import Tower.AADL.Config (AADLConfig(..))
 
 --------------------------------------------------------------------------------
 -- Ramses build
 
-ramsesMakefile :: Config -> String
+ramsesMakefile :: AADLConfig -> String
 ramsesMakefile c = unlines
   [ "include " ++ aadlFilesMk
   , ""
@@ -60,7 +60,8 @@ aadlFilesMk = "AADL_FILES.mk"
 kbuild :: String -> String
 kbuild dir = unlines
   [ "apps-$(CONFIG_APP_" ++ shellVar dir ++ ") += " ++ dir
-  , dir ++ ": libsel4 libmuslc libsel4platsupport libsel4muslccamkes libsel4camkes libsel4sync libsel4debug libsel4bench"
+  , dir ++ ": libsel4 libmuslc libsel4platsupport libsel4muslccamkes "
+        ++ "libsel4camkes libsel4sync libsel4debug libsel4bench"
   ]
 
 kbuildName :: String

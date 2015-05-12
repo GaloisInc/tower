@@ -8,10 +8,8 @@
 
 module Tower.AADL.Config where
 
-import qualified Ivory.Compile.C.CmdlineFrontend as C
-import qualified Ivory.Artifact as A
-
---------------------------------------------------------------------------------
+import Data.Char (toUpper)
+import Ivory.Tower.Config
 
 data HW =
     QEMU
@@ -22,7 +20,7 @@ data OS =
   CAmkES
   deriving (Show, Read, Eq)
 
-data Config = Config
+data AADLConfig = AADLConfig
   { configSrcsDir     :: FilePath
   -- ^ Location of/to put C sources relative to genDirOpts.
   , configHdrDir      :: FilePath
@@ -33,29 +31,31 @@ data Config = Config
   -- ^ Operating system name.
   , configSystemHW    :: HW
   -- ^ HW name.
-  , configIvoryOpts   :: C.Opts
-  -- ^ Ivory options
-  , configArtifacts   :: [A.Artifact]
-  -- ^ Artifacts to generate
   }
 
--- | Overwrite Ivory options.
-setConfigIvoryOpts :: C.Opts -> Config -> Config
-setConfigIvoryOpts opts c =
-  c { configIvoryOpts = opts }
-
--- | Appends AADL artifacts.
-addAadlArtifacts :: [A.Artifact] ->Config -> Config
-addAadlArtifacts artifacts c =
-  c { configArtifacts = configArtifacts c ++ artifacts }
-
-initialConfig :: Config
-initialConfig = Config
+defaultAADLConfig :: AADLConfig
+defaultAADLConfig = AADLConfig
   { configSrcsDir     = "user_code"
   , configHdrDir      = "include"
   , configSystemName  = "sys"
   , configSystemOS    = CAmkES
   , configSystemHW    = QEMU
-  , configIvoryOpts   = C.initialOpts
-  , configArtifacts   = []
   }
+
+aadlConfigParser :: AADLConfig -> ConfigParser AADLConfig
+aadlConfigParser dflt = subsection "aadl" p `withDefault` dflt
+  where
+  p = do
+    os <- (subsection "os" osParser) `withDefault` (configSystemOS dflt)
+    hw <- (subsection "os" hwParser) `withDefault` (configSystemHW dflt)
+    return dflt { configSystemOS = os, configSystemHW = hw }
+  osParser = string >>= \s ->
+    case map toUpper s of
+      "CAMKES" -> return CAmkES
+      _ -> fail ("expected AADL OS, got " ++ s)
+  hwParser = string >>= \s ->
+    case map toUpper s of
+      "QEMU"   -> return QEMU
+      "ODROID" -> return ODROID
+      _ -> fail ("expected AADL HW Platform, got " ++ s)
+

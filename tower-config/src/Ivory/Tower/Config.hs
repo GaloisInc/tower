@@ -7,7 +7,7 @@ module Ivory.Tower.Config
 
 import Control.Monad (when)
 import Ivory.Artifact
-import Ivory.Tower.Compile.Options hiding (parseOpts)
+import Ivory.Tower.Options hiding (parseOpts)
 import Ivory.Tower.Config.Parser
 import Ivory.Tower.Config.Options
 import Ivory.Tower.Config.Document

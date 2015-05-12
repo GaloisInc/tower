@@ -4,7 +4,7 @@ module Ivory.Tower.Config.Options
   , getCfgOpts
   ) where
 
-import Ivory.Tower.Compile.Options
+import Ivory.Tower.Options
 import System.Console.GetOpt
   (OptDescr(..), ArgDescr(..), usageInfo)
 import qualified Ivory.Compile.C.CmdlineFrontend.Options as C

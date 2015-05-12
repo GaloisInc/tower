@@ -6,6 +6,8 @@
 
 module Tower.AADL.Compile where
 
+import Ivory.Artifact
+
 import Data.Maybe
 
 import Text.PrettyPrint.Leijen
@@ -67,27 +69,32 @@ compiledDoc = CompiledDoc
 aTypesPkg :: CompiledDocs -> Bool
 aTypesPkg = isJust . tyDoc
 
-concatDocs :: CompiledDocs -> [CompiledDoc]
-concatDocs ds = thdDocs ds ++ (sysDoc ds : maybeToList (tyDoc ds))
 
 compiledTypesDoc :: Doc -> CompiledDoc
 compiledTypesDoc = CompiledDoc TypeDoc typesPkg
 
--- | Render a packaged system, using the extra imports (thread names) if
--- compiling a system.
-renderDocPkg :: Bool -> [Import] -> CompiledDoc -> Doc
-renderDocPkg b extraImports d =
-  renderPackage (docName d) (docImpl d) imps
+renderCompiledDocs :: CompiledDocs -> [Artifact]
+renderCompiledDocs docs = map mkArtifact individual_docs
   where
-  imps =
-    case docType d of
-      TypeDoc
-        -> baseImports
-      ThreadDoc
-        -> defaultImports b
-      SystemDoc
-        -> defaultImports b ++ extraImports
-      CodeDoc
-        -> []
+  mkArtifact :: CompiledDoc -> Artifact
+  mkArtifact cdoc = artifactString fname contents
+    where
+    fname = docName cdoc ++ ".aadl"
+    contents = displayS (renderPretty 0.4 100 (renderDocPkg cdoc)) ""
+
+  individual_docs :: [CompiledDoc]
+  individual_docs = thdDocs docs ++ (sysDoc docs : maybeToList (tyDoc docs))
+
+  -- | Render a packaged system, using the extra imports (thread names) if
+  -- compiling a system.
+  renderDocPkg :: CompiledDoc -> Doc
+  renderDocPkg d =
+    renderPackage (docName d) (docImpl d) imps
+    where
+    imps = case docType d of
+      TypeDoc -> baseImports
+      ThreadDoc -> defaultImports (aTypesPkg docs)
+      SystemDoc -> defaultImports (aTypesPkg docs) ++ map docName (thdDocs docs)
+      CodeDoc -> []
 
 --------------------------------------------------------------------------------

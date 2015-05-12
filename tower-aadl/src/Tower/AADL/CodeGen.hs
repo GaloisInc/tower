@@ -14,7 +14,7 @@
 module Tower.AADL.CodeGen where
 
 import qualified Ivory.Language as I
-import qualified Ivory.Compile.C.CmdlineFrontend as C
+import qualified Ivory.Artifact as I
 
 import qualified Ivory.Tower.AST                as A
 import           Ivory.Tower.Backend
@@ -103,12 +103,11 @@ activeSrc t =
   emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored I.Sint64)] I.:-> ())
   emitter p = I.externProc (periodicEmitter p)
 
-genIvoryCode :: C.Opts
-             -> TowerBackendOutput AADLBackend
+genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies
              -> T.SignalCode
-             -> IO ()
-genIvoryCode opts
+             -> ([I.Module],[I.Artifact])
+genIvoryCode
   (AADLOutput modsF)
   T.Dependencies
   { T.dependencies_modules   = mods
@@ -117,7 +116,7 @@ genIvoryCode opts
   }
   T.SignalCode
   { T.signalcode_signals     = signals
-  } = C.runCompiler modules artifacts opts
+  } = (modules,artifacts)
   where
   modules = mods
          ++ depends

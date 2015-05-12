@@ -35,6 +35,7 @@ baseType ty = case ty of
   I.TyFloat             -> True
   I.TyDouble            -> True
   I.TyRef t             -> baseType t
+  I.TyIndex _           -> True
   _                     -> False
 
 -- | A defined (compound) type?

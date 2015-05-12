@@ -18,7 +18,7 @@ import           Data.Maybe
 import           Data.Char
 import           Control.Monad
 
-import           System.FilePath (takeFileName,addExtension,(</>))
+import           System.FilePath (takeFileName,takeExtension,addExtension,(</>))
 
 import           Text.PrettyPrint.Leijen hiding ((</>))
 
@@ -53,8 +53,8 @@ compileTowerAADL fromEnv mkEnv twr = do
       aadl_sys = fromTower cfg ast deps
       aadl_docs = buildAADL deps aadl_sys
       doc_as    = renderCompiledDocs aadl_docs
-      deps_a    = aadlDepsArtifact ( configSystemName cfg :
-                                   aadlDocNames aadl_docs)
+      deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
+                                 ++ [ configSystemName cfg ]
       (i_ms, i_as) = genIvoryCode code deps sigs
 
       appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
@@ -63,7 +63,10 @@ compileTowerAADL fromEnv mkEnv twr = do
         -- XXX: add artifact prefix paths (configSrcsDir or configHdrDir)
         -- to i_as according to whether
         -- they are a header or source file.
-        ++ i_as
+        ++ [ case takeExtension (artifactFileName a) of
+              ".h" -> artifactPath (configHdrDir cfg) a
+              _    -> artifactPath (configSrcsDir cfg) a
+           | a <- i_as ]
         ++ [ deps_a
            , artifactString ramsesMakefileName (ramsesMakefile cfg)
            , artifactString kbuildName         (kbuild appname)

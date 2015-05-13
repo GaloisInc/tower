@@ -22,6 +22,7 @@ import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Unique       as U
 import qualified Ivory.Tower.Types.Dependencies as D
 import qualified Ivory.Tower.Types.Time         as T
+import qualified Ivory.Artifact                 as R
 
 import qualified Ivory.Language                 as I
 
@@ -303,6 +304,13 @@ mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
 
+locatedArtifactPath :: AADLConfig -> R.Located R.Artifact -> [FilePath]
+locatedArtifactPath _ R.Root{}    = [] -- Don't include root stuff
+locatedArtifactPath c (R.Src a)   = [configSrcsDir c </> R.artifactFileName a]
+locatedArtifactPath c (R.Incl a)  = [configHdrDir c </> R.artifactFileName a]
+
 depsSourceText :: AADLConfig -> D.Dependencies -> [FilePath]
 depsSourceText c d =
      map (mkCFile c . I.moduleName) (D.dependencies_modules d)
+  ++ concatMap (locatedArtifactPath c) (D.dependencies_artifacts d)
+

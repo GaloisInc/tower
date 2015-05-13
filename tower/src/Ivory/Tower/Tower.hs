@@ -48,7 +48,6 @@ import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
 import Ivory.Artifact
-import Ivory.Artifact.Location
 import qualified Ivory.Language.Area as I
 
 channel :: IvoryArea a => Tower e (ChanInput a, ChanOutput a)

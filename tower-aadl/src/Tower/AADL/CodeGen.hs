@@ -15,7 +15,6 @@ module Tower.AADL.CodeGen where
 
 import qualified Ivory.Language as I
 import qualified Ivory.Artifact as I
-import qualified Ivory.Artifact.Location as I
 
 import qualified Ivory.Tower.AST                as A
 import           Ivory.Tower.Backend

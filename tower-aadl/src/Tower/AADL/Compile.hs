@@ -7,7 +7,6 @@
 module Tower.AADL.Compile where
 
 import Ivory.Artifact
-import Ivory.Artifact.Location
 
 import Data.Maybe
 

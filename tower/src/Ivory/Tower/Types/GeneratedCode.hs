@@ -10,7 +10,6 @@ import qualified Data.Map as Map
 import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 import Ivory.Artifact
-import Ivory.Artifact.Location
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.SignalCode

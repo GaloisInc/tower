@@ -30,7 +30,6 @@ import           Ivory.Tower.Types.Dependencies
 
 import qualified Ivory.Language.Syntax     as I
 import           Ivory.Artifact
-import           Ivory.Artifact.Location
 
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A

@@ -3,7 +3,6 @@ module Ivory.Tower.Types.Dependencies where
 import Data.List (nub, nubBy)
 import Data.Monoid
 import Ivory.Artifact
-import Ivory.Artifact.Location
 import Ivory.Language
 
 data Dependencies = Dependencies

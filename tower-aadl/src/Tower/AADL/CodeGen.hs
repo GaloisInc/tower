@@ -120,7 +120,6 @@ genIvoryCode
   } = (modules,artifacts)
   where
   modules = mods
-         ++ depends
          ++ modsF depends
          ++ go mkSignalCode signals
   go c cs = M.elems $ M.mapWithKey c cs

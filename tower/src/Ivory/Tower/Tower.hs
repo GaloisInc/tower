@@ -48,6 +48,7 @@ import Ivory.Tower.Monad.Monitor
 
 import Ivory.Language
 import Ivory.Artifact
+import Ivory.Artifact.Location
 import qualified Ivory.Language.Area as I
 
 channel :: IvoryArea a => Tower e (ChanInput a, ChanOutput a)
@@ -108,7 +109,7 @@ towerModule m = towerPutDependencies $ mempty { dependencies_modules = [m] }
 towerDepends :: Module -> Tower e ()
 towerDepends m = towerPutDependencies $ mempty { dependencies_depends = [m] }
 
-towerArtifact :: Artifact -> Tower e ()
+towerArtifact :: Located Artifact -> Tower e ()
 towerArtifact a = towerPutDependencies $ mempty { dependencies_artifacts = [a] }
 
 getTime :: Ivory eff ITime

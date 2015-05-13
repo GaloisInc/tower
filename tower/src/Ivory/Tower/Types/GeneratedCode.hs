@@ -10,6 +10,7 @@ import qualified Data.Map as Map
 import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 import Ivory.Artifact
+import Ivory.Artifact.Location
 import Ivory.Tower.Types.ThreadCode
 import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.SignalCode
@@ -21,7 +22,7 @@ data GeneratedCode = GeneratedCode
   , generatedcode_monitors  :: Map.Map AST.Monitor MonitorCode
   , generatedcode_signals   :: Map.Map String GeneratedSignal
   , generatedcode_init      :: forall eff. Ivory eff ()
-  , generatedcode_artifacts :: [Artifact]
+  , generatedcode_artifacts :: [Located Artifact]
   }
 
 generatedCodeForSignal :: AST.Signal -> GeneratedCode

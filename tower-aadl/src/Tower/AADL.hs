@@ -18,7 +18,7 @@ import           Data.Maybe
 import           Data.Char
 import           Control.Monad
 
-import           System.FilePath (takeFileName,takeExtension,addExtension,(</>))
+import           System.FilePath (takeFileName, addExtension, (</>))
 
 import           Text.PrettyPrint.Leijen hiding ((</>))
 
@@ -30,6 +30,7 @@ import           Ivory.Tower.Types.Dependencies
 
 import qualified Ivory.Language.Syntax     as I
 import           Ivory.Artifact
+import           Ivory.Artifact.Location
 
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
@@ -60,14 +61,9 @@ compileTowerAADL fromEnv mkEnv twr = do
       appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
 
       as = doc_as
-        -- XXX: add artifact prefix paths (configSrcsDir or configHdrDir)
-        -- to i_as according to whether
-        -- they are a header or source file.
-        ++ [ case takeExtension (artifactFileName a) of
-              ".h" -> artifactPath (configHdrDir cfg) a
-              _    -> artifactPath (configSrcsDir cfg) a
-           | a <- i_as ]
-        ++ [ deps_a
+        ++ i_as
+        ++ map Root
+           [ deps_a
            , artifactString ramsesMakefileName (ramsesMakefile cfg)
            , artifactString kbuildName         (kbuild appname)
            , artifactString kconfigName        (kconfig appname appname)

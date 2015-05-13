@@ -7,6 +7,7 @@
 module Tower.AADL.Compile where
 
 import Ivory.Artifact
+import Ivory.Artifact.Location
 
 import Data.Maybe
 
@@ -73,11 +74,10 @@ aTypesPkg = isJust . tyDoc
 compiledTypesDoc :: Doc -> CompiledDoc
 compiledTypesDoc = CompiledDoc TypeDoc typesPkg
 
-renderCompiledDocs :: CompiledDocs -> [Artifact]
+renderCompiledDocs :: CompiledDocs -> [Located Artifact]
 renderCompiledDocs docs = map mkArtifact individual_docs
   where
-  mkArtifact :: CompiledDoc -> Artifact
-  mkArtifact cdoc = artifactString fname contents
+  mkArtifact cdoc = Root $ artifactString fname contents
     where
     fname = docName cdoc ++ ".aadl"
     contents = displayS (renderPretty 0.4 100 (renderDocPkg cdoc)) ""

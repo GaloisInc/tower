@@ -22,6 +22,7 @@ import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Unique       as U
 import qualified Ivory.Tower.Types.Dependencies as D
 import qualified Ivory.Tower.Types.Time         as T
+import qualified Ivory.Artifact                 as R
 
 import qualified Ivory.Language                 as I
 
@@ -144,8 +145,6 @@ fromDefinedMonitor c t d m =
     props'
       | any (fromExternalMonitor t) handlers
       = activeProps
-      | any (toExternalMonitor t) handlers
-      = activeProps
       | any fromInit handlers
       = initProps
       | otherwise
@@ -210,13 +209,6 @@ fromExternalMonitor t h =
   extMs = filter (\m -> A.monitor_external m == A.MonitorExternal) ms
   extHs = concatMap A.monitor_handlers extMs
   fromExts = map snd $ concatMap (A.handlerOutboundHandlers t) extHs
-
--- Does the handler send to an external monitor?
-toExternalMonitor :: A.Tower -> A.Handler -> Bool
-toExternalMonitor t h = not (null extMs)
-  where
-  extMs = filter (\m -> A.monitor_external m == A.MonitorExternal) ms
-  ms = fst $ unzip $ A.handlerOutboundHandlers t h
 
 -- For a given channel, see if it's source is abstract (i.e., a sync chan with
 -- no caller).
@@ -312,6 +304,13 @@ mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
 
+locatedArtifactPath :: AADLConfig -> R.Located R.Artifact -> [FilePath]
+locatedArtifactPath _ R.Root{}    = [] -- Don't include root stuff
+locatedArtifactPath c (R.Src a)   = [configSrcsDir c </> R.artifactFileName a]
+locatedArtifactPath c (R.Incl a)  = [configHdrDir c </> R.artifactFileName a]
+
 depsSourceText :: AADLConfig -> D.Dependencies -> [FilePath]
 depsSourceText c d =
      map (mkCFile c . I.moduleName) (D.dependencies_modules d)
+  ++ concatMap (locatedArtifactPath c) (D.dependencies_artifacts d)
+

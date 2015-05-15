@@ -91,6 +91,9 @@ makefile dir = unlines
   [ "# Include assumes this is driven by seL4 build."
   , "# " ++ otherCamkesTargets ++ " must come first: the main camkes makefile"
   , "# is included at the end of " ++ camkesMakefileName
+  , ""
+  , "CFLAGS += -DODROID"
+  , ""
   , incl (fromApps otherCamkesTargets)
   , incl (fromApps camkesMakefileName)
   , incl ramsesMakefileName

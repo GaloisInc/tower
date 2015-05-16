@@ -160,13 +160,13 @@ externalMonitor :: AADLConfig
 externalMonitor c t d m =
   Thread
     { threadName       = A.monitorName m
-    , threadFeatures   = concat features
+    , threadFeatures   = features
     , threadProperties = props
-    , threadComments   = concatMap A.handler_comments hs
+    , threadComments   = concatMap A.handler_comments handlers
     }
   where
-  features = map (fromExternalHandler c t m) hs
-  hs = A.monitor_handlers m
+  handlers = A.monitor_handlers m
+  features = concatMap (fromExternalHandler c t m) handlers
   props =
     [ External
     , DispatchProtocol Sporadic

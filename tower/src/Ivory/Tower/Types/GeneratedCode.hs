@@ -11,14 +11,13 @@ import qualified Ivory.Tower.AST as AST
 import Ivory.Language
 import Ivory.Artifact
 import Ivory.Tower.Types.ThreadCode
-import Ivory.Tower.Types.MonitorCode
 import Ivory.Tower.Types.SignalCode
 
 data GeneratedCode = GeneratedCode
   { generatedcode_modules   :: [Module]
   , generatedcode_depends   :: [Module]
   , generatedcode_threads   :: Map.Map AST.Thread ThreadCode
-  , generatedcode_monitors  :: Map.Map AST.Monitor MonitorCode
+  , generatedcode_monitors  :: Map.Map AST.Monitor ModuleDef
   , generatedcode_signals   :: Map.Map String GeneratedSignal
   , generatedcode_init      :: forall eff. Ivory eff ()
   , generatedcode_artifacts :: [Located Artifact]

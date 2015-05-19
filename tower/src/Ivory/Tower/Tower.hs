@@ -5,7 +5,6 @@
 
 module Ivory.Tower.Tower
   ( Tower()
-  , GeneratedCode()
   , runTower
   , ChanInput()
   , ChanOutput()
@@ -34,7 +33,6 @@ import qualified Data.Map as Map
 import Data.Monoid
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Dependencies
-import Ivory.Tower.Types.GeneratedCode
 import Ivory.Tower.Types.SignalCode
 import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Time

@@ -1,8 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 {- | This module is a placeholder until we have backend-specific signal
- - support. It is designed to be compatible with
- - "Ivory.Tower.Types.GeneratedCode".
+ - support.
  -}
 module Ivory.Tower.Types.SignalCode where
 

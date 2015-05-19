@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 --
 -- Code generation for AADL targets.
@@ -37,10 +38,11 @@ instance TowerBackend AADLBackend where
   newtype TowerBackendCallback AADLBackend a
     = AADLCallback I.ModuleDef
     deriving Monoid
-  data    TowerBackendEmitter  AADLBackend    = AADLEmitter
+  data    TowerBackendEmitter  AADLBackend    = AADLEmitter I.ModuleDef
   newtype TowerBackendHandler  AADLBackend  a = AADLHandler I.ModuleDef
    deriving Monoid
-  -- Return monitor name and its modules.
+  -- Takes a ModuleDef (containing the emitter declaration) and returns the
+  -- monitor module name and monitor module.
   data TowerBackendMonitor     AADLBackend
     = AADLMonitor (String, I.ModuleDef)
   -- Pass in dependency modules
@@ -55,23 +57,34 @@ instance TowerBackend AADLBackend where
       $ I.noReturn
       $ f r
 
-  emitterImpl _be emitterAst _impl =
-    ( T.Emitter $ \ref -> I.call_ procFromEmitter ref
-    , AADLEmitter
-    )
+  emitterImpl _be emitterAst _impl = emitterCode
     where
-    sym = T.showUnique (A.emitter_name emitterAst)
-    procFromEmitter :: I.IvoryArea b
-                    => I.Def('[I.ConstRef s b] I.:-> ())
-    procFromEmitter = I.voidProc sym $ \_ref -> I.body I.retVoid
+    emitterCode :: forall b. I.IvoryArea b
+                => (T.Emitter b, TowerBackendEmitter AADLBackend)
+    emitterCode =
+      ( T.Emitter $ \ref -> I.call_ procFromEmitter ref
+      , AADLEmitter
+          (I.incl (procFromEmitter :: I.Def('[I.ConstRef s b] I.:-> ())))
+      )
+      where
+      sym = T.showUnique (A.emitter_name emitterAst)
+      procFromEmitter :: I.IvoryArea b
+                      => I.Def('[I.ConstRef s b] I.:-> ())
+      procFromEmitter = I.voidProc sym $ \_ref -> I.body I.retVoid
 
-  handlerImpl _be _ast _emitters callbacks =
+  handlerImpl _be _ast emittersDefs callbacks =
     AADLHandler $
       case mconcat callbacks of
-        AADLCallback defs -> defs
+        AADLCallback cdefs -> cdefs >> mconcat edefs
+    where
+    edefs = map (\(AADLEmitter edef) -> edef) emittersDefs
 
   monitorImpl _be ast handlers moddef =
-    AADLMonitor (nm, mconcat (map handlerModules handlers) >> moddef)
+    AADLMonitor $
+      ( nm
+      , do mconcat (map handlerModules handlers)
+           moddef
+      )
     where
     nm = threadFile ast
     handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
@@ -91,7 +104,9 @@ activeSrc :: A.Thread -> Maybe I.Module
 activeSrc t =
   case t of
     A.PeriodThread p
-      -> Just $ I.package (periodicCallback p) $ I.incl $ mkPerCallback p
+      -> Just $ I.package (periodicCallback p) $ do
+           I.incl $ mkPerCallback p
+           I.incl $ emitter p
     _ -> Nothing
   where
   mkPerCallback :: A.Period
@@ -101,7 +116,7 @@ activeSrc t =
     $ \time -> I.body
     $ I.call_ (emitter p) time
   emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored I.Sint64)] I.:-> ())
-  emitter p = I.externProc (periodicEmitter p)
+  emitter p = I.importProc (periodicEmitter p) ""
 
 genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies

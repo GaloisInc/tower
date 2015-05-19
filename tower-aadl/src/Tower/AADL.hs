@@ -78,7 +78,7 @@ compileTowerAADL fromEnv mkEnv twr = do
     copts { O.outDir    = Just (dir </> configSrcsDir cfg)
           , O.outHdrDir = Just (dir </> configHdrDir  cfg)
           , O.outArtDir = Just dir
-          , O.scErrors  = False }
+          }
     where
     dir = fromMaybe "." (O.outDir copts)
 

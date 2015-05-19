@@ -34,11 +34,6 @@ library
 
                         -- Code generation
                         Ivory.Tower.Backend,
-                        Ivory.Tower.Backend.Compat,
-
-                        -- Compatibility re-exports for old backends
-                        Ivory.Tower.Codegen.Handler,
-                        Ivory.Tower.Codegen.Monitor,
 
                         -- Compiler
                         Ivory.Tower.Options,

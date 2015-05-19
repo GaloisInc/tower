@@ -1,18 +1,19 @@
-# Allow (faster) Docker builds
 sudo: false
-
 language: haskell
 before_install:
-  - git clone https://github.com/galoisinc/ivory
-  - export IVORY_REPO=$PWD/ivory
+- git clone https://github.com/galoisinc/ivory
+- export IVORY_REPO=$PWD/ivory
 install:
-  - cabal install alex happy
+- cabal install alex happy
 script:
-  - make $ENV_TEST_TARGET
+- make $ENV_TEST_TARGET
 ghc:
-  - 7.8
+- 7.8
 env:
-  - ENV_TEST_TARGET=tower
-  - ENV_TEST_TARGET=tower-config
-  - ENV_TEST_TARGET=tower-aadl
-  - ENV_TEST_TARGET=tower-hal
+- ENV_TEST_TARGET=tower
+- ENV_TEST_TARGET=tower-config
+- ENV_TEST_TARGET=tower-aadl
+- ENV_TEST_TARGET=tower-hal
+notifications:
+  slack:
+    secure: NB6RN4eHvnGaduk1hi9Snn6tPlprLg/mjpe3/lWYHUR+crBNWO5DzkQ7aX0AmS46USR94OVW+2j4dTsXDYoPRczTtu+VxK5Qj0ptfNS6ukIXtu5MSzgAKx0nhlOt0FQ/vfieeBtzY9PyqkEmWb3gGQSg09Q6wJsUKT/Hi5fD47I=

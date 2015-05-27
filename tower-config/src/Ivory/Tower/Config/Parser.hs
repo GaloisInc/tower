@@ -9,9 +9,11 @@ module Ivory.Tower.Config.Parser
   , array
   , subsection
   , withDefault
+  , (<|>)
+  , (<?>)
   ) where
 
-import           Control.Applicative
+import           Control.Applicative hiding ((<|>))
 import qualified Data.Map as M
 import           Text.TOML.Value
 import           Data.Either (lefts, rights)
@@ -88,9 +90,17 @@ subsection key vparser = ConfigParser $ \v ->
                           ++ key ++ " in " ++ show toml)
     _ -> Left ("expected subsection, got " ++ show v)
 
+infixr 1 <|>
+(<|>) :: ConfigParser a -> ConfigParser a -> ConfigParser a
+(<|>) a b = ConfigParser $ \v ->
+  case unConfigParser a v of
+    Right r -> Right r
+    Left _ -> unConfigParser b v
+
+infix 0 <?>
+(<?>) :: ConfigParser a -> String -> ConfigParser a
+(<?>) a lbl = a <|> fail lbl
+
 withDefault :: ConfigParser a -> a -> ConfigParser a
-withDefault p d = ConfigParser $ \v ->
-  case unConfigParser p v of
-    Right a -> Right a
-    Left  _ -> Right d
+withDefault a d = a <|> return d
 

@@ -163,7 +163,9 @@ optionparsing = do
     (_, rs) -> putStrLn ("Failed to parse options: " ++ unwords rs) >> exitFailure
   where
   topts = O.TOpts
-    { O.topts_args = [ "--conf-file=root.config"
+    { O.topts_outdir = Nothing
+    , O.topts_help = False
+    , O.topts_args = [ "--conf-file=root.config"
                      , "--conf-path=./tests/resources1"
                      , "--conf-path=./tests/resources2"
                      ]

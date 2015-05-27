@@ -5,7 +5,6 @@ module Ivory.Tower.Config
   , getConfig
   ) where
 
-import Control.Monad (when)
 import Ivory.Artifact
 import Ivory.Tower.Options hiding (parseOpts)
 import Ivory.Tower.Config.Parser
@@ -26,7 +25,7 @@ getConfig' topts p = do
         Left  e -> topts_error t' ("Error parsing config file: " ++ e)
         Right c -> do
           case topts_outdir t' of
-            Just d -> putArtifact_ d conf_artifact
+            Just dir -> putArtifact_ dir conf_artifact
             Nothing -> return ()
           case cfgopts_debug cfgopts of
             True -> printArtifact conf_artifact

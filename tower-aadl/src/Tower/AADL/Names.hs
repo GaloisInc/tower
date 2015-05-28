@@ -9,12 +9,21 @@ module Tower.AADL.Names
   , periodicCallback
   , prettyTime
   , threadFile
+  , threadEmitterHeader
+  , smaccmPrefix
   ) where
 
 import qualified Ivory.Tower.AST        as A
 import qualified Ivory.Tower.Types.Time as T
 import           Ivory.Tower.AST.Period as P
 
+-- add aadl2rtos prefix
+smaccmPrefix :: String -> String
+smaccmPrefix = ("smaccm_" ++)
+
+threadEmitterHeader :: A.Thread -> String
+threadEmitterHeader t =
+  smaccmPrefix $ A.threadName t ++ ".h"
 
 periodicEmitter :: P.Period -> String
 periodicEmitter p = "emitter_" ++ prettyTime p

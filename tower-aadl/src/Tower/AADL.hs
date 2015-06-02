@@ -43,24 +43,30 @@ import           Tower.AADL.Render.Types
 
 --------------------------------------------------------------------------------
 
-
 compileTowerAADL :: (e -> AADLConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
 compileTowerAADL fromEnv mkEnv twr = do
   (copts, topts) <- towerGetOpts
   env <- mkEnv topts
   let cfg = fromEnv env
-      (ast, code, deps, sigs) = runTower AADLBackend twr env
-      aadl_sys = fromTower cfg ast deps
-      aadl_docs = buildAADL deps aadl_sys
-      doc_as    = renderCompiledDocs aadl_docs
-      deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
-                                 ++ [ configSystemName cfg ]
-      (i_ms, i_as) = genIvoryCode code deps sigs
+  let (ast, code, deps, sigs) = runTower AADLBackend twr env
+  let aadl_sys  = fromTower cfg ast
+  let aadl_docs = buildAADL deps aadl_sys
+  let doc_as    = renderCompiledDocs aadl_docs
+  let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
+                                  ++ [ configSystemName cfg ]
+  let (mods, modDeps, genAs) = genIvoryCode code deps sigs
 
-      appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
+  let libAs = map go genAs
+        where
+        go l = case l of
+          Src a -> Root (artifactPath (configLibDir cfg) a)
+          _     -> l
 
+  let appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
+
+  let as :: [Located Artifact]
       as = doc_as
-        ++ i_as
+        ++ libAs
         ++ map Root
            [ deps_a
            , artifactString ramsesMakefileName (ramsesMakefile cfg)
@@ -71,11 +77,20 @@ compileTowerAADL fromEnv mkEnv twr = do
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
-  O.runCompiler i_ms as (ivoryOpts cfg copts)
+  O.runCompiler mods as (ivoryOpts cfg copts)
+  O.runCompiler modDeps [] (ivoryLibOpts cfg copts)
   where
 
   ivoryOpts cfg copts =
     copts { O.outDir    = Just (dir </> configSrcsDir cfg)
+          , O.outHdrDir = Just (dir </> configHdrDir  cfg)
+          , O.outArtDir = Just dir
+          }
+    where
+    dir = fromMaybe "." (O.outDir copts)
+
+  ivoryLibOpts cfg copts =
+    copts { O.outDir    = Just (dir </> configLibDir cfg)
           , O.outHdrDir = Just (dir </> configHdrDir  cfg)
           , O.outArtDir = Just dir
           }
@@ -105,7 +120,6 @@ buildAADL deps sys = (renderSystem sys) { tyDoc = typesDoc }
 aadlDocNames :: CompiledDocs -> [String]
 aadlDocNames docs = map docName $
   maybeToList (tyDoc docs) ++ thdDocs docs
-
 
 aadlDepsArtifact :: [String] -> Artifact
 aadlDepsArtifact names = artifactString aadlFilesMk $ displayS pp ""

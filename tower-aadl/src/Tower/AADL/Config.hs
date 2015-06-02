@@ -25,6 +25,8 @@ data AADLConfig = AADLConfig
   -- ^ Location of/to put C sources relative to genDirOpts.
   , configHdrDir      :: FilePath
   -- ^ Location of/to put C headers relative to genDirOpts.
+  , configLibDir      :: FilePath
+  -- ^ Location of/to put C lib sources relative to genDirOpts.
   , configSystemName  :: String
   -- ^ System name.
   , configSystemOS    :: OS
@@ -37,6 +39,7 @@ defaultAADLConfig :: AADLConfig
 defaultAADLConfig = AADLConfig
   { configSrcsDir     = "user_code"
   , configHdrDir      = "include"
+  , configLibDir      = "libs"
   , configSystemName  = "sys"
   , configSystemOS    = CAmkES
   , configSystemHW    = QEMU

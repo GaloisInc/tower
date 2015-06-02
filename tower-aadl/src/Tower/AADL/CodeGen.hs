@@ -129,19 +129,19 @@ activeSrc t =
 genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies
              -> T.SignalCode
-             -> ([I.Module], [I.Located I.Artifact])
+             -> ([I.Module], [I.Module], [I.Located I.Artifact])
 genIvoryCode
   (AADLOutput modsF)
   T.Dependencies
-  { T.dependencies_modules   = mods
+  { T.dependencies_modules   = modDeps
   , T.dependencies_depends   = depends
   , T.dependencies_artifacts = artifacts
   }
   T.SignalCode
   { T.signalcode_signals     = signals
-  } = (modules,artifacts)
+  } = (modules, modDeps, artifacts)
   where
-  modules = mods
+  modules = modDeps
          ++ modsF depends
          ++ go mkSignalCode signals
   go c cs = M.elems $ M.mapWithKey c cs

@@ -20,11 +20,7 @@ import           System.FilePath ((</>), addExtension)
 
 import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Unique       as U
-import qualified Ivory.Tower.Types.Dependencies as D
 import qualified Ivory.Tower.Types.Time         as T
-import qualified Ivory.Artifact                 as R
-
-import qualified Ivory.Language                 as I
 
 import           Tower.AADL.AST
 import           Tower.AADL.Config
@@ -33,8 +29,8 @@ import           Tower.AADL.Names
 --------------------------------------------------------------------------------
 
 -- | Takes a name for the system, a Tower AST, and returns an AADL System AST.
-fromTower :: AADLConfig -> A.Tower -> D.Dependencies -> System
-fromTower c t d =
+fromTower :: AADLConfig -> A.Tower -> System
+fromTower c t =
   System { systemName       = configSystemName c
          , systemComponents = [sc]
          , systemProperties = sps
@@ -42,18 +38,17 @@ fromTower c t d =
   where
   sps = [ SystemOS $ show $ configSystemOS c
         , SystemHW $ show $ configSystemHW c ]
-  sc = mkProcess c t d
+  sc = mkProcess c t
 
 mkProcess :: AADLConfig
           -> A.Tower
-          -> D.Dependencies
           -> Process
-mkProcess c t d = Process { .. }
+mkProcess c t = Process { .. }
   where
   processName       = configSystemName c ++ "_process"
   processComponents =
        activeMonitors c t
-    ++ map (fromMonitor c t d) (A.tower_monitors t)
+    ++ map (fromMonitor c t) (A.tower_monitors t)
 
 activeMonitors :: AADLConfig
                -> A.Tower
@@ -95,22 +90,20 @@ activeMonitor c t =
 
 fromMonitor :: AADLConfig
             -> A.Tower
-            -> D.Dependencies
             -> A.Monitor
             -> Thread
-fromMonitor c t d m =
+fromMonitor c t m =
   case A.monitor_external m of
     A.MonitorExternal
-      -> externalMonitor c t d m
+      -> externalMonitor c t m
     A.MonitorDefined
-      -> fromDefinedMonitor c t d m
+      -> fromDefinedMonitor c t m
 
 fromDefinedMonitor :: AADLConfig
                    -> A.Tower
-                   -> D.Dependencies
                    -> A.Monitor
                    -> Thread
-fromDefinedMonitor c t d m =
+fromDefinedMonitor c t m =
   Thread
   { threadName       = A.monitorName m
   , threadFeatures   = lefts handlerInputs ++ handlerEmitters
@@ -128,13 +121,12 @@ fromDefinedMonitor c t d m =
   props = props' ++
     [ ExecTime 10 100
     , SendEvents $ zip (map outputLabel outs) bnds
-    , SourceText srcTxts
+    , SourceText initFps
     ]
     where
     (initFps, initSyms) = unzip
                         $ concatMap initCallback
                         $ rights handlerInputs
-    srcTxts = depsSourceText c d ++ initFps
     activeProps =
       [ ThreadType Active
       , DispatchProtocol Sporadic
@@ -154,10 +146,9 @@ fromDefinedMonitor c t d m =
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
 externalMonitor :: AADLConfig
                 -> A.Tower
-                -> D.Dependencies
                 -> A.Monitor
                 -> Thread
-externalMonitor c t d m =
+externalMonitor c t m =
   Thread
     { threadName       = A.monitorName m
     , threadFeatures   = features
@@ -174,7 +165,7 @@ externalMonitor c t d m =
     , StackSize 256
     , ThreadType Active
     , ExecTime 10 50
-    , SourceText (depsSourceText c d)
+    , SourceText [] -- necessary, aadl2rtos crashes w/out it.
     ]
 
 fromInit :: A.Handler -> Bool
@@ -303,14 +294,4 @@ mkCFile :: AADLConfig -> FilePath -> FilePath
 mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
-
-locatedArtifactPath :: AADLConfig -> R.Located R.Artifact -> [FilePath]
-locatedArtifactPath _ R.Root{}    = [] -- Don't include root stuff
-locatedArtifactPath c (R.Src a)   = [configSrcsDir c </> R.artifactFileName a]
-locatedArtifactPath c (R.Incl a)  = [configHdrDir c </> R.artifactFileName a]
-
-depsSourceText :: AADLConfig -> D.Dependencies -> [FilePath]
-depsSourceText c d =
-     map (mkCFile c . I.moduleName) (D.dependencies_modules d)
-  ++ concatMap (locatedArtifactPath c) (D.dependencies_artifacts d)
 

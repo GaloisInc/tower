@@ -114,12 +114,16 @@ activeSrc t =
     _ -> Nothing
   where
   mkPerCallback :: A.Period
-                -> I.Def ('[I.ConstRef s (I.Stored I.Sint64)] I.:-> ())
+                -> I.Def ('[I.ConstRef s (I.Stored AADLTime)] I.:-> ())
   mkPerCallback p =
-    I.proc (periodicCallback p)
-    $ \time -> I.body
-    $ I.call_ (emitter p) time
-  emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored I.Sint64)] I.:-> ())
+    I.proc (periodicCallback p) $ \time -> I.body $ do
+      I.comment "Cast from aadl2rtos time and Tower time."
+      I.comment "Cast is safe---never exceed 2^31ms."
+      aadlTime  <- I.deref time
+      towerTime <- I.local I.izero
+      I.store towerTime (I.signCast aadlTime :: TowerTime)
+      I.call_ (emitter p) (I.constRef towerTime)
+  emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
   emitter p = I.importProc (periodicEmitter p) (threadEmitterHeader t)
 
 genIvoryCode :: TowerBackendOutput AADLBackend
@@ -148,3 +152,6 @@ mkSignalCode sigNm
   -- XXX assuming for now that we don't have unsafe signals. Pass the platform
   -- signal continuation here for eChronos.
   = I.package sigNm (s (return ()))
+
+type TowerTime = I.Sint64
+type AADLTime  = I.Uint64

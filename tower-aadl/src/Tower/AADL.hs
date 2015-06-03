@@ -59,7 +59,8 @@ compileTowerAADL fromEnv mkEnv twr = do
   let libAs = map go genAs
         where
         go l = case l of
-          Src a -> Root (artifactPath (configLibDir cfg) a)
+          Src a  -> Root (artifactPath (libSrcDir cfg) a)
+          Incl a -> Root (artifactPath (libHdrDir cfg) a)
           _     -> l
 
   let appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
@@ -77,21 +78,18 @@ compileTowerAADL fromEnv mkEnv twr = do
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
-  O.runCompiler mods as (ivoryOpts cfg copts)
-  O.runCompiler modDeps [] (ivoryLibOpts cfg copts)
+  O.runCompiler mods    as (ivoryOpts True  cfg copts)
+  O.runCompiler modDeps [] (ivoryOpts False cfg copts)
   where
 
-  ivoryOpts cfg copts =
-    copts { O.outDir    = Just (dir </> configSrcsDir cfg)
-          , O.outHdrDir = Just (dir </> configHdrDir  cfg)
-          , O.outArtDir = Just dir
-          }
-    where
-    dir = fromMaybe "." (O.outDir copts)
+  libSrcDir cfg = configLibDir cfg </> "src"
+  libHdrDir cfg = configLibDir cfg </> "include"
 
-  ivoryLibOpts cfg copts =
-    copts { O.outDir    = Just (dir </> configLibDir cfg)
-          , O.outHdrDir = Just (dir </> configHdrDir  cfg)
+  ivoryOpts b cfg copts =
+    copts { O.outDir    = Just (dir </> if b then configSrcsDir cfg
+                                          else libSrcDir cfg)
+          , O.outHdrDir = Just (dir </> if b then configHdrDir  cfg
+                                          else libHdrDir cfg)
           , O.outArtDir = Just dir
           }
     where

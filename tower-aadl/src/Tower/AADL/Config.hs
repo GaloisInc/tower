@@ -39,7 +39,7 @@ defaultAADLConfig :: AADLConfig
 defaultAADLConfig = AADLConfig
   { configSrcsDir     = "user_code"
   , configHdrDir      = "include"
-  , configLibDir      = "libs"
+  , configLibDir      = "libsmaccmpilot"
   , configSystemName  = "sys"
   , configSystemOS    = CAmkES
   , configSystemHW    = QEMU

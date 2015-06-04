@@ -68,13 +68,29 @@ compileTowerAADL fromEnv mkEnv twr = do
   let as :: [Located Artifact]
       as = doc_as
         ++ libAs
-        ++ map Root
+        ++ map Root ls
+        where
+        ls =
            [ deps_a
            , artifactString ramsesMakefileName (ramsesMakefile cfg)
-           , artifactString kbuildName         (kbuild appname)
-           , artifactString kconfigName        (kconfig appname appname)
-           , artifactString makefileName       (makefile appname)
+           -- apps
+           , artifactString kbuildName
+               (kbuildApp   l appname)
+           , artifactString kconfigName
+               (kconfigApp  appname appname)
+           , artifactString makefileName
+               (makefileApp appname)
            ]
+           ++ map (artifactPath l)
+           -- Libs
+           [ artifactString kbuildName
+               (kbuildLib   l)
+           , artifactString kconfigName
+               (kconfigLib  appname l)
+           , artifactString makefileName
+               (makefileLib l)
+           ]
+           where l = configLibDir cfg
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"

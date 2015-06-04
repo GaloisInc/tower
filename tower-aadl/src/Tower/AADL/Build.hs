@@ -33,6 +33,7 @@ ramsesMakefile c = unlines
   , camkesMakefileName ++ ":"
   , tab $ "make ramses"
   , tab $ unwords ["cp ", mkTp, camkesMakefileName]
+  , tab $ unwords ["cp -r ", configLibDir c, "../../libs/"]
   , ""
   , ".PHONY: tower-clean"
   , "tower-clean:"
@@ -57,18 +58,34 @@ aadlFilesMk = "AADL_FILES.mk"
 --------------------------------------------------------------------------------
 -- Kbuild, Kconfig
 
-kbuild :: String -> String
-kbuild dir = unlines
+kbuildLib :: String -> String
+kbuildLib dir = unlines
+  [ "libs-$(CONFIG_LIB_" ++ shellVar dir ++ ") += " ++ dir
+  , dir ++ ": common $(libc)"
+  ]
+
+kbuildApp :: String -> String -> String
+kbuildApp libdir dir = unlines
   [ "apps-$(CONFIG_APP_" ++ shellVar dir ++ ") += " ++ dir
   , dir ++ ": libsel4 libmuslc libsel4platsupport libsel4muslccamkes "
-        ++ "libsel4camkes libsel4sync libsel4debug libsel4bench"
+        ++ "libsel4camkes libsel4sync libsel4debug libsel4bench "
+        ++ libdir
   ]
 
 kbuildName :: String
 kbuildName = "Kbuild"
 
-kconfig :: String -> String -> String
-kconfig prog dir = unlines
+kconfigLib :: String -> String -> String
+kconfigLib prog dir = unlines
+  [ "menuconfig LIB_" ++ shellVar dir
+  , "    bool \"Shared code for " ++ prog ++ " app.\""
+  , "    default n"
+  , "    help"
+  , "        Generated from Ivory/Tower."
+  ]
+
+kconfigApp :: String -> String -> String
+kconfigApp prog dir = unlines
   [ "config APP_" ++ shellVar dir
   , "    bool \"Generated code for " ++ prog ++ " .\""
   , "    default n"
@@ -86,8 +103,22 @@ camkesMakefileName = "camkesmakefile.mk"
 otherCamkesTargets :: String
 otherCamkesTargets = "othercamkestargets.mk"
 
-makefile :: String -> String
-makefile dir = unlines
+makefileLib :: String -> String
+makefileLib dir = unlines
+  [ "# Targets"
+  , "TARGETS := " ++ dir ++ ".a"
+  , ""
+  , "# Header files/directories this library provides"
+  , "HDRFILES := $(wildcard ${SOURCE_DIR}/include/*)"
+  , ""
+  , "CFILES := \\"
+  , "$(patsubst $(SOURCE_DIR)/%,%,$(wildcard $(SOURCE_DIR)/src/*.c))"
+  , ""
+  , "include $(SEL4_COMMON)/common.mk"
+  ]
+
+makefileApp :: String -> String
+makefileApp dir = unlines
   [ "# Include assumes this is driven by seL4 build."
   , "# " ++ otherCamkesTargets ++ " must come first: the main camkes makefile"
   , "# is included at the end of " ++ camkesMakefileName

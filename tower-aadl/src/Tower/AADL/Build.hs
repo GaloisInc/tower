@@ -33,6 +33,7 @@ ramsesMakefile c = unlines
   , camkesMakefileName ++ ":"
   , tab $ "make ramses"
   , tab $ unwords ["cp ", mkTp, camkesMakefileName]
+  , tab $ "rm -rf ../../libs/" ++ configLibDir c
   , tab $ unwords ["cp -r ", configLibDir c, "../../libs/"]
   , ""
   , ".PHONY: tower-clean"

@@ -116,6 +116,9 @@ makefileLib dir = unlines
   , "$(patsubst $(SOURCE_DIR)/%,%,$(wildcard $(SOURCE_DIR)/src/*.c))"
   , ""
   , "include $(SEL4_COMMON)/common.mk"
+  , ""
+  , "CFLAGS += -DODROID"
+  , ""
   ]
 
 makefileApp :: String -> String

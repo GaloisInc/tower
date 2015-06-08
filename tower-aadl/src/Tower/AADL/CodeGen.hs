@@ -32,6 +32,8 @@ import           Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 
+type PackageName = String
+
 data AADLBackend = AADLBackend
 
 instance TowerBackend AADLBackend where
@@ -47,7 +49,7 @@ instance TowerBackend AADLBackend where
     = AADLMonitor (String, I.ModuleDef)
   -- Pass in dependency modules
   newtype TowerBackendOutput   AADLBackend
-    = AADLOutput ([I.Module] -> [I.Module])
+    = AADLOutput ([PackageName], [I.Module] -> [I.Module])
 
   callbackImpl _be sym f =
         AADLCallback
@@ -95,22 +97,28 @@ instance TowerBackend AADLBackend where
     handlerModules (SomeHandler (AADLHandler h)) = h (A.monitorName ast)
 
   towerImpl _be ast ms =
-      AADLOutput
-    $ \deps -> [ mkMod m deps | AADLMonitor m <- ms ]
-      ++ activeSrcs ast
+    AADLOutput
+      ( map (\(AADLMonitor m) -> fst m) ms ++ actPkgs
+      , \deps -> [ mkMod m deps | AADLMonitor m <- ms ]
+              ++ actMods
+      )
     where
+    (actPkgs, actMods) = activeSrcs ast
     mkMod (nm, mMod) deps = I.package nm $ mapM_ I.depend deps >> mMod
 
-activeSrcs :: A.Tower -> [I.Module]
-activeSrcs t = catMaybes $ map activeSrc (A.towerThreads t)
+activeSrcs :: A.Tower -> ([PackageName], [I.Module])
+activeSrcs t = unzip $ catMaybes $ map activeSrc (A.towerThreads t)
 
-activeSrc :: A.Thread -> Maybe I.Module
+activeSrc :: A.Thread -> Maybe (PackageName, I.Module)
 activeSrc t =
   case t of
     A.PeriodThread p
-      -> Just $ I.package (periodicCallback p) $ do
-           I.incl $ mkPerCallback p
-           I.incl $ emitter p
+      -> Just $ ( pkg
+                , I.package pkg $ do
+                    I.incl $ mkPerCallback p
+                    I.incl $ emitter p
+                )
+      where pkg = periodicCallback p
     _ -> Nothing
   where
   mkPerCallback :: A.Period
@@ -129,9 +137,9 @@ activeSrc t =
 genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies
              -> T.SignalCode
-             -> ([I.Module], [I.Module], [I.Located I.Artifact])
+             -> ([String], [I.Module], [I.Located I.Artifact])
 genIvoryCode
-  (AADLOutput modsF)
+  (AADLOutput (packages, modsF))
   T.Dependencies
   { T.dependencies_modules   = modDeps
   , T.dependencies_depends   = depends
@@ -139,7 +147,7 @@ genIvoryCode
   }
   T.SignalCode
   { T.signalcode_signals     = signals
-  } = (modules, modDeps, artifacts)
+  } = (packages, modules, artifacts)
   where
   modules = modDeps
          ++ modsF depends

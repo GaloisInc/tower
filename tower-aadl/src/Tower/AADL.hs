@@ -15,6 +15,7 @@ module Tower.AADL
   ) where
 
 import           Data.Maybe
+import           Data.List
 import           Data.Char
 import           Control.Monad
 
@@ -23,6 +24,7 @@ import           System.FilePath (takeFileName, addExtension, (</>))
 import           Text.PrettyPrint.Leijen hiding ((</>))
 
 import qualified Ivory.Compile.C.CmdlineFrontend as O
+import qualified Ivory.Compile.C.Types as O
 
 import           Ivory.Tower
 import           Ivory.Tower.Options
@@ -54,7 +56,7 @@ compileTowerAADL fromEnv mkEnv twr = do
   let doc_as    = renderCompiledDocs aadl_docs
   let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
                                   ++ [ configSystemName cfg ]
-  let (mods, modDeps, genAs) = genIvoryCode code deps sigs
+  let (pkgs, mods, genAs) = genIvoryCode code deps sigs
 
   let libAs = map go genAs
         where
@@ -94,13 +96,17 @@ compileTowerAADL fromEnv mkEnv twr = do
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
-  O.runCompiler mods    as (ivoryOpts True  cfg copts)
-  O.runCompiler modDeps [] (ivoryOpts False cfg copts)
+  cmodules <- O.compileUnits mods copts
+  let (appMods, libMods) =
+        partition (\m -> O.unitName m `elem` pkgs) cmodules
+  O.outputCompiler appMods as (ivoryOpts True  cfg copts)
+  O.outputCompiler libMods [] (ivoryOpts False cfg copts)
   where
 
   libSrcDir cfg = configLibDir cfg </> "src"
   libHdrDir cfg = configLibDir cfg </> "include"
 
+  -- True: app code, False: lib code
   ivoryOpts b cfg copts =
     copts { O.outDir    = Just (dir </> if b then configSrcsDir cfg
                                           else libSrcDir cfg)

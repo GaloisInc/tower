@@ -7,7 +7,7 @@ module Tower.AADL.Build where
 
 import Data.Char
 import System.FilePath ((</>))
-import Tower.AADL.Config (AADLConfig(..))
+import Tower.AADL.Config (AADLConfig(..), lib)
 
 --------------------------------------------------------------------------------
 -- Ramses build
@@ -33,8 +33,8 @@ ramsesMakefile c = unlines
   , camkesMakefileName ++ ":"
   , tab $ "make ramses"
   , tab $ unwords ["cp ", mkTp, camkesMakefileName]
-  , tab $ "rm -rf ../../libs/" ++ configLibDir c
-  , tab $ unwords ["cp -r ", configLibDir c, "../../libs/"]
+  , tab $ "rm -rf ../../libs/" ++ lib c
+  , tab $ unwords ["cp -r ", lib c, "../../libs/"]
   , ""
   , ".PHONY: tower-clean"
   , "tower-clean:"
@@ -104,10 +104,10 @@ camkesMakefileName = "camkesmakefile.mk"
 otherCamkesTargets :: String
 otherCamkesTargets = "othercamkestargets.mk"
 
-makefileLib :: String -> String
-makefileLib dir = unlines
+makefileLib :: AADLConfig -> String
+makefileLib c = unlines
   [ "# Targets"
-  , "TARGETS := " ++ dir ++ ".a"
+  , "TARGETS := " ++ lib c ++ ".a"
   , ""
   , "# Header files/directories this library provides"
   , "HDRFILES := $(wildcard ${SOURCE_DIR}/include/*)"
@@ -121,8 +121,11 @@ makefileLib dir = unlines
   , ""
   ]
 
-makefileApp :: String -> String
-makefileApp dir = unlines
+mkLib :: AADLConfig -> String -> String
+mkLib c modName = modName ++ "_LIBS += " ++ configLibDir c
+
+makefileApp :: AADLConfig -> [String] -> String -> String
+makefileApp c aadlFileNames dir = unlines
   [ "# Include assumes this is driven by seL4 build."
   , "# " ++ otherCamkesTargets ++ " must come first: the main camkes makefile"
   , "# is included at the end of " ++ camkesMakefileName
@@ -132,7 +135,8 @@ makefileApp dir = unlines
   , incl (fromApps otherCamkesTargets)
   , incl (fromApps camkesMakefileName)
   , incl ramsesMakefileName
-  ]
+  , ""
+  ] ++ unlines (map (mkLib c) aadlFileNames) ++ []
   where
   fromApps fl = "apps" </> dir </> fl
   incl = ("-include " ++)

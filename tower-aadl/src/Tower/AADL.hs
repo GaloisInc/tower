@@ -81,7 +81,7 @@ compileTowerAADL fromEnv mkEnv twr = do
            , artifactString kconfigName
                (kconfigApp  appname appname)
            , artifactString makefileName
-               (makefileApp appname)
+               (makefileApp cfg (aadlDocNames aadl_docs) appname)
            ]
            ++ map (artifactPath l)
            -- Libs
@@ -90,9 +90,9 @@ compileTowerAADL fromEnv mkEnv twr = do
            , artifactString kconfigName
                (kconfigLib  appname l)
            , artifactString makefileName
-               (makefileLib l)
+               (makefileLib cfg)
            ]
-           where l = configLibDir cfg
+           where l = lib cfg
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
@@ -103,8 +103,8 @@ compileTowerAADL fromEnv mkEnv twr = do
   O.outputCompiler libMods [] (ivoryOpts False cfg copts)
   where
 
-  libSrcDir cfg = configLibDir cfg </> "src"
-  libHdrDir cfg = configLibDir cfg </> "include"
+  libSrcDir cfg = lib cfg </> "src"
+  libHdrDir cfg = lib cfg </> "include"
 
   -- True: app code, False: lib code
   ivoryOpts b cfg copts =

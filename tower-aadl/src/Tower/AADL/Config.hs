@@ -39,11 +39,14 @@ defaultAADLConfig :: AADLConfig
 defaultAADLConfig = AADLConfig
   { configSrcsDir     = "user_code"
   , configHdrDir      = "include"
-  , configLibDir      = "libsmaccmpilot"
+  , configLibDir      = "smaccmpilot"
   , configSystemName  = "sys"
   , configSystemOS    = CAmkES
   , configSystemHW    = QEMU
   }
+
+lib :: AADLConfig -> String
+lib c = "lib" ++ configLibDir c
 
 aadlConfigParser :: AADLConfig -> ConfigParser AADLConfig
 aadlConfigParser dflt = subsection "aadl" p `withDefault` dflt

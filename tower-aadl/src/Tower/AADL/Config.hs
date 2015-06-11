@@ -8,8 +8,13 @@
 
 module Tower.AADL.Config where
 
-import Data.Char (toUpper)
-import Ivory.Tower.Config
+import           Data.List
+import           Data.Char (toUpper)
+import           Ivory.Tower.Options (TOpts(..))
+import           Ivory.Tower.Config
+import qualified System.Console.GetOpt as O
+
+----------------------------------------
 
 data HW =
     QEMU
@@ -65,3 +70,18 @@ aadlConfigParser dflt = subsection "aadl" p `withDefault` dflt
       "ODROID" -> return ODROID
       _ -> fail ("expected AADL HW Platform, got " ++ s)
 
+----------------------------------------
+-- Additional command line opts
+
+data Flag = LibDir String
+  deriving (Show, Read, Eq)
+
+options :: [O.OptDescr Flag]
+options =
+  [ O.Option "" ["lib-dir"] (O.ReqArg LibDir "DIR") "library directory name" ]
+
+parseAADLOpts :: AADLConfig -> TOpts -> AADLConfig
+parseAADLOpts c topts = foldl' go c flags
+  where
+  (flags, _nonOpts, _errs) = O.getOpt O.Permute options (topts_args topts)
+  go c' (LibDir dir) = c' { configLibDir = dir }

@@ -49,7 +49,8 @@ compileTowerAADL :: (e -> AADLConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
 compileTowerAADL fromEnv mkEnv twr = do
   (copts, topts) <- towerGetOpts
   env <- mkEnv topts
-  let cfg = fromEnv env
+  let cfg' = fromEnv env
+  let cfg  = parseAADLOpts cfg' topts
   let (ast, code, deps, sigs) = runTower AADLBackend twr env
   let aadl_sys  = fromTower cfg ast
   let aadl_docs = buildAADL deps aadl_sys

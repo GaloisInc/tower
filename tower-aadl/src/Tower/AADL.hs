@@ -131,12 +131,15 @@ validCIdent appname =
 buildAADL :: Dependencies -> A.System -> CompiledDocs
 buildAADL deps sys = (renderSystem sys) { tyDoc = typesDoc }
   where
-  types    = A.extractTypes sys
-  tydefs   = defineTypes types istructs
-  istructs = concatMap (I.public . I.modStructs) (dependencies_modules deps)
-  typesDoc = if any defType types
-    then Just (compiledTypesDoc tydefs)
-    else Nothing
+  types     = A.extractTypes sys
+  tydefs    = defineTypes types istructs
+  istructs  = concatMap strHdrs (dependencies_modules deps)
+  strHdrs m = map (\s -> (I.modName m `addExtension` "h", s))
+                  (I.public $ I.modStructs m)
+  typesDoc  =
+    if any defType types
+      then Just (compiledTypesDoc tydefs)
+      else Nothing
 
 aadlDocNames :: CompiledDocs -> [String]
 aadlDocNames docs = map docName $

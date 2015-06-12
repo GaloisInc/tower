@@ -57,7 +57,10 @@ data NS =
 renderTypeNS :: NS -> I.Type -> Doc
 renderTypeNS ns ty
   | baseType ty = if ns == Base  then d else fromBaseTypes d
-  | defType  ty = if ns == Types then di else fromTypeDefs di
+  | defType  ty = case ty of
+                    I.TyStruct{}
+                      -> fromTypeDefs d
+                    _ -> if ns == Types then di else fromTypeDefs di
   | otherwise   = tyError ty
   where
   d  = renderType ty
@@ -100,7 +103,7 @@ renderType ty = case ty of
 
 -- | Define types. We treat structs specially since we need than their
 -- implementation to define them.
-defineTypes :: [I.Type] -> [I.Struct] -> Doc
+defineTypes :: [I.Type] -> [(FilePath, I.Struct)] -> Doc
 defineTypes tys strs = vcat $ map go tys'
   where
   go ty =
@@ -117,7 +120,7 @@ defineTypes tys strs = vcat $ map go tys'
     case ty of
       I.TyRef t    -> flatten t
       I.TyStruct n ->
-        case structImpl strs n of
+        case snd $ structImpl strs n of
           I.Struct _nm fields
             -> concatMap (flatten . I.tType) fields ++ [ty]
           _ -> [ty]
@@ -127,38 +130,22 @@ defineTypes tys strs = vcat $ map go tys'
 --------------------------------------------------------------------------------
 -- Define structures
 
-renderStruct :: I.Struct -> Doc
-renderStruct (I.Abstract nm path) =
+renderStruct :: (FilePath, I.Struct) -> Doc
+renderStruct (_hdr, I.Abstract nm path) =
   error $ "Abstract struct " ++ nm
        ++ " on path " ++ show path ++ " can't be generated."
-renderStruct (I.Struct nm fields) =
-        renderCompoundTy nm' props
-  <$$$> renderStructImp nm' fields
+renderStruct (hdr, I.Struct nm _fields) = renderCompoundTy nm' body
   where
   nm' = text nm
-  props = tab (text "properties")
-     <$$> renderDataRep "Struct"
+  body = tab (text "properties")
+    <$$> (tab $ tab $ external)
+    <$$> (tab $ tab $ stmt
+              $     fromSMACCM (text "CommPrim_Source_Header")
+                ==> (text $ '\"':hdr++"\""))
 
-renderStructImp :: Doc -> [I.Typed String] -> Doc
-renderStructImp nm fields = renderCompoundTyImp nm body
-  where
-  body = tab (text "subcomponents")
-    <$$> tab (tab (vcat (map renderField fields)))
-  renderField :: I.Typed String -> Doc
-  renderField field = stmt
-                    $ text (escape_str $ I.tValue field)
-                  <+> colon
-                  <+> text "data"
-                  <+> renderTypeNS Types (I.tType field)
-
--- Escape a string to avoid collision with AADL reserved words.
--- XXX This should be done uniformally over all generated strings.
-escape_str :: String -> String
-escape_str = ("aadl_" ++)
-
-structImpl :: [I.Struct] -> String -> I.Struct
+structImpl :: [(FilePath, I.Struct)] -> String -> (FilePath, I.Struct)
 structImpl structs nm =
-  case find ((nm ==) . I.structName) structs of
+  case find ((nm ==) . I.structName . snd) structs of
     Nothing
       -> error $ "Struct type "
            ++ nm

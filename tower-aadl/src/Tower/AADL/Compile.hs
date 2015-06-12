@@ -91,9 +91,9 @@ renderCompiledDocs docs = map mkArtifact individual_docs
     renderPackage (docName d) (docImpl d) imps
     where
     imps = case docType d of
-      TypeDoc -> baseImports
+      TypeDoc   -> defaultImports False
       ThreadDoc -> defaultImports (aTypesPkg docs)
       SystemDoc -> defaultImports (aTypesPkg docs) ++ map docName (thdDocs docs)
-      CodeDoc -> []
+      CodeDoc   -> []
 
 --------------------------------------------------------------------------------

@@ -55,6 +55,9 @@ defaultImports b =
 --------------------------------------------------------------------------------
 -- Helpers
 
+external :: Doc
+external = stmt $ fromSMACCM (text "Is_External") ==> text "true"
+
 sendsEventsTo :: Doc
 sendsEventsTo = text "Sends_Events_To"
 

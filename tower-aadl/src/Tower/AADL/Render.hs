@@ -131,7 +131,7 @@ renderInput rx = stmt
   <+> text "in"
   <+> edp
   <+> renderTypeNS Other (inputType rx)
- <$$> chanSrc (vsep $ entry : src ++ snds)
+ <$$> chanSrc (vsep $ entry : src ++ snds ++ queue)
   where
   (fps, syms) = unzip $ inputCallback rx
   entry = renderEntryPoint syms
@@ -181,7 +181,7 @@ renderThreadProperty p = case p of
     -> mkThreadType ty
   External
     -> external
-  ExecTime l h
+  ExecTime (l, h)
     -> stmt
      $ text "Compute_Execution_Time"
    ==> prettyTime l <+> dot <> dot <+> prettyTime h

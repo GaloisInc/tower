@@ -26,7 +26,20 @@ import           Tower.AADL.AST
 import           Tower.AADL.Config
 import           Tower.AADL.Names
 
---------------------------------------------------------------------------------
+
+----------------------------------------
+-- Magic made up numbers
+
+execTime :: (Integer, Integer)
+execTime = (10, 100)
+
+stackSize :: Integer
+stackSize = 1000
+
+priority :: Integer
+priority = 11
+
+----------------------------------------
 
 -- | Takes a name for the system, a Tower AST, and returns an AADL System AST.
 fromTower :: AADLConfig -> A.Tower -> System
@@ -80,10 +93,10 @@ activeMonitor c t =
   props p =
     [ ThreadType Active
     , DispatchProtocol (Periodic (periodId p))
-    , ExecTime 10 100
+    , ExecTime execTime
     , SendEvents [(prettyTime p, 1)]
-    , StackSize 100
-    , Priority 11
+    , StackSize stackSize
+    , Priority priority
     , EntryPoint [periodicCallback p]
     , SourceText [mkCFile c (periodicCallback p)]
     ]
@@ -112,14 +125,14 @@ fromDefinedMonitor c t m =
   }
   where
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile m) handlers
+  handlerInputs = map (fromInputChan c WithFile (activeProp props) m) handlers
   handlerEmitters = map OutputFeature
                   $ fst
                   $ unzip
                   $ allEmitters
   allEmitters = concatMap fromEmitters handlers
   props = props' ++
-    [ ExecTime 10 100
+    [ ExecTime execTime
     , SendEvents $ zip (map outputLabel outs) bnds
     , SourceText initFps
     ]
@@ -130,8 +143,8 @@ fromDefinedMonitor c t m =
     activeProps =
       [ ThreadType Active
       , DispatchProtocol Sporadic
-      , StackSize 100
-      , Priority 11
+      , StackSize stackSize
+      , Priority priority
       ]
     initProps = activeProps ++ map InitProperty initSyms
     props'
@@ -161,10 +174,10 @@ externalMonitor c t m =
   props =
     [ External
     , DispatchProtocol Sporadic
-    , Priority 10
-    , StackSize 256
+    , Priority priority
+    , StackSize stackSize
     , ThreadType Active
-    , ExecTime 10 50
+    , ExecTime execTime
     , SourceText [] -- necessary, aadl2rtos crashes w/out it.
     ]
 
@@ -185,7 +198,7 @@ fromExternalHandler c t m h =
     -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
-    else lefts [fromInputChan c NoFile m h]
+    else lefts [fromInputChan c NoFile False  m h]
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
@@ -234,10 +247,11 @@ mkCallbacksHandler c f h fileNm =
 
 fromInputChan :: AADLConfig
               -> Files
+              -> Bool
               -> A.Monitor
               -> A.Handler
               -> Either Feature Init
-fromInputChan c f m h =
+fromInputChan c f active m h =
   case A.handler_chan h of
     A.ChanSignal{}
       -> error "fromInputChan: Singal"
@@ -298,3 +312,5 @@ mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
 
+activeProp :: [ThreadProperty] -> Bool
+activeProp = elem (ThreadType Active)

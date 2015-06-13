@@ -141,7 +141,7 @@ renderStruct (hdr, I.Struct nm _fields) = renderCompoundTy nm' body
     <$$> (tab $ tab $ external)
     <$$> (tab $ tab $ stmt
               $     fromSMACCM (text "CommPrim_Source_Header")
-                ==> (text $ '\"':hdr++"\""))
+                ==> (dquotes (text hdr)))
 
 structImpl :: [(FilePath, I.Struct)] -> String -> (FilePath, I.Struct)
 structImpl structs nm =

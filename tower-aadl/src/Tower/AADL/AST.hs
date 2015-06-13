@@ -72,7 +72,7 @@ data SourceTexts = SourceTexts [FilePath]
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
   | ThreadType !ThreadType
-  | ExecTime !Integer !Integer
+  | ExecTime (Integer, Integer)
   -- ^ Min bound, max bound.
   | StackSize Integer
   | Priority Integer

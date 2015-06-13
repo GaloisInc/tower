@@ -51,6 +51,7 @@ data Input = Input
   , inputLabel    :: !ChanLabel
   , inputType     :: !I.Type
   , inputCallback :: [SourcePath]
+  , inputQueue  :: Maybe Integer
   } deriving (Show, Eq, Ord)
 
 -- | Output channels

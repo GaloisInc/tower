@@ -248,6 +248,7 @@ fromInputChan c f m h =
                , inputLabel    = T.prettyTime (A.period_dt p)
                , inputType     = A.period_ty p
                , inputCallback = cbs
+               , inputQueue    = Nothing
                }
     A.ChanInit{}
       -> Right
@@ -259,6 +260,8 @@ fromInputChan c f m h =
                , inputLabel    = A.handlerName h
                , inputType     = A.sync_chan_type s
                , inputCallback = cbs
+               , inputQueue    = if active then Just 100 -- XXX made up number
+                                   else Nothing
                }
   where
   cbs = mkCallbacksHandler c f h (threadFile m)

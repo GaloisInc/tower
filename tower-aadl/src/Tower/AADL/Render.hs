@@ -141,6 +141,8 @@ renderInput rx = stmt
            -- Send events nowhere for external threads
            then [renderSendsEventsTo []]
            else []
+  queue = maybe [] q (inputQueue rx)
+    where q sz = [ text "Queue_Size" ==> integer sz ]
   emptyStrs = all null
 
 renderOutput :: Output -> Doc

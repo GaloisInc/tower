@@ -187,7 +187,7 @@ renderThreadProperty p = case p of
    ==> prettyTime l <+> dot <> dot <+> prettyTime h
   StackSize sz
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
-  Priority pri
+  Priority (P pri)
     -> stmt (text "Priority" ==> integer pri)
   EntryPoint syms
     -> renderEntryPoint syms

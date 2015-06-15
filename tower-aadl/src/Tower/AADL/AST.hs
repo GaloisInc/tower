@@ -9,7 +9,7 @@ module Tower.AADL.AST where
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 
---------------------------------------------------------------------------------
+----------------------------------------
 
 data System = System
   { systemName       :: !Name
@@ -75,7 +75,7 @@ data ThreadProperty =
   | ExecTime (Integer, Integer)
   -- ^ Min bound, max bound.
   | StackSize Integer
-  | Priority Integer
+  | Priority Priority
   | EntryPoint [FuncSym]
   | SourceText [FilePath]
   -- ^ Path to a .c file
@@ -127,4 +127,22 @@ type Address = Integer
 
 type SignalNumber = Integer
 
---------------------------------------------------------------------------------
+----------------------------------------
+-- Priorities
+
+data Priority = P Integer
+  deriving (Show, Read, Eq, Ord)
+
+instance Num Priority where
+  P a + P b = P (a+b)
+  P a * P b = P (a*b)
+  P a - P b = P (a-b)
+  negate (P a) = P (negate a)
+  abs (P a) = P (abs a)
+  signum (P a) = P (signum a)
+  fromInteger a = P a
+
+-- Bounds for seL4 on ODROID
+instance Bounded Priority where
+  minBound = P 0
+  maxBound = P 254

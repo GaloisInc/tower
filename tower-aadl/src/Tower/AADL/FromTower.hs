@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -36,7 +37,10 @@ execTime = (10, 100)
 stackSize :: Integer
 stackSize = 1000
 
-priority :: Integer
+queueSize :: Integer
+queueSize = 1000
+
+priority :: Priority
 priority = 11
 
 ----------------------------------------
@@ -274,7 +278,7 @@ fromInputChan c f active m h =
                , inputLabel    = A.handlerName h
                , inputType     = A.sync_chan_type s
                , inputCallback = cbs
-               , inputQueue    = if active then Just 100 -- XXX made up number
+               , inputQueue    = if active then Just queueSize
                                    else Nothing
                }
   where

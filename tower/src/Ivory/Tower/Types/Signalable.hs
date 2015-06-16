@@ -8,7 +8,7 @@ import Ivory.Language
 
 class Signalable s where
   signalName    :: s -> String
-  signalHandler :: s -> (forall eff . Ivory eff ()) -> ModuleDef
+  signalHandler :: s -> (forall s' . Ivory (AllocEffects s') ()) -> ModuleDef
 
   -- | Code to prepare this signal for use, if necessary. The default
   -- implementation emits no code.

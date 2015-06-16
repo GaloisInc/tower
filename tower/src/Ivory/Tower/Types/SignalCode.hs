@@ -26,6 +26,6 @@ instance Monoid SignalCode where
 
 newtype GeneratedSignal =
   GeneratedSignal
-    { unGeneratedSignal :: (forall eff . Ivory eff ()) -> ModuleDef
+    { unGeneratedSignal :: (forall s . Ivory (AllocEffects s) ()) -> ModuleDef
     -- ^ Unsafe signal continuation.
     }

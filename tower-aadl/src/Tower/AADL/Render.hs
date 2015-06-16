@@ -13,6 +13,7 @@ import Prelude hiding (id)
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
 import Tower.AADL.Compile
+import Tower.AADL.Priorities(Priority(..))
 import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
@@ -142,7 +143,7 @@ renderInput rx = stmt
            then [renderSendsEventsTo []]
            else []
   queue = maybe [] q (inputQueue rx)
-    where q sz = [ text "Queue_Size" ==> integer sz ]
+    where q sz = [ stmt $ text "Queue_Size" ==> integer sz ]
   emptyStrs = all null
 
 renderOutput :: Output -> Doc
@@ -188,7 +189,7 @@ renderThreadProperty p = case p of
   StackSize sz
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
   Priority (P pri)
-    -> stmt (text "Priority" ==> integer pri)
+    -> stmt (text "Priority" ==> int pri)
   EntryPoint syms
     -> renderEntryPoint syms
   SourceText srcs

@@ -122,11 +122,17 @@ makefileLib c = unlines
   , ""
   ]
 
-mkLib :: AADLConfig -> String -> String
-mkLib c modName = modName ++ "_LIBS += " ++ configLibDir c
+componentLibsName :: String
+componentLibsName = "componentlibs.mk"
 
-makefileApp :: AADLConfig -> [String] -> String -> String
-makefileApp c aadlFileNames dir = unlines
+mkLib :: AADLConfig -> [String] -> String
+mkLib c aadlFileNames =
+  unlines (map go aadlFileNames) ++ []
+  where
+  go m = m ++ "_LIBS += " ++ configLibDir c
+
+makefileApp :: String -> String
+makefileApp dir = unlines
   [ "# Include assumes this is driven by seL4 build."
   , "# " ++ otherCamkesTargets ++ " must come first: the main camkes makefile"
   , "# is included at the end of " ++ camkesMakefileName
@@ -134,10 +140,11 @@ makefileApp c aadlFileNames dir = unlines
   , "CFLAGS += -DODROID"
   , ""
   , incl (fromApps otherCamkesTargets)
+  , incl (fromApps componentLibsName)
   , incl (fromApps camkesMakefileName)
   , incl ramsesMakefileName
   , ""
-  ] ++ unlines (map (mkLib c) aadlFileNames) ++ []
+  ]
   where
   fromApps fl = "apps" </> dir </> fl
   incl = ("-include " ++)

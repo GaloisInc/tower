@@ -82,7 +82,9 @@ compileTowerAADL fromEnv mkEnv twr = do
            , artifactString kconfigName
                (kconfigApp  appname appname)
            , artifactString makefileName
-               (makefileApp cfg (aadlDocNames aadl_docs) appname)
+               (makefileApp appname)
+           , artifactString componentLibsName
+               (mkLib cfg (aadlDocNames aadl_docs))
            ]
            ++ map (artifactPath l)
            -- Libs

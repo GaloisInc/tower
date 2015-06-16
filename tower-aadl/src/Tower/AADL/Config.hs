@@ -14,6 +14,8 @@ import           Ivory.Tower.Options (TOpts(..))
 import           Ivory.Tower.Config
 import qualified System.Console.GetOpt as O
 
+import           Tower.AADL.Priorities (PriorityMap, emptyPriorityMap)
+
 ----------------------------------------
 
 data HW =
@@ -38,6 +40,7 @@ data AADLConfig = AADLConfig
   -- ^ Operating system name.
   , configSystemHW    :: HW
   -- ^ HW name.
+  , configPriorities  :: PriorityMap
   }
 
 defaultAADLConfig :: AADLConfig
@@ -48,6 +51,7 @@ defaultAADLConfig = AADLConfig
   , configSystemName  = "sys"
   , configSystemOS    = CAmkES
   , configSystemHW    = QEMU
+  , configPriorities  = emptyPriorityMap
   }
 
 lib :: AADLConfig -> String

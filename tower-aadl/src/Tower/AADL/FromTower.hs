@@ -14,9 +14,10 @@ module Tower.AADL.FromTower
   ) where
 
 import           Prelude hiding (init)
-import           Data.Maybe (catMaybes, isJust)
+import           Data.Maybe (isJust)
 import           Data.Either
 import           Data.List (find)
+import           Data.Monoid
 import           System.FilePath ((</>), addExtension)
 
 import qualified Ivory.Tower.AST                as A
@@ -25,8 +26,9 @@ import qualified Ivory.Tower.Types.Time         as T
 
 import           Tower.AADL.AST
 import           Tower.AADL.Config
+import           Tower.AADL.Priorities
 import           Tower.AADL.Names
-
+import           Tower.AADL.Threads
 
 ----------------------------------------
 -- Magic made up numbers
@@ -39,9 +41,6 @@ stackSize = 1000
 
 queueSize :: Integer
 queueSize = 1000
-
-priority :: Priority
-priority = 11
 
 ----------------------------------------
 
@@ -60,136 +59,217 @@ fromTower c t =
 mkProcess :: AADLConfig
           -> A.Tower
           -> Process
-mkProcess c t = Process { .. }
+mkProcess c' t = Process { .. }
   where
-  processName       = configSystemName c ++ "_process"
+  processName = configSystemName c ++ "_process"
+  thds        = toThreads t
+  c           = c' { configPriorities = mkPriorities thds }
   processComponents =
-       activeMonitors c t
-    ++ map (fromMonitor c t) (A.tower_monitors t)
+       map (periodicMonitor     c  ) (threadsPeriodic     thds)
+    ++ map (fromExternalMonitor c t) (threadsExternal     thds)
+    ++ map (fromExtHdlrMonitor  c  ) (threadsFromExternal thds)
+    ++ map (fromInitMonitor     c  ) (threadsInit         thds)
+    ++ map (fromPassiveMonitor  c  ) (threadsPassive      thds)
 
-activeMonitors :: AADLConfig
-               -> A.Tower
-               -> [Thread]
-activeMonitors c t =
-  catMaybes $ map (activeMonitor c) (A.towerThreads t)
-
-activeMonitor :: AADLConfig
-              -> A.Thread
-              -> Maybe Thread
-activeMonitor c t =
-  case t of
-    A.PeriodThread p
-      -> Just $ Thread
-         { threadName       = A.threadName t
-         , threadFeatures   = [fs p]
-         , threadProperties = props p
-         , threadComments   = []
-         }
-    _ -> Nothing
+toThreads :: A.Tower -> Threads
+toThreads t = mconcat pers `mappend` mconcat monsToThreads
   where
-  fs p = OutputFeature
-       $ Output
-       { outputId       = periodId p
-       , outputLabel    = prettyTime p
-       , outputType     = A.period_ty p
-       , outputEmitter  = periodicEmitter p
-       }
-  props p =
+  monsToThreads :: [Threads]
+  monsToThreads = map monToThread (A.tower_monitors t)
+  monToThread m
+    | extMon  && not init    && not fromExt
+    = injectExternalThread m
+    | init    && not extMon  && not fromExt
+    = injectInitThread m
+    | fromExt && not extMon  && not init
+    = injectFromExternalThread m
+    | not (extMon || init || fromExt)
+    = injectPassiveThread m
+    | otherwise
+    = error $ "Cannot handle a monitor that combines handlers for "
+           ++ "initialization, external monitor, and handling messages "
+           ++ "from external monitors for monitor " ++ A.monitorName m
+
+    where
+    handlers = A.monitor_handlers m
+    fromExt  = any (externalChan t) handlers
+    init     = any fromInit handlers
+    extMon   =
+      case A.monitor_external m of
+        A.MonitorExternal
+          -> True
+        _ -> False
+
+  pers = map injectPeriodicThread $
+    filter (\th -> case th of
+                     A.PeriodThread{} -> True
+                     _                -> False
+           ) (A.towerThreads t)
+
+  fromInit :: A.Handler -> Bool
+  fromInit h =
+    case A.handler_chan h of
+      A.ChanInit{} -> True
+      _            -> False
+
+
+periodicMonitor :: AADLConfig
+                -> A.Thread
+                -> Thread
+periodicMonitor c t =
+  Thread
+  { threadName       = nm
+  , threadFeatures   = [fs]
+  , threadProperties = props
+  , threadComments   = []
+  }
+  where
+  p  = case t of
+         A.PeriodThread p' -> p'
+         _                 -> error "Fatal error in periodicMonitor."
+  nm = A.threadName t
+  fs = OutputFeature
+     $ Output
+     { outputId       = periodId p
+     , outputLabel    = prettyTime p
+     , outputType     = A.period_ty p
+     , outputEmitter  = periodicEmitter p
+     }
+  props =
     [ ThreadType Active
     , DispatchProtocol (Periodic (periodId p))
     , ExecTime execTime
     , SendEvents [(prettyTime p, 1)]
     , StackSize stackSize
-    , Priority priority
+    , Priority (getPriority nm (configPriorities c))
     , EntryPoint [periodicCallback p]
     , SourceText [mkCFile c (periodicCallback p)]
     ]
 
-fromMonitor :: AADLConfig
-            -> A.Tower
-            -> A.Monitor
-            -> Thread
-fromMonitor c t m =
-  case A.monitor_external m of
-    A.MonitorExternal
-      -> externalMonitor c t m
-    A.MonitorDefined
-      -> fromDefinedMonitor c t m
-
-fromDefinedMonitor :: AADLConfig
-                   -> A.Tower
+fromGenericMonitor :: AADLConfig
                    -> A.Monitor
+                   -> [ThreadProperty]
                    -> Thread
-fromDefinedMonitor c t m =
+fromGenericMonitor c m props =
   Thread
-  { threadName       = A.monitorName m
-  , threadFeatures   = lefts handlerInputs ++ handlerEmitters
+  { threadName       = nm
+  , threadFeatures   = lefts handlerInputs ++ handlerEmitters allEmitters
   , threadProperties = props
   , threadComments   = concatMap A.handler_comments handlers
   }
   where
+  nm = A.monitorName m
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile (activeProp props) m) handlers
-  handlerEmitters = map OutputFeature
-                  $ fst
-                  $ unzip
-                  $ allEmitters
+  handlerInputs = map (fromInputChan c WithFile False m) handlers
   allEmitters = concatMap fromEmitters handlers
-  props = props' ++
+
+fromInitMonitor :: AADLConfig
+                -> A.Monitor
+                -> Thread
+fromInitMonitor c m = fromGenericMonitor c m props
+  where
+  nm = A.monitorName m
+  handlers = A.monitor_handlers m
+  handlerInputs = map (fromInputChan c WithFile True m) handlers
+  allEmitters = concatMap fromEmitters handlers
+  props =
     [ ExecTime execTime
     , SendEvents $ zip (map outputLabel outs) bnds
     , SourceText initFps
-    ]
+    , ThreadType Active
+    , DispatchProtocol Sporadic
+    , StackSize stackSize
+    , Priority (getPriority nm (configPriorities c))
+    ] ++ map InitProperty initSyms
     where
     (initFps, initSyms) = unzip
                         $ concatMap initCallback
                         $ rights handlerInputs
-    activeProps =
-      [ ThreadType Active
-      , DispatchProtocol Sporadic
-      , StackSize stackSize
-      , Priority priority
-      ]
-    initProps = activeProps ++ map InitProperty initSyms
-    props'
-      | any (fromExternalMonitor t) handlers
-      = activeProps
-      | any fromInit handlers
-      = initProps
-      | otherwise
-      = [ ThreadType Passive, DispatchProtocol Aperiodic ]
+    (outs,bnds) = unzip allEmitters
+
+
+fromPassiveMonitor :: AADLConfig
+                   -> A.Monitor
+                   -> Thread
+fromPassiveMonitor c m = fromGenericMonitor c m props
+  where
+  handlers = A.monitor_handlers m
+  handlerInputs = map (fromInputChan c WithFile False m) handlers
+  allEmitters = concatMap fromEmitters handlers
+  props =
+    [ ThreadType Passive
+    , DispatchProtocol Aperiodic
+    , ExecTime execTime
+    , SendEvents $ zip (map outputLabel outs) bnds
+    , SourceText initFps
+    ]
+    where
+    (initFps, _) = unzip
+                 $ concatMap initCallback
+                 $ rights handlerInputs
+    (outs,bnds) = unzip allEmitters
+
+handlerEmitters :: [(Output, a)] -> [Feature]
+handlerEmitters allEmitters = map OutputFeature
+                            $ fst
+                            $ unzip
+                            $ allEmitters
+
+fromExtHdlrMonitor :: AADLConfig
+                   -> A.Monitor
+                   -> Thread
+fromExtHdlrMonitor c m =
+  Thread
+  { threadName       = nm
+  , threadFeatures   = lefts handlerInputs ++ handlerEmitters allEmitters
+  , threadProperties = props
+  , threadComments   = concatMap A.handler_comments handlers
+  }
+  where
+  nm = A.monitorName m
+  handlers = A.monitor_handlers m
+  handlerInputs = map (fromInputChan c WithFile True m) handlers
+  allEmitters = concatMap fromEmitters handlers
+  props =
+    [ ExecTime execTime
+    , SendEvents $ zip (map outputLabel outs) bnds
+    , SourceText initFps
+    , ThreadType Active
+    , DispatchProtocol Sporadic
+    , StackSize stackSize
+    , Priority (getPriority nm (configPriorities c))
+    ]
+    where
+    (initFps,_) = unzip
+                $ concatMap initCallback
+                $ rights handlerInputs
     (outs,bnds) = unzip allEmitters
 
 -- | Collapse all the handlers into a single AADL thread for AADL handlers.
-externalMonitor :: AADLConfig
-                -> A.Tower
-                -> A.Monitor
-                -> Thread
-externalMonitor c t m =
+fromExternalMonitor :: AADLConfig
+                    -> A.Tower
+                    -> A.Monitor
+                    -> Thread
+fromExternalMonitor c t m =
   Thread
-    { threadName       = A.monitorName m
+    { threadName       = nm
     , threadFeatures   = features
     , threadProperties = props
     , threadComments   = concatMap A.handler_comments handlers
     }
   where
+  nm = A.monitorName m
   handlers = A.monitor_handlers m
   features = concatMap (fromExternalHandler c t m) handlers
   props =
     [ External
     , DispatchProtocol Sporadic
-    , Priority priority
+    , Priority (getPriority nm (configPriorities c))
     , StackSize stackSize
     , ThreadType Active
     , ExecTime execTime
     , SourceText [] -- necessary, aadl2rtos crashes w/out it.
     ]
-
-fromInit :: A.Handler -> Bool
-fromInit h =
-  case A.handler_chan h of
-    A.ChanInit{} -> True
-    _            -> False
 
 -- Combine all the handlers into one AADL thread. Assume that for handlers
 -- coming from defined components, their emitters go to external
@@ -209,8 +289,8 @@ fromExternalHandler c t m h =
 
 -- Computes whether a handler handles a message sent from an external monitor.
 -- XXX expensive to recompute. Compute once?
-fromExternalMonitor :: A.Tower -> A.Handler -> Bool
-fromExternalMonitor t h =
+externalChan :: A.Tower -> A.Handler -> Bool
+externalChan t h =
   isJust $ find (\h' -> A.handler_name h' == A.handler_name h) fromExts
   where
   ms = A.tower_monitors t
@@ -315,6 +395,3 @@ mkCFile :: AADLConfig -> FilePath -> FilePath
 mkCFile c fp =
       configSrcsDir c
   </> addExtension fp "c"
-
-activeProp :: [ThreadProperty] -> Bool
-activeProp = elem (ThreadType Active)

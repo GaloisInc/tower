@@ -27,8 +27,8 @@ instance Num Priority where
 
 -- Bounds for seL4 on ODROID
 instance Bounded Priority where
-  minBound = P 1
-  maxBound = P 254
+  minBound = 120
+  maxBound = 140
 
 ----------------------------------------
 

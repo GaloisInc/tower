@@ -264,7 +264,6 @@ fromExternalMonitor c t m =
   props =
     [ External
     , DispatchProtocol Sporadic
-    , Priority (getPriority nm (configPriorities c))
     , StackSize stackSize
     , ThreadType Active
     , ExecTime execTime

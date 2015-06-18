@@ -48,8 +48,7 @@ getPriority nm mp =
 -- Initialization threads have the lowest priorties.
 mkPriorities :: Threads -> PriorityMap
 mkPriorities thds = M.fromList $
-     map (\t -> (threadName t, topPer))
-         (threadsExternal thds ++ threadsFromExternal thds)
+     map (\t -> (threadName t, topPer)) (threadsFromExternal thds)
   ++ zip (map threadName orderedPeriodic) perPriorities
   ++ map (\t -> (threadName t, minBound)) (threadsInit thds)
   where

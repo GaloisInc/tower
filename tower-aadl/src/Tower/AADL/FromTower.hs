@@ -245,7 +245,6 @@ fromExtHdlrMonitor c m =
                 $ rights handlerInputs
     (outs,bnds) = unzip allEmitters
 
--- | Collapse all the handlers into a single AADL thread for AADL handlers.
 fromExternalMonitor :: AADLConfig
                     -> A.Tower
                     -> A.Monitor
@@ -264,7 +263,6 @@ fromExternalMonitor c t m =
   props =
     [ External
     , DispatchProtocol Sporadic
-    , StackSize stackSize
     , ThreadType Active
     , ExecTime execTime
     , SourceText [] -- necessary, aadl2rtos crashes w/out it.

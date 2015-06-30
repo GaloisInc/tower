@@ -13,18 +13,21 @@ import Tower.AADL.Config (AADLConfig(..), lib)
 -- Ramses build
 
 ramsesMakefile :: AADLConfig -> String
-ramsesMakefile c = unlines
+ramsesMakefile c = unlines $
   [ "include " ++ aadlFilesMk
   , ""
-  , "-include ../RAMSES_PATH.mk"
+  , "-include ../PATHS.mk"
   , "RAMSES_PATH ?= ./"
+  , "SMACCM_PATH ?= ./"
   , ""
   , "export RAMSES_DIR=$(RAMSES_PATH)/ramses_resource"
   , "export AADL2RTOS_CONFIG_DIR=$(RAMSES_PATH)/aadl2rtos_resource"
   , ""
   , ".PHONY: all"
-  , "all: " ++ camkesMakefileName
+  , "all: " ++ camkesMakefileName ++ " " ++ unwords (map fst (configOtherTargets c))
   , ""
+  ] ++ concatMap snd (configOtherTargets c) ++
+  [ ""
   , ".PHONY: ramses"
   , "ramses: "
   , tab "java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR) -o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$(AADL_LIST)"

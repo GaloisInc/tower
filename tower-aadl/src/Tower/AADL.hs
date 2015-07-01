@@ -79,12 +79,12 @@ compileTowerAADL fromEnv mkEnv twr = do
            -- apps
            ] ++
            if configCustomKConfig cfg
-             then [ artifactString kbuildName
+             then []
+             else [ artifactString kbuildName
                       (kbuildApp   l appname)
                   , artifactString kconfigName
                       (kconfigApp  appname appname)
                   ]
-              else []
            ++
            [ artifactString makefileName
                (makefileApp appname)

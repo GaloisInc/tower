@@ -28,33 +28,36 @@ data OS =
   deriving (Show, Read, Eq)
 
 data AADLConfig = AADLConfig
-  { configSrcsDir      :: FilePath
+  { configSrcsDir       :: FilePath
   -- ^ Location of/to put C sources relative to genDirOpts.
-  , configHdrDir       :: FilePath
+  , configHdrDir        :: FilePath
   -- ^ Location of/to put C headers relative to genDirOpts.
-  , configLibDir       :: FilePath
+  , configLibDir        :: FilePath
   -- ^ Location of/to put C lib sources relative to genDirOpts.
-  , configSystemName   :: String
+  , configSystemName    :: String
   -- ^ System name.
-  , configSystemOS     :: OS
+  , configSystemOS      :: OS
   -- ^ Operating system name.
-  , configSystemHW     :: HW
+  , configSystemHW      :: HW
   -- ^ HW name.
-  , configPriorities   :: PriorityMap
+  , configPriorities    :: PriorityMap
   -- ^ Other Makefile rules. A list of (rule name, full rule definition).
-  , configOtherTargets :: [(String, [String])]
+  , configOtherTargets  :: [(String, [String])]
+  -- ^ If True, user provides onw Kconfig, Kbuild.
+  , configCustomKConfig :: Bool
   }
 
 defaultAADLConfig :: AADLConfig
 defaultAADLConfig = AADLConfig
-  { configSrcsDir      = "user_code"
-  , configHdrDir       = "include"
-  , configLibDir       = "smaccmpilot"
-  , configSystemName   = "sys"
-  , configSystemOS     = CAmkES
-  , configSystemHW     = QEMU
-  , configPriorities   = emptyPriorityMap
-  , configOtherTargets = []
+  { configSrcsDir       = "user_code"
+  , configHdrDir        = "include"
+  , configLibDir        = "smaccmpilot"
+  , configSystemName    = "sys"
+  , configSystemOS      = CAmkES
+  , configSystemHW      = QEMU
+  , configPriorities    = emptyPriorityMap
+  , configOtherTargets  = []
+  , configCustomKConfig = False
   }
 
 lib :: AADLConfig -> String

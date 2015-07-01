@@ -77,11 +77,16 @@ compileTowerAADL fromEnv mkEnv twr = do
            [ deps_a
            , artifactString ramsesMakefileName (ramsesMakefile cfg)
            -- apps
-           , artifactString kbuildName
-               (kbuildApp   l appname)
-           , artifactString kconfigName
-               (kconfigApp  appname appname)
-           , artifactString makefileName
+           ] ++
+           if configCustomKConfig cfg
+             then [ artifactString kbuildName
+                      (kbuildApp   l appname)
+                  , artifactString kconfigName
+                      (kconfigApp  appname appname)
+                  ]
+              else []
+           ++
+           [ artifactString makefileName
                (makefileApp appname)
            , artifactString componentLibsName
                (mkLib cfg (aadlDocNames aadl_docs))

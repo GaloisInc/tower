@@ -16,7 +16,7 @@ ramsesMakefile :: AADLConfig -> String
 ramsesMakefile c = unlines $
   [ "include " ++ aadlFilesMk
   , ""
-  , "-include ../PATHS.mk"
+  , "-include ../RAMSES_PATH.mk"
   , "RAMSES_PATH ?= ./"
   , "SMACCM_PATH ?= ./"
   , ""
@@ -24,10 +24,8 @@ ramsesMakefile c = unlines $
   , "export AADL2RTOS_CONFIG_DIR=$(RAMSES_PATH)/aadl2rtos_resource"
   , ""
   , ".PHONY: all"
-  , "all: " ++ camkesMakefileName ++ " " ++ unwords (map fst (configOtherTargets c))
+  , "all: " ++ camkesMakefileName
   , ""
-  ] ++ concatMap snd (configOtherTargets c) ++
-  [ ""
   , ".PHONY: ramses"
   , "ramses: "
   , tab "java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR) -o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$(AADL_LIST)"
@@ -35,7 +33,8 @@ ramsesMakefile c = unlines $
   , ".PHONY: " ++ camkesMakefileName
   , camkesMakefileName ++ ":"
   , tab $ "make ramses"
-  , tab $ unwords ["cp ", mkTp, camkesMakefileName]
+  , if configCustomMakefile c then ""
+      else tab $ unwords ["cp ", mkTp, camkesMakefileName]
   , tab $ "rm -rf ../../libs/" ++ lib c
   , tab $ unwords ["cp -r ", lib c, "../../libs/"]
   , tab $ unwords ["cp -r ", lib c </> "include" </> "*", configHdrDir c]
@@ -105,9 +104,6 @@ kconfigName = "Kconfig"
 camkesMakefileName :: String
 camkesMakefileName = "camkesmakefile.mk"
 
-otherCamkesTargets :: String
-otherCamkesTargets = "othercamkestargets.mk"
-
 makefileLib :: AADLConfig -> String
 makefileLib c = unlines
   [ "# Targets"
@@ -137,12 +133,9 @@ mkLib c aadlFileNames =
 makefileApp :: String -> String
 makefileApp dir = unlines
   [ "# Include assumes this is driven by seL4 build."
-  , "# " ++ otherCamkesTargets ++ " must come first: the main camkes makefile"
-  , "# is included at the end of " ++ camkesMakefileName
   , ""
   , "CFLAGS += -DODROID"
   , ""
-  , incl (fromApps otherCamkesTargets)
   , incl (fromApps componentLibsName)
   , incl (fromApps camkesMakefileName)
   , incl ramsesMakefileName

@@ -77,15 +77,7 @@ compileTowerAADL fromEnv mkEnv twr = do
            [ deps_a
            , artifactString ramsesMakefileName (ramsesMakefile cfg)
            -- apps
-           ] ++
-           if configCustomKConfig cfg
-             then []
-             else [ artifactString kbuildName
-                      (kbuildApp   l appname)
-                  , artifactString kconfigName
-                      (kconfigApp  appname appname)
-                  ]
-           ++
+           ] ++ kartifacts ++
            [ artifactString makefileName
                (makefileApp appname)
            , artifactString componentLibsName
@@ -100,7 +92,16 @@ compileTowerAADL fromEnv mkEnv twr = do
            , artifactString makefileName
                (makefileLib cfg)
            ]
-           where l = lib cfg
+           where
+           l = lib cfg
+           kartifacts =
+             if configCustomKConfig cfg
+               then []
+               else [ artifactString kbuildName
+                       (kbuildApp   l appname)
+                    , artifactString kconfigName
+                       (kconfigApp  appname appname)
+                    ]
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"

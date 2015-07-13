@@ -19,7 +19,7 @@ import           Data.List
 import           Data.Char
 import           Control.Monad
 
-import           System.FilePath (takeFileName, addExtension, (</>))
+import           System.FilePath (takeFileName, addExtension, (</>), (<.>))
 
 import           Text.PrettyPrint.Leijen hiding ((</>))
 
@@ -27,6 +27,7 @@ import qualified Ivory.Compile.C.CmdlineFrontend as O
 import qualified Ivory.Compile.C.Types as O
 
 import           Ivory.Tower
+import           Ivory.Tower.AST.Graph (graphviz, messageGraph)
 import           Ivory.Tower.Options
 import           Ivory.Tower.Types.Dependencies
 
@@ -82,6 +83,8 @@ compileTowerAADL fromEnv mkEnv twr = do
                (makefileApp appname)
            , artifactString componentLibsName
                (mkLib cfg (aadlDocNames aadl_docs))
+           , artifactString (appname <.> "dot")
+               (graphviz $ messageGraph ast)
            ]
            ++ map (artifactPath l)
            -- Libs

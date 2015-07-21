@@ -40,10 +40,11 @@ sample1 = B.pack $ unlines
 
 testParse :: B.ByteString -> ConfigParser a -> Maybe a
 testParse bs p = do
-  doc <- tomlParse bs
-  case runConfigParser p (Left doc) of
-    Right v -> Just v
+  case tomlParse bs of
     Left _ -> Nothing
+    Right doc -> case runConfigParser p (Left doc) of
+      Right v -> Just v
+      Left _ -> Nothing
 
 parseCC :: B.ByteString -> Maybe ClockConfig
 parseCC s = testParse s
@@ -84,8 +85,8 @@ main = do
   where
   equality a b = (a,b)
   parsed = case tomlParse sample1 of
-            Just a -> a
-            Nothing -> error "parsing failed"
+            Right a -> a
+            Left e -> error ("parsing failed: " ++ e)
   canonical = intercalate "\n"
     [ "bar = \"hello world\""
     , "[clockconfig]"

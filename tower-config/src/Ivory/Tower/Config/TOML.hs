@@ -45,5 +45,5 @@ ppValue = aux []
   ppSubsection ctx (s,v) = aux (ctx ++ [s]) (Left v)
 
 
-tomlParse :: B.ByteString -> Maybe TOML
+tomlParse :: B.ByteString -> Either String TOML
 tomlParse bs = T.parse bs

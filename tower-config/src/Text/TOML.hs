@@ -5,17 +5,16 @@ import qualified Data.Attoparsec.ByteString.Char8 as A
 import qualified Data.ByteString.Char8 as B
 import Data.List ( foldl', groupBy )
 import Data.Either ( rights )
-import Data.Map ( Map )
 import qualified Data.Map as M
 
 import Text.TOML.Parser
 import Text.TOML.Value
 
 
-parse :: B.ByteString -> Maybe TOML
+parse :: B.ByteString -> Either String TOML
 parse bs = process `fmap` parse' bs
 
-parse' bs = (A.maybeResult $ A.feed (A.parse document bs) "")
+parse' bs = (A.eitherResult $ A.feed (A.parse document bs) "")
 
 process :: [Token] -> TOML
 process ts = go (group ts) tempty

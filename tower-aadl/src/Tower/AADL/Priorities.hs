@@ -47,20 +47,30 @@ getPriority nm mp =
 
 -- Initialization threads have the lowest priorties.
 mkPriorities :: Threads -> PriorityMap
-mkPriorities thds = M.fromList $
-     map (\t -> (threadName t, topPer)) (threadsFromExternal thds)
-  ++ zip (map threadName orderedPeriodic) perPriorities
-  ++ map (\t -> (threadName t, minBound)) (threadsInit thds)
+mkPriorities thds = M.unions [extPris, perPris, initPris, extPerPris]
   where
+  extPris  = M.fromList
+           $ map (\t -> (threadName t, topPer)) (threadsFromExternal thds)
+  perPris  = M.fromList
+           $ zip (map threadName orderedPeriodic) perPriorities
+  initPris = M.fromList
+           $ map (\t -> (threadName t, minBound)) (threadsInit thds)
+
+  extPerPris = M.fromList
+             $ map (\(th,t) -> (threadName t, pri th)) (threadsFromExtPer thds)
+    where
+    pri th = getPriority (threadName th) perPris
+
   orderedPeriodic = reverse $ sort (threadsPeriodic thds)
+
   minPer :: Priority
   minPer = minBound + fromInteger 1
+
   perPriorities = iterate (+1) minPer
+
   -- All periodic threads have priorities lower than topPer.
   topPer =
     let m = minPer + fromIntegral (length (threadsPeriodic thds)) in
     if m == maxBound
       then error "Unscheduable: not enough priority slots."
       else m
-
-

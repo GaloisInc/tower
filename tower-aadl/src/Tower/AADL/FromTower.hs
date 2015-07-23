@@ -14,10 +14,7 @@ module Tower.AADL.FromTower
   ) where
 
 import           Prelude hiding (init)
-import           Data.Maybe (isJust)
 import           Data.Either
-import           Data.List (find)
-import           Data.Monoid
 import           System.FilePath ((</>), addExtension)
 
 import qualified Ivory.Tower.AST                as A
@@ -65,53 +62,12 @@ mkProcess c' t = Process { .. }
   thds        = toThreads t
   c           = c' { configPriorities = mkPriorities thds }
   processComponents =
-       map (periodicMonitor     c  ) (threadsPeriodic     thds)
-    ++ map (fromExternalMonitor c t) (threadsExternal     thds)
-    ++ map (fromExtHdlrMonitor  c  ) (threadsFromExternal thds)
-    ++ map (fromInitMonitor     c  ) (threadsInit         thds)
-    ++ map (fromPassiveMonitor  c  ) (threadsPassive      thds)
-
-toThreads :: A.Tower -> Threads
-toThreads t = mconcat pers `mappend` mconcat monsToThreads
-  where
-  monsToThreads :: [Threads]
-  monsToThreads = map monToThread (A.tower_monitors t)
-  monToThread m
-    | extMon  && not init    && not fromExt
-    = injectExternalThread m
-    | init    && not extMon  && not fromExt
-    = injectInitThread m
-    | fromExt && not extMon  && not init
-    = injectFromExternalThread m
-    | not (extMon || init || fromExt)
-    = injectPassiveThread m
-    | otherwise
-    = error $ "Cannot handle a monitor that combines handlers for "
-           ++ "initialization, external monitor, and handling messages "
-           ++ "from external monitors for monitor " ++ A.monitorName m
-
-    where
-    handlers = A.monitor_handlers m
-    fromExt  = any (externalChan t) handlers
-    init     = any fromInit handlers
-    extMon   =
-      case A.monitor_external m of
-        A.MonitorExternal
-          -> True
-        _ -> False
-
-  pers = map injectPeriodicThread $
-    filter (\th -> case th of
-                     A.PeriodThread{} -> True
-                     _                -> False
-           ) (A.towerThreads t)
-
-  fromInit :: A.Handler -> Bool
-  fromInit h =
-    case A.handler_chan h of
-      A.ChanInit{} -> True
-      _            -> False
-
+       map (periodicMonitor     c      ) (threadsPeriodic     thds)
+    ++ map (fromExternalMonitor c t    ) (threadsExternal     thds)
+    ++ map (fromExtHdlrMonitor  c      ) (threadsFromExternal thds)
+    ++ map (fromExtHdlrMonitor  c . snd) (threadsFromExtPer   thds)
+    ++ map (fromInitMonitor     c      ) (threadsInit         thds)
+    ++ map (fromPassiveMonitor  c      ) (threadsPassive      thds)
 
 periodicMonitor :: AADLConfig
                 -> A.Thread
@@ -283,17 +239,6 @@ fromExternalHandler c t m h =
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
-
--- Computes whether a handler handles a message sent from an external monitor.
--- XXX expensive to recompute. Compute once?
-externalChan :: A.Tower -> A.Handler -> Bool
-externalChan t h =
-  isJust $ find (\h' -> A.handler_name h' == A.handler_name h) fromExts
-  where
-  ms = A.tower_monitors t
-  extMs = filter (\m -> A.monitor_external m == A.MonitorExternal) ms
-  extHs = concatMap A.monitor_handlers extMs
-  fromExts = map snd $ concatMap (A.handlerOutboundHandlers t) extHs
 
 -- For a given channel, see if it's source is abstract (i.e., a sync chan with
 -- no caller).

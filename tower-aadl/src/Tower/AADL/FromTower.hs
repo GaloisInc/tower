@@ -151,19 +151,16 @@ fromPassiveMonitor c m = fromGenericMonitor c m props
   where
   handlers = A.monitor_handlers m
   handlerInputs = map (fromInputChan c WithFile False m) handlers
-  allEmitters = concatMap fromEmitters handlers
   props =
     [ ThreadType Passive
     , DispatchProtocol Aperiodic
     , ExecTime execTime
-    , SendEvents $ zip (map outputLabel outs) bnds
     , SourceText initFps
     ]
     where
     (initFps, _) = unzip
                  $ concatMap initCallback
                  $ rights handlerInputs
-    (outs,bnds) = unzip allEmitters
 
 handlerEmitters :: [(Output, a)] -> [Feature]
 handlerEmitters allEmitters = map OutputFeature
@@ -224,10 +221,9 @@ fromExternalMonitor c t m =
     , SourceText [] -- necessary, aadl2rtos crashes w/out it.
     ]
 
--- Combine all the handlers into one AADL thread. Assume that for handlers
--- coming from defined components, their emitters go to external
--- components. Conversely, for handlers coming from external components, their
--- emitters go to defined components.
+-- Assume that for handlers coming from defined components, their emitters go to
+-- external components. Conversely, for handlers coming from external
+-- components, their emitters go to defined components.
 fromExternalHandler :: AADLConfig -> A.Tower -> A.Monitor -> A.Handler -> [Feature]
 fromExternalHandler c t m h =
   if fromAbstractChan t ch
@@ -280,30 +276,33 @@ fromInputChan :: AADLConfig
 fromInputChan c f active m h =
   case A.handler_chan h of
     A.ChanSignal{}
-      -> error "fromInputChan: Singal"
+      -> error "fromInputChan: Signal unimplemented"
     A.ChanPeriod p
       -> Left
        $ InputFeature
-       $ Input { inputId       = periodId p
-               , inputLabel    = T.prettyTime (A.period_dt p)
-               , inputType     = A.period_ty p
-               , inputCallback = cbs
-               , inputQueue    = Nothing
+       $ Input { inputId          = periodId p
+               , inputLabel       = T.prettyTime (A.period_dt p)
+               , inputType        = A.period_ty p
+               , inputCallback    = cbs
+               , inputQueue       = Nothing
+               , inputSendsEvents = []
+               }
+    A.ChanSync s
+      -> Left
+       $ InputFeature
+       $ Input { inputId          = A.sync_chan_label s
+               , inputLabel       = A.handlerName h
+               , inputType        = A.sync_chan_type s
+               , inputCallback    = cbs
+               , inputQueue       = if active then Just queueSize
+                                      else Nothing
+               , inputSendsEvents = zip (map outputLabel outs) bnds
                }
     A.ChanInit{}
       -> Right
        $ Init { initCallback = cbs }
-    A.ChanSync s
-      -> Left
-       $ InputFeature
-       $ Input { inputId       = A.sync_chan_label s
-               , inputLabel    = A.handlerName h
-               , inputType     = A.sync_chan_type s
-               , inputCallback = cbs
-               , inputQueue    = if active then Just queueSize
-                                   else Nothing
-               }
   where
+  (outs, bnds) = unzip (fromEmitters h)
   cbs = mkCallbacksHandler c f h (threadFile m)
 
 periodId :: A.Period -> ChanId

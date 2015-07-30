@@ -49,11 +49,12 @@ data Init = Init
 
 -- | Input channels
 data Input = Input
-  { inputId       :: !ChanId
-  , inputLabel    :: !ChanLabel
-  , inputType     :: !I.Type
-  , inputCallback :: [SourcePath]
-  , inputQueue  :: Maybe Integer
+  { inputId          :: !ChanId
+  , inputLabel       :: !ChanLabel
+  , inputType        :: !I.Type
+  , inputCallback    :: [SourcePath]
+  , inputQueue       :: Maybe Integer
+  , inputSendsEvents :: SendsEvents
   } deriving (Show, Eq, Ord)
 
 -- | Output channels

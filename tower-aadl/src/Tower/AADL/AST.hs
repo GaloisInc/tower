@@ -45,6 +45,7 @@ data Feature =
 -- | Init Channel
 data Init = Init
   { initCallback :: [SourcePath]
+  , initOutput   :: [(Output, Bound)]
   } deriving (Show, Eq, Ord)
 
 -- | Input channels

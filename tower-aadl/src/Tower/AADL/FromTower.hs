@@ -114,10 +114,10 @@ fromGenericMonitor c m props =
   , threadComments   = concatMap A.handler_comments handlers
   }
   where
-  nm = A.monitorName m
-  handlers = A.monitor_handlers m
+  nm            = A.monitorName m
+  handlers      = A.monitor_handlers m
   handlerInputs = map (fromInputChan c WithFile False m) handlers
-  allEmitters = concatMap fromEmitters handlers
+  allEmitters   = concatMap fromEmitters handlers
 
 fromInitMonitor :: AADLConfig
                 -> A.Monitor
@@ -130,19 +130,19 @@ fromInitMonitor c m = fromGenericMonitor c m props
   allEmitters = concatMap fromEmitters handlers
   props =
     [ ExecTime execTime
-    , SendEvents $ zip (map outputLabel outs) bnds
     , SourceText initFps
     , ThreadType Active
     , DispatchProtocol Sporadic
     , StackSize stackSize
     , Priority (getPriority nm (configPriorities c))
+    , SendEvents $ zip (map outputLabel outs) bnds
     ] ++ map InitProperty initSyms
-    where
-    (initFps, initSyms) = unzip
-                        $ concatMap initCallback
-                        $ rights handlerInputs
-    (outs,bnds) = unzip allEmitters
 
+  inits = rights handlerInputs
+  (initFps, initSyms) = unzip
+                      $ concatMap initCallback
+                      $ inits
+  (outs,bnds) = unzip allEmitters
 
 fromPassiveMonitor :: AADLConfig
                    -> A.Monitor
@@ -285,7 +285,7 @@ fromInputChan c f active m h =
                , inputType        = A.period_ty p
                , inputCallback    = cbs
                , inputQueue       = Nothing
-               , inputSendsEvents = []
+               , inputSendsEvents = events
                }
     A.ChanSync s
       -> Left
@@ -296,12 +296,15 @@ fromInputChan c f active m h =
                , inputCallback    = cbs
                , inputQueue       = if active then Just queueSize
                                       else Nothing
-               , inputSendsEvents = zip (map outputLabel outs) bnds
+               , inputSendsEvents = events
                }
     A.ChanInit{}
       -> Right
-       $ Init { initCallback = cbs }
+       $ Init { initCallback = cbs
+              , initOutput   = fromEmitters h
+              }
   where
+  events = zip (map outputLabel outs) bnds
   (outs, bnds) = unzip (fromEmitters h)
   cbs = mkCallbacksHandler c f h (threadFile m)
 

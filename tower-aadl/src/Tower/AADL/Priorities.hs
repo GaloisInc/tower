@@ -50,7 +50,7 @@ mkPriorities :: Threads -> PriorityMap
 mkPriorities thds = M.unions [extPris, perPris, initPris, extPerPris]
   where
   extPris  = M.fromList
-           $ map (\t -> (threadName t, topPer)) (threadsFromExternal thds)
+           $ map (\t -> (threadName t, maxBound)) (threadsFromExternal thds)
   perPris  = M.fromList
            $ zip (map threadName orderedPeriodic) perPriorities
   initPris = M.fromList

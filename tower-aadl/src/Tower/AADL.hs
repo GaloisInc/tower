@@ -53,7 +53,7 @@ compileTowerAADL fromEnv mkEnv twr = do
   let cfg' = fromEnv env
   let cfg  = parseAADLOpts cfg' topts
   let (ast, code, deps, sigs) = runTower AADLBackend twr env
-  let aadl_sys  = fromTower cfg ast
+  let aadl_sys  = lowerCaseThreadNames (fromTower cfg ast)
   let aadl_docs = buildAADL deps aadl_sys
   let doc_as    = renderCompiledDocs aadl_docs
   let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
@@ -128,6 +128,27 @@ compileTowerAADL fromEnv mkEnv twr = do
           }
     where
     dir = fromMaybe "." (O.outDir copts)
+
+-- The eChronos description (.prx) requires that the thread names be
+-- lower cased. The only complication here is the tripple nesting of the
+-- structure, we simply take apart the fields we need until we get to the
+-- underlying threadName and then lowercase that.
+lowerCaseThreadNames :: A.System -> A.System
+lowerCaseThreadNames system = system { A.systemComponents = sc }
+  where
+  sc = map lowerProcessName (A.systemComponents system)
+
+  -- Continue into the Process record
+  lowerProcessName :: A.Process -> A.Process
+  lowerProcessName process = process { A.processComponents = pc }
+    where
+    pc = map lowerThreadName (A.processComponents process)
+
+    -- Finally we arrive at the Thread itself
+    lowerThreadName :: A.Thread -> A.Thread
+    lowerThreadName thread = thread { A.threadName = tn }
+      where
+      tn = map toLower (A.threadName thread)
 
 validCIdent :: String -> Bool
 validCIdent appname =

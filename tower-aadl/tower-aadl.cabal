@@ -11,8 +11,9 @@ library
   exposed-modules: Tower.AADL
                  , Tower.AADL.AST
                  , Tower.AADL.AST.Common
-                 , Tower.AADL.SeL4Build
-                 , Tower.AADL.EChronosBuild
+                 , Tower.AADL.Build.Common
+                 , Tower.AADL.Build.SeL4
+                 , Tower.AADL.Build.EChronos
                  , Tower.AADL.CodeGen
                  , Tower.AADL.Compile
                  , Tower.AADL.Config

@@ -12,8 +12,8 @@ import Tower.AADL.Build.Common
 -- Ramses build
 
 -- Ramses Makefile ------------------------------------------------------------
-ramsesMk :: AADLConfig -> [MkStmt]
-ramsesMk c =
+ramsesMakefile :: AADLConfig -> [MkStmt]
+ramsesMakefile c =
   [ include    aadlFilesMk
   , includeOpt "../RAMSES_PATH.mk"
   , "RAMSES_PATH" ?= "./"

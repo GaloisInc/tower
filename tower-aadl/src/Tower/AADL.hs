@@ -37,7 +37,14 @@ import           Ivory.Artifact
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
 import qualified Tower.AADL.AST.Common as A
-import           Tower.AADL.Build
+import qualified Tower.AADL.SeL4Build     as SeL4 ( ramsesMakefileName, ramsesMakefile
+                                                  , makefileName, makefileApp
+                                                  , componentLibsName, mkLib
+                                                  , kbuildName, kbuildLib
+                                                  , kbuildApp, kconfigApp
+                                                  , kconfigName, kconfigLib
+                                                  , makefileLib, aadlFilesMk)
+import qualified Tower.AADL.EChronosBuild as EChronos
 import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
 import           Tower.AADL.Config
@@ -53,7 +60,9 @@ compileTowerAADL fromEnv mkEnv twr = do
   let cfg' = fromEnv env
   let cfg  = parseAADLOpts cfg' topts
   let (ast, code, deps, sigs) = runTower AADLBackend twr env
-  let aadl_sys  = lowerCaseThreadNames (fromTower cfg ast)
+  let aadl_sys  = if configSystemOS cfg == EChronos
+                    then lowerCaseThreadNames (fromTower cfg ast)
+                    else fromTower cfg ast
   let aadl_docs = buildAADL deps aadl_sys
   let doc_as    = renderCompiledDocs aadl_docs
   let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
@@ -76,34 +85,34 @@ compileTowerAADL fromEnv mkEnv twr = do
         where
         ls =
            [ deps_a
-           , artifactString ramsesMakefileName (ramsesMakefile cfg)
+           , artifactString SeL4.ramsesMakefileName (show (SeL4.ramsesMakefile cfg))
            -- apps
            ] ++ kartifacts ++
-           [ artifactString makefileName
-               (makefileApp appname)
-           , artifactString componentLibsName
-               (mkLib cfg (aadlDocNames aadl_docs))
+           [ artifactString SeL4.makefileName
+               (show (SeL4.makefileApp appname))
+           , artifactString SeL4.componentLibsName
+               (SeL4.mkLib cfg (aadlDocNames aadl_docs))
            , artifactString (appname <.> "dot")
                (graphviz $ messageGraph ast)
            ]
            ++ map (artifactPath l)
            -- Libs
-           [ artifactString kbuildName
-               (kbuildLib   l)
-           , artifactString kconfigName
-               (kconfigLib  appname l)
-           , artifactString makefileName
-               (makefileLib cfg)
+           [ artifactString SeL4.kbuildName
+               (show (SeL4.kbuildLib   l))
+           , artifactString SeL4.kconfigName
+               (SeL4.kconfigLib  appname l)
+           , artifactString SeL4.makefileName
+               (show (SeL4.makefileLib cfg))
            ]
            where
            l = lib cfg
            kartifacts =
              if configCustomKConfig cfg
                then []
-               else [ artifactString kbuildName
-                       (kbuildApp   l appname)
-                    , artifactString kconfigName
-                       (kconfigApp  appname appname)
+               else [ artifactString SeL4.kbuildName
+                       (show (SeL4.kbuildApp   l appname))
+                    , artifactString SeL4.kconfigName
+                       (SeL4.kconfigApp  appname appname)
                     ]
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
@@ -178,7 +187,7 @@ aadlDocNames docs = map docName $
   maybeToList (tyDoc docs) ++ thdDocs docs
 
 aadlDepsArtifact :: [String] -> Artifact
-aadlDepsArtifact names = artifactString aadlFilesMk $ displayS pp ""
+aadlDepsArtifact names = artifactString SeL4.aadlFilesMk $ displayS pp ""
   where
   pp = renderPretty 0.4 100 doc
   doc = text "AADL_LIST" <> equals <> dquotes (hcat (punctuate comma files))

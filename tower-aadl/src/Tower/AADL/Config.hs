@@ -21,10 +21,12 @@ import           Tower.AADL.Priorities (PriorityMap, emptyPriorityMap)
 data HW =
     QEMU
   | ODROID
+  | PIXHAWK
   deriving (Show, Read, Eq)
 
 data OS =
-  CAmkES
+    CAmkES
+  | EChronos
   deriving (Show, Read, Eq)
 
 data AADLConfig = AADLConfig
@@ -47,6 +49,7 @@ data AADLConfig = AADLConfig
   , configCustomKConfig  :: Bool
   -- ^ If True, user provides custom Kconfig, Kbuild.
   }
+  deriving (Show)
 
 defaultAADLConfig :: AADLConfig
 defaultAADLConfig = AADLConfig
@@ -73,12 +76,14 @@ aadlConfigParser dflt = subsection "aadl" p `withDefault` dflt
     return dflt { configSystemOS = os, configSystemHW = hw }
   osParser = string >>= \s ->
     case map toUpper s of
-      "CAMKES" -> return CAmkES
+      "CAMKES"   -> return CAmkES
+      "ECHRONOS" -> return EChronos
       _ -> fail ("expected AADL OS, got " ++ s)
   hwParser = string >>= \s ->
     case map toUpper s of
-      "QEMU"   -> return QEMU
-      "ODROID" -> return ODROID
+      "QEMU"    -> return QEMU
+      "ODROID"  -> return ODROID
+      "PIXHAWK" -> return PIXHAWK
       _ -> fail ("expected AADL HW Platform, got " ++ s)
 
 ----------------------------------------

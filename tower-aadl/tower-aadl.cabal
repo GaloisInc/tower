@@ -11,7 +11,8 @@ library
   exposed-modules: Tower.AADL
                  , Tower.AADL.AST
                  , Tower.AADL.AST.Common
-                 , Tower.AADL.Build
+                 , Tower.AADL.SeL4Build
+                 , Tower.AADL.EChronosBuild
                  , Tower.AADL.CodeGen
                  , Tower.AADL.Compile
                  , Tower.AADL.Config
@@ -39,6 +40,20 @@ library
 
 executable test
   hs-source-dirs:   test
+  main-is:          Simple.hs
+  build-depends: base >= 4.6
+               , ivory >= 0.1.0.1
+               , tower
+               , tower-config
+               , tower-aadl
+  default-language: Haskell2010
+  if impl(ghc >= 7.8)
+    ghc-options:        -Wall -fhpc -fplugin=Ivory.Tower.SrcLoc.Plugin -fplugin-opt=Ivory.Tower.SrcLoc.Plugin:kill-foreign-stubs
+  else
+    ghc-options:        -Wall
+
+executable test-echronos
+  hs-source-dirs:   test-echronos
   main-is:          Simple.hs
   build-depends: base >= 4.6
                , ivory >= 0.1.0.1

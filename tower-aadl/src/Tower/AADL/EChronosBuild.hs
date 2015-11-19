@@ -62,7 +62,7 @@ var === val = Var NoExport var Equals val
 
 export :: MkStmt -> MkStmt
 export (Var _ var assign val) = Var Export var assign val
-export _                      = error "Only varibales can be exported"
+export s                      = s
 -------------------------------------------------------------------------------
 
 -- Makefile pretty printer ----------------------------------------------------

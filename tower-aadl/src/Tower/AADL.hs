@@ -80,7 +80,6 @@ compileTowerAADL fromEnv mkEnv twr = do
 
   let appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
 
-  -- TODO: This `as` is SeL4 specific. Duplicate this code to make one that is eChronos specific
   let as :: OS -> [Located Artifact]
       as os = doc_as
         ++ libAs
@@ -91,41 +90,38 @@ compileTowerAADL fromEnv mkEnv twr = do
            [ deps_a
            , artifactString ramsesMakefileName
                             (renderMkStmts (ramsesMakefile os))
-           -- apps
-           ] ++ kartifacts ++
-           if os == CAmkES
-             then [ artifactString makefileName
-                      (renderMkStmts (SeL4.makefileApp appname))
-                  , artifactString componentLibsName
-                      (mkLib cfg (aadlDocNames aadl_docs))
-                  , artifactString (appname <.> "dot")
-                      (graphviz $ messageGraph ast)
-                  ]
-             else []
-           ++ map (artifactPath l)
-           -- Libs
-           (if os == CAmkES
-              then [ artifactString SeL4.kbuildName
-                       (renderMkStmts (SeL4.kbuildLib   l))
-                   , artifactString SeL4.kconfigName
-                       (SeL4.kconfigLib  appname l)
-                   , artifactString makefileName
-                       (renderMkStmts (SeL4.makefileLib cfg))
-                   ]
-              else [])
+           ] ++ osSpecific
            where
+           osSpecific = case os of
+             CAmkES ->
+               -- apps
+               [ artifactString makefileName
+                   (renderMkStmts (SeL4.makefileApp appname))
+               , artifactString componentLibsName
+                   (mkLib cfg (aadlDocNames aadl_docs))
+               , artifactString (appname <.> "dot")
+                   (graphviz $ messageGraph ast)
+               ] ++
+               (if configCustomKConfig cfg
+                  then [ artifactString SeL4.kbuildName
+                          (renderMkStmts (SeL4.kbuildApp   l appname))
+                       , artifactString SeL4.kconfigName
+                          (SeL4.kconfigApp  appname appname)
+                       ]
+                  else []) ++
+               -- libs
+               map (artifactPath l)
+                 [ artifactString SeL4.kbuildName
+                     (renderMkStmts (SeL4.kbuildLib   l))
+                 , artifactString SeL4.kconfigName
+                     (SeL4.kconfigLib  appname l)
+                 , artifactString makefileName
+                     (renderMkStmts (SeL4.makefileLib cfg))
+                 ]
+             _      -> []
            ramsesMakefile EChronos = EChronos.ramsesMakefile cfg
            ramsesMakefile CAmkES   = SeL4.ramsesMakefile     cfg
            l = lib cfg
-           kartifacts =
-             case configCustomKConfig cfg of
-               False | os == CAmkES ->
-                    [ artifactString SeL4.kbuildName
-                       (renderMkStmts (SeL4.kbuildApp   l appname))
-                    , artifactString SeL4.kconfigName
-                       (SeL4.kconfigApp  appname appname)
-                    ]
-               _    -> []
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"

@@ -5,7 +5,6 @@
 
 module Tower.AADL.Build.SeL4 where
 
-import Data.Char
 import System.FilePath ((</>))
 
 import Tower.AADL.Config (AADLConfig(..), lib)

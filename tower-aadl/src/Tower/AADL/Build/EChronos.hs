@@ -43,3 +43,6 @@ makefileLib c =
   , "HDRFILES" =: "$(wildcard ${SOURCE_DIR}/include/*)"
   , "CFILES" =: "$(patsubst $(SOURCE_DIR)/%,%,$(wildcard $(SOURCE_DIR)/src/*.c))"
   ]
+
+makefile :: [MkStmt]
+makefile = [ includeOpt ramsesMakefileName ]

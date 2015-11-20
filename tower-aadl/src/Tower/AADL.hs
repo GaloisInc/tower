@@ -118,7 +118,9 @@ compileTowerAADL fromEnv mkEnv twr = do
                  , artifactString makefileName
                      (renderMkStmts (SeL4.makefileLib cfg))
                  ]
-             _      -> []
+             _ ->
+               [ artifactString makefileName
+                   (renderMkStmts EChronos.makefile) ]
            ramsesMakefile EChronos = EChronos.ramsesMakefile cfg
            ramsesMakefile CAmkES   = SeL4.ramsesMakefile     cfg
            l = lib cfg

@@ -49,9 +49,15 @@ fromTower c t =
          , systemProperties = sps
          }
   where
-  sps = [ SystemOS $ show $ configSystemOS c
-        , SystemHW $ show $ configSystemHW c ]
+  sps = [ SystemOS $ showOS $ configSystemOS c
+        , SystemHW $ show   $ configSystemHW c ]
   sc = mkProcess c t
+
+-- The Haskell identifier for eChronos must have initial caps.
+-- So we define this function make sure the case comes out correctly
+showOS :: OS -> String
+showOS CAmkES   = "CAmkES"
+showOS EChronos = "eChronos"
 
 mkProcess :: AADLConfig
           -> A.Tower

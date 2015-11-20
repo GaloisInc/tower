@@ -37,7 +37,15 @@ import           Ivory.Artifact
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
 import qualified Tower.AADL.AST.Common as A
-import           Tower.AADL.Build
+import           Tower.AADL.Build.Common ( ramsesMakefileName, makefileName
+                                         , componentLibsName, mkLib, aadlFilesMk
+                                         , renderMkStmts )
+import qualified Tower.AADL.Build.SeL4     as SeL4 ( ramsesMakefile, makefileApp
+                                                   , kbuildName, kbuildLib
+                                                   , kbuildApp, kconfigApp
+                                                   , kconfigName, kconfigLib
+                                                   , makefileLib)
+import qualified Tower.AADL.Build.EChronos as EChronos
 import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
 import           Tower.AADL.Config
@@ -53,7 +61,10 @@ compileTowerAADL fromEnv mkEnv twr = do
   let cfg' = fromEnv env
   let cfg  = parseAADLOpts cfg' topts
   let (ast, code, deps, sigs) = runTower AADLBackend twr env
-  let aadl_sys  = lowerCaseThreadNames (fromTower cfg ast)
+  let os' = configSystemOS cfg
+  let aadl_sys  = if os' == EChronos
+                    then lowerCaseThreadNames (fromTower cfg ast)
+                    else fromTower cfg ast
   let aadl_docs = buildAADL deps aadl_sys
   let doc_as    = renderCompiledDocs aadl_docs
   let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
@@ -65,54 +76,60 @@ compileTowerAADL fromEnv mkEnv twr = do
         go l = case l of
           Src a  -> Root (artifactPath (libSrcDir cfg) a)
           Incl a -> Root (artifactPath (libHdrDir cfg) a)
-          _     -> l
+          _      -> l
 
   let appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
 
-  let as :: [Located Artifact]
-      as = doc_as
+  let as :: OS -> [Located Artifact]
+      as os = doc_as
         ++ libAs
         ++ map Root ls
         where
+        ls :: [Artifact]
         ls =
            [ deps_a
-           , artifactString ramsesMakefileName (ramsesMakefile cfg)
-           -- apps
-           ] ++ kartifacts ++
-           [ artifactString makefileName
-               (makefileApp appname)
-           , artifactString componentLibsName
-               (mkLib cfg (aadlDocNames aadl_docs))
-           , artifactString (appname <.> "dot")
-               (graphviz $ messageGraph ast)
-           ]
-           ++ map (artifactPath l)
-           -- Libs
-           [ artifactString kbuildName
-               (kbuildLib   l)
-           , artifactString kconfigName
-               (kconfigLib  appname l)
-           , artifactString makefileName
-               (makefileLib cfg)
-           ]
+           , artifactString ramsesMakefileName
+                            (renderMkStmts (ramsesMakefile os))
+           ] ++ osSpecific
            where
+           osSpecific = case os of
+             CAmkES ->
+               -- apps
+               [ artifactString makefileName
+                   (renderMkStmts (SeL4.makefileApp appname))
+               , artifactString componentLibsName
+                   (mkLib cfg (aadlDocNames aadl_docs))
+               , artifactString (appname <.> "dot")
+                   (graphviz $ messageGraph ast)
+               ] ++
+               (if configCustomKConfig cfg
+                  then [ artifactString SeL4.kbuildName
+                          (renderMkStmts (SeL4.kbuildApp   l appname))
+                       , artifactString SeL4.kconfigName
+                          (SeL4.kconfigApp  appname appname)
+                       ]
+                  else []) ++
+               -- libs
+               map (artifactPath l)
+                 [ artifactString SeL4.kbuildName
+                     (renderMkStmts (SeL4.kbuildLib   l))
+                 , artifactString SeL4.kconfigName
+                     (SeL4.kconfigLib  appname l)
+                 , artifactString makefileName
+                     (renderMkStmts (SeL4.makefileLib cfg))
+                 ]
+             _      -> []
+           ramsesMakefile EChronos = EChronos.ramsesMakefile cfg
+           ramsesMakefile CAmkES   = SeL4.ramsesMakefile     cfg
            l = lib cfg
-           kartifacts =
-             if configCustomKConfig cfg
-               then []
-               else [ artifactString kbuildName
-                       (kbuildApp   l appname)
-                    , artifactString kconfigName
-                       (kconfigApp  appname appname)
-                    ]
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
   cmodules <- O.compileUnits mods copts
   let (appMods, libMods) =
         partition (\m -> O.unitName m `elem` pkgs) cmodules
-  O.outputCompiler appMods as (ivoryOpts True  cfg copts)
-  O.outputCompiler libMods [] (ivoryOpts False cfg copts)
+  O.outputCompiler appMods (as os') (ivoryOpts True  cfg copts)
+  O.outputCompiler libMods []       (ivoryOpts False cfg copts)
   where
 
   libSrcDir cfg = lib cfg </> "src"

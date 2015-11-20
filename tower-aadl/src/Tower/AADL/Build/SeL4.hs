@@ -25,8 +25,8 @@ ramsesMakefile c =
   , export $"AADL2RTOS_CONFIG_DIR" === "$(RAMSES_PATH)/aadl2rtos_resource"
   , Target ".PHONY" ["all", "tower-clean", "ramses", "camkesmakefile.mk"] []
   , Target "ramses" []
-    ["java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR)\
-           \-o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$(AADL_LIST)"]
+    ["java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR) \
+          \-o . -l trace -s sys.impl -m SMACCM_SYS.aadl,$(AADL_LIST)"]
   , Target camkesMakefileName []
     [ "make ramses"
     , if configCustomMakefile c

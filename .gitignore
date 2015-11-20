@@ -4,3 +4,4 @@ cabal.sandbox.config
 TAGS
 .hpc
 *.aadl
+*.swp

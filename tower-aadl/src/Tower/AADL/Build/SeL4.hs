@@ -22,7 +22,7 @@ ramsesMakefile c =
   , "SMACCM_PATH" ?= "./"
   , export $"RAMSES_DIR" === "$(RAMSES_PATH)/ramses_resource"
   , export $"AADL2RTOS_CONFIG_DIR" === "$(RAMSES_PATH)/aadl2rtos_resource"
-  , Target ".PHONY" ["all", "tower-clean", "ramses", "camkesmakefile.mk"] []
+  , Target ".PHONY" ["all", "tower-clean", "ramses", camkesMakefileName] []
   , Target "all" [camkesMakefileName] []
   , Target "ramses" []
     ["java -jar $(RAMSES_PATH)/ramses.jar -g rtos -i $(AADL2RTOS_CONFIG_DIR) \

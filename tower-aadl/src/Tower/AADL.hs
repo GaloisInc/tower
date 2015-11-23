@@ -94,6 +94,13 @@ compileTowerAADL fromEnv mkEnv twr = do
            where
            osSpecific = case os of
              CAmkES ->
+               (if configCustomKConfig cfg
+                  then []
+                  else [ artifactString SeL4.kbuildName
+                          (renderMkStmts (SeL4.kbuildApp   l appname))
+                       , artifactString SeL4.kconfigName
+                          (SeL4.kconfigApp  appname appname)
+                       ]) ++
                -- apps
                [ artifactString makefileName
                    (renderMkStmts (SeL4.makefileApp appname))
@@ -102,13 +109,6 @@ compileTowerAADL fromEnv mkEnv twr = do
                , artifactString (appname <.> "dot")
                    (graphviz $ messageGraph ast)
                ] ++
-               (if configCustomKConfig cfg
-                  then [ artifactString SeL4.kbuildName
-                          (renderMkStmts (SeL4.kbuildApp   l appname))
-                       , artifactString SeL4.kconfigName
-                          (SeL4.kconfigApp  appname appname)
-                       ]
-                  else []) ++
                -- libs
                map (artifactPath l)
                  [ artifactString SeL4.kbuildName

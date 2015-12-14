@@ -9,7 +9,8 @@ channels.
 Tower uses pluggable backends to support individual operating systems and
 target architectures. A backend for the [FreeRTOS][freertos] operating
 system running on the [STM32][] line of microcontrollers is available in
-the [ivory-tower-stm32][] repo.
+the [ivory-tower-stm32][] repo, and a backend for general purpose POSIX
+operating systems is available in the [ivory-tower-posix][] repo.
 
 [![Build Status](https://travis-ci.org/GaloisInc/tower.svg?branch=tower-9)](https://travis-ci.org/GaloisInc/tower)
 
@@ -26,10 +27,18 @@ unmaintained `toml` package.
 [ivory]: http://github.com/GaloisInc/ivory
 [tower]: http://github.com/GaloisInc/tower
 [ivory-tower-stm32]: http://github.com/GaloisInc/ivory-tower-stm32
+[ivory-tower-posix]: http://github.com/GaloisInc/ivory-tower-posix
 [overview]: http://smaccmpilot.org/software/tower-overview.html
 
 [STM32]: http://www.st.com/stm32
 [freertos]: http://freertos.org
 [galois]: http://galois.com
 
+
+## Contributing
+
+This project adheres to the
+[Contributor Covenant code of conduct](CODE_OF_CONDUCT.md).
+By participating, you are expected to uphold this code. Please report unaccpetable
+behavior to [smaccm@galois.com](mailto:smaccm@galois.com).
 

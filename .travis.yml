@@ -4,7 +4,7 @@ before_install:
 - git clone https://github.com/galoisinc/ivory
 - export IVORY_REPO=$PWD/ivory
 install:
-- cabal install alex happy
+- cabal install alex-3.1.4 happy
 script:
 - make $ENV_TEST_TARGET
 ghc:

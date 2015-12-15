@@ -169,24 +169,24 @@ canScheduler mailboxes tasks = do
 
     -- Global properties
 
-    -- * If a task ID is in some 'current' variable in 'mbox_states',
+    -- - If a task ID is in some 'current' variable in 'mbox_states',
     --   then we're waiting for it to complete in some hardware mailbox.
     --
-    --   * If it's in the high-priority elements of task_queue, then the
+    --   - If it's in the high-priority elements of task_queue, then the
     --     task is in the "on-hardware" state.
-    --   * If it's in the low-priority elements of task_queue, then the
+    --   - If it's in the low-priority elements of task_queue, then the
     --     task is in the "reschedule" state, waiting to be moved out of
     --     the mailbox to make room for an incoming higher-priority task.
-    --   * If it's missing from task_queue, then the task is in the
+    --   - If it's missing from task_queue, then the task is in the
     --     "abort" state, waiting for the hardware to notify us of its
     --     final disposition.
     --
-    -- * If a task ID is not in a mailbox:
+    -- - If a task ID is not in a mailbox:
     --
-    --   * If it's in task_queue somewhere, then it's in the "schedule"
+    --   - If it's in task_queue somewhere, then it's in the "schedule"
     --     state, waiting for the current mailbox contents to get sent
     --     so that there's an empty mailbox to put this task into.
-    --   * Otherwise the task is idle. Its "last_request" variable must
+    --   - Otherwise the task is idle. Its "last_request" variable must
     --     have a can_message_id of 'maxBound'.
     --
     -- See sched.dot in this directory for a state machine graph

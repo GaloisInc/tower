@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE OverloadedStrings #-}
 --
 -- Top-level driver for AADL generation.
 --
@@ -17,7 +20,7 @@ module Tower.AADL
 import           Data.Maybe
 import           Data.List
 import           Data.Char
-import           Control.Monad
+import           Control.Monad hiding (forever)
 
 import           System.FilePath (takeFileName, addExtension, (</>), (<.>))
 
@@ -31,6 +34,7 @@ import           Ivory.Tower.AST.Graph (graphviz, messageGraph)
 import           Ivory.Tower.Options
 import           Ivory.Tower.Types.Dependencies
 
+import           Ivory.Language
 import qualified Ivory.Language.Syntax     as I
 import           Ivory.Artifact
 
@@ -55,16 +59,15 @@ import           Tower.AADL.Render.Types
 --------------------------------------------------------------------------------
 
 compileTowerAADL :: (e -> AADLConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
-compileTowerAADL fromEnv mkEnv twr = do
+compileTowerAADL fromEnv mkEnv twr' = do
   (copts, topts) <- towerGetOpts
   env <- mkEnv topts
   let cfg' = fromEnv env
   let cfg  = parseAADLOpts cfg' topts
+  let os'  = configSystemOS cfg
+  let twr  = twr' >> when (os' == EChronos) eChronosMain
   let (ast, code, deps, sigs) = runTower AADLBackend twr env
-  let os' = configSystemOS cfg
-  let aadl_sys  = if os' == EChronos
-                    then lowerCaseThreadNames (fromTower cfg ast)
-                    else fromTower cfg ast
+  let aadl_sys  = fromTower cfg ast
   let aadl_docs = buildAADL deps aadl_sys
   let doc_as    = renderCompiledDocs aadl_docs
   let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
@@ -118,9 +121,12 @@ compileTowerAADL fromEnv mkEnv twr = do
                  , artifactString makefileName
                      (renderMkStmts (SeL4.makefileLib cfg))
                  ]
-             _ ->
+             EChronos ->
                [ artifactString makefileName
-                   (renderMkStmts EChronos.makefile) ]
+                   (renderMkStmts EChronos.makefile)
+               , artifactPath "gen"
+                   (artifactString EChronos.echronosMakefileName
+                     (renderMkStmts EChronos.echronosMakefile)) ]
            ramsesMakefile EChronos = EChronos.ramsesMakefile cfg
            ramsesMakefile CAmkES   = SeL4.ramsesMakefile     cfg
            l = lib cfg
@@ -147,27 +153,6 @@ compileTowerAADL fromEnv mkEnv twr = do
           }
     where
     dir = fromMaybe "." (O.outDir copts)
-
--- The eChronos description (.prx) requires that the thread names be
--- lower cased. The only complication here is the tripple nesting of the
--- structure, we simply take apart the fields we need until we get to the
--- underlying threadName and then lowercase that.
-lowerCaseThreadNames :: A.System -> A.System
-lowerCaseThreadNames system = system { A.systemComponents = sc }
-  where
-  sc = map lowerProcessName (A.systemComponents system)
-
-  -- Continue into the Process record
-  lowerProcessName :: A.Process -> A.Process
-  lowerProcessName process = process { A.processComponents = pc }
-    where
-    pc = map lowerThreadName (A.processComponents process)
-
-    -- Finally we arrive at the Thread itself
-    lowerThreadName :: A.Thread -> A.Thread
-    lowerThreadName thread = thread { A.threadName = tn }
-      where
-      tn = map toLower (A.threadName thread)
 
 validCIdent :: String -> Bool
 validCIdent appname =
@@ -202,4 +187,60 @@ aadlDepsArtifact names = artifactString aadlFilesMk $ displayS pp ""
   pp = renderPretty 0.4 100 doc
   doc = text "AADL_LIST" <> equals <> dquotes (hcat (punctuate comma files))
   files = map (\nm -> text $ addExtension nm "aadl") names
+
+
+----------------------------------------------------------------------------
+-- eChronos requires a custom main() function ------------------------------
+----------------------------------------------------------------------------
+eChronosMain :: Tower e ()
+eChronosMain = do
+  towerModule  mainMod
+  towerDepends mainMod
+
+initialize_periodic_dispatcher :: Def('[] :-> IBool)
+initialize_periodic_dispatcher =
+  importProc "initialize_periodic_dispatcher" "smaccm_decls.h"
+
+debug_println :: Def('[IString] :-> ())
+debug_println = importProc "debug_println" "debug.h"
+
+debug_printhex8 :: Def('[Uint8] :-> ())
+debug_printhex8 = importProc "debug_printhex8" "debug.h"
+
+debug_print :: Def('[IString] :-> ())
+debug_print = importProc "debug_print" "debug.h"
+
+type RTosErrorId = Uint8
+
+fatal :: Def('[RTosErrorId] :-> ())
+fatal = proc "fatal" $ \error_id -> body $ do
+  call_ debug_print "FATAL ERROR: "
+  call_ debug_printhex8 error_id
+  call_ debug_println ""
+  forever (return ())
+
+rtos_start :: Def ('[] :-> ())
+rtos_start = importProc "rtos_start" "rtos-kochab.h"
+
+mainMod :: Module
+mainMod = package "main" $ do
+  incl  initialize_periodic_dispatcher
+  incl  debug_println
+  incl  debug_print
+  incl  debug_printhex8
+  incl  fatal
+  incl  mainProc
+  incl  rtos_start
+
+mainProc :: Def ('[] :-> ())
+mainProc  = proc "main" $ body $ do
+  result <- call initialize_periodic_dispatcher
+  ifte_ (iNot result)
+    (do call_ debug_println "Unable to initialize periodic dispatcher."
+        call_ fatal (-1))
+    (return ())
+
+  call_ debug_println "Starting RTOS"
+  call_ rtos_start
+  forever (return ())
 

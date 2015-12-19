@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE TypeOperators     #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 --
 -- Top-level driver for AADL generation.
 --
@@ -192,8 +193,22 @@ aadlDepsArtifact names = artifactString aadlFilesMk $ displayS pp ""
 ----------------------------------------------------------------------------
 -- eChronos requires a custom main() function ------------------------------
 ----------------------------------------------------------------------------
+mainProc :: Def ('[] :-> ())
+mainProc  = proc "main" $ body $ do
+  result <- call initialize_periodic_dispatcher
+  ifte_ (iNot result)
+    (do call_ debug_println "Unable to initialize periodic dispatcher."
+        call_ fatal (-1))
+    (return ())
+
+  call_ debug_println "Starting RTOS"
+  call_ rtos_start
+  forever (return ())
+
 eChronosMain :: Tower e ()
 eChronosMain = do
+  towerModule  towerDepModule
+  towerDepends towerDepModule
   towerModule  mainMod
   towerDepends mainMod
 
@@ -222,25 +237,21 @@ fatal = proc "fatal" $ \error_id -> body $ do
 rtos_start :: Def ('[] :-> ())
 rtos_start = importProc "rtos_start" "rtos-kochab.h"
 
+[ivory|
+import (stdio.h, printf) void printf(string x, uint8_t y)
+|]
+
 mainMod :: Module
 mainMod = package "main" $ do
-  incl  initialize_periodic_dispatcher
   incl  debug_println
   incl  debug_print
   incl  debug_printhex8
   incl  fatal
   incl  mainProc
+  incl  initialize_periodic_dispatcher
   incl  rtos_start
 
-mainProc :: Def ('[] :-> ())
-mainProc  = proc "main" $ body $ do
-  result <- call initialize_periodic_dispatcher
-  ifte_ (iNot result)
-    (do call_ debug_println "Unable to initialize periodic dispatcher."
-        call_ fatal (-1))
-    (return ())
-
-  call_ debug_println "Starting RTOS"
-  call_ rtos_start
-  forever (return ())
+towerDepModule :: Module
+towerDepModule = package "towerDeps" $ do
+  incl printf
 

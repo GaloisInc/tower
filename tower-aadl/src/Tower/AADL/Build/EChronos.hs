@@ -84,18 +84,15 @@ echronosMakefile =
           \           -mfloat-abi=hard -mfpu=fpv4-sp-d16 \\\n\
           \           -lm"
   , "LD"          =: "arm-none-eabi-gcc"
-  , "SOURCES_GCC"=== "$(wildcard $(SRC)/libsmaccmpilot/src/*.c) \\\n\
+  , "SOURCES_GCC" =: "$(wildcard $(SRC)/libsmaccmpilot/src/*.c) \\\n\
       \               $(wildcard $(SRC)/gen/*.c)                \\\n\
       \               $(wildcard $(SRC)/echronos_gen/*.c)"
-  , "SOURCES_AS" === "$(wildcard $(SRC)/libsmaccmpilot/src/*.s) \\\n\
+  , "SOURCES_AS"  =: "$(wildcard $(SRC)/libsmaccmpilot/src/*.s) \\\n\
        \              $(wildcard $(SRC)/gen/*.s)                \\\n\
        \              $(wildcard $(SRC)/echronos_gen/*.s)"
-  , "OBJECTS_GCC"=== "$(SOURCES_GCC:.c=.o)"
-  , "OBJECTS_AS" === "$(SOURCES_AS:.s=.o)"
+  , "OBJECTS_GCC" =: "$(SOURCES_GCC:.c=.o)"
+  , "OBJECTS_AS"  =: "$(SOURCES_AS:.s=.o)"
   , "VPATH"       =: "$(SRC)"
-  -- , Target "all"  [".tag.echronos", "$(EXE)"]
-  --   ["@echo building program named $(EXE) in directory $(ROOT)"]
-  , Target ".PHONY" ["$(EXE)"] []
   , Target "$(EXE)" ["$(OBJECTS_GCC)", "$(OBJECTS_AS)"]
     ["@echo building executable from assembly files: $(OBJECTS_AS) and .c files: $(OBJECTS_GCC)"
     ,"@echo linking executable"

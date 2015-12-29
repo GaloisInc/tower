@@ -7,4 +7,4 @@ test:
 
 .PHONY: test-echronos
 test-echronos:
-	cabal run test-echronos -- --src-dir=test_echronos_codegen
+	cabal run test-echronos -- --src-dir=test_echronos_codegen --lib-dir=""

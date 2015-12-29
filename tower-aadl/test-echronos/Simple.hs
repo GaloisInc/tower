@@ -90,7 +90,8 @@ simpleTower2 = do
 main :: IO ()
 main = compileTowerAADL id p simpleTower
   where
-  p topts = getConfig topts $ aadlConfigParser (defaultAADLConfig
+  p topts = fmap fst $
+            getConfig' topts $ aadlConfigParser (defaultAADLConfig
               { configSystemOS        = EChronos
               , configSystemHW        = PIXHAWK })
 

@@ -96,8 +96,8 @@ options :: [O.OptDescr Flag]
 options =
   [ O.Option "" ["lib-dir"] (O.ReqArg LibDir "DIR") "library directory name" ]
 
-parseAADLOpts :: AADLConfig -> TOpts -> AADLConfig
-parseAADLOpts c topts = foldl' go c flags
+parseAADLOpts :: AADLConfig -> TOpts -> (AADLConfig, [String], [String])
+parseAADLOpts c topts = (foldl' go c flags, nonOpts, errs)
   where
-  (flags, _nonOpts, _errs) = O.getOpt O.Permute options (topts_args topts)
+  (flags, nonOpts, errs) = O.getOpt O.Permute options (topts_args topts)
   go c' (LibDir dir) = c' { configLibDir = dir }

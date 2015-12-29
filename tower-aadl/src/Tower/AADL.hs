@@ -24,6 +24,7 @@ import           Data.Char
 import           Control.Monad hiding (forever)
 
 import           System.FilePath (takeFileName, addExtension, (</>), (<.>))
+import           System.Exit (exitFailure)
 
 import           Text.PrettyPrint.Leijen hiding ((</>))
 
@@ -64,7 +65,7 @@ compileTowerAADL fromEnv mkEnv twr' = do
   (copts, topts) <- towerGetOpts
   env <- mkEnv topts
   let cfg' = fromEnv env
-  let cfg  = parseAADLOpts cfg' topts
+  cfg      <- parseAADLOpts' cfg' topts
   let os'  = configSystemOS cfg
   let twr  = twr' >> when (os' == EChronos) eChronosMain
   let (ast, code, deps, sigs) = runTower AADLBackend twr env
@@ -154,6 +155,19 @@ compileTowerAADL fromEnv mkEnv twr' = do
           }
     where
     dir = fromMaybe "." (O.outDir copts)
+
+-- | parseAADLOpts' is a wrapper around parseAADLOpts that
+-- checks for errors and if '--help' was requested.
+-- It calls exitFailure in the case of errors or help.
+parseAADLOpts' :: AADLConfig -> TOpts -> IO AADLConfig
+parseAADLOpts' cfg topts =
+  case parseAADLOpts cfg topts of
+  (c, [],        []) -> do
+    case topts_help topts of
+      True  -> topts_error topts "Usage:"
+      False -> return ()
+    return c
+  (_, _, _) -> finalizeOpts topts >> exitFailure
 
 validCIdent :: String -> Bool
 validCIdent appname =

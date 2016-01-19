@@ -61,7 +61,8 @@ graphvizArtifact appname ast = Root $
   artifactString (appname <.> "dot") (graphviz $ messageGraph ast)
 
 -- | Only use this version if you're compiling for SeL4/CAmkES. If you're
--- building for a different platform use the more general `compileTowerAADL'`
+-- building for a different platform use the more general
+-- `compileTowerAADLForPlatform`
 compileTowerAADL :: (e -> AADLConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
 compileTowerAADL fromEnv = compileTowerAADLForPlatform ((,SeL4.defaultCAmkESOS) . fromEnv)
 

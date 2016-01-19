@@ -87,18 +87,22 @@ threadChannels th id = foldl' go M.empty (getThreadEndpoints th)
 data Endpoint =
     InputEp  Input
   | OutputEp Output
+  | SignalEp SignalInfo
   deriving (Show, Eq)
 
 endPointId :: Endpoint -> ChanId
 endPointId ep = case ep of
   InputEp  rx -> inputId  rx
   OutputEp tx -> outputId tx
+  SignalEp s  -> signalNumber s
 
 newChan :: LocalId -> Endpoint -> ThdIds
 newChan l ep =
   case ep of
     InputEp  c -> ThdIds S.empty (S.singleton (l, inputLabel c))
     OutputEp c -> ThdIds (S.singleton (l, outputLabel c)) S.empty
+    -- TODO JED: This is probably wrong
+    SignalEp c -> ThdIds S.empty (S.singleton (l, signalName c))
 
 -- Add the id to the connections map, creating a new channel if needed.
 insertConnectionId :: LocalId -> Connections -> Endpoint -> Connections
@@ -113,6 +117,7 @@ getThreadEndpoints t =
     case f of
       InputFeature  rx -> InputEp  rx
       OutputFeature tx -> OutputEp tx
+      SignalFeature s  -> SignalEp s
 
 -- Extract a unique instance of the channel types defined in the system.
 extractTypes :: System -> [I.Type]
@@ -125,3 +130,6 @@ extractTypes sys = S.toList $ S.map getTy (S.fromList fs)
   getTy f = case f of
     InputFeature  rx -> inputType  rx
     OutputFeature tx -> outputType tx
+    -- TODO JED: Wouldn't this be so much nicer if the Time module told us what
+    -- type to put here?
+    SignalFeature _  -> I.TyInt I.Int64

@@ -10,6 +10,8 @@ module Tower.AADL.Render
 
 import Prelude hiding (id)
 
+import qualified Ivory.Language.Syntax.Type as I
+
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
 import Tower.AADL.Compile
@@ -125,6 +127,8 @@ renderThreadFeature f = case f of
     -> renderInput rx
   OutputFeature tx
     -> renderOutput tx
+  SignalFeature s
+    -> renderSignal s
 
 renderInput :: Input -> Doc
 renderInput rx = stmt
@@ -156,6 +160,30 @@ renderOutput tx = stmt
  <$$> chanSrc st
   where
   st = stmt $ fromSMACCM primSrc ==> dquotes (text (outputEmitter tx))
+
+-- TODO JED: this whole thing is probably wrong as it's
+-- just a direct copy of renderInput without any thought as to
+-- what really makes sense
+renderSignal :: SignalInfo -> Doc
+renderSignal s = stmt
+    $ mkRxChan (signalName s) <> colon
+  <+> text "in"
+  <+> edp
+  -- TODO JED: don't just hardcode the type here
+  <+> renderTypeNS Other (I.TyInt I.Int64)
+ <$$> chanSrc (vsep $ entry : src ++ snds ++ sndsEvents)
+  where
+  (fps, syms) = unzip $ signalCallback s
+  entry       = renderEntryPoint syms
+  src         = if emptyStrs fps
+                  then []
+                  else [renderSrcText fps]
+  snds        = if emptyStrs fps
+                  -- Send events nowhere for external threads
+                  then [renderSendsEventsTo []]
+                  else []
+  sndsEvents  = [renderSendsEventsTo (signalSendsEvents s)]
+  emptyStrs   = all null
 
 edp :: Doc
 edp = hsep (map text ["event", "data", "port"])

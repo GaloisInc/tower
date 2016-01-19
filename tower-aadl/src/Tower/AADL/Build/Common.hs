@@ -8,6 +8,9 @@ module Tower.AADL.Build.Common where
 import Data.Char
 import Text.PrettyPrint.Leijen hiding ((</>))
 
+import Ivory.Artifact
+import Ivory.Tower
+
 import Tower.AADL.Config (AADLConfig(..))
 
 data Required
@@ -115,3 +118,16 @@ makefileName = "Makefile"
 
 shellVar :: String -> String
 shellVar = map toUpper
+
+--------------------------------------------------------------------------------
+-- Support for OS Specific Code generation
+--------------------------------------------------------------------------------
+
+data OSSpecific a e = OSSpecific
+  { osSpecificName      :: String
+  , osSpecificConfig    :: a
+  , osSpecificArtifacts :: String -> AADLConfig -> [Located Artifact]
+  , osSpecificSrcDir    :: AADLConfig -> Located Artifact -> Located Artifact
+  , osSpecificTower     :: Tower e ()
+  }
+

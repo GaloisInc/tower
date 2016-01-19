@@ -40,6 +40,7 @@ data Thread = Thread
 data Feature =
     InputFeature  Input
   | OutputFeature Output
+  | SignalFeature SignalInfo
   deriving (Show, Eq, Ord)
 
 -- | Init Channel
@@ -96,12 +97,11 @@ data DispatchProtocol =
   deriving (Show, Eq)
 
 data SignalInfo = SignalInfo
-  { signalName     :: SignalName
-  , signalNumber   :: SignalNumber
-  , signalAddress  :: Address
-  , signalDeadline :: Integer
-  , signalInit     :: FuncSym
-  } deriving (Show, Eq)
+  { signalName        :: SignalName
+  , signalNumber      :: SignalNumber
+  , signalCallback    :: [SourcePath]
+  , signalSendsEvents :: SendsEvents
+  } deriving (Show, Eq, Ord)
 
 data ThreadType =
     Passive

@@ -281,8 +281,15 @@ fromInputChan :: AADLConfig
               -> Either Feature Init
 fromInputChan c f active m h =
   case A.handler_chan h of
-    A.ChanSignal{}
-      -> error "fromInputChan: Signal unimplemented"
+    A.ChanSignal s
+      -> Left
+       $ SignalFeature
+       $ SignalInfo { signalNumber      = case A.signal_deadline s of
+                                          T.Microseconds t -> t
+                    , signalName        = A.signal_name s
+                    , signalCallback    = cbs
+                    , signalSendsEvents = events
+                    }
     A.ChanPeriod p
       -> Left
        $ InputFeature

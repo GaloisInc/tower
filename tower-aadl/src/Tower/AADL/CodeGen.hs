@@ -146,14 +146,12 @@ genIvoryCode
   where
   modules = modDeps
          ++ modsF depends
-         ++ go mkSignalCode signals
+         ++ go (mkSignalCode (modsF depends)) signals
   go c cs = M.elems $ M.mapWithKey c cs
 
-mkSignalCode :: String -> T.GeneratedSignal -> I.Module
-mkSignalCode sigNm
+mkSignalCode :: [I.Module] -> String -> T.GeneratedSignal -> I.Module
+mkSignalCode deps sigNm
   T.GeneratedSignal { T.unGeneratedSignal = s }
-  -- XXX assuming for now that we don't have unsafe signals. Pass the platform
-  -- signal continuation here for eChronos.
-  = I.package sigNm (s (return ()))
+  = I.package sigNm (mapM_ I.depend deps >> (s (return ())))
 
 type TowerTime = I.Sint64

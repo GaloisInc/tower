@@ -13,7 +13,6 @@ library
                  , Tower.AADL.AST.Common
                  , Tower.AADL.Build.Common
                  , Tower.AADL.Build.SeL4
-                 , Tower.AADL.Build.EChronos
                  , Tower.AADL.CodeGen
                  , Tower.AADL.Compile
                  , Tower.AADL.Config

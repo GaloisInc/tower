@@ -5,10 +5,12 @@
 
 module Tower.AADL.Build.SeL4 where
 
-import System.FilePath ((</>))
+import           System.FilePath ((</>))
 
-import Tower.AADL.Config (AADLConfig(..), lib)
-import Tower.AADL.Build.Common
+import           Ivory.Artifact
+
+import           Tower.AADL.Config (AADLConfig(..), lib)
+import           Tower.AADL.Build.Common
 
 --------------------------------------------------------------------------------
 -- Ramses build
@@ -116,3 +118,57 @@ makefileApp dir =
   ]
   where
   fromApps fl = "apps" </> dir </> fl
+
+camkesArtifacts :: String -> AADLConfig -> [Located Artifact]
+camkesArtifacts appname cfg = map Root ls
+  where
+  ls :: [Artifact]
+  ls = artifactString
+         ramsesMakefileName
+         (renderMkStmts (ramsesMakefile cfg))
+     : osSpecific
+  osSpecific =
+       (if configCustomKConfig cfg
+          then []
+          else [ artifactString
+                   kbuildName
+                   (renderMkStmts (kbuildApp l appname))
+               , artifactString
+                   kconfigName
+                   (kconfigApp appname appname)
+               ]) ++
+       -- apps
+       [ artifactString
+           makefileName
+           (renderMkStmts (makefileApp appname))
+       ] ++
+       -- libs
+       map (artifactPath l)
+         [ artifactString
+             kbuildName
+             (renderMkStmts (kbuildLib l))
+         , artifactString
+             kconfigName
+             (kconfigLib appname l)
+         , artifactString
+             makefileName
+             (renderMkStmts (makefileLib cfg))
+         ]
+  l = lib cfg
+
+defaultCAmkESOS :: OSSpecific () e
+defaultCAmkESOS =
+  OSSpecific
+    { osSpecificName      = "CAmkES"
+    , osSpecificConfig    = ()
+    , osSpecificArtifacts = camkesArtifacts
+    , osSpecificSrcDir    =
+        let libSrcDir cfg = lib cfg </> "src"
+            libHdrDir cfg = lib cfg </> "include"
+        in \cfg l -> case l of
+          Src  a -> Root (artifactPath (libSrcDir cfg) a)
+          Incl a -> Root (artifactPath (libHdrDir cfg) a)
+          _      -> l
+    , osSpecificTower     = return ()
+    }
+

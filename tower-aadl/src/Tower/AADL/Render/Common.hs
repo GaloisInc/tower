@@ -73,6 +73,21 @@ entrySrc = text "Compute_Entrypoint_Source_Text"
 initEntryPoint :: Doc
 initEntryPoint = text "Initialize_Entrypoint_Source_Text"
 
+firstLevelHandlerText :: Doc
+firstLevelHandlerText = text "First_Level_Interrupt_Handler"
+
+firstLevelHandler :: String -> Doc
+firstLevelHandler name = stmt (fromSMACCM firstLevelHandlerText ==> (dquotes (text name)))
+
+isISR :: Doc
+isISR = stmt (fromSMACCM (text "Is_ISR") ==> text "true")
+
+sigName :: String -> Doc
+sigName name = stmt (fromSMACCM (text "Signal_Name") ==> (dquotes (text name)))
+
+sigNum :: Int -> Doc
+sigNum number = stmt (fromSMACCM (text "Signal_Number") ==> (int number))
+
 mkImpl :: Doc -> Doc
 mkImpl d = d <> dot <> text "impl"
 

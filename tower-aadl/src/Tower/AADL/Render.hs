@@ -168,10 +168,10 @@ renderSignal :: SignalInfo -> Doc
 renderSignal s = stmt
     $ mkRxChan (signalName s) <> colon
   <+> text "in"
-  <+> edp
+  <+> hsep (map text ["event", "port"])
   -- TODO JED: don't just hardcode the type here
-  <+> renderTypeNS Other (I.TyInt I.Int64)
- <$$> chanSrc (vsep $ entry : src ++ snds ++ sndsEvents)
+  -- <+> renderTypeNS Other (I.TyInt I.Int64)
+ <$$> chanSrc (vsep (entry : isrStmts ++ src ++ snds ++ sndsEvents))
   where
   (fps, syms) = unzip $ signalCallback s
   entry       = renderEntryPoint syms
@@ -184,6 +184,13 @@ renderSignal s = stmt
                   else []
   sndsEvents  = [renderSendsEventsTo (signalSendsEvents s)]
   emptyStrs   = all null
+  isrStmts    = [isISR
+                ,firstLevelHandler (signalName s)
+                -- JED TODO: We can't leave this hard coded to external_irq 38.
+                -- That would be dumb.
+                ,sigName "external_irq"
+                ,sigNum  38
+                ]
 
 edp :: Doc
 edp = hsep (map text ["event", "data", "port"])

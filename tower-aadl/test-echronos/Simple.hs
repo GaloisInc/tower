@@ -101,4 +101,7 @@ import (stdio.h, printf) void printf(string x, uint8_t y)
 
 towerDepModule :: Module
 towerDepModule = package "towerDeps" $ do
+  incl debug_println
+  incl debug_print
+  incl debug_printhex8
   incl printf

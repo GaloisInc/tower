@@ -30,7 +30,7 @@ simpleTower = do
     handler per "tickh" $ do
       e <- emitter c1in 1
       callback $ \_ -> do
-        emit e (constRef (s :: Ref Global (Stored Uint8)))
+        emit e (constRef (s :: Ref 'Global ('Stored Uint8)))
 
   monitor "withsharedM" $ do
     s <- state "last_m2_chan1_message"
@@ -76,7 +76,7 @@ simpleTower2 = do
     s <- state "local_st"
     handler per "tick" $ do
       e <- emitter c1in 1
-      callback $ \_ -> emit e (constRef (s :: Ref Global (Struct "Foo")))
+      callback $ \_ -> emit e (constRef (s :: Ref 'Global ('Struct "Foo")))
       -- callback $ \_ -> emit e (constRef (s :: Ref Global (Array 3 (Stored Uint8))))
 
   monitor "m2" $ do

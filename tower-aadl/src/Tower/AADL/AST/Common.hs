@@ -17,11 +17,13 @@ module Tower.AADL.AST.Common
   , emptyConnections
   ) where
 
+
+import           Prelude ()
+import           Prelude.Compat hiding (id)
+
 import           Tower.AADL.AST
 import qualified Ivory.Language.Syntax.Type as I
 
-import Prelude hiding (id)
-import Data.Monoid
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 import           Data.List (foldl')

@@ -26,6 +26,7 @@ library
                  , Tower.AADL.Render.Types
 
   build-depends: base >= 4.6
+               , base-compat
                , containers
                , filepath
                , wl-pprint
@@ -43,6 +44,7 @@ executable test
   hs-source-dirs:   test
   main-is:          Simple.hs
   build-depends: base >= 4.6
+               , base-compat
                , ivory >= 0.1.0.1
                , tower
                , tower-config
@@ -57,6 +59,7 @@ executable test-echronos
   hs-source-dirs:   test-echronos
   main-is:          Simple.hs
   build-depends: base >= 4.6
+               , base-compat
                , ivory >= 0.1.0.1
                , tower
                , tower-config

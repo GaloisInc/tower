@@ -14,6 +14,9 @@
 
 module Tower.AADL.CodeGen where
 
+import           Prelude ()
+import           Prelude.Compat
+
 import qualified Ivory.Language as I
 import qualified Ivory.Artifact as I
 
@@ -27,7 +30,6 @@ import qualified Ivory.Tower.Types.Unique       as T
 import           Tower.AADL.Names
 
 import qualified Data.Map.Strict as M
-import           Data.Monoid
 import           Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
@@ -67,14 +69,14 @@ instance TowerBackend AADLBackend where
       ( T.Emitter $ \ref -> I.call_ (procFromEmitter undefined) ref
       , AADLEmitter
          (\monName -> I.incl (procFromEmitter monName
-                              :: I.Def('[I.ConstRef s b] I.:-> ())
+                              :: I.Def('[I.ConstRef s b] 'I.:-> ())
                              ))
       )
       where
       sym = T.showUnique (A.emitter_name emitterAst)
       procFromEmitter :: I.IvoryArea b
                       => String
-                      -> I.Def('[I.ConstRef s b] I.:-> ())
+                      -> I.Def('[I.ConstRef s b] 'I.:-> ())
       procFromEmitter monName = I.importProc sym hdr
         where hdr = smaccmPrefix $ monName ++ ".h"
 
@@ -122,11 +124,11 @@ activeSrc t =
     _ -> Nothing
   where
   mkPerCallback :: A.Period
-                -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+                -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
   mkPerCallback p =
     I.proc (periodicCallback p) $ \time -> I.body $
       I.call_ (emitter p) time
-  emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+  emitter :: A.Period -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
   emitter p = I.importProc (periodicEmitter p) (threadEmitterHeader t)
 
 genIvoryCode :: TowerBackendOutput AADLBackend

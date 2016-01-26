@@ -6,8 +6,8 @@
 
 module Tower.AADL.Threads where
 
-import Prelude hiding (init)
-import Data.Monoid
+import Prelude ()
+import Prelude.Compat hiding (init)
 import Data.Maybe (isJust, fromJust, isNothing)
 import Data.List (find)
 

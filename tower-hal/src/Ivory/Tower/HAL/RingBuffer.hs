@@ -52,25 +52,25 @@ ringBuffer s = RingBuffer
   where
   named n = s ++ "_ringbuffer_" ++ n
 
-  remove_area :: MemArea (Stored (Ix n))
+  remove_area :: MemArea ('Stored (Ix n))
   remove_area = area (named "remove") (Just (ival 0))
   remove = addrOf remove_area
-  insert_area :: MemArea (Stored (Ix n))
+  insert_area :: MemArea ('Stored (Ix n))
   insert_area = area (named "insert") (Just (ival 0))
   insert = addrOf insert_area
-  buf_area :: MemArea (Array n a)
+  buf_area :: MemArea ('Array n a)
   buf_area = area (named "buf") Nothing
   buf = addrOf buf_area
 
-  incr :: (GetAlloc eff ~ Scope s')
-       => Ref s (Stored (Ix n)) -> Ivory eff (Ix n)
+  incr :: (GetAlloc eff ~ 'Scope s')
+       => Ref s ('Stored (Ix n)) -> Ivory eff (Ix n)
   incr ix = do
     i <- deref ix
     ifte (i ==? (fromIntegral ((ixSize i) - 1)))
       (return 0)
       (return (i + 1))
 
-  full :: (GetAlloc eff ~ Scope s') => Ivory eff IBool
+  full :: (GetAlloc eff ~ 'Scope s') => Ivory eff IBool
   full = do
     i <- incr insert
     r <- deref remove
@@ -82,7 +82,7 @@ ringBuffer s = RingBuffer
     r <- deref remove
     return (i ==? r)
 
-  push_proc :: Def('[ConstRef s a]:->IBool)
+  push_proc :: Def('[ConstRef s a]':->IBool)
   push_proc = proc (named "push") $ \v -> body $ do
     f <- full
     ifte_ f (ret false) $ do
@@ -91,7 +91,7 @@ ringBuffer s = RingBuffer
       incr insert >>= store insert
       ret true
 
-  pop_proc :: Def('[Ref s a]:->IBool)
+  pop_proc :: Def('[Ref s a]':->IBool)
   pop_proc = proc (named "pop") $ \v -> body $ do
     e <- empty
     ifte_ e (ret false) $ do

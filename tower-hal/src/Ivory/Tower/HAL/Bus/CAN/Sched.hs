@@ -3,6 +3,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Ivory.Tower.HAL.Bus.CAN.Sched
@@ -33,7 +34,7 @@ struct can_transmit_result
 shiftUp :: Def ('[ Ref s0 ('Stored Uint8)
                  , Ref s1 ('Stored Uint32), Ref s2 ('Stored Uint8)
                  , Ref s3 ('Stored Uint32), Ref s4 ('Stored Uint8)
-                 ] :-> IBool)
+                 ] ':-> IBool)
 shiftUp = proc "shift_task_up" $ \ insert_position new_prio new_task current_prio current_task -> body $ do
   new <- deref new_prio
   when (new ==? maxBound) $ ret true
@@ -54,7 +55,7 @@ shiftUp = proc "shift_task_up" $ \ insert_position new_prio new_task current_pri
 shiftDown :: Def ('[ Ref s0 ('Stored Uint8)
                    , Ref s1 ('Stored Uint32), Ref s2 ('Stored Uint8)
                    , ConstRef s3 ('Stored Uint32), ConstRef s4 ('Stored Uint8)
-                   ] :-> IBool)
+                   ] ':-> IBool)
 shiftDown = proc "shift_task_down" $ \ target_ref current_prio current_task next_prio next_task -> body $ do
   target <- deref target_ref
   when (target ==? maxBound) $ ret true
@@ -78,9 +79,9 @@ schedulerHelperModule = package "can_scheduler_helper" $ do
 -- | Pass this data to 'canScheduler' to tie the corresponding client to
 -- a given collection of multiplexed hardware mailboxes.
 data CANTask = CANTask
-  { canTaskReq :: ChanOutput (Struct "can_message")
-  , canTaskRes :: ChanInput (Stored IBool)
-  , canTaskAbortReq :: ChanOutput (Stored IBool)
+  { canTaskReq :: ChanOutput ('Struct "can_message")
+  , canTaskRes :: ChanInput ('Stored IBool)
+  , canTaskAbortReq :: ChanOutput ('Stored IBool)
   }
 
 -- | Construct a virtual CAN transmit mailbox that a client can use as
@@ -88,7 +89,7 @@ data CANTask = CANTask
 -- passed to an instance of 'canScheduler'; otherwise, the virtual
 -- mailbox will discard requests sent to it and will never complete
 -- them.
-canTask :: Tower e (CANTask, AbortableTransmit (Struct "can_message") (Stored IBool))
+canTask :: Tower e (CANTask, AbortableTransmit ('Struct "can_message") ('Stored IBool))
 canTask = do
   (abortableTransmit, canTaskReq) <- channel
   (canTaskRes, abortableComplete) <- channel
@@ -98,7 +99,7 @@ canTask = do
 -- | Multiplex a collection of CAN transmit tasks onto a collection of
 -- hardware transmit mailboxes. The transmit mailboxes must ensure that
 -- the highest-priority message queued on any of them is sent first.
-canScheduler :: [AbortableTransmit (Struct "can_message") (Stored IBool)]
+canScheduler :: [AbortableTransmit ('Struct "can_message") ('Stored IBool)]
              -> [CANTask]
              -> Tower e ()
 canScheduler mailboxes tasks = do
@@ -155,7 +156,7 @@ canScheduler mailboxes tasks = do
     -- 4. Mailbox processes abort #2, aborting the wrong request.
     -- We don't want to spuriously abort requests, so keep a flag per
     -- mailbox to record whether we already have a pending abort there.
-    mbox_aborting <- stateInit "mbox_aborting" (izero :: Init (Stored Uint8))
+    mbox_aborting <- stateInit "mbox_aborting" (izero :: Init ('Stored Uint8))
 
     task_states <- forM (zip [0..] tasks) $ \ (idx, task) -> do
       -- We buffer one request from each task. They aren't allowed to
@@ -248,11 +249,11 @@ canScheduler mailboxes tasks = do
     -- of a hardware mailbox, or a schedule request to place this task
     -- into a currently-empty mailbox.
     let insertTask :: Def ('[ Uint8
-                            , Ref s0 (Stored Uint8)
-                            , Ref s1 (Stored Uint8)
+                            , Ref s0 ('Stored Uint8)
+                            , Ref s1 ('Stored Uint8)
                             , Ref s2 ('Struct "can_message")
                             , ConstRef s3 ('Struct "can_message")
-                            ] :-> IBool)
+                            ] ':-> IBool)
         insertTask = proc "insert_task" $ \ task resched_task resched_mbox last_request req -> body $ do
           comment "Task must not have an outstanding request already."
           last_id <- deref $ last_request ~> can_message_id
@@ -261,7 +262,7 @@ canScheduler mailboxes tasks = do
           comment "Save this request until we can deliver it."
           refCopy last_request req
 
-          insert_position_ref <- local (izero :: Init (Stored Uint8))
+          insert_position_ref <- local (izero :: Init ('Stored Uint8))
 
           new_prio <- local =<< do
             req_id <- deref $ req ~> can_message_id

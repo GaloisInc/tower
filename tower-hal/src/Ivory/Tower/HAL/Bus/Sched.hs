@@ -29,8 +29,8 @@ task taskName = do
 data TaskState req res = TaskState
   { taskBase :: Task req res
   , taskId :: Uint32
-  , taskPending :: Ref Global (Stored IBool)
-  , taskLastReq :: Ref Global req
+  , taskPending :: Ref 'Global ('Stored IBool)
+  , taskLastReq :: Ref 'Global req
   }
 
 -- | Multiplex a request/response bus across any number of tasks that

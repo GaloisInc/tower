@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Ivory.Tower.HAL.Bus.CAN.Fragment
   ( MessageType
@@ -63,8 +64,8 @@ serializeDeps = do
 
 fragmentSender :: (IvoryArea a, IvoryZero a)
                => MessageType a
-               -> AbortableTransmit (Struct "can_message") (Stored IBool)
-               -> Tower e (ChanInput a, ChanInput (Stored IBool), ChanOutput (Stored IBool))
+               -> AbortableTransmit ('Struct "can_message") ('Stored IBool)
+               -> Tower e (ChanInput a, ChanInput ('Stored IBool), ChanOutput ('Stored IBool))
 fragmentSender (MessageType baseID ide bound rep) tx = do
   serializeDeps
 
@@ -74,11 +75,12 @@ fragmentSender (MessageType baseID ide bound rep) tx = do
 
   let idstr = "0x" ++ showHex baseID ""
   monitor ("fragment_" ++ idstr) $ do
-    sent <- stateInit ("fragment_sent_" ++ idstr) (izero :: Init (Stored Uint8))
+    sent <- stateInit ("fragment_sent_" ++ idstr) (izero :: Init ('Stored Uint8))
     buf <- stateInit ("fragment_buf_" ++ idstr) (izerolen bound)
     aborting <- state ("fragment_aborting_" ++ idstr)
 
-    let sendFragment idx = do
+    let sendFragment :: Uint8 -> Ivory (AllocEffects s) (Ref ('Stack s) ('Struct "can_message"))
+        sendFragment idx = do
           let remaining_len = arrayLen buf - 8 * idx
           let len = (remaining_len >? 8) ? (8, remaining_len)
           msg <- local $ istruct
@@ -134,7 +136,7 @@ fragmentSender (MessageType baseID ide bound rep) tx = do
 fragmentSenderBlind :: (IvoryArea a, IvoryZero a)
                     => ChanOutput a
                     -> MessageType a
-                    -> AbortableTransmit (Struct "can_message") (Stored IBool)
+                    -> AbortableTransmit ('Struct "can_message") ('Stored IBool)
                     -> Tower e ()
 fragmentSenderBlind src mt tx = do
   (fragReq, fragAbort, fragDone) <- fragmentSender mt tx
@@ -180,12 +182,12 @@ fragmentReceiveHandler chan mt = FragmentReceiveHandler
 
 data GeneratedHandler = GeneratedHandler
   { generatedBaseID :: Int
-  , generatedHandler :: forall s s'. Uint8 -> ConstRef s (Struct "can_message") -> Ivory (AllocEffects s') ()
+  , generatedHandler :: forall s s'. Uint8 -> ConstRef s ('Struct "can_message") -> Ivory (AllocEffects s') ()
   }
 
 -- | Attach all of the given 'FragmentReceiveHandler's to this stream
 -- of incoming CAN messages, reassembling fragments appropriately.
-fragmentReceiver :: ChanOutput (Struct "can_message")
+fragmentReceiver :: ChanOutput ('Struct "can_message")
                  -> [FragmentReceiveHandler]
                  -> Tower e ()
 fragmentReceiver src handlers = do
@@ -194,7 +196,7 @@ fragmentReceiver src handlers = do
   monitor "fragment_reassembly" $ do
     emitters <- forM handlers $ \ (FragmentReceiveHandler chan (MessageType baseID ide bound rep)) -> do
       let idstr = "0x" ++ showHex baseID ""
-      next_idx <- stateInit ("reassembly_next_idx_" ++ idstr) (izero :: Init (Stored Uint8))
+      next_idx <- stateInit ("reassembly_next_idx_" ++ idstr) (izero :: Init ('Stored Uint8))
       buf <- stateInit ("reassembly_buf_" ++ idstr) (izerolen bound)
 
       let last_fragment_idx = fromInteger $ (arrayLen buf - 1) `div` 8

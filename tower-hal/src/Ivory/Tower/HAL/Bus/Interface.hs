@@ -12,6 +12,6 @@ data BackpressureTransmit value status = BackpressureTransmit
 
 data AbortableTransmit value status = AbortableTransmit
   { abortableTransmit :: ChanInput value
-  , abortableAbort :: ChanInput (Stored IBool)
+  , abortableAbort :: ChanInput ('Stored IBool)
   , abortableComplete :: ChanOutput status
   }

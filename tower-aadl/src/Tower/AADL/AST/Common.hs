@@ -94,7 +94,7 @@ endPointId :: Endpoint -> ChanId
 endPointId ep = case ep of
   InputEp  rx -> inputId  rx
   OutputEp tx -> outputId tx
-  SignalEp s  -> signalNumber s
+  SignalEp s  -> fromIntegral (signalNumber s)
 
 newChan :: LocalId -> Endpoint -> ThdIds
 newChan l ep =

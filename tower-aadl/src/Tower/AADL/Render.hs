@@ -161,16 +161,11 @@ renderOutput tx = stmt
   where
   st = stmt $ fromSMACCM primSrc ==> dquotes (text (outputEmitter tx))
 
--- TODO JED: this whole thing is probably wrong as it's
--- just a direct copy of renderInput without any thought as to
--- what really makes sense
 renderSignal :: SignalInfo -> Doc
 renderSignal s = stmt
     $ mkRxChan (signalName s) <> colon
   <+> text "in"
   <+> hsep (map text ["event", "port"])
-  -- TODO JED: don't just hardcode the type here
-  -- <+> renderTypeNS Other (I.TyInt I.Int64)
  <$$> chanSrc (vsep (entry : isrStmts ++ src ++ snds ++ sndsEvents))
   where
   (fps, syms) = unzip $ signalCallback s
@@ -186,10 +181,8 @@ renderSignal s = stmt
   emptyStrs   = all null
   isrStmts    = [isISR
                 ,firstLevelHandler (signalName s)
-                -- JED TODO: We can't leave this hard coded to external_irq 38.
-                -- That would be dumb.
                 ,sigName "external_irq"
-                ,sigNum  38
+                ,sigNum  (signalNumber s)
                 ]
 
 edp :: Doc

@@ -129,4 +129,4 @@ type SignalName = String
 
 type Address = Integer
 
-type SignalNumber = Integer
+type SignalNumber = Int

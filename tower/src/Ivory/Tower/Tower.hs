@@ -73,7 +73,7 @@ signalUnsafe :: (Time a, Signalable s)
        -> Tower e (ChanOutput (Stored ITime))
 signalUnsafe s t i = do
   towerPutSignalCode $ SignalCode
-    { signalcode_init = signalInit s
+    { signalcode_init    = signalInit s
     , signalcode_signals = Map.singleton n $
         GeneratedSignal $ \i' -> signalHandler s (i >> i')
     }
@@ -81,8 +81,9 @@ signalUnsafe s t i = do
   where
   n = signalName s
   ast = AST.Signal
-    { AST.signal_name = n
+    { AST.signal_name     = n
     , AST.signal_deadline = microseconds t
+    , AST.signal_number   = signalNumber s
     }
 
 period :: Time a => a -> Tower e (ChanOutput (Stored ITime))

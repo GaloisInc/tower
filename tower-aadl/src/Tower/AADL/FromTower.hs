@@ -284,9 +284,8 @@ fromInputChan c f active m h =
     A.ChanSignal s
       -> Left
        $ SignalFeature
-       $ SignalInfo { signalNumber      = case A.signal_deadline s of
-                                          T.Microseconds t -> t
-                    , signalName        = A.signal_name s
+       $ SignalInfo { signalNumber      = A.signal_number s
+                    , signalName        = A.signal_name   s
                     , signalCallback    = cbs
                     , signalSendsEvents = events
                     }

@@ -164,17 +164,13 @@ renderSignal s = stmt
     $ mkRxChan (signalInfoName s) <> colon
   <+> text "in"
   <+> hsep (map text ["event", "port"])
- <$$> chanSrc (vsep (entry : isrStmts ++ src ++ snds ++ sndsEvents))
+ <$$> chanSrc (vsep (entry : isrStmts ++ src ++ sndsEvents))
   where
   (fps, syms) = unzip $ signalInfoCallback s
   entry       = renderEntryPoint syms
   src         = if emptyStrs fps
                   then []
                   else [renderSrcText fps]
-  snds        = if emptyStrs fps
-                  -- Send events nowhere for external threads
-                  then [renderSendsEventsTo []]
-                  else []
   sndsEvents  = [renderSendsEventsTo (signalInfoSendsEvents s)]
   emptyStrs   = all null
   isrStmts    = [isISR

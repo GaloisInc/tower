@@ -14,7 +14,8 @@ module Tower.AADL.FromTower
   ) where
 
 import           Prelude hiding (init)
-import           Data.Either
+import           Data.Either (lefts, rights)
+import           Data.Maybe (catMaybes)
 import           System.FilePath ((</>), addExtension)
 
 import qualified Ivory.Tower.AST                as A
@@ -89,29 +90,37 @@ fromSignalThread :: AADLConfig
 fromSignalThread c s =
   Thread
   { threadName       = nm
-  , threadFeatures   = [fs]
+  , threadFeatures   = [sf,fs]
   , threadProperties = props
   , threadComments   = []
   }
   where
   nm = A.threadName (A.SignalThread s)
+  sf = SignalFeature
+     $ SignalInfo { signalInfoNumber      = A.signal_number s
+                  , signalInfoName        = A.signal_name   s
+                  , signalInfoSendsEvents = [(A.signal_name s, 1)]
+                  , signalInfoCallback    = [(mkCFile c (signalCallback s), signalCallback s)]
+                  }
   fs = OutputFeature
      $ Output
-     { outputId       = fromIntegral (A.signal_number s) -- XXX not unique?
+     { outputId       = SignalChanId (fromIntegral (A.signal_number s))
      , outputLabel    = A.signal_name s
-     , outputType     = I.TyInt I.Int64 -- XXX correct?
+     , outputType     = I.TyInt I.Int64 -- XXX generalize, correct?
      , outputEmitter  = signalEmitter s
      }
   props =
     [ ThreadType Active
     , DispatchProtocol Sporadic
     , ExecTime execTime
-    , SendEvents [(A.signal_name s, 1)]
     , StackSize stackSize
     , Priority (getPriority nm (configPriorities c))
-    , EntryPoint [signalCallback s]
-    , SourceText [mkCFile c (signalCallback s)]
     ]
+
+  -- events = zip (map outputLabel outs) bnds
+  -- (outs, bnds) = unzip (fromEmitters h)
+  -- cbs = mkCallbacksHandler c f h (threadFile m)
+
 
 periodicThread :: AADLConfig
                -> A.Period
@@ -134,7 +143,7 @@ periodicThread c p =
      }
   props =
     [ ThreadType Active
-    , DispatchProtocol (Periodic (periodId p))
+    , DispatchProtocol (Periodic (getPeriod p))
     , ExecTime execTime
     , SendEvents [(prettyTime p, 1)]
     , StackSize stackSize
@@ -150,7 +159,7 @@ fromGenericMonitor :: AADLConfig
 fromGenericMonitor c m props =
   Thread
   { threadName       = nm
-  , threadFeatures   = lefts handlerInputs ++ handlerEmitters allEmitters
+  , threadFeatures   = catMaybes (lefts handlerInputs) ++ handlerEmitters allEmitters
   , threadProperties = props
   , threadComments   = concatMap A.handler_comments handlers
   }
@@ -220,7 +229,7 @@ fromExtHdlrMonitor :: AADLConfig
 fromExtHdlrMonitor c m =
   Thread
   { threadName       = nm
-  , threadFeatures   = lefts handlerInputs ++ handlerEmitters allEmitters
+  , threadFeatures   = catMaybes (lefts handlerInputs) ++ handlerEmitters allEmitters
   , threadProperties = props
   , threadComments   = concatMap A.handler_comments handlers
   }
@@ -277,7 +286,7 @@ fromExternalHandler c t m h =
     -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
-    else lefts [fromInputChan c NoFile False  m h]
+    else catMaybes $ lefts [fromInputChan c NoFile False  m h]
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
@@ -318,19 +327,23 @@ fromInputChan :: AADLConfig
               -> Bool
               -> A.Monitor
               -> A.Handler
-              -> Either Feature Init
+              -> Either (Maybe Feature) Init
 fromInputChan c f active m h =
   case A.handler_chan h of
     A.ChanSignal s
       -> Left
-       $ SignalFeature
-       $ SignalInfo { signalInfoNumber      = A.signal_number s
-                    , signalInfoName        = A.signal_name   s
-                    , signalInfoCallback    = cbs
-                    , signalInfoSendsEvents = events
-                    }
+       $ Just
+       $ InputFeature
+       $ Input { inputId          = SignalChanId (fromIntegral (A.signal_number s))
+               , inputLabel       = A.handlerName h
+               , inputType        = I.TyInt I.Int64
+               , inputCallback    = cbs
+               , inputQueue       = Nothing
+               , inputSendsEvents = events
+               }
     A.ChanPeriod p
       -> Left
+       $ Just
        $ InputFeature
        $ Input { inputId          = periodId p
                , inputLabel       = T.prettyTime (A.period_dt p)
@@ -341,8 +354,9 @@ fromInputChan c f active m h =
                }
     A.ChanSync s
       -> Left
+       $ Just
        $ InputFeature
-       $ Input { inputId          = A.sync_chan_label s
+       $ Input { inputId          = SynchChanId (A.sync_chan_label s)
                , inputLabel       = A.handlerName h
                , inputType        = A.sync_chan_type s
                , inputCallback    = cbs
@@ -360,10 +374,13 @@ fromInputChan c f active m h =
   (outs, bnds) = unzip (fromEmitters h)
   cbs = mkCallbacksHandler c f h (threadFile m)
 
-periodId :: A.Period -> ChanId
-periodId p =
+getPeriod :: A.Period -> Integer
+getPeriod p =
   case A.period_dt p of
     T.Microseconds t -> t
+
+periodId :: A.Period -> ChanId
+periodId = PeriodChanId . getPeriod
 
 fromEmitters :: A.Handler -> [(Output, Bound)]
 fromEmitters h =
@@ -375,7 +392,7 @@ fromEmitters h =
 fromEmitter :: String -> A.Emitter -> (Output, Bound)
 fromEmitter label e =
     ( Output
-        { outputId      = A.sync_chan_label (A.emitter_chan e)
+        { outputId      = SynchChanId (A.sync_chan_label (A.emitter_chan e))
         , outputLabel   = label
         , outputType    = outputType
         , outputEmitter = sym

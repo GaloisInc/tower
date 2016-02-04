@@ -26,6 +26,9 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 import           Data.List (foldl')
 
+import Debug.Trace
+import Text.Show.Pretty
+
 --------------------------------------------------------------------------------
 
 type ThreadChans = (LocalId, ChanLabel)
@@ -72,7 +75,7 @@ filterEndpoints = M.filter go
 -- Given a list of pairs of AADL threads and local variables, Create their
 -- connections.
 threadsChannels :: [(Thread, LocalId)] -> Connections
-threadsChannels ls = foldl' go M.empty ls
+threadsChannels ls = trace (ppShow ls) $ foldl' go M.empty ls
   where
   go :: Connections -> (Thread, LocalId) -> Connections
   go cs (th, id) =
@@ -86,15 +89,15 @@ threadChannels th id = foldl' go M.empty (getThreadEndpoints th)
 
 data Endpoint =
     InputEp  Input
+--  | SignalEp SignalInfo
   | OutputEp Output
-  | SignalEp SignalInfo
   deriving (Show, Eq)
 
 endPointId :: Endpoint -> ChanId
 endPointId ep = case ep of
   InputEp  rx -> inputId  rx
   OutputEp tx -> outputId tx
-  SignalEp s  -> fromIntegral (signalInfoNumber s)
+--  SignalEp s  -> SignalChanId $ fromIntegral (signalInfoNumber s)
 
 newChan :: LocalId -> Endpoint -> ThdIds
 newChan l ep =
@@ -102,7 +105,7 @@ newChan l ep =
     InputEp  c -> ThdIds S.empty (S.singleton (l, inputLabel c))
     OutputEp c -> ThdIds (S.singleton (l, outputLabel c)) S.empty
     -- TODO JED: This is probably wrong
-    SignalEp c -> ThdIds S.empty (S.singleton (l, signalInfoName c))
+--    SignalEp c -> ThdIds S.empty (S.singleton (l, signalInfoName c))
 
 -- Add the id to the connections map, creating a new channel if needed.
 insertConnectionId :: LocalId -> Connections -> Endpoint -> Connections
@@ -111,13 +114,13 @@ insertConnectionId l cs ep =
 
 getThreadEndpoints :: Thread -> [Endpoint]
 getThreadEndpoints t =
-  map go (threadFeatures t)
+  concatMap go (threadFeatures t)
   where
   go f =
     case f of
-      InputFeature  rx -> InputEp  rx
-      OutputFeature tx -> OutputEp tx
-      SignalFeature s  -> SignalEp s
+      InputFeature  rx -> [InputEp  rx]
+      OutputFeature tx -> [OutputEp tx]
+      SignalFeature s  -> []
 
 -- Extract a unique instance of the channel types defined in the system.
 extractTypes :: System -> [I.Type]

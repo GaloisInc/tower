@@ -72,7 +72,7 @@ data Output = Output
 type SourcePath = (FilePath, FuncSym)
 type SendsEvents = [(ChanLabel, Bound)]
 data SourceTexts = SourceTexts [FilePath]
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -115,7 +115,12 @@ type LocalId = String
 type Name = String
 
 -- Unique through the system.
-type ChanId = Integer
+data ChanId =
+    SynchChanId  Integer
+  | SignalChanId Integer
+  | PeriodChanId Integer
+  | InitChanId   Integer
+  deriving (Show, Read, Eq, Ord)
 
 type ChanLabel = String
 

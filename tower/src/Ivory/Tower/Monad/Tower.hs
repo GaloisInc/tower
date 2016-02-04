@@ -88,10 +88,10 @@ runTower backend t e = (a, towerImpl backend a monitors, output_deps output, out
   where
   a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
-    AST.ChanSync c -> mempty { AST.tower_syncchans = [c] }
+    AST.ChanSync   c -> mempty { AST.tower_syncchans = [c] }
     AST.ChanSignal c -> mempty { AST.tower_signals = [c] }
     AST.ChanPeriod c -> mempty { AST.tower_periods = [c] }
-    AST.ChanInit _ -> mempty
+    AST.ChanInit     -> mempty
   (mast, monitors) = unzip $ output_monitors output
   sinks = output_sinks output
   ((), output) = runBase e

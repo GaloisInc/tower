@@ -113,21 +113,38 @@ activeSrc :: A.Thread -> Maybe (PackageName, I.Module)
 activeSrc t =
   case t of
     A.PeriodThread p
-      -> Just $ ( pkg
-                , I.package pkg $ do
-                    I.incl $ mkPerCallback p
-                    I.incl $ emitter p
-                )
+      -> Just ( pkg
+              , I.package pkg $ do
+                I.incl $ mkPeriodCallback p
+                I.incl $ mkPeriodEmitter  p
+              )
       where pkg = periodicCallback p
+    A.SignalThread s
+      -> Just ( pkg
+              , I.package pkg $ do
+                I.incl $ mkSignalCallback s
+                I.incl $ mkSignalEmitter  s
+              )
+      where pkg = signalCallback s
     _ -> Nothing
-  where
-  mkPerCallback :: A.Period
-                -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
-  mkPerCallback p =
-    I.proc (periodicCallback p) $ \time -> I.body $
-      I.call_ (emitter p) time
-  emitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
-  emitter p = I.importProc (periodicEmitter p) (threadEmitterHeader t)
+
+mkPeriodCallback :: A.Period
+                 -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+mkPeriodCallback p =
+  I.proc (periodicCallback p) $ \time -> I.body $
+    I.call_ (mkPeriodEmitter p) time
+
+mkPeriodEmitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+mkPeriodEmitter p = I.importProc (periodicEmitter p) (threadEmitterHeader $ A.PeriodThread p) -- XXX pass in higher up
+
+mkSignalCallback :: A.Signal
+                 -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+mkSignalCallback s =
+  I.proc (signalCallback s) $ \time -> I.body $
+    I.call_ (mkSignalEmitter s) time
+
+mkSignalEmitter :: A.Signal -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+mkSignalEmitter s = I.importProc (signalEmitter s) (threadEmitterHeader $ A.SignalThread s)
 
 genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies

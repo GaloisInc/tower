@@ -39,38 +39,41 @@ emptyPriorityMap :: PriorityMap
 emptyPriorityMap = M.empty
 
 getPriority :: String -> PriorityMap -> Priority
-getPriority nm mp =
-  case M.lookup nm mp of
-    Nothing -> error $ "Internal error: lookup of monitor "
-                     ++ nm ++ " in priority map."
-    Just p  -> p
+getPriority nm mp = 0 -- XXX
+  -- case M.lookup nm mp of
+  --   Nothing -> error $ "Internal error: lookup of monitor "
+  --                    ++ nm ++ " in priority map."
+  --   Just p  -> p
 
 -- Initialization threads have the lowest priorties.
-mkPriorities :: Threads -> PriorityMap
-mkPriorities thds = M.unions [extPris, perPris, initPris, extPerPris]
-  where
-  extPris  = M.fromList
-           $ map (\t -> (threadName t, maxBound)) (threadsFromExternal thds)
-  perPris  = M.fromList
-           $ zip (map threadName orderedPeriodic) perPriorities
-  initPris = M.fromList
-           $ map (\t -> (threadName t, minBound)) (threadsInit thds)
+mkPriorities :: ActiveThreads -> PriorityMap
+mkPriorities thds = M.empty -- XXX
 
-  extPerPris = M.fromList
-             $ map (\(th,t) -> (threadName t, pri th)) (threadsFromExtPer thds)
-    where
-    pri th = getPriority (threadName th) perPris
 
-  orderedPeriodic = reverse $ sort (threadsPeriodic thds)
+  -- M.unions [extPris, perPris, initPris, extPerPris]
+  -- where
+  -- extPris  = M.fromList
+  --          $ map (\t -> (threadName t, maxBound)) (threadsFromExternal thds)
+  -- perPris  = M.fromList
+  --          $ zip (map threadName orderedPeriodic) perPriorities
+  -- initPris = M.fromList
+  --          $ map (\t -> (threadName t, minBound)) (threadsInit thds)
 
-  minPer :: Priority
-  minPer = minBound + fromInteger 1
+  -- extPerPris = M.fromList
+  --            $ map (\(th,t) -> (threadName t, pri th)) (threadsFromExtPer thds)
+  --   where
+  --   pri th = getPriority (threadName th) perPris
 
-  perPriorities = iterate (+1) minPer
+  -- orderedPeriodic = reverse $ sort (threadsPeriodic thds)
 
-  -- All periodic threads have priorities lower than topPer.
-  topPer =
-    let m = minPer + fromIntegral (length (threadsPeriodic thds)) in
-    if m == maxBound
-      then error "Unscheduable: not enough priority slots."
-      else m
+  -- minPer :: Priority
+  -- minPer = minBound + fromInteger 1
+
+  -- perPriorities = iterate (+1) minPer
+
+  -- -- All periodic threads have priorities lower than topPer.
+  -- topPer =
+  --   let m = minPer + fromIntegral (length (threadsPeriodic thds)) in
+  --   if m == maxBound
+  --     then error "Unscheduable: not enough priority slots."
+  --     else m

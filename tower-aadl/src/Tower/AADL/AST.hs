@@ -97,10 +97,10 @@ data DispatchProtocol =
   deriving (Show, Eq)
 
 data SignalInfo = SignalInfo
-  { signalName        :: SignalName
-  , signalNumber      :: SignalNumber
-  , signalCallback    :: [SourcePath]
-  , signalSendsEvents :: SendsEvents
+  { signalInfoName        :: SignalName
+  , signalInfoNumber      :: SignalNumber
+  , signalInfoCallback    :: [SourcePath]
+  , signalInfoSendsEvents :: SendsEvents
   } deriving (Show, Eq, Ord)
 
 data ThreadType =

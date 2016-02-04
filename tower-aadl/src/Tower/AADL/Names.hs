@@ -9,6 +9,8 @@ module Tower.AADL.Names
   , periodicCallback
   , signalEmitter
   , signalCallback
+  , initEmitter
+  , initCallback
   , prettyTime
   , threadFile
   , threadEmitterHeader
@@ -35,6 +37,14 @@ periodicEmitter p = "emitter_" ++ prettyTime p
 
 periodicCallback :: P.Period -> String
 periodicCallback p = "callback_" ++ prettyTime p
+
+------------------------------------------------------------
+
+initEmitter :: String -> String
+initEmitter = ("emitter_" ++)
+
+initCallback :: String -> String
+initCallback = ("callback_" ++)
 
 ------------------------------------------------------------
 

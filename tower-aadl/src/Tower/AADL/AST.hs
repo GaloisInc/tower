@@ -44,10 +44,10 @@ data Feature =
   deriving (Show, Eq, Ord)
 
 -- | Init Channel
-data Init = Init
-  { initCallback :: [SourcePath]
-  , initOutput   :: [(Output, Bound)]
-  } deriving (Show, Eq, Ord)
+-- data InitChan = InitChan
+--   { initChanCallback :: [SourcePath]
+--   , initChanOutput   :: [(Output, Bound)]
+--   } deriving (Show, Eq, Ord)
 
 -- | Input channels
 data Input = Input
@@ -55,7 +55,7 @@ data Input = Input
   , inputLabel       :: !ChanLabel
   , inputType        :: !I.Type
   , inputCallback    :: [SourcePath]
-  , inputQueue       :: Maybe Integer
+--  , inputQueue       :: Maybe Integer
   , inputSendsEvents :: SendsEvents
   } deriving (Show, Eq, Ord)
 
@@ -119,7 +119,7 @@ data ChanId =
     SynchChanId  Integer
   | SignalChanId Integer
   | PeriodChanId Integer
-  | InitChanId   Integer
+  | InitChanId   String
   deriving (Show, Read, Eq, Ord)
 
 type ChanLabel = String

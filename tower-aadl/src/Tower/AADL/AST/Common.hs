@@ -15,6 +15,7 @@ module Tower.AADL.AST.Common
   , allConnections
   , connectedThreadsSize
   , emptyConnections
+  , towerTime
   ) where
 
 
@@ -27,9 +28,6 @@ import qualified Ivory.Language.Syntax.Type as I
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 import           Data.List (foldl')
-
-import Debug.Trace
-import Text.Show.Pretty
 
 --------------------------------------------------------------------------------
 
@@ -77,7 +75,7 @@ filterEndpoints = M.filter go
 -- Given a list of pairs of AADL threads and local variables, Create their
 -- connections.
 threadsChannels :: [(Thread, LocalId)] -> Connections
-threadsChannels ls = trace (ppShow ls) $ foldl' go M.empty ls
+threadsChannels ls = foldl' go M.empty ls
   where
   go :: Connections -> (Thread, LocalId) -> Connections
   go cs (th, id) =
@@ -137,4 +135,7 @@ extractTypes sys = S.toList $ S.map getTy (S.fromList fs)
     OutputFeature tx -> outputType tx
     -- TODO JED: Wouldn't this be so much nicer if the Time module told us what
     -- type to put here?
-    SignalFeature _  -> I.TyInt I.Int64
+    SignalFeature _  -> towerTime
+
+towerTime :: I.Type
+towerTime = I.TyInt I.Int64

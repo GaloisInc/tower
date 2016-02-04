@@ -39,8 +39,8 @@ execTime = (10, 100)
 stackSize :: Integer
 stackSize = 1000
 
-queueSize :: Integer
-queueSize = 1000
+-- queueSize :: Integer
+-- queueSize = 1000
 
 ----------------------------------------
 
@@ -189,34 +189,8 @@ fromGenericMonitor c m props =
   where
   nm            = A.monitorName m
   handlers      = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile False m) handlers
+  handlerInputs = map (fromInputChan c WithFile m) handlers
   allEmitters   = concatMap fromEmitters handlers
-
-
--- fromInitMonitor :: AADLConfig
---                 -> A.Monitor
---                 -> Thread
--- fromInitMonitor c m = fromGenericMonitor c m props
---   where
---   nm = A.monitorName m
---   handlers = A.monitor_handlers m
---   handlerInputs = map (fromInputChan c WithFile True m) handlers
---   allEmitters = concatMap fromEmitters handlers
---   props =
---     [ ExecTime execTime
---     , SourceText initFps
---     , ThreadType Active
---     , DispatchProtocol Sporadic
---     , StackSize stackSize
---     , Priority (getPriority nm (configPriorities c))
---     , SendEvents $ zip (map outputLabel outs) bnds
---     ] ++ map InitProperty initSyms
-
---   inits = rights handlerInputs
---   (initFps, initSyms) = unzip
---                       $ concatMap initCallback
---                       $ inits
---   (outs,bnds) = unzip allEmitters
 
 fromPassiveMonitor :: AADLConfig
                    -> A.Monitor
@@ -224,17 +198,12 @@ fromPassiveMonitor :: AADLConfig
 fromPassiveMonitor c m = fromGenericMonitor c m props
   where
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile False m) handlers
+  handlerInputs = map (fromInputChan c WithFile m) handlers
   props =
     [ ThreadType Passive
     , DispatchProtocol Aperiodic
     , ExecTime execTime
---    , SourceText initFps
     ]
-    -- where
-    -- (initFps, _) = unzip
-    --              $ concatMap initChanCallback
-    --              $ rights handlerInputs
 
 handlerEmitters :: [(Output, a)] -> [Feature]
 handlerEmitters allEmitters = map OutputFeature
@@ -255,21 +224,17 @@ fromExtHdlrMonitor c m =
   where
   nm = A.monitorName m
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile True m) handlers
+  handlerInputs = map (fromInputChan c WithFile m) handlers
   allEmitters = concatMap fromEmitters handlers
   props =
     [ ExecTime execTime
     , SendEvents $ zip (map outputLabel outs) bnds
---    , SourceText initFps
     , ThreadType Active
     , DispatchProtocol Sporadic
     , StackSize stackSize
     , Priority (getPriority nm (configPriorities c))
     ]
     where
-    -- (initFps,_) = unzip
-    --             $ concatMap initChanCallback
-    --             $ rights handlerInputs
     (outs,bnds) = unzip allEmitters
 
 fromExternalMonitor :: AADLConfig
@@ -305,7 +270,7 @@ fromExternalHandler c t m h =
     -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
-    else [fromInputChan c NoFile False  m h]
+    else [fromInputChan c NoFile m h]
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
@@ -343,18 +308,16 @@ mkCallbacksHandler c f h fileNm =
 
 fromInputChan :: AADLConfig
               -> Files
-              -> Bool
               -> A.Monitor
               -> A.Handler
               -> Feature
-fromInputChan c f active m h = InputFeature $
+fromInputChan c f m h = InputFeature $
   case A.handler_chan h of
     A.ChanSignal s
       -> Input { inputId          = SignalChanId (fromIntegral (A.signal_number s))
                , inputLabel       = A.handlerName h
                , inputType        = towerTime
                , inputCallback    = cbs
---               , inputQueue       = Nothing
                , inputSendsEvents = events
                }
     A.ChanPeriod p
@@ -362,7 +325,6 @@ fromInputChan c f active m h = InputFeature $
                , inputLabel       = T.prettyTime (A.period_dt p)
                , inputType        = A.period_ty p
                , inputCallback    = cbs
---               , inputQueue       = Nothing
                , inputSendsEvents = events
                }
     A.ChanSync s
@@ -370,8 +332,6 @@ fromInputChan c f active m h = InputFeature $
                , inputLabel       = A.handlerName h
                , inputType        = A.sync_chan_type s
                , inputCallback    = cbs
-               -- , inputQueue       = if active then Just queueSize
-               --                        else Nothing
                , inputSendsEvents = events
                }
     A.ChanInit
@@ -379,7 +339,6 @@ fromInputChan c f active m h = InputFeature $
                , inputLabel       = A.handlerName h
                , inputType        = towerTime
                , inputCallback    = cbs
---               , inputQueue       = undefined
                , inputSendsEvents = events
                }
   where

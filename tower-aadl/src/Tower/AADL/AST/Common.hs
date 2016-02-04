@@ -96,7 +96,7 @@ endPointId :: Endpoint -> ChanId
 endPointId ep = case ep of
   InputEp  rx -> inputId  rx
   OutputEp tx -> outputId tx
-  SignalEp s  -> fromIntegral (signalNumber s)
+  SignalEp s  -> fromIntegral (signalInfoNumber s)
 
 newChan :: LocalId -> Endpoint -> ThdIds
 newChan l ep =
@@ -104,7 +104,7 @@ newChan l ep =
     InputEp  c -> ThdIds S.empty (S.singleton (l, inputLabel c))
     OutputEp c -> ThdIds (S.singleton (l, outputLabel c)) S.empty
     -- TODO JED: This is probably wrong
-    SignalEp c -> ThdIds S.empty (S.singleton (l, signalName c))
+    SignalEp c -> ThdIds S.empty (S.singleton (l, signalInfoName c))
 
 -- Add the id to the connections map, creating a new channel if needed.
 insertConnectionId :: LocalId -> Connections -> Endpoint -> Connections

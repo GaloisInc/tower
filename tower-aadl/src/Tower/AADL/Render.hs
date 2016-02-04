@@ -10,8 +10,6 @@ module Tower.AADL.Render
 
 import Prelude hiding (id)
 
-import qualified Ivory.Language.Syntax.Type as I
-
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
 import Tower.AADL.Compile
@@ -163,12 +161,12 @@ renderOutput tx = stmt
 
 renderSignal :: SignalInfo -> Doc
 renderSignal s = stmt
-    $ mkRxChan (signalName s) <> colon
+    $ mkRxChan (signalInfoName s) <> colon
   <+> text "in"
   <+> hsep (map text ["event", "port"])
  <$$> chanSrc (vsep (entry : isrStmts ++ src ++ snds ++ sndsEvents))
   where
-  (fps, syms) = unzip $ signalCallback s
+  (fps, syms) = unzip $ signalInfoCallback s
   entry       = renderEntryPoint syms
   src         = if emptyStrs fps
                   then []
@@ -177,12 +175,12 @@ renderSignal s = stmt
                   -- Send events nowhere for external threads
                   then [renderSendsEventsTo []]
                   else []
-  sndsEvents  = [renderSendsEventsTo (signalSendsEvents s)]
+  sndsEvents  = [renderSendsEventsTo (signalInfoSendsEvents s)]
   emptyStrs   = all null
   isrStmts    = [isISR
-                ,firstLevelHandler (signalName s)
+                ,firstLevelHandler (signalInfoName s)
                 ,sigName "external_irq"
-                ,sigNum  (signalNumber s)
+                ,sigNum  (signalInfoNumber s)
                 ]
 
 edp :: Doc

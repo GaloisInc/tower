@@ -198,7 +198,7 @@ fromPassiveMonitor :: AADLConfig
 fromPassiveMonitor c m = fromGenericMonitor c m props
   where
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile m) handlers
+--  handlerInputs = map (fromInputChan c WithFile m) handlers
   props =
     [ ThreadType Passive
     , DispatchProtocol Aperiodic

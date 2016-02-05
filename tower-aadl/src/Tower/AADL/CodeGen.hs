@@ -66,7 +66,7 @@ instance TowerBackend AADLBackend where
     emitterCode :: forall b. I.IvoryArea b
                 => (T.Emitter b, TowerBackendEmitter AADLBackend)
     emitterCode =
-      ( T.Emitter $ \ref -> I.call_ (procFromEmitter undefined) ref
+      ( T.Emitter $ \ref -> I.call_ (procFromEmitter "") ref
       , AADLEmitter
          (\monName -> I.incl (procFromEmitter monName
                               :: I.Def('[I.ConstRef s b] 'I.:-> ())

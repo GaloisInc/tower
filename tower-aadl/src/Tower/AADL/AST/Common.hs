@@ -120,7 +120,7 @@ getThreadEndpoints t =
     case f of
       InputFeature  rx -> [InputEp  rx]
       OutputFeature tx -> [OutputEp tx]
-      SignalFeature s  -> []
+      SignalFeature _  -> []
 
 -- Extract a unique instance of the channel types defined in the system.
 extractTypes :: System -> [I.Type]

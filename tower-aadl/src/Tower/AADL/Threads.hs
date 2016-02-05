@@ -47,7 +47,7 @@ injectExternalThread :: A.Monitor -> PassiveThreads
 injectExternalThread m = mempty { ptThreadsExternal = [m] }
 
 injectFromExtPerThread :: A.Thread -> A.Monitor -> PassiveThreads
-injectFromExtPerThread th m = undefined --passiveInject (mempty { threadsFromExtPer = [(th,m)] })
+injectFromExtPerThread th m = mempty { ptThreadsFromExtPer = [(th,m)] }
 
 injectPeriodicThread :: A.Period -> ActiveThreads
 injectPeriodicThread m = mempty { atThreadsPeriodic = [m] }

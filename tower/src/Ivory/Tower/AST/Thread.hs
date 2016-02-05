@@ -46,8 +46,8 @@ threadChan (InitThread  _s) = ChanInit
 instance Ord Thread where
 
   -- Init threads are greater than all other threads.
-  compare (InitThread{}) (InitThread{})
-    = EQ
+  compare (InitThread i1) (InitThread i2)
+    = i1 `compare` i2
   compare (InitThread{}) _
     = GT
   compare _              (InitThread{})

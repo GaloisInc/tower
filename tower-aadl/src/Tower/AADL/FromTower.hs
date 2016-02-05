@@ -99,7 +99,7 @@ fromInitThread c i =
      }
   props =
     [ ThreadType Active
-    , DispatchProtocol Aperiodic
+    , DispatchProtocol Sporadic
     , ExecTime execTime
     , SendEvents [(i, 1)]
     , StackSize stackSize

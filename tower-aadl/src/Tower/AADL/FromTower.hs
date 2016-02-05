@@ -27,9 +27,6 @@ import           Tower.AADL.Priorities
 import           Tower.AADL.Names
 import           Tower.AADL.Threads
 
-import Text.Show.Pretty
-import Debug.Trace
-
 ----------------------------------------
 -- Magic made up numbers
 
@@ -71,7 +68,7 @@ mkProcess c' t = Process { .. }
   pt = toPassiveThreads t
   at = toActiveThreads t
   c           = c' { configPriorities = mkPriorities at }
-  processComponents = -- trace (show (threadsPeriodic thds)) $
+  processComponents =
        map (fromExternalMonitor c t    ) (ptThreadsExternal     pt)
     ++ map (fromExtHdlrMonitor  c      ) (ptThreadsFromExternal pt)
     ++ map (fromExtHdlrMonitor  c . snd) (ptThreadsFromExtPer   pt)

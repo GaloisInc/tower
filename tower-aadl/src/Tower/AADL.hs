@@ -54,8 +54,6 @@ import           Tower.AADL.Config
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
 
-import Text.Show.Pretty
---XXX
 import qualified Ivory.Tower.AST as A
 
 --------------------------------------------------------------------------------
@@ -81,8 +79,6 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
   let (ast, code, deps, sigs) =  runTower AADLBackend twr env
-  putStrLn (ppShow ast)
-  putStrLn (ppShow (A.towerThreads ast))
   let aadl_sys                =  fromTower cfg ast
   let aadl_docs               =  buildAADL deps aadl_sys
   let doc_as                  =  renderCompiledDocs aadl_docs

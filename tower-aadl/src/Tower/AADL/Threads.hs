@@ -13,10 +13,7 @@ import Data.Monoid
 import Data.Maybe (isJust)
 import Data.List (find)
 
-import Debug.Trace
-
 import qualified Ivory.Tower.AST       as A
-import qualified Ivory.Tower.AST.Graph as G
 
 ----------------------------------------
 
@@ -135,8 +132,8 @@ toActiveThreads :: A.Tower -> ActiveThreads
 toActiveThreads t =
   mconcat (map towerThreadToThread (A.towerThreads t))
   where
-  towerThreadToThread t =
-    case t of
+  towerThreadToThread thd =
+    case thd of
       A.SignalThread s -> injectSignalThread s
       A.PeriodThread p -> injectPeriodicThread p
       A.InitThread   i -> injectInitThread i

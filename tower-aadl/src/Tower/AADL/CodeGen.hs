@@ -30,7 +30,6 @@ import qualified Ivory.Tower.Types.Unique       as T
 import           Tower.AADL.Names
 
 import qualified Data.Map.Strict as M
-import           Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 
@@ -109,33 +108,32 @@ instance TowerBackend AADLBackend where
     mkMod (nm, mMod) deps = I.package nm $ mapM_ I.depend deps >> mMod
 
 activeSrcs :: A.Tower -> ([PackageName], [I.Module])
-activeSrcs t = unzip $ catMaybes $ map activeSrc (A.towerThreads t)
+activeSrcs t = unzip $ map activeSrc (A.towerThreads t)
 
-activeSrc :: A.Thread -> Maybe (PackageName, I.Module)
+activeSrc :: A.Thread -> (PackageName, I.Module)
 activeSrc t =
   case t of
     A.PeriodThread p
-      -> Just ( pkg
-              , I.package pkg $ do
-                I.incl $ mkPeriodCallback p
-                I.incl $ mkPeriodEmitter  p
-              )
+      -> ( pkg
+         , I.package pkg $ do
+           I.incl $ mkPeriodCallback p
+           I.incl $ mkPeriodEmitter  p
+         )
       where pkg = periodicCallback p
     A.InitThread c
-      -> Just ( pkg
-              , I.package pkg $ do
-                I.incl $ mkInitCallback c
-                I.incl $ mkInitEmitter  c
-              )
+      -> ( pkg
+         , I.package pkg $ do
+           I.incl $ mkInitCallback c
+           I.incl $ mkInitEmitter  c
+         )
       where pkg = initCallback c
     A.SignalThread s
-      -> Just ( pkg
-              , I.package pkg $ do
-                I.incl $ mkSignalCallback s
-                I.incl $ mkSignalEmitter  s
-              )
+      -> ( pkg
+         , I.package pkg $ do
+           I.incl $ mkSignalCallback s
+           I.incl $ mkSignalEmitter  s
+         )
       where pkg = signalCallback s
-    _ -> Nothing
 
 mkPeriodCallback :: A.Period
                  -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())

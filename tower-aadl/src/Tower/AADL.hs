@@ -79,6 +79,11 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
   let (ast, code, deps, sigs) =  runTower AADLBackend twr env
+  let missingCallbacks = handlersMissingCallbacks ast
+  when (not (null missingCallbacks)) $ do
+    putStrLn "Error: The following handlers are missing callbacks:"
+    mapM_ putStrLn (map (showUnique . A.handler_name) missingCallbacks)
+    exitFailure
   let aadl_sys                =  fromTower cfg ast
   let aadl_docs               =  buildAADL deps aadl_sys
   let doc_as                  =  renderCompiledDocs aadl_docs
@@ -106,6 +111,18 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   O.outputCompiler appMods (as osspecific) (ivoryOpts True  cfg copts)
   O.outputCompiler libMods []              (ivoryOpts False cfg copts)
   where
+
+  -- | AADL assumes that our handlers will always have a callback define. So we
+  -- search the Tower AST looking for handlers that missing callbacks.
+  handlersMissingCallbacks :: A.Tower -> [A.Handler]
+  handlersMissingCallbacks = concatMap monitorHasEmptyHandler . A.tower_monitors
+    where
+    monitorHasEmptyHandler :: A.Monitor -> [A.Handler]
+    monitorHasEmptyHandler = catMaybes . map handlerIsEmpty . A.monitor_handlers
+    handlerIsEmpty :: A.Handler -> Maybe A.Handler
+    handlerIsEmpty h = if (null (A.handler_callbacks h))
+                          then Just h
+                          else Nothing
 
   libSrcDir cfg = lib cfg </> "src"
   libHdrDir cfg = lib cfg </> "include"

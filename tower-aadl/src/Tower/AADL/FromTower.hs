@@ -69,11 +69,11 @@ mkProcess c' t = Process { .. }
   at = toActiveThreads t
   c           = c' { configPriorities = mkPriorities at }
   processComponents =
-       map (fromExternalMonitor c t    ) (ptThreadsExternal     pt)
-    ++ map (fromExtHdlrMonitor  c      ) (ptThreadsFromExternal pt)
+       map (fromExtHdlrMonitor  c      ) (ptThreadsFromExternal pt)
     ++ map (fromExtHdlrMonitor  c . snd) (ptThreadsFromExtPer   pt)
     ++ map (fromPassiveMonitor  c      ) (ptThreadsPassive      pt)
-    -- Tower threads below
+
+    ++ map (fromExternalMonitor c t    ) (atThreadsExternal    at)
     ++ map (fromPeriodicThread      c  ) (atThreadsPeriodic    at)
     ++ map (fromInitThread      c      ) (atThreadsInit        at)
     ++ map (fromSignalThread    c      ) (atThreadsSignal      at)
@@ -246,10 +246,10 @@ fromExternalMonitor c t m =
     , threadComments   = concatMap A.handler_comments handlers
     }
   where
-  nm = A.monitorName m
+  nm       = A.monitorName m
   handlers = A.monitor_handlers m
   features = concatMap (fromExternalHandler c t m) handlers
-  props =
+  props    =
     [ External
     , DispatchProtocol Sporadic
     , ThreadType Active

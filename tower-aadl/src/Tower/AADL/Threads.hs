@@ -6,7 +6,13 @@
 -- (c) 2014 Galois, Inc.
 --
 
-module Tower.AADL.Threads where
+module Tower.AADL.Threads
+  ( ActiveThreads(..)
+  , PassiveThreads(..)
+  , toPassiveThreads
+  , toActiveThreads
+  ) where
+
 
 import Prelude hiding (init)
 import Data.Monoid
@@ -17,31 +23,34 @@ import qualified Ivory.Tower.AST       as A
 
 ----------------------------------------
 
+-- Intermediate data types that collect Tower elements into groups that are
+-- meaningful for AADL (notably, distinguishing active and passive threads).
+
 data ActiveThreads = ActiveThreads
   { atThreadsInit         :: [String]
   , atThreadsPeriodic     :: [A.Period]
   , atThreadsSignal       :: [A.Signal]
+  , atThreadsExternal     :: [A.Monitor]
   }
 
 data PassiveThreads = PassiveThreads
-  { ptThreadsExternal     :: [A.Monitor]
-  , ptThreadsFromExtPer   :: [(A.Thread, A.Monitor)]
+  { ptThreadsFromExtPer   :: [(A.Thread, A.Monitor)]
   , ptThreadsFromExternal :: [A.Monitor]
   , ptThreadsPassive      :: [A.Monitor]
   }
 
 instance Monoid ActiveThreads where
-  mempty = ActiveThreads [] [] []
-  ActiveThreads a0 b0 c0 `mappend` ActiveThreads a1 b1 c1 =
-    ActiveThreads (a0++a1) (b0++b1) (c0++c1)
+  mempty = ActiveThreads [] [] [] []
+  ActiveThreads a0 b0 c0 d0 `mappend` ActiveThreads a1 b1 c1 d1 =
+    ActiveThreads (a0++a1) (b0++b1) (c0++c1) (d0++d1)
 
 instance Monoid PassiveThreads where
-  mempty = PassiveThreads [] [] [] []
-  PassiveThreads a0 b0 c0 d0 `mappend` PassiveThreads a1 b1 c1 d1 =
-    PassiveThreads (a0++a1) (b0++b1) (c0++c1) (d0++d1)
+  mempty = PassiveThreads [] [] []
+  PassiveThreads a0 b0 c0 `mappend` PassiveThreads a1 b1 c1 =
+    PassiveThreads (a0++a1) (b0++b1) (c0++c1)
 
-injectExternalThread :: A.Monitor -> PassiveThreads
-injectExternalThread m = mempty { ptThreadsExternal = [m] }
+injectExternalThread :: A.Monitor -> ActiveThreads
+injectExternalThread m = mempty { atThreadsExternal = [m] }
 
 injectFromExtPerThread :: A.Thread -> A.Monitor -> PassiveThreads
 injectFromExtPerThread th m = mempty { ptThreadsFromExtPer = [(th,m)] }
@@ -121,7 +130,10 @@ instance ThreadName A.Thread where
 --   <> towerThreadsToThreads (A.towerThreads t)
 
 toPassiveThreads :: A.Tower -> PassiveThreads
-toPassiveThreads t = mconcat (map injectPassiveThread (A.tower_monitors t))
+toPassiveThreads t = mconcat (map injectPassiveThread pts)
+  where
+  pts = filter go (A.tower_monitors t)
+    where go m = A.monitor_external m == A.MonitorDefined
 
 -- where
   -- monitorToThread m = 
@@ -130,13 +142,17 @@ toPassiveThreads t = mconcat (map injectPassiveThread (A.tower_monitors t))
 
 toActiveThreads :: A.Tower -> ActiveThreads
 toActiveThreads t =
-  mconcat (map towerThreadToThread (A.towerThreads t))
+     mconcat (map towerThreadToThread (A.towerThreads t))
+  <> mconcat (map injectExternalThread eTs)
   where
   towerThreadToThread thd =
     case thd of
       A.SignalThread s -> injectSignalThread s
       A.PeriodThread p -> injectPeriodicThread p
       A.InitThread   i -> injectInitThread i
+
+  eTs = filter go (A.tower_monitors t)
+    where go m = A.monitor_external m == A.MonitorExternal
 
 ----------------------------------------
 

@@ -93,7 +93,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
 
   let libAs                   = map (osSpecificSrcDir osspecific cfg) genAs
 
-  let appname                 = "foobar" -- takeFileName (fromMaybe "tower" (O.outDir copts))
+  let appname                 = takeFileName (fromMaybe "tower" (O.outDir copts))
 
   let as :: OSSpecific a e -> [Located Artifact]
       as os = doc_as

@@ -25,7 +25,7 @@ import           Data.List
 import           Data.Char
 import           Control.Monad hiding (forever)
 
-import           System.FilePath (addExtension, (</>), (<.>))
+import           System.FilePath (addExtension, takeFileName, (</>), (<.>))
 import           System.Exit (exitFailure)
 
 import           Text.PrettyPrint.Leijen hiding ((</>))

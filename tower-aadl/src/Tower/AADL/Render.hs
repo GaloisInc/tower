@@ -163,7 +163,8 @@ renderSignal :: SignalInfo -> Doc
 renderSignal s = stmt
     $ mkRxChan (signalInfoName s) <> colon
   <+> text "in"
-  <+> hsep (map text ["event", "port"])
+  <+> edp
+  <+> renderTypeNS Other towerTime
  <$$> chanSrc (vsep (entry : isrStmts ++ src ++ sndsEvents))
   where
   (fps, syms) = unzip $ signalInfoCallback s

@@ -1,7 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TupleSections #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -15,6 +14,7 @@ module Tower.AADL.FromTower
 
 import           Prelude hiding (init)
 import           System.FilePath ((</>), addExtension)
+import           Data.Maybe (isJust)
 
 import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Unique       as U
@@ -27,6 +27,10 @@ import           Tower.AADL.Priorities
 import           Tower.AADL.Names
 import           Tower.AADL.Threads
 
+-- XXX
+import Debug.Trace
+import Text.Show.Pretty
+
 ----------------------------------------
 -- Magic made up numbers
 
@@ -36,8 +40,8 @@ execTime = (10, 100)
 stackSize :: Integer
 stackSize = 1000
 
--- queueSize :: Integer
--- queueSize = 1000
+queueSize :: Integer
+queueSize = 1000
 
 ----------------------------------------
 
@@ -67,16 +71,16 @@ mkProcess c' t = Process { .. }
   processName = configSystemName c ++ "_process"
   pt = toPassiveThreads t
   at = toActiveThreads t
-  c           = c' { configPriorities = mkPriorities at }
-  processComponents =
-       map (fromExtHdlrMonitor  c      ) (ptThreadsFromExternal pt)
-    ++ map (fromExtHdlrMonitor  c . snd) (ptThreadsFromExtPer   pt)
-    ++ map (fromPassiveMonitor  c      ) (ptThreadsPassive      pt)
-
-    ++ map (fromExternalMonitor c t    ) (atThreadsExternal    at)
-    ++ map (fromPeriodicThread      c  ) (atThreadsPeriodic    at)
-    ++ map (fromInitThread      c      ) (atThreadsInit        at)
-    ++ map (fromSignalThread    c      ) (atThreadsSignal      at)
+  c  = c' { configPriorities = mkPriorities at }
+  processComponents = trace ("periodic: " ++ concatMap (show . A.monitor_name) (atThreadsFromPeriodic at) ++
+                             "\n\next: " ++  concatMap (show . A.monitor_name . fst) (atThreadsFromExternal at)) $
+       map (fromInitThread               c  ) (atThreadsInit     at    )
+    ++ map (fromPeriodicThread           c  ) (atThreadsPeriodic at    )
+    ++ map (fromSignalThread             c  ) (atThreadsSignal   at    )
+    ++ map (fromExternalMonitor          c t) (atThreadsExternal at    )
+    ++ map (fromFromExternalOrPerMonitor c  ) (map (,emptyHMap) (atThreadsFromPeriodic at))
+    ++ map (fromFromExternalOrPerMonitor c  ) (atThreadsFromExternal at)
+    ++ map (fromPassiveMonitor           c  ) (ptThreadsPassive  pt    )
 
 fromInitThread :: AADLConfig
                -> String
@@ -107,7 +111,6 @@ fromInitThread c i =
     , EntryPoint [initCallback i]
     , SourceText [mkCFile c (initCallback i)]
     ]
-
 
 fromSignalThread :: AADLConfig
                  -> A.Signal
@@ -172,11 +175,10 @@ fromPeriodicThread c p =
     , SourceText [mkCFile c (periodicCallback p)]
     ]
 
-fromGenericMonitor :: AADLConfig
+fromPassiveMonitor :: AADLConfig
                    -> A.Monitor
-                   -> [ThreadProperty]
                    -> Thread
-fromGenericMonitor c m props =
+fromPassiveMonitor c m =
   Thread
   { threadName       = nm
   , threadFeatures   = handlerInputs ++ handlerEmitters allEmitters
@@ -186,20 +188,42 @@ fromGenericMonitor c m props =
   where
   nm            = A.monitorName m
   handlers      = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile m) handlers
+  handlerInputs = map (fromInputChan c WithFile m emptyHMap) handlers
   allEmitters   = concatMap fromEmitters handlers
 
-fromPassiveMonitor :: AADLConfig
-                   -> A.Monitor
-                   -> Thread
-fromPassiveMonitor c m = fromGenericMonitor c m props
-  where
-  handlers = A.monitor_handlers m
 --  handlerInputs = map (fromInputChan c WithFile m) handlers
   props =
     [ ThreadType Passive
     , DispatchProtocol Aperiodic
     , ExecTime execTime
+    , SourceText []
+    ]
+
+-- Handles messages from either a periodic thread or an external thread.
+fromFromExternalOrPerMonitor :: AADLConfig
+                             -> (A.Monitor, HMap)
+                             -> Thread
+fromFromExternalOrPerMonitor c (m,hmap) =
+  Thread
+  { threadName       = nm
+  , threadFeatures   = handlerInputs ++ handlerEmitters allEmitters
+  , threadProperties = props
+  , threadComments   = concatMap A.handler_comments handlers
+  }
+  where
+  nm            = A.monitorName m
+  handlers      = A.monitor_handlers m
+  handlerInputs = map (fromInputChan c WithFile m hmap) handlers
+  allEmitters   = concatMap fromEmitters handlers
+
+--  handlerInputs = map (fromInputChan c WithFile m) handlers
+  props =
+    [ ThreadType Active
+    , DispatchProtocol Sporadic
+    , ExecTime execTime
+    , SourceText []
+    , StackSize stackSize
+    , Priority (getPriority nm (configPriorities c))
     ]
 
 handlerEmitters :: [(Output, a)] -> [Feature]
@@ -221,7 +245,7 @@ fromExtHdlrMonitor c m =
   where
   nm = A.monitorName m
   handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile m) handlers
+  handlerInputs = map (fromInputChan c WithFile m emptyHMap) handlers
   allEmitters = concatMap fromEmitters handlers
   props =
     [ ExecTime execTime
@@ -267,7 +291,7 @@ fromExternalHandler c t m h =
     -- callback. Just list the emitters.
     then map OutputFeature mkOutFeatures
     -- Input portion of the channel comes from a defined component.
-    else [fromInputChan c NoFile m h]
+    else [fromInputChan c NoFile m emptyHMap h]
   where
   mkOutFeatures = fst $ unzip $ fromEmitters h
   ch = A.handler_chan h
@@ -306,9 +330,10 @@ mkCallbacksHandler c f h fileNm =
 fromInputChan :: AADLConfig
               -> Files
               -> A.Monitor
+              -> HMap
               -> A.Handler
               -> Feature
-fromInputChan c f m h = InputFeature $
+fromInputChan c f m hmap h = InputFeature $
   case A.handler_chan h of
     A.ChanSignal s
       -> Input { inputId          = SignalChanId (fromIntegral (A.signal_number s))
@@ -316,6 +341,7 @@ fromInputChan c f m h = InputFeature $
                , inputType        = towerTime
                , inputCallback    = cbs
                , inputSendsEvents = events
+               , inputQueue       = q
                }
     A.ChanPeriod p
       -> Input { inputId          = periodId p
@@ -323,6 +349,7 @@ fromInputChan c f m h = InputFeature $
                , inputType        = A.period_ty p
                , inputCallback    = cbs
                , inputSendsEvents = events
+               , inputQueue       = q
                }
     A.ChanSync s
       -> Input { inputId          = SynchChanId (A.sync_chan_label s)
@@ -330,6 +357,7 @@ fromInputChan c f m h = InputFeature $
                , inputType        = A.sync_chan_type s
                , inputCallback    = cbs
                , inputSendsEvents = events
+               , inputQueue       = q
                }
     A.ChanInit
       -> Input { inputId          = InitChanId (A.handlerName h)
@@ -337,11 +365,20 @@ fromInputChan c f m h = InputFeature $
                , inputType        = towerTime
                , inputCallback    = cbs
                , inputSendsEvents = events
+               , inputQueue       = q
                }
   where
+  q = mkInputQueue hmap h
   events = zip (map outputLabel outs) bnds
   (outs, bnds) = unzip (fromEmitters h)
   cbs = mkCallbacksHandler c f h (threadFile m)
+
+mkInputQueue :: HMap -> A.Handler -> Maybe Integer
+mkInputQueue hmap h
+  | fromHMap hmap h
+  = Just queueSize
+  | otherwise
+  = Nothing
 
 getPeriod :: A.Period -> Integer
 getPeriod p =

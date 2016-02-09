@@ -134,7 +134,7 @@ renderInput rx = stmt
   <+> text "in"
   <+> edp
   <+> renderTypeNS Other (inputType rx)
- <$$> chanSrc (vsep $ entry : src ++ snds ++ sndsEvents)
+ <$$> chanSrc (vsep $ entry : src ++ snds ++ queue ++ sndsEvents)
   where
   (fps, syms) = unzip $ inputCallback rx
   entry = renderEntryPoint syms
@@ -145,8 +145,8 @@ renderInput rx = stmt
            then [renderSendsEventsTo []]
            else []
   sndsEvents = [renderSendsEventsTo (inputSendsEvents rx)]
-  -- queue = maybe [] q (inputQueue rx)
-  --   where q sz = [ stmt $ text "Queue_Size" ==> integer sz ]
+  queue = maybe [] q (inputQueue rx)
+    where q sz = [ stmt $ text "Queue_Size" ==> integer sz ]
   emptyStrs = all null
 
 renderOutput :: Output -> Doc

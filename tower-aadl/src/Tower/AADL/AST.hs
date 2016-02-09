@@ -55,7 +55,7 @@ data Input = Input
   , inputLabel       :: !ChanLabel
   , inputType        :: !I.Type
   , inputCallback    :: [SourcePath]
---  , inputQueue       :: Maybe Integer
+  , inputQueue       :: Maybe Integer
   , inputSendsEvents :: SendsEvents
   } deriving (Show, Eq, Ord)
 

@@ -144,7 +144,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
 parseAADLOpts' :: AADLConfig -> TOpts -> IO AADLConfig
 parseAADLOpts' cfg topts =
   case parseAADLOpts cfg topts of
-  (c, [],        []) -> do
+  (c, [],        _) -> do
     case topts_help topts of
       True  -> topts_error topts "Usage:"
       False -> return ()

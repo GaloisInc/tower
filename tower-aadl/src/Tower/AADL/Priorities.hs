@@ -67,7 +67,7 @@ mkPriorities thds =
   p  = go (\(t,pri) -> (A.threadName (A.PeriodThread t), pri))
           (zip orderedPeriodic perPriorities)
 
-  s  = go (\t -> (A.signal_name t, maxBound)) (atThreadsSignal thds)
+  s  = go (\t -> (A.threadName (A.SignalThread t), maxBound)) (atThreadsSignal thds)
 
   e  = go (\t -> (A.monitorName t,  maxBound)) (atThreadsExternal thds)
 

@@ -14,7 +14,6 @@ module Tower.AADL.FromTower
 
 import           Prelude hiding (init)
 import           System.FilePath ((</>), addExtension)
-import           Data.Maybe (isJust)
 
 import qualified Ivory.Tower.AST                as A
 import qualified Ivory.Tower.Types.Unique       as U
@@ -28,8 +27,8 @@ import           Tower.AADL.Names
 import           Tower.AADL.Threads
 
 -- XXX
-import Debug.Trace
-import Text.Show.Pretty
+--import Debug.Trace
+--import Text.Show.Pretty
 
 ----------------------------------------
 -- Magic made up numbers
@@ -72,9 +71,8 @@ mkProcess c' t = Process { .. }
   pt = toPassiveThreads t
   at = toActiveThreads t
   c  = c' { configPriorities = mkPriorities at }
-  processComponents = trace ("periodic: " ++ concatMap (show . A.monitor_name) (atThreadsFromPeriodic at) ++
-                             "\n\next: " ++  concatMap (show . A.monitor_name . fst) (atThreadsFromExternal at)) $
-       map (fromInitThread               c  ) (atThreadsInit     at    )
+  processComponents =
+           (fromInitThread               c  ) (atThreadsInit     at    )
     ++ map (fromPeriodicThread           c  ) (atThreadsPeriodic at    )
     ++ map (fromSignalThread             c  ) (atThreadsSignal   at    )
     ++ map (fromExternalMonitor          c t) (atThreadsExternal at    )
@@ -83,33 +81,35 @@ mkProcess c' t = Process { .. }
     ++ map (fromPassiveMonitor           c  ) (ptThreadsPassive  pt    )
 
 fromInitThread :: AADLConfig
-               -> String
-               -> Thread
-fromInitThread c i =
-  Thread
-  { threadName       = nm
-  , threadFeatures   = [fs]
-  , threadProperties = props
-  , threadComments   = []
-  }
+               -> HasInit
+               -> [Thread]
+fromInitThread _c  NoInit  = []
+fromInitThread  c  HasInit =
+  [ Thread
+    { threadName       = nm
+    , threadFeatures   = [fs]
+    , threadProperties = props
+    , threadComments   = []
+    }
+  ]
   where
-  nm = A.threadName (A.InitThread i)
+  nm = A.threadName (A.InitThread A.Init)
   fs = OutputFeature
      $ Output
-     { outputId       = InitChanId i
-     , outputLabel    = i
+     { outputId       = InitChanId systemInit
+     , outputLabel    = systemInit
      , outputType     = towerTime
-     , outputEmitter  = initEmitter i
+     , outputEmitter  = initEmitter
      }
   props =
     [ ThreadType Active
     , DispatchProtocol Sporadic
     , ExecTime execTime
-    , SendEvents [(i, 1)]
+    , SendEvents [(systemInit, 1)]
     , StackSize stackSize
     , Priority (getPriority nm (configPriorities c))
-    , EntryPoint [initCallback i]
-    , SourceText [mkCFile c (initCallback i)]
+    , EntryPoint [initCallback]
+    , SourceText [mkCFile c initCallback]
     ]
 
 fromSignalThread :: AADLConfig
@@ -232,31 +232,31 @@ handlerEmitters allEmitters = map OutputFeature
                             $ unzip
                             $ allEmitters
 
-fromExtHdlrMonitor :: AADLConfig
-                   -> A.Monitor
-                   -> Thread
-fromExtHdlrMonitor c m =
-  Thread
-  { threadName       = nm
-  , threadFeatures   = handlerInputs ++ handlerEmitters allEmitters
-  , threadProperties = props
-  , threadComments   = concatMap A.handler_comments handlers
-  }
-  where
-  nm = A.monitorName m
-  handlers = A.monitor_handlers m
-  handlerInputs = map (fromInputChan c WithFile m emptyHMap) handlers
-  allEmitters = concatMap fromEmitters handlers
-  props =
-    [ ExecTime execTime
-    , SendEvents $ zip (map outputLabel outs) bnds
-    , ThreadType Active
-    , DispatchProtocol Sporadic
-    , StackSize stackSize
-    , Priority (getPriority nm (configPriorities c))
-    ]
-    where
-    (outs,bnds) = unzip allEmitters
+-- fromExtHdlrMonitor :: AADLConfig
+--                    -> A.Monitor
+--                    -> Thread
+-- fromExtHdlrMonitor c m =
+--   Thread
+--   { threadName       = nm
+--   , threadFeatures   = handlerInputs ++ handlerEmitters allEmitters
+--   , threadProperties = props
+--   , threadComments   = concatMap A.handler_comments handlers
+--   }
+--   where
+--   nm = A.monitorName m
+--   handlers = A.monitor_handlers m
+--   handlerInputs = map (fromInputChan c WithFile m emptyHMap) handlers
+--   allEmitters = concatMap fromEmitters handlers
+--   props =
+--     [ ExecTime execTime
+--     , SendEvents $ zip (map outputLabel outs) bnds
+--     , ThreadType Active
+--     , DispatchProtocol Sporadic
+--     , StackSize stackSize
+--     , Priority (getPriority nm (configPriorities c))
+--     ]
+--     where
+--     (outs,bnds) = unzip allEmitters
 
 fromExternalMonitor :: AADLConfig
                     -> A.Tower
@@ -359,7 +359,7 @@ fromInputChan c f m hmap h = InputFeature $
                , inputSendsEvents = events
                , inputQueue       = q
                }
-    A.ChanInit
+    A.ChanInit{}
       -> Input { inputId          = InitChanId (A.handlerName h)
                , inputLabel       = A.handlerName h
                , inputType        = towerTime

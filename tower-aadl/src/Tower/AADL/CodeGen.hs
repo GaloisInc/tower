@@ -120,13 +120,12 @@ activeSrc t =
            I.incl $ mkPeriodEmitter  p
          )
       where pkg = periodicCallback p
-    A.InitThread c
-      -> ( pkg
-         , I.package pkg $ do
-           I.incl $ mkInitCallback c
-           I.incl $ mkInitEmitter  c
+    A.InitThread{}
+      -> ( initCallback
+         , I.package initCallback $ do
+           I.incl mkInitCallback
+           I.incl mkInitEmitter
          )
-      where pkg = initCallback c
     A.SignalThread s
       -> ( pkg
          , I.package pkg $ do
@@ -144,14 +143,13 @@ mkPeriodCallback p =
 mkPeriodEmitter :: A.Period -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
 mkPeriodEmitter p = I.importProc (periodicEmitter p) (threadEmitterHeader $ A.PeriodThread p) -- XXX pass in higher up
 
-mkInitCallback :: String
-                 -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
-mkInitCallback i =
-  I.proc (initCallback i) $ \time -> I.body $
-    I.call_ (mkInitEmitter i) time
+mkInitCallback :: I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+mkInitCallback =
+  I.proc initCallback $ \time -> I.body $
+    I.call_ mkInitEmitter time
 
-mkInitEmitter :: String -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
-mkInitEmitter i = I.importProc (initEmitter i) (threadEmitterHeader $ A.InitThread i) -- XXX pass in higher up
+mkInitEmitter :: I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())
+mkInitEmitter = I.importProc initEmitter (threadEmitterHeader $ A.InitThread A.Init) -- XXX pass in higher up
 
 mkSignalCallback :: A.Signal
                  -> I.Def ('[I.ConstRef s (I.Stored TowerTime)] I.:-> ())

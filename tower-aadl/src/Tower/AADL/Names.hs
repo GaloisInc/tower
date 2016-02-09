@@ -9,6 +9,7 @@ module Tower.AADL.Names
   , periodicCallback
   , signalEmitter
   , signalCallback
+  , systemInit
   , initEmitter
   , initCallback
   , prettyTime
@@ -40,11 +41,14 @@ periodicCallback p = "callback_" ++ prettyTime p
 
 ------------------------------------------------------------
 
-initEmitter :: String -> String
-initEmitter = ("emitter_" ++)
+systemInit :: String
+systemInit = "systemInit"
 
-initCallback :: String -> String
-initCallback = ("callback_" ++)
+initEmitter :: String
+initEmitter = "emitter_" ++ systemInit
+
+initCallback :: String
+initCallback = "callback_" ++ systemInit
 
 ------------------------------------------------------------
 

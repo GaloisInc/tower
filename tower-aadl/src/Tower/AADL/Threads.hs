@@ -8,10 +8,11 @@
 
 module Tower.AADL.Threads
   ( HMap
-  , emptyHMap
-  , fromHMap
   , ActiveThreads(..)
   , PassiveThreads(..)
+  , HasInit(..)
+  , emptyHMap
+  , fromHMap
   , toPassiveThreads
   , toActiveThreads
   ) where
@@ -38,11 +39,19 @@ fromHMap hmap h =
     isJust
   $ find (\u -> u == A.handler_name h) hmap
 
+data HasInit = NoInit | HasInit deriving (Show, Read, Eq, Ord)
+
+instance Monoid HasInit where
+  mempty                    = NoInit
+  HasInit `mappend` _       = HasInit
+  _       `mappend` HasInit = HasInit
+  _       `mappend` _       = NoInit
+
 -- Intermediate data types that collect Tower elements into groups that are
 -- meaningful for AADL (notably, distinguishing active and passive threads).
 
 data ActiveThreads = ActiveThreads
-  { atThreadsInit         :: [String]
+  { atThreadsInit         :: HasInit
   , atThreadsPeriodic     :: [A.Period]
   , atThreadsSignal       :: [A.Signal]
   , atThreadsExternal     :: [A.Monitor]
@@ -55,17 +64,17 @@ data PassiveThreads = PassiveThreads
   }
 
 instance Monoid ActiveThreads where
-  mempty = ActiveThreads [] [] [] [] [] []
+  mempty = ActiveThreads mempty [] [] [] [] []
   ActiveThreads a0 b0 c0 d0 e0 f0 `mappend` ActiveThreads a1 b1 c1 d1 e1 f1 =
-    ActiveThreads (a0++a1) (b0++b1) (c0++c1) (d0++d1) (e0++e1) (f0++f1)
+    ActiveThreads (a0 <> a1) (b0 <> b1) (c0 <> c1) (d0 <> d1) (e0 <> e1) (f0 <> f1)
 
 instance Monoid PassiveThreads where
   mempty = PassiveThreads []
   PassiveThreads a0 `mappend` PassiveThreads a1 =
     PassiveThreads (a0++a1)
 
-injectInitThread :: String -> ActiveThreads
-injectInitThread t = mempty { atThreadsInit = [t] }
+injectInitThread :: ActiveThreads
+injectInitThread = mempty { atThreadsInit = HasInit }
 
 injectPeriodicThread :: A.Period -> ActiveThreads
 injectPeriodicThread m = mempty { atThreadsPeriodic = [m] }
@@ -117,7 +126,7 @@ toActiveThreads t =
   where
   towerThreadToThread thd =
     case thd of
-      A.InitThread   i -> injectInitThread i
+      A.InitThread{}   -> injectInitThread
       A.PeriodThread p -> injectPeriodicThread p
       A.SignalThread s -> injectSignalThread s
 

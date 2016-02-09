@@ -60,7 +60,9 @@ mkPriorities thds =
   where
   go f t = M.fromList (map f t)
 
-  i  = go (\t -> (t,  minBound)) (atThreadsInit thds)
+  i  = case atThreadsInit thds of
+         NoInit  -> M.empty
+         HasInit -> M.fromList [(A.threadName (A.InitThread A.Init), minBound)]
 
   p  = go (\(t,pri) -> (A.threadName (A.PeriodThread t), pri))
           (zip orderedPeriodic perPriorities)

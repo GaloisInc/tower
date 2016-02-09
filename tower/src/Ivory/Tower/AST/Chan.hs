@@ -6,10 +6,11 @@ module Ivory.Tower.AST.Chan
 import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal
 import Ivory.Tower.AST.Period
+import Ivory.Tower.AST.Init
 
 data Chan
   = ChanSync   SyncChan
   | ChanSignal Signal
   | ChanPeriod Period
-  | ChanInit
+  | ChanInit   Init
   deriving (Eq, Show, Ord)

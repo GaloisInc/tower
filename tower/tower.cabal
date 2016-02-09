@@ -24,6 +24,7 @@ library
                         Ivory.Tower.AST.Emitter,
                         Ivory.Tower.AST.Graph,
                         Ivory.Tower.AST.Handler,
+                        Ivory.Tower.AST.Init,
                         Ivory.Tower.AST.Monitor,
                         Ivory.Tower.AST.Period,
                         Ivory.Tower.AST.Signal,

@@ -11,15 +11,16 @@ import Ivory.Tower.Types.Time
 import Ivory.Tower.AST.Period
 import Ivory.Tower.AST.Signal
 import Ivory.Tower.AST.Chan
+import Ivory.Tower.AST.Init
 
 data Thread = SignalThread Signal
             | PeriodThread Period
-            | InitThread   String -- initialization handler name
+            | InitThread   Init
             deriving (Eq, Show)
 
 threadName :: Thread -> String
 threadName (SignalThread s) = "thread_signal_" ++ signal_name s
-threadName (InitThread   s) = "thread_init_" ++ s
+threadName (InitThread _)   = "thread_init"
 threadName (PeriodThread p) =
      "thread_period_"
   ++ prettyTime (period_dt p)
@@ -41,7 +42,7 @@ threadLoopProcName t = "loop_" ++ threadName t
 threadChan :: Thread -> Chan
 threadChan (PeriodThread p) = ChanPeriod p
 threadChan (SignalThread s) = ChanSignal s
-threadChan (InitThread  _s) = ChanInit
+threadChan (InitThread   i) = ChanInit   i
 
 instance Ord Thread where
 

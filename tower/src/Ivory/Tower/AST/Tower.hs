@@ -5,17 +5,15 @@ module Ivory.Tower.AST.Tower
   , towerFindMonitorByName
   ) where
 
-import Control.Monad (guard)
 import Data.List (find, union)
 import Data.Monoid
 import Ivory.Tower.Types.Unique
-import Ivory.Tower.AST.Signal
 import Ivory.Tower.AST.SyncChan
-import Ivory.Tower.AST.Handler
+import Ivory.Tower.AST.Signal
 import Ivory.Tower.AST.Period
 import Ivory.Tower.AST.Monitor
 import Ivory.Tower.AST.Thread
-import Ivory.Tower.AST.Chan
+import Ivory.Tower.AST.Init
 
 data Tower = Tower
   { tower_monitors    :: [Monitor]
@@ -39,22 +37,11 @@ instance Monoid Tower where
     , tower_periods     = tower_periods     a `union`   tower_periods     b
     }
 
-filterInitHandlers :: Tower -> [String]
-filterInitHandlers t = do
-  m <- tower_monitors t
-  h <- monitor_handlers m
-  guard (isInit (handler_chan h))
-  return (handlerName h)
-  where
-  isInit (ChanInit{}) = True
-  isInit _            = False
-
 towerThreads :: Tower -> [Thread]
 towerThreads t = map SignalThread (tower_signals t) ++
                  map PeriodThread (tower_periods t) ++
-                 map InitThread   (filterInitHandlers t)
+                 [ InitThread Init ]
 
 towerFindMonitorByName :: Unique -> Tower -> Maybe Monitor
 towerFindMonitorByName n t = find p (tower_monitors t)
   where p m = monitor_name m == n
-

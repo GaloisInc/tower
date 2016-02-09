@@ -99,7 +99,7 @@ periodPhase t ph = do
   where perTy = I.ivoryArea (Proxy :: I.AProxy (Stored ITime))
 
 systemInit :: ChanOutput (Stored ITime)
-systemInit = ChanOutput (Chan AST.ChanInit)
+systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
 
 towerModule :: Module -> Tower e ()
 towerModule m = towerPutDependencies $ mempty { dependencies_modules = [m] }

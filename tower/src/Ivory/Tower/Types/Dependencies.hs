@@ -1,7 +1,9 @@
 module Ivory.Tower.Types.Dependencies where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.List (nub, nubBy)
-import Data.Monoid
 import Ivory.Artifact
 import Ivory.Language
 

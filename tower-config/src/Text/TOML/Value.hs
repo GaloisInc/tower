@@ -26,6 +26,7 @@ data TOMLV
     | VDocument TOML
     deriving ( Eq, Ord, Show )
 
+tempty :: TOML
 tempty = TOML M.empty
 
 liftT :: (Map String Value -> Map String Value) -> TOML -> TOML

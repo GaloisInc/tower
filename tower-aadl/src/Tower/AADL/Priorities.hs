@@ -69,7 +69,7 @@ mkPriorities thds = M.unions [extPris, perPris, initPris, extPerPris]
   perPriorities = iterate (+1) minPer
 
   -- All periodic threads have priorities lower than topPer.
-  topPer =
+  _topPer =
     let m = minPer + fromIntegral (length (threadsPeriodic thds)) in
     if m == maxBound
       then error "Unscheduable: not enough priority slots."

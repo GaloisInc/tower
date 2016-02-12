@@ -15,10 +15,6 @@ import           GhcPlugins
 
 import GHC.Plugins.SrcSpan
 
-#if __GLASGOW_HASKELL__ < 708
-# error Ivory.Tower.Codegen.Plugin requires at least ghc-7.8
-#endif
-
 plugin :: Plugin
 plugin = defaultPlugin { installCoreToDos = install }
 

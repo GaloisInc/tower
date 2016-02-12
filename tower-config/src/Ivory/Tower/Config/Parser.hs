@@ -13,7 +13,9 @@ module Ivory.Tower.Config.Parser
   , (<?>)
   ) where
 
-import           Control.Applicative hiding ((<|>))
+import Prelude ()
+import Prelude.Compat
+
 import qualified Data.Map as M
 import           Text.TOML.Value
 import           Data.Either (lefts, rights)
@@ -62,6 +64,10 @@ double :: ConfigParser Double
 double = configParser "double" $ \v ->
   case v of
     Right (VDouble a) -> Just a
+    -- The Scientific type that attoparsec now uses will parse numbers
+    -- like `1.0` as integers, so we account for that here. This means
+    -- `1` will parse as a double, but this doesn't seem too harmful.
+    Right (VInteger i) -> Just (fromIntegral i)
     _ -> Nothing
 
 bool :: ConfigParser Bool
@@ -77,7 +83,7 @@ array p = ConfigParser $ \v ->
       let bs = map (\a -> unConfigParser p (Right a)) as
       in case lefts bs of
         [] -> Right (rights bs)
-        es -> Left ("got following errors when parsing array elements: " ++ 
+        es -> Left ("got following errors when parsing array elements: " ++
                     intercalate "; " es)
     _ -> Left ("expected array, got " ++ show v)
 

@@ -57,11 +57,11 @@ data ActiveThreads = ActiveThreads
   , atThreadsExternal     :: [A.Monitor]
   , atThreadsFromPeriodic :: [A.Monitor]
   , atThreadsFromExternal :: [(A.Monitor, HMap)]  -- From external or periodic threads
-  }
+  } deriving Show
 
 data PassiveThreads = PassiveThreads
   { ptThreadsPassive :: [A.Monitor]
-  }
+  } deriving Show
 
 instance Monoid ActiveThreads where
   mempty = ActiveThreads mempty [] [] [] [] []

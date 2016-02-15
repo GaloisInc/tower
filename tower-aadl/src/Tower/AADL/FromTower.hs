@@ -110,6 +110,7 @@ fromInitThread  c  HasInit =
     , Priority (getPriority nm (configPriorities c))
     , EntryPoint [initCallback]
     , SourceText [mkCFile c initCallback]
+    , InitProperty initCallback
     ]
 
 fromSignalThread :: AADLConfig
@@ -360,7 +361,7 @@ fromInputChan c f m hmap h = InputFeature $
                , inputQueue       = q
                }
     A.ChanInit{}
-      -> Input { inputId          = InitChanId (A.handlerName h)
+      -> Input { inputId          = InitChanId systemInit
                , inputLabel       = A.handlerName h
                , inputType        = towerTime
                , inputCallback    = cbs

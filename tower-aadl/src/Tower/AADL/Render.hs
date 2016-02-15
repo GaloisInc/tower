@@ -176,6 +176,7 @@ renderSignal s = stmt
   emptyStrs   = all null
   isrStmts    = [isISR
                 ,firstLevelHandler (signalInfoName s)
+                -- TODO: this needs to be a unique name
                 ,sigName "external_irq"
                 ,sigNum  (signalInfoNumber s)
                 ]

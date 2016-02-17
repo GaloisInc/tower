@@ -346,7 +346,7 @@ fromInputChan c f m hmap h = InputFeature $
                }
     A.ChanPeriod p
       -> Input { inputId          = periodId p
-               , inputLabel       = T.prettyTime (A.period_dt p)
+               , inputLabel       = A.handlerName h
                , inputType        = A.period_ty p
                , inputCallback    = cbs
                , inputSendsEvents = events

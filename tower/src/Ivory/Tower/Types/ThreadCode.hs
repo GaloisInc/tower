@@ -1,9 +1,10 @@
-
 module Ivory.Tower.Types.ThreadCode
   ( ThreadCode(..)
   ) where
 
-import Data.Monoid
+import Prelude ()
+import Prelude.Compat
+
 import Ivory.Language
 
 data ThreadCode =

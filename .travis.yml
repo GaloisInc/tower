@@ -1,20 +1,40 @@
 sudo: false
-language: haskell
+language: c
+
+cache:
+  directories:
+    - $HOME/.stack
+
+matrix:
+  include:
+    - env: GHCVER=7.8.4 STACK_YAML=stack.yaml
+      addons: {apt: {packages: [ghc-7.8.4], sources: [hvr-ghc]}}
+    - env: GHCVER=7.10.3 STACK_YAML=stack-7.10.yaml
+      addons: {apt: {packages: [ghc-7.10.3], sources: [hvr-ghc]}}
+    - env: GHCVER=8.0.1 STACK_YAML=stack-8.0.yaml
+      addons: {apt: {packages: [ghc-8.0.1], sources: [hvr-ghc]}}
+
+  allow_failures:
+    - env: GHCVER=8.0.1 STACK_YAML=stack-8.0.yaml
+
 before_install:
-- git clone https://github.com/galoisinc/ivory
-- export IVORY_REPO=$PWD/ivory
+  # Download and unpack the stack executable
+  - mkdir -p ~/.local/bin
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  - export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH
+  - ghc --version
+  - stack --version
 install:
-- cabal install alex-3.1.4 happy
+  # Check out depenendency repos, then check out the branch that
+  # matches the current branch name in this repo. If one doesn't
+  # exist, don't fail, in case we're branched in this repo but just
+  # depending on master elsewhere.
+  #
+  # Travis seems to have no problem with the multi-line if above,
+  # but barfs when we format this one nicely.
+  - for repo in ivory; do git clone https://github.com/galoisinc/$repo; (cd $repo; git checkout $TRAVIS_BRANCH) || true; export ${repo^^}_REPO=$PWD/$repo; done
+  # tweak the relative paths in stack.yaml
+  - export STACK_YAML=$PWD/$STACK_YAML
+  - sed -i "s;\.\./;$PWD/;g" $STACK_YAML
 script:
-- make $ENV_TEST_TARGET
-ghc:
-- 7.8
-env:
-- ENV_TEST_TARGET=tower
-- ENV_TEST_TARGET=tower-config
-- ENV_TEST_TARGET=tower-aadl
-- ENV_TEST_TARGET=tower-hal
-notifications:
-  slack:
-    secure: NB6RN4eHvnGaduk1hi9Snn6tPlprLg/mjpe3/lWYHUR+crBNWO5DzkQ7aX0AmS46USR94OVW+2j4dTsXDYoPRczTtu+VxK5Qj0ptfNS6ukIXtu5MSzgAKx0nhlOt0FQ/vfieeBtzY9PyqkEmWb3gGQSg09Q6wJsUKT/Hi5fD47I=
-    secure: RoCcS2LvrMZXmNCajPcXp4A2bQkW6yXK3ht5o/jibYJRkY9H6Cm+3TfFjUGORyqgOmdcftNz56qr49OKonCeMwzAZvO83NUfd7Oqi0YoAmm/siBfGvU398UbrCKh7ymE/vJ8zJaNIynWBcyJx4MvS8KByT2l4tBMQ10SIKP+lOM=
+  - make travis-test

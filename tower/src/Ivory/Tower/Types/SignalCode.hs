@@ -5,8 +5,10 @@
  -}
 module Ivory.Tower.Types.SignalCode where
 
+import Prelude ()
+import Prelude.Compat
+
 import qualified Data.Map as Map
-import Data.Monoid
 import Ivory.Language
 
 data SignalCode = SignalCode

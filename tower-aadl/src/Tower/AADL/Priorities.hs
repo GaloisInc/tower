@@ -79,9 +79,9 @@ mkPriorities thds =
 
   pts = atThreadsPeriodic thds
 
--- All periodic threads have priorities lower than topPer.
-  topPer =
-    let m = minPer + fromIntegral (length pts) in
+  -- All periodic threads have priorities lower than topPer.
+  _topPer =
+    let m = minPer + fromIntegral (length (threadsPeriodic thds)) in
     if m == maxBound
       then error "Unscheduable: not enough priority slots."
       else m

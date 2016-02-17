@@ -1,10 +1,8 @@
-IVORY_REPO ?= ../../ivory
-TOWER_REPO ?= ..
-include ../Makefile.sandbox
+include ../stack.mk
 
-test:
-	cabal run test -- --src-dir=test_codegen
+test: default
+	stack exec -- test --src-dir=test_codegen
 
 .PHONY: test-echronos
-test-echronos:
-	cabal run test-echronos -- --src-dir=test_echronos_codegen --lib-dir=""
+test-echronos: default
+	stack exec -- test-echronos --src-dir=test_echronos_codegen --lib-dir=""

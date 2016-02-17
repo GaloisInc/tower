@@ -8,7 +8,9 @@ module Ivory.Tower.Options
   , finalizeOpts
   ) where
 
-import Data.Monoid (Monoid(..),mconcat)
+import Prelude ()
+import Prelude.Compat
+
 import System.Console.GetOpt
   (ArgOrder(Permute), OptDescr(..), getOpt', usageInfo)
 import System.Exit (exitFailure)

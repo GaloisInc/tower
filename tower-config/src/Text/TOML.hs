@@ -8,12 +8,11 @@ import Data.Either ( rights )
 import qualified Data.Map as M
 
 import Text.TOML.Parser
-import Text.TOML.Value
-
 
 parse :: B.ByteString -> Either String TOML
 parse bs = process `fmap` parse' bs
 
+parse' :: B.ByteString -> Either String [Token]
 parse' bs = (A.eitherResult $ A.feed (A.parse document bs) "")
 
 process :: [Token] -> TOML
@@ -33,10 +32,12 @@ process ts = go (group ts) tempty
       where kvs' = [(B.unpack k, Right v) | (k, v) <- kvs]
 
 -- NB: groupBy will never produce an empty group.
+group :: [Either [a] b] -> [([a], [b])]
 group ts = alternate $ (map omg) $ (groupBy right ts)
-  where 
-    omg ls@((Left l):_)  = Left l
+  where
+    omg _ls@((Left l):_) = Left l
     omg rs@((Right _):_) = Right (rights rs)
+    omg _xs              = error "Text.TOML.group.omg: unexpected input"
     -- Only key-value pairs are grouped together
     right (Right _) (Right _) = True
     right _         _         = False

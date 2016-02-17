@@ -17,10 +17,11 @@ module Ivory.Tower.Monad.Tower
   , towerPutSignalCode
   ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import MonadLib
 import Control.Monad.Fix
-import Control.Applicative
-import Data.Monoid
 import Ivory.Tower.Backend
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Chan

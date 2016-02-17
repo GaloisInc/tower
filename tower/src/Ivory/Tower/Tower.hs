@@ -29,8 +29,10 @@ module Ivory.Tower.Tower
   , showUnique
   ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import qualified Data.Map as Map
-import Data.Monoid
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Dependencies
 import Ivory.Tower.Types.SignalCode
@@ -65,12 +67,12 @@ channel = do
 -- a given Tower. We'd need to add another phantom type to make that
 -- work.
 signal :: (Time a, Signalable s)
-       => s -> a -> Tower e (ChanOutput (Stored ITime))
+       => s -> a -> Tower e (ChanOutput ('Stored ITime))
 signal s t = signalUnsafe s t (return ())
 
 signalUnsafe :: (Time a, Signalable s)
        => s -> a -> (forall eff . Ivory eff ())
-       -> Tower e (ChanOutput (Stored ITime))
+       -> Tower e (ChanOutput ('Stored ITime))
 signalUnsafe s t i = do
   towerPutSignalCode $ SignalCode
     { signalcode_init    = signalInit s
@@ -86,19 +88,19 @@ signalUnsafe s t i = do
     , AST.signal_number   = signalNumber s
     }
 
-period :: Time a => a -> Tower e (ChanOutput (Stored ITime))
+period :: Time a => a -> Tower e (ChanOutput ('Stored ITime))
 period t = periodPhase t (0`us`)
 
 periodPhase :: (Time a, Time b)
        => a
        -> b
-       -> Tower e (ChanOutput (Stored ITime))
+       -> Tower e (ChanOutput ('Stored ITime))
 periodPhase t ph = do
   let ast = AST.Period (microseconds t) perTy (microseconds ph)
   return (ChanOutput (Chan (AST.ChanPeriod ast)))
-  where perTy = I.ivoryArea (Proxy :: I.AProxy (Stored ITime))
+  where perTy = I.ivoryArea (Proxy :: I.AProxy ('Stored ITime))
 
-systemInit :: ChanOutput (Stored ITime)
+systemInit :: ChanOutput ('Stored ITime)
 systemInit = ChanOutput (Chan (AST.ChanInit AST.Init))
 
 towerModule :: Module -> Tower e ()
@@ -114,6 +116,6 @@ getTime :: Ivory eff ITime
 getTime = call getTimeProc
   where
   -- Must be provided by the code generator:
-  getTimeProc :: Def('[]:->ITime)
+  getTimeProc :: Def('[]':->ITime)
   getTimeProc = importProc "tower_get_time" "tower_time.h"
 

@@ -24,10 +24,11 @@ module Ivory.Tower.Monad.Handler
   , withLocation
   ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import MonadLib
 import Control.Monad.Fix
-import Control.Applicative
-import Data.Monoid
 import Ivory.Tower.Backend
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Unique

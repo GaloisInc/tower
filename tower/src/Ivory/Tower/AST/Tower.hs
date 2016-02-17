@@ -1,12 +1,13 @@
-
 module Ivory.Tower.AST.Tower
   ( Tower(..)
   , towerThreads
   , towerFindMonitorByName
   ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.List (find, union)
-import Data.Monoid
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal

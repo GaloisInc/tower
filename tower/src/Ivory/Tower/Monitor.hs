@@ -17,17 +17,17 @@ import Ivory.Tower.Monad.Base
 import Ivory.Language
 
 state :: (IvoryArea a, IvoryZero a)
-      => String -> Monitor e (Ref Global a)
+      => String -> Monitor e (Ref 'Global a)
 state n = state' n Nothing
 
 stateInit :: (IvoryArea a, IvoryZero a)
-          => String -> Init a -> Monitor e (Ref Global a)
+          => String -> Init a -> Monitor e (Ref 'Global a)
 stateInit n i = state' n (Just i)
 
 state' :: (IvoryArea a, IvoryZero a)
        => String
        -> Maybe (Init a)
-       -> Monitor e (Ref Global a)
+       -> Monitor e (Ref 'Global a)
 state' n i = do
   f <- freshname n
   let a = area (showUnique f) i

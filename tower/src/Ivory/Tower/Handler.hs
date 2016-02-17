@@ -48,13 +48,13 @@ callback b = handlerName >>= \ nm -> Handler $ do
   backend <- handlerGetBackend
   handlerPutCodeCallback $ callbackImpl backend u b
 
-callbackV :: (IvoryArea (Stored a), IvoryStore a, IvoryZeroVal a)
+callbackV :: (IvoryArea ('Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())
-          -> Handler (Stored a) e ()
+          -> Handler ('Stored a) e ()
 callbackV b = callback (\bref -> deref bref >>= b)
 
-emitV :: (IvoryArea (Stored a), IvoryInit a, IvoryZeroVal a, GetAlloc eff ~ Scope s)
-      => Emitter (Stored a) -> a -> Ivory eff ()
+emitV :: (IvoryArea ('Stored a), IvoryInit a, IvoryZeroVal a, GetAlloc eff ~ 'Scope s)
+      => Emitter ('Stored a) -> a -> Ivory eff ()
 emitV e v = do
   l <- local (ival v)
   emit e (constRef l)

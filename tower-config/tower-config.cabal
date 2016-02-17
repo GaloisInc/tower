@@ -23,6 +23,7 @@ library
                         Text.TOML.Value
 
   build-depends:        base >= 4.6,
+                        base-compat >= 0.6,
                         attoparsec >= 0.12.1.2,
                         bytestring,
                         containers,

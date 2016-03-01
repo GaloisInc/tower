@@ -115,7 +115,6 @@ toPassiveThreads t = mconcat (map injectPassiveThread pts)
   ms    = A.tower_monitors t
   pts = filter (not . isExternalMonitor)
       $ filter (not . isFromExternalMon t)
-      $ filter (not . isFromPerThread t)
         ms
 
 toActiveThreads :: A.Tower -> ActiveThreads
@@ -123,7 +122,6 @@ toActiveThreads t =
      mconcat (map towerThreadToThread (A.towerThreads t))
   <> mconcat (map injectExternalThread iem)
   <> mconcat (map injectFromExternal (mkExternalActiveThreads t))
-  <> mconcat (map injectFromPeriodic (mkPeriodicActiveThreads t))
   where
   towerThreadToThread thd =
     case thd of
@@ -142,12 +140,6 @@ mkExternalActiveThreads t = map go ms
   go m = (m, mp)
     where
     mp = map A.handler_name (handlersFromExternalMon t m)
-
--- Note: filters out monitors that have handlers from external threads. So
--- external threads take precedence.
-mkPeriodicActiveThreads :: A.Tower -> [A.Monitor]
-mkPeriodicActiveThreads t =
-  filter (isFromPerThread t) (A.tower_monitors t)
 
 ----------------------------------------
 
@@ -173,11 +165,6 @@ isExternalMonitor :: A.Monitor -> Bool
 isExternalMonitor m = A.monitor_external m == A.MonitorExternal
 
 ------------------------------------------------------------
-
-isFromPerThread :: A.Tower -> A.Monitor -> Bool
-isFromPerThread t m =
-     not (null (handlersFromPerThread m))
-  && not (isFromExternalMon t m)
 
 handlersFromPerThread :: A.Monitor -> [A.Handler]
 handlersFromPerThread m =

@@ -12,6 +12,7 @@
 module Tower.AADL
   ( compileTowerAADL
   , compileTowerAADLForPlatform
+  , parseTowerAADLForPlatform
   -- configuration
   , AADLConfig(..)
   , defaultAADLConfig
@@ -137,6 +138,20 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
           }
     where
     dir = fromMaybe "." (O.outDir copts)
+
+
+parseTowerAADLForPlatform :: (e -> (AADLConfig, OSSpecific a e))
+                            -> (TOpts -> IO e)
+                            -> Tower e ()
+                            -> IO AST.Tower
+parseTowerAADLForPlatform fromEnv mkEnv twr' = do
+  (copts, topts)              <- towerGetOpts
+  env                         <- mkEnv topts
+  let (cfg',osspecific)       =  fromEnv env
+  cfg                         <- parseAADLOpts' cfg' topts
+  let twr                     =  twr' >> osSpecificTower osspecific
+  let (ast, _, _, _) =  runTower AADLBackend twr env
+  return ast
 
 -- | parseAADLOpts' is a wrapper around parseAADLOpts that
 -- checks for errors and if '--help' was requested.

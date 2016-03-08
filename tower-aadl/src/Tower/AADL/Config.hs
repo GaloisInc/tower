@@ -14,20 +14,10 @@ import           Ivory.Tower.Options (TOpts(..))
 import           Ivory.Tower.Config
 import qualified System.Console.GetOpt as O
 
+import           Tower.AADL.Platform (OS(..), HW(..))
 import           Tower.AADL.Priorities (PriorityMap, emptyPriorityMap)
 
 ----------------------------------------
-
-data HW =
-    QEMU
-  | ODROID
-  | PIXHAWK
-  deriving (Show, Read, Eq)
-
-data OS =
-    CAmkES
-  | EChronos
-  deriving (Show, Read, Eq)
 
 data AADLConfig = AADLConfig
   { configSrcsDir        :: FilePath

@@ -11,6 +11,8 @@ import Text.PrettyPrint.Leijen hiding ((</>))
 import Ivory.Artifact
 import Ivory.Tower
 
+import qualified Ivory.Compile.C.CmdlineFrontend as O
+
 import Tower.AADL.Config (AADLConfig(..))
 
 data Required
@@ -129,5 +131,7 @@ data OSSpecific a e = OSSpecific
   , osSpecificArtifacts :: String -> AADLConfig -> [Located Artifact]
   , osSpecificSrcDir    :: AADLConfig -> Located Artifact -> Located Artifact
   , osSpecificTower     :: Tower e ()
+  , osSpecificOptsApps  :: AADLConfig -> O.Opts -> O.Opts
+  , osSpecificOptsLibs  :: AADLConfig -> O.Opts -> O.Opts
   }
 

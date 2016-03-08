@@ -9,8 +9,6 @@ module Tower.AADL.AST where
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 
-import           Tower.AADL.Priorities
-
 ----------------------------------------
 
 data System = System
@@ -80,7 +78,7 @@ data ThreadProperty =
   | ExecTime (Integer, Integer)
   -- ^ Min bound, max bound.
   | StackSize Integer
-  | Priority Priority
+  | Priority Int
   | EntryPoint [FuncSym]
   | SourceText [FilePath]
   -- ^ Path to a .c file

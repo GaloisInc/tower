@@ -17,6 +17,7 @@ library
                  , Tower.AADL.Compile
                  , Tower.AADL.Config
                  , Tower.AADL.FromTower
+                 , Tower.AADL.Platform
                  , Tower.AADL.Priorities
                  , Tower.AADL.Names
                  , Tower.AADL.Render

@@ -6,8 +6,11 @@
 module Tower.AADL.Build.SeL4 where
 
 import           System.FilePath ((</>))
+import           Data.Maybe (fromMaybe)
 
 import           Ivory.Artifact
+
+import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import           Tower.AADL.Config (AADLConfig(..), lib)
 import           Tower.AADL.Build.Common
@@ -158,17 +161,29 @@ camkesArtifacts appname cfg = map Root ls
 
 defaultCAmkESOS :: OSSpecific () e
 defaultCAmkESOS =
+  let libSrcDir cfg = lib cfg </> "src"
+      libHdrDir cfg = lib cfg </> "include"
+  in
   OSSpecific
     { osSpecificName      = "CAmkES"
     , osSpecificConfig    = ()
     , osSpecificArtifacts = camkesArtifacts
     , osSpecificSrcDir    =
-        let libSrcDir cfg = lib cfg </> "src"
-            libHdrDir cfg = lib cfg </> "include"
-        in \cfg l -> case l of
+        \cfg l -> case l of
           Src  a -> Root (artifactPath (libSrcDir cfg) a)
           Incl a -> Root (artifactPath (libHdrDir cfg) a)
           _      -> l
     , osSpecificTower     = return ()
+    , osSpecificOptsApps  = \cfg copts ->
+        let dir = fromMaybe "." (O.outDir copts)
+        in copts { O.outDir    = Just (dir </> configSrcsDir cfg)
+                 , O.outHdrDir = Just (dir </> configHdrDir  cfg)
+                 , O.outArtDir = Just dir
+                 }
+    , osSpecificOptsLibs  = \cfg copts ->
+        let dir = fromMaybe "." (O.outDir copts)
+        in copts { O.outDir    = Just (dir </> libSrcDir cfg)
+                 , O.outHdrDir = Just (dir </> libHdrDir cfg)
+                 , O.outArtDir = Just dir
+                 }
     }
-

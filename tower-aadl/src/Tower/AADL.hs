@@ -25,7 +25,7 @@ import           Data.List
 import           Data.Char
 import           Control.Monad hiding (forever)
 
-import           System.FilePath (addExtension, takeFileName, (</>), (<.>))
+import           System.FilePath (addExtension, takeFileName, (<.>))
 import           System.Exit (exitFailure)
 
 import           Text.PrettyPrint.Leijen hiding ((</>))
@@ -53,6 +53,7 @@ import           Tower.AADL.Compile
 import           Tower.AADL.Config
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
+import           Tower.AADL.Platform
 
 import qualified Ivory.Tower.AST as A
 
@@ -108,8 +109,8 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   cmodules <- O.compileUnits mods copts
   let (appMods, libMods) =
         partition (\m -> O.unitName m `elem` pkgs) cmodules
-  O.outputCompiler appMods (as osspecific) (ivoryOpts True  cfg copts)
-  O.outputCompiler libMods []              (ivoryOpts False cfg copts)
+  O.outputCompiler appMods (as osspecific) (osSpecificOptsApps osspecific cfg copts)
+  O.outputCompiler libMods []              (osSpecificOptsLibs osspecific cfg copts)
   where
 
   -- | AADL assumes that our handlers will always have a callback define. So we
@@ -123,20 +124,6 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
     handlerIsEmpty h = if (null (A.handler_callbacks h))
                           then Just h
                           else Nothing
-
-  libSrcDir cfg = lib cfg </> "src"
-  libHdrDir cfg = lib cfg </> "include"
-
-  -- True: app code, False: lib code
-  ivoryOpts b cfg copts =
-    copts { O.outDir    = Just (dir </> if b then configSrcsDir cfg
-                                          else libSrcDir cfg)
-          , O.outHdrDir = Just (dir </> if b then configHdrDir  cfg
-                                          else libHdrDir cfg)
-          , O.outArtDir = Just dir
-          }
-    where
-    dir = fromMaybe "." (O.outDir copts)
 
 -- | parseAADLOpts' is a wrapper around parseAADLOpts that
 -- checks for errors and if '--help' was requested.

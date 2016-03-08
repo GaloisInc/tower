@@ -10,33 +10,59 @@ import           Data.List
 import qualified Data.Map as M
 
 import           Tower.AADL.Threads
+import           Tower.AADL.Platform (OS(..))
 import qualified Ivory.Tower.AST as A
 
 ----------------------------------------
 
-data Priority = P Int
-  deriving (Show, Read, Eq, Ord)
+data Priority
+  = MinPriority
+  | P Int -- ^ Positive means the priority relative to min, negative is priority relative to max,
+          --   zero means MinPriority
+  | MaxPriority
+  deriving (Read, Show, Eq, Ord)
 
-instance Num Priority where
-  P a + P b = P (a+b)
-  P a * P b = P (a*b)
-  P a - P b = P (a-b)
-  negate (P a) = P (negate a)
-  abs (P a) = P (abs a)
-  signum (P a) = P (signum a)
-  fromInteger a = P (fromIntegral a)
+toEchronosPriority :: Priority -> Int
+toEchronosPriority MinPriority = 140
+toEchronosPriority (P n) | abs n > 20 = error ("toEchronosPriority: relative priority ("
+                                     ++ show n ++ ")" ++ " out of range [0..20]")
+                         | n >= 0     = 140 - n
+                         | otherwise  = 120 - n
+toEchronosPriority MaxPriority = 120
 
--- Bounds for seL4 on ODROID
-instance Bounded Priority where
-  minBound = 120
-  maxBound = 140
+toSeL4Priority :: Priority -> Int
+toSeL4Priority MinPriority = 120
+toSeL4Priority (P n) | abs n > 20  = error ("toSeL4Priority: relative priority ("
+                                  ++ show n ++ ")" ++ " out of range [0..20]")
+                     | n >= 0      = 120 + n
+                     | otherwise   = 140 + n
+toSeL4Priority MaxPriority = 140
+
+minPriority :: Priority
+minPriority = MinPriority
+
+maxPriority :: Priority
+maxPriority = MaxPriority
+
+incPriority :: Priority -> Priority
+incPriority MinPriority = P 1
+incPriority (P n) | n >= 0     = P (n + 1)
+                  | otherwise  = P (n - 1)
+incPriority MaxPriority = MaxPriority
+
+decPriority :: Priority -> Priority
+decPriority MinPriority = MinPriority
+decPriority (P n) | n >= 0    = P (n - 1)
+                  | otherwise = P (n + 1)
+decPriority MaxPriority = P (-1)
 
 ----------------------------------------
 
 minPer :: Priority
-minPer = minBound + fromInteger 1
+minPer = incPriority minPriority
 
-perPriorities = iterate (+1) minPer
+perPriorities :: [Priority]
+perPriorities = iterate incPriority minPer
 
 -- | Map from monitor names to priorities
 type PriorityMap = M.Map String Priority
@@ -44,12 +70,16 @@ type PriorityMap = M.Map String Priority
 emptyPriorityMap :: PriorityMap
 emptyPriorityMap = M.empty
 
-getPriority :: String -> PriorityMap -> Priority
-getPriority nm mp =
+getPriority :: OS -> String -> PriorityMap -> Int
+getPriority os nm mp = transform $
   case M.lookup nm mp of
     Nothing -> error $ "Internal error: lookup of monitor "
                      ++ nm ++ " in priority map."
     Just p  -> p
+  where
+  transform = case os of
+    EChronos -> toEchronosPriority
+    CAmkES   -> toSeL4Priority
 
 -- Initialization threads have the lowest priorties.
 -- External threads have maximum bound.
@@ -62,26 +92,19 @@ mkPriorities thds =
 
   i  = case atThreadsInit thds of
          NoInit  -> M.empty
-         HasInit -> M.fromList [(A.threadName (A.InitThread A.Init), minBound)]
+         HasInit -> M.fromList [(A.threadName (A.InitThread A.Init), minPriority)]
 
   p  = go (\(t,pri) -> (A.threadName (A.PeriodThread t), pri))
           (zip orderedPeriodic perPriorities)
 
-  s  = go (\t -> (A.threadName (A.SignalThread t), maxBound)) (atThreadsSignal thds)
+  s  = go (\t -> (A.threadName (A.SignalThread t), maxPriority)) (atThreadsSignal thds)
 
-  e  = go (\t -> (A.monitorName t,  maxBound)) (atThreadsExternal thds)
+  e  = go (\t -> (A.monitorName t,  maxPriority)) (atThreadsExternal thds)
 
-  fp = go (\t -> (A.monitorName t, minBound+1)) (atThreadsFromPeriodic thds)
+  fp = go (\t -> (A.monitorName t, incPriority minPriority)) (atThreadsFromPeriodic thds)
 
-  fe = go (\(t,_) -> (A.monitorName t, maxBound)) (atThreadsFromExternal thds)
+  fe = go (\(t,_) -> (A.monitorName t, maxPriority)) (atThreadsFromExternal thds)
 
   orderedPeriodic = reverse (sort pts)
 
   pts = atThreadsPeriodic thds
-
-  -- All periodic threads have priorities lower than topPer.
-  _topPer =
-    let m = minPer + fromIntegral (length (atThreadsPeriodic thds)) in
-    if m == maxBound
-      then error "Unscheduable: not enough priority slots."
-      else m

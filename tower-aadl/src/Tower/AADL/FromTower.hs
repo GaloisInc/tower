@@ -22,6 +22,7 @@ import qualified Ivory.Tower.Types.Time         as T
 import           Tower.AADL.AST
 import           Tower.AADL.AST.Common (towerTime)
 import           Tower.AADL.Config
+import           Tower.AADL.Platform
 import           Tower.AADL.Priorities
 import           Tower.AADL.Names
 import           Tower.AADL.Threads
@@ -107,7 +108,7 @@ fromInitThread  c  HasInit =
     , ExecTime execTime
     , SendEvents [(systemInit, 1)]
     , StackSize stackSize
-    , Priority (getPriority nm (configPriorities c))
+    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
     , EntryPoint [initCallback]
     , SourceText [mkCFile c initCallback]
     , InitProperty initCallback
@@ -143,7 +144,7 @@ fromSignalThread c s =
     , DispatchProtocol Sporadic
     , ExecTime execTime
     , StackSize stackSize
-    , Priority (getPriority nm (configPriorities c))
+    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
     ]
 
 fromPeriodicThread :: AADLConfig
@@ -171,7 +172,7 @@ fromPeriodicThread c p =
     , ExecTime execTime
     , SendEvents [(prettyTime p, 1)]
     , StackSize stackSize
-    , Priority (getPriority nm (configPriorities c))
+    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
     , EntryPoint [periodicCallback p]
     , SourceText [mkCFile c (periodicCallback p)]
     ]
@@ -224,7 +225,7 @@ fromFromExternalOrPerMonitor c (m,hmap) =
     , ExecTime execTime
     , SourceText []
     , StackSize stackSize
-    , Priority (getPriority nm (configPriorities c))
+    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
     ]
 
 handlerEmitters :: [(Output, a)] -> [Feature]

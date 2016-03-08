@@ -13,7 +13,6 @@ import Prelude hiding (id)
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
 import Tower.AADL.Compile
-import Tower.AADL.Priorities(Priority(..))
 import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
@@ -212,7 +211,7 @@ renderThreadProperty p = case p of
    ==> prettyTime l <+> dot <> dot <+> prettyTime h
   StackSize sz
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
-  Priority (P pri)
+  Priority pri
     -> stmt (text "Priority" ==> int pri)
   EntryPoint syms
     -> renderEntryPoint syms

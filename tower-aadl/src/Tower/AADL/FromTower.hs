@@ -71,7 +71,10 @@ mkProcess c' t = Process { .. }
   processName = configSystemName c ++ "_process"
   pt = toPassiveThreads t
   at = toActiveThreads t
-  c  = c' { configPriorities = mkPriorities at }
+  mkPs = case configSystemOS c of
+         CAmkES   -> mkSeL4Priorities
+         EChronos -> mkEChronosPriorities
+  c  = c' { configPriorities = mkPs at }
   processComponents =
            (fromInitThread               c  ) (atThreadsInit     at    )
     ++ map (fromPeriodicThread           c  ) (atThreadsPeriodic at    )
@@ -108,7 +111,7 @@ fromInitThread  c  HasInit =
     , ExecTime execTime
     , SendEvents [(systemInit, 1)]
     , StackSize stackSize
-    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
+    , Priority (getPriority nm (configPriorities c))
     , EntryPoint [initCallback]
     , SourceText [mkCFile c initCallback]
     , InitProperty initCallback
@@ -144,7 +147,7 @@ fromSignalThread c s =
     , DispatchProtocol Sporadic
     , ExecTime execTime
     , StackSize stackSize
-    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
+    , Priority (getPriority nm (configPriorities c))
     ]
 
 fromPeriodicThread :: AADLConfig
@@ -172,7 +175,7 @@ fromPeriodicThread c p =
     , ExecTime execTime
     , SendEvents [(prettyTime p, 1)]
     , StackSize stackSize
-    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
+    , Priority (getPriority nm (configPriorities c))
     , EntryPoint [periodicCallback p]
     , SourceText [mkCFile c (periodicCallback p)]
     ]
@@ -225,7 +228,7 @@ fromFromExternalOrPerMonitor c (m,hmap) =
     , ExecTime execTime
     , SourceText []
     , StackSize stackSize
-    , Priority (getPriority (configSystemOS c) nm (configPriorities c))
+    , Priority (getPriority nm (configPriorities c))
     ]
 
 handlerEmitters :: [(Output, a)] -> [Feature]

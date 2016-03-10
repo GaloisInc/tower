@@ -38,7 +38,7 @@ execTime :: (Integer, Integer)
 execTime = (10, 100)
 
 stackSize :: Integer
-stackSize = 1000
+stackSize = 1024
 
 queueSize :: Integer
 queueSize = 1000

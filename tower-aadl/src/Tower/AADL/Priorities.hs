@@ -40,11 +40,8 @@ newtype EChronosPriority = EP Int
   deriving (Read, Show, Eq, Ord)
 
 instance Bounded EChronosPriority where
-  -- EChronos internally rounds priorities to nearest multiple of 16 we do that
-  -- as well just to be conservative.  We accomplish it by storing values from 0
-  -- to 15 and then muliplying by 16 in fromEnum.
-  minBound = EP 0
-  maxBound = EP 15
+  minBound = EP 1
+  maxBound = EP 255
 
 mkEChronosPriority :: Int -> EChronosPriority
 mkEChronosPriority n =
@@ -54,8 +51,7 @@ mkEChronosPriority n =
 
 instance Enum EChronosPriority where
   toEnum          = mkEChronosPriority
-  -- See the note in the Bounded instance
-  fromEnum (EP n) = n*16
+  fromEnum (EP n) = n
   succ     (EP n) = mkEChronosPriority (n + 1)
   pred     (EP n) = mkEChronosPriority (n - 1)
 

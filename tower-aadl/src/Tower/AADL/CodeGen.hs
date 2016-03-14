@@ -30,7 +30,6 @@ import qualified Ivory.Tower.Types.Unique       as T
 import           Tower.AADL.Names
 
 import qualified Data.Map.Strict as M
-import           Data.Maybe (catMaybes)
 
 --------------------------------------------------------------------------------
 
@@ -66,7 +65,7 @@ instance TowerBackend AADLBackend where
     emitterCode :: forall b. I.IvoryArea b
                 => (T.Emitter b, TowerBackendEmitter AADLBackend)
     emitterCode =
-      ( T.Emitter $ \ref -> I.call_ (procFromEmitter undefined) ref
+      ( T.Emitter $ \ref -> I.call_ (procFromEmitter "") ref
       , AADLEmitter
          (\monName -> I.incl (procFromEmitter monName
                               :: I.Def('[I.ConstRef s b] 'I.:-> ())
@@ -109,27 +108,57 @@ instance TowerBackend AADLBackend where
     mkMod (nm, mMod) deps = I.package nm $ mapM_ I.depend deps >> mMod
 
 activeSrcs :: A.Tower -> ([PackageName], [I.Module])
-activeSrcs t = unzip $ catMaybes $ map activeSrc (A.towerThreads t)
+activeSrcs t = unzip $ map activeSrc (A.towerThreads t)
 
-activeSrc :: A.Thread -> Maybe (PackageName, I.Module)
+activeSrc :: A.Thread -> (PackageName, I.Module)
 activeSrc t =
   case t of
     A.PeriodThread p
-      -> Just $ ( pkg
-                , I.package pkg $ do
-                    I.incl $ mkPerCallback p
-                    I.incl $ emitter p
-                )
+      -> ( pkg
+         , I.package pkg $ do
+           I.incl $ mkPeriodCallback p
+           I.incl $ mkPeriodEmitter  p
+         )
       where pkg = periodicCallback p
-    _ -> Nothing
-  where
-  mkPerCallback :: A.Period
-                -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
-  mkPerCallback p =
-    I.proc (periodicCallback p) $ \time -> I.body $
-      I.call_ (emitter p) time
-  emitter :: A.Period -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
-  emitter p = I.importProc (periodicEmitter p) (threadEmitterHeader t)
+    A.InitThread{}
+      -> ( initCallback
+         , I.package initCallback $ do
+           I.incl mkInitCallback
+           I.incl mkInitEmitter
+         )
+    A.SignalThread s
+      -> ( pkg
+         , I.package pkg $ do
+           I.incl $ mkSignalCallback s
+           I.incl $ mkSignalEmitter  s
+         )
+      where pkg = signalCallback s
+
+mkPeriodCallback :: A.Period
+                 -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkPeriodCallback p =
+  I.proc (periodicCallback p) $ \time -> I.body $
+    I.call_ (mkPeriodEmitter p) time
+
+mkPeriodEmitter :: A.Period -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkPeriodEmitter p = I.importProc (periodicEmitter p) (threadEmitterHeader $ A.PeriodThread p) -- XXX pass in higher up
+
+mkInitCallback :: I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkInitCallback =
+  I.proc initCallback $ \time -> I.body $
+    I.call_ mkInitEmitter time
+
+mkInitEmitter :: I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkInitEmitter = I.importProc initEmitter (threadEmitterHeader $ A.InitThread A.Init) -- XXX pass in higher up
+
+mkSignalCallback :: A.Signal
+                 -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkSignalCallback s =
+  I.proc (signalCallback s) $ \time -> I.body $
+    I.call_ (mkSignalEmitter s) time
+
+mkSignalEmitter :: A.Signal -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkSignalEmitter s = I.importProc (signalEmitter s) (threadEmitterHeader $ A.SignalThread s)
 
 genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies
@@ -148,14 +177,12 @@ genIvoryCode
   where
   modules = modDeps
          ++ modsF depends
-         ++ go mkSignalCode signals
+         ++ go (mkSignalCode (modsF depends)) signals
   go c cs = M.elems $ M.mapWithKey c cs
 
-mkSignalCode :: String -> T.GeneratedSignal -> I.Module
-mkSignalCode sigNm
+mkSignalCode :: [I.Module] -> String -> T.GeneratedSignal -> I.Module
+mkSignalCode deps sigNm
   T.GeneratedSignal { T.unGeneratedSignal = s }
-  -- XXX assuming for now that we don't have unsafe signals. Pass the platform
-  -- signal continuation here for eChronos.
-  = I.package sigNm (s (return ()))
+  = I.package sigNm (mapM_ I.depend deps >> (s (return ())))
 
 type TowerTime = I.Sint64

@@ -1,3 +1,8 @@
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE TupleSections     #-}
 --
 -- Top-level driver for AADL generation.
 --
@@ -6,6 +11,7 @@
 
 module Tower.AADL
   ( compileTowerAADL
+  , compileTowerAADLForPlatform
   -- configuration
   , AADLConfig(..)
   , defaultAADLConfig
@@ -17,9 +23,10 @@ module Tower.AADL
 import           Data.Maybe
 import           Data.List
 import           Data.Char
-import           Control.Monad
+import           Control.Monad hiding (forever)
 
-import           System.FilePath (takeFileName, addExtension, (</>), (<.>))
+import           System.FilePath (addExtension, takeFileName, (<.>))
+import           System.Exit (exitFailure)
 
 import           Text.PrettyPrint.Leijen hiding ((</>))
 
@@ -27,6 +34,7 @@ import qualified Ivory.Compile.C.CmdlineFrontend as O
 import qualified Ivory.Compile.C.Types as O
 
 import           Ivory.Tower
+import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.AST.Graph (graphviz, messageGraph)
 import           Ivory.Tower.Options
 import           Ivory.Tower.Types.Dependencies
@@ -37,137 +45,98 @@ import           Ivory.Artifact
 import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
 import qualified Tower.AADL.AST.Common as A
-import           Tower.AADL.Build.Common ( ramsesMakefileName, makefileName
-                                         , componentLibsName, mkLib, aadlFilesMk
-                                         , renderMkStmts )
-import qualified Tower.AADL.Build.SeL4     as SeL4 ( ramsesMakefile, makefileApp
-                                                   , kbuildName, kbuildLib
-                                                   , kbuildApp, kconfigApp
-                                                   , kconfigName, kconfigLib
-                                                   , makefileLib)
-import qualified Tower.AADL.Build.EChronos as EChronos
+import           Tower.AADL.Build.Common ( aadlFilesMk
+                                         , OSSpecific(..) )
+import qualified Tower.AADL.Build.SeL4     as SeL4 ( defaultCAmkESOS )
 import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
 import           Tower.AADL.Config
 import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
+import           Tower.AADL.Platform
+
+import qualified Ivory.Tower.AST as A
 
 --------------------------------------------------------------------------------
 
+graphvizArtifact :: String -> AST.Tower -> Located Artifact
+graphvizArtifact appname ast = Root $
+  artifactString (appname <.> "dot") (graphviz $ messageGraph ast)
+
+-- | Only use this version if you're compiling for SeL4/CAmkES. If you're
+-- building for a different platform use the more general
+-- `compileTowerAADLForPlatform`
 compileTowerAADL :: (e -> AADLConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
-compileTowerAADL fromEnv mkEnv twr = do
-  (copts, topts) <- towerGetOpts
-  env <- mkEnv topts
-  let cfg' = fromEnv env
-  let cfg  = parseAADLOpts cfg' topts
-  let (ast, code, deps, sigs) = runTower AADLBackend twr env
-  let os' = configSystemOS cfg
-  let aadl_sys  = if os' == EChronos
-                    then lowerCaseThreadNames (fromTower cfg ast)
-                    else fromTower cfg ast
-  let aadl_docs = buildAADL deps aadl_sys
-  let doc_as    = renderCompiledDocs aadl_docs
-  let deps_a    = aadlDepsArtifact $ aadlDocNames aadl_docs
-                                  ++ [ configSystemName cfg ]
-  let (pkgs, mods, genAs) = genIvoryCode code deps sigs
+compileTowerAADL fromEnv = compileTowerAADLForPlatform ((,SeL4.defaultCAmkESOS) . fromEnv)
 
-  let libAs = map go genAs
-        where
-        go l = case l of
-          Src a  -> Root (artifactPath (libSrcDir cfg) a)
-          Incl a -> Root (artifactPath (libHdrDir cfg) a)
-          _      -> l
+compileTowerAADLForPlatform :: (e -> (AADLConfig, OSSpecific a e))
+                            -> (TOpts -> IO e)
+                            -> Tower e ()
+                            -> IO ()
+compileTowerAADLForPlatform fromEnv mkEnv twr' = do
+  (copts, topts)              <- towerGetOpts
+  env                         <- mkEnv topts
+  let (cfg',osspecific)       =  fromEnv env
+  cfg                         <- parseAADLOpts' cfg' topts
+  let twr                     =  twr' >> osSpecificTower osspecific
+  let (ast, code, deps, sigs) =  runTower AADLBackend twr env
+  let missingCallbacks = handlersMissingCallbacks ast
+  when (not (null missingCallbacks)) $ do
+    putStrLn "Error: The following handlers are missing callbacks:"
+    mapM_ putStrLn (map (showUnique . A.handler_name) missingCallbacks)
+    exitFailure
+  let aadl_sys                =  fromTower cfg ast
+  let aadl_docs               =  buildAADL deps aadl_sys
+  let doc_as                  =  renderCompiledDocs aadl_docs
+  let deps_a                  =  aadlDepsArtifact $ aadlDocNames aadl_docs
+                                                 ++ [ configSystemName cfg ]
+  let (pkgs, mods, genAs)     = genIvoryCode code deps sigs
 
-  let appname = takeFileName $ fromMaybe "tower" $ O.outDir copts
+  let libAs                   = map (osSpecificSrcDir osspecific cfg) genAs
 
-  let as :: OS -> [Located Artifact]
+  let appname                 = takeFileName (fromMaybe "tower" (O.outDir copts))
+
+  let as :: OSSpecific a e -> [Located Artifact]
       as os = doc_as
         ++ libAs
-        ++ map Root ls
-        where
-        ls :: [Artifact]
-        ls =
-           [ deps_a
-           , artifactString ramsesMakefileName
-                            (renderMkStmts (ramsesMakefile os))
-           ] ++ osSpecific
-           where
-           osSpecific = case os of
-             CAmkES ->
-               (if configCustomKConfig cfg
-                  then []
-                  else [ artifactString SeL4.kbuildName
-                          (renderMkStmts (SeL4.kbuildApp   l appname))
-                       , artifactString SeL4.kconfigName
-                          (SeL4.kconfigApp  appname appname)
-                       ]) ++
-               -- apps
-               [ artifactString makefileName
-                   (renderMkStmts (SeL4.makefileApp appname))
-               , artifactString componentLibsName
-                   (mkLib cfg (aadlDocNames aadl_docs))
-               , artifactString (appname <.> "dot")
-                   (graphviz $ messageGraph ast)
-               ] ++
-               -- libs
-               map (artifactPath l)
-                 [ artifactString SeL4.kbuildName
-                     (renderMkStmts (SeL4.kbuildLib   l))
-                 , artifactString SeL4.kconfigName
-                     (SeL4.kconfigLib  appname l)
-                 , artifactString makefileName
-                     (renderMkStmts (SeL4.makefileLib cfg))
-                 ]
-             _ ->
-               [ artifactString makefileName
-                   (renderMkStmts EChronos.makefile) ]
-           ramsesMakefile EChronos = EChronos.ramsesMakefile cfg
-           ramsesMakefile CAmkES   = SeL4.ramsesMakefile     cfg
-           l = lib cfg
+        ++ [ Root deps_a
+           , graphvizArtifact appname ast
+           ]
+        ++ osSpecificArtifacts os appname cfg
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
   cmodules <- O.compileUnits mods copts
   let (appMods, libMods) =
         partition (\m -> O.unitName m `elem` pkgs) cmodules
-  O.outputCompiler appMods (as os') (ivoryOpts True  cfg copts)
-  O.outputCompiler libMods []       (ivoryOpts False cfg copts)
+  O.outputCompiler appMods (as osspecific) (osSpecificOptsApps osspecific cfg copts)
+  O.outputCompiler libMods []              (osSpecificOptsLibs osspecific cfg copts)
   where
 
-  libSrcDir cfg = lib cfg </> "src"
-  libHdrDir cfg = lib cfg </> "include"
-
-  -- True: app code, False: lib code
-  ivoryOpts b cfg copts =
-    copts { O.outDir    = Just (dir </> if b then configSrcsDir cfg
-                                          else libSrcDir cfg)
-          , O.outHdrDir = Just (dir </> if b then configHdrDir  cfg
-                                          else libHdrDir cfg)
-          , O.outArtDir = Just dir
-          }
+  -- | AADL assumes that our handlers will always have a callback define. So we
+  -- search the Tower AST looking for handlers that missing callbacks.
+  handlersMissingCallbacks :: A.Tower -> [A.Handler]
+  handlersMissingCallbacks = concatMap monitorHasEmptyHandler . A.tower_monitors
     where
-    dir = fromMaybe "." (O.outDir copts)
+    monitorHasEmptyHandler :: A.Monitor -> [A.Handler]
+    monitorHasEmptyHandler = catMaybes . map handlerIsEmpty . A.monitor_handlers
+    handlerIsEmpty :: A.Handler -> Maybe A.Handler
+    handlerIsEmpty h = if (null (A.handler_callbacks h))
+                          then Just h
+                          else Nothing
 
--- The eChronos description (.prx) requires that the thread names be
--- lower cased. The only complication here is the tripple nesting of the
--- structure, we simply take apart the fields we need until we get to the
--- underlying threadName and then lowercase that.
-lowerCaseThreadNames :: A.System -> A.System
-lowerCaseThreadNames system = system { A.systemComponents = sc }
-  where
-  sc = map lowerProcessName (A.systemComponents system)
-
-  -- Continue into the Process record
-  lowerProcessName :: A.Process -> A.Process
-  lowerProcessName process = process { A.processComponents = pc }
-    where
-    pc = map lowerThreadName (A.processComponents process)
-
-    -- Finally we arrive at the Thread itself
-    lowerThreadName :: A.Thread -> A.Thread
-    lowerThreadName thread = thread { A.threadName = tn }
-      where
-      tn = map toLower (A.threadName thread)
+-- | parseAADLOpts' is a wrapper around parseAADLOpts that
+-- checks for errors and if '--help' was requested.
+-- It calls exitFailure in the case of errors or help.
+parseAADLOpts' :: AADLConfig -> TOpts -> IO AADLConfig
+parseAADLOpts' cfg topts =
+  case parseAADLOpts cfg topts of
+  (c, [],        _) -> do
+    case topts_help topts of
+      True  -> topts_error topts "Usage:"
+      False -> return ()
+    return c
+  (_, _, _) -> finalizeOpts topts >> exitFailure
 
 validCIdent :: String -> Bool
 validCIdent appname =

@@ -15,6 +15,7 @@ module Tower.AADL.AST.Common
   , allConnections
   , connectedThreadsSize
   , emptyConnections
+  , towerTime
   ) where
 
 
@@ -88,6 +89,7 @@ threadChannels th id = foldl' go M.empty (getThreadEndpoints th)
 
 data Endpoint =
     InputEp  Input
+--  | SignalEp SignalInfo
   | OutputEp Output
   deriving (Show, Eq)
 
@@ -95,12 +97,15 @@ endPointId :: Endpoint -> ChanId
 endPointId ep = case ep of
   InputEp  rx -> inputId  rx
   OutputEp tx -> outputId tx
+--  SignalEp s  -> SignalChanId $ fromIntegral (signalInfoNumber s)
 
 newChan :: LocalId -> Endpoint -> ThdIds
 newChan l ep =
   case ep of
     InputEp  c -> ThdIds S.empty (S.singleton (l, inputLabel c))
     OutputEp c -> ThdIds (S.singleton (l, outputLabel c)) S.empty
+    -- TODO JED: This is probably wrong
+--    SignalEp c -> ThdIds S.empty (S.singleton (l, signalInfoName c))
 
 -- Add the id to the connections map, creating a new channel if needed.
 insertConnectionId :: LocalId -> Connections -> Endpoint -> Connections
@@ -109,12 +114,13 @@ insertConnectionId l cs ep =
 
 getThreadEndpoints :: Thread -> [Endpoint]
 getThreadEndpoints t =
-  map go (threadFeatures t)
+  concatMap go (threadFeatures t)
   where
   go f =
     case f of
-      InputFeature  rx -> InputEp  rx
-      OutputFeature tx -> OutputEp tx
+      InputFeature  rx -> [InputEp  rx]
+      OutputFeature tx -> [OutputEp tx]
+      SignalFeature _  -> []
 
 -- Extract a unique instance of the channel types defined in the system.
 extractTypes :: System -> [I.Type]
@@ -127,3 +133,9 @@ extractTypes sys = S.toList $ S.map getTy (S.fromList fs)
   getTy f = case f of
     InputFeature  rx -> inputType  rx
     OutputFeature tx -> outputType tx
+    -- TODO JED: Wouldn't this be so much nicer if the Time module told us what
+    -- type to put here?
+    SignalFeature _  -> towerTime
+
+towerTime :: I.Type
+towerTime = I.TyInt I.Int64

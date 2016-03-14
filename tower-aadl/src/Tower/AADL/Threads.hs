@@ -1,52 +1,99 @@
+{-# LANGUAGE MultiWayIf #-}
+
 --
 -- Map the Tower AST into the AADL AST.
 --
 -- (c) 2014 Galois, Inc.
 --
 
-module Tower.AADL.Threads where
+module Tower.AADL.Threads
+  ( HMap
+  , ActiveThreads(..)
+  , PassiveThreads(..)
+  , HasInit(..)
+  , emptyHMap
+  , fromHMap
+  , toPassiveThreads
+  , toActiveThreads
+  ) where
+
 
 import Prelude ()
+import Data.Monoid
 import Prelude.Compat hiding (init)
-import Data.Maybe (isJust, fromJust, isNothing)
+import Data.Maybe (isJust)
 import Data.List (find)
 
-import qualified Ivory.Tower.AST       as A
-import qualified Ivory.Tower.AST.Graph as G
+import qualified Ivory.Tower.AST as A
+import qualified Ivory.Tower.Types.Unique as U
 
 ----------------------------------------
 
-data Threads = Threads
-  { threadsExternal     :: [A.Monitor]
-  , threadsFromExtPer   :: [(A.Thread, A.Monitor)]
-  , threadsPeriodic     :: [A.Thread]
-  , threadsInit         :: [A.Monitor]
-  , threadsFromExternal :: [A.Monitor]
-  , threadsPassive      :: [A.Monitor]
-  }
+-- Handler unique names that come from either periodic or external threads.
+type HMap = [U.Unique]
 
-instance Monoid Threads where
-  mempty = Threads [] [] [] [] [] []
-  Threads a0 b0 c0 d0 e0 f0  `mappend` Threads a1 b1 c1 d1 e1 f1 =
-    Threads (a0++a1) (b0++b1) (c0++c1) (d0++d1) (e0++e1) (f0++f1)
+emptyHMap :: HMap
+emptyHMap = []
 
-injectExternalThread :: A.Monitor -> Threads
-injectExternalThread m = Threads [m] [] [] [] [] []
+fromHMap :: HMap -> A.Handler -> Bool
+fromHMap hmap h =
+    isJust
+  $ find (\u -> u == A.handler_name h) hmap
 
-injectFromExtPerThread :: A.Thread -> A.Monitor -> Threads
-injectFromExtPerThread th m = Threads [] [(th,m)] [] [] [] []
+data HasInit = NoInit | HasInit deriving (Show, Read, Eq, Ord)
 
-injectPeriodicThread :: A.Thread -> Threads
-injectPeriodicThread m = Threads [] [] [m] [] [] []
+instance Monoid HasInit where
+  mempty                    = NoInit
+  HasInit `mappend` _       = HasInit
+  _       `mappend` HasInit = HasInit
+  _       `mappend` _       = NoInit
 
-injectInitThread :: A.Monitor -> Threads
-injectInitThread m = Threads [] [] [] [m] [] []
+-- Intermediate data types that collect Tower elements into groups that are
+-- meaningful for AADL (notably, distinguishing active and passive threads).
 
-injectFromExternalThread :: A.Monitor -> Threads
-injectFromExternalThread m = Threads [] [] [] [] [m] []
+data ActiveThreads = ActiveThreads
+  { atThreadsInit         :: HasInit
+  , atThreadsPeriodic     :: [A.Period]
+  , atThreadsSignal       :: [A.Signal]
+  , atThreadsExternal     :: [A.Monitor]
+  , atThreadsFromPeriodic :: [A.Monitor]
+  , atThreadsFromExternal :: [(A.Monitor, HMap)]  -- From external or periodic threads
+  } deriving Show
 
-injectPassiveThread :: A.Monitor -> Threads
-injectPassiveThread m = Threads [] [] [] [] [] [m]
+data PassiveThreads = PassiveThreads
+  { ptThreadsPassive :: [A.Monitor]
+  } deriving Show
+
+instance Monoid ActiveThreads where
+  mempty = ActiveThreads mempty [] [] [] [] []
+  ActiveThreads a0 b0 c0 d0 e0 f0 `mappend` ActiveThreads a1 b1 c1 d1 e1 f1 =
+    ActiveThreads (a0 <> a1) (b0 <> b1) (c0 <> c1) (d0 <> d1) (e0 <> e1) (f0 <> f1)
+
+instance Monoid PassiveThreads where
+  mempty = PassiveThreads []
+  PassiveThreads a0 `mappend` PassiveThreads a1 =
+    PassiveThreads (a0++a1)
+
+injectInitThread :: ActiveThreads
+injectInitThread = mempty { atThreadsInit = HasInit }
+
+injectPeriodicThread :: A.Period -> ActiveThreads
+injectPeriodicThread m = mempty { atThreadsPeriodic = [m] }
+
+injectSignalThread :: A.Signal -> ActiveThreads
+injectSignalThread t = mempty { atThreadsSignal = [t] }
+
+injectExternalThread :: A.Monitor -> ActiveThreads
+injectExternalThread m = mempty { atThreadsExternal = [m] }
+
+injectFromExternal :: (A.Monitor, HMap) -> ActiveThreads
+injectFromExternal m = mempty { atThreadsFromExternal = [m] }
+
+injectFromPeriodic :: A.Monitor -> ActiveThreads
+injectFromPeriodic m = mempty { atThreadsFromPeriodic = [m] }
+
+injectPassiveThread :: A.Monitor -> PassiveThreads
+injectPassiveThread m = mempty { ptThreadsPassive = [m] }
 
 class ThreadName a where
   threadName :: a -> String
@@ -59,84 +106,74 @@ instance ThreadName A.Thread where
 
 ----------------------------------------
 
-toThreads :: A.Tower -> Threads
-toThreads t = mconcat pers `mappend` mconcat monsToThreads
+-- All monitors except monitors that are labeled as external. For each passive
+-- monitor, we also record whether any of its handlers send or receive messages
+-- to an external monitor.
+toPassiveThreads :: A.Tower -> PassiveThreads
+toPassiveThreads t = mconcat (map injectPassiveThread pts)
   where
-  monsToThreads :: [Threads]
-  monsToThreads = map monToThread (A.tower_monitors t)
-  monToThread m
-    | extMon  && not init    && not fromExt && isNothing fromPer
-    = injectExternalThread m
-    | init    && not extMon  && not fromExt && isNothing fromPer
-    = injectInitThread m
-    | fromExt && not extMon  && not init    && isNothing fromPer
-    = injectFromExternalThread m
-    | fromExt && not extMon  && not init    && isJust fromPer
-    = injectFromExtPerThread (fromJust fromPer) m
-    | not (extMon || init || fromExt)
-    = injectPassiveThread m
-    | otherwise
-    = error $ "Cannot handle a monitor that combines handlers for "
-           ++ "initialization, external monitor, and handling messages "
-           ++ "from external monitors for monitor: " ++ A.monitorName m
-           ++ " " ++ unwords (map show [extMon, init, fromExt, isJust fromPer])
+  ms    = A.tower_monitors t
+  pts = filter (not . isExternalMonitor)
+      $ filter (not . isFromExternalMon t)
+        ms
 
+toActiveThreads :: A.Tower -> ActiveThreads
+toActiveThreads t =
+     mconcat (map towerThreadToThread (A.towerThreads t))
+  <> mconcat (map injectExternalThread iem)
+  <> mconcat (map injectFromExternal (mkExternalActiveThreads t))
+  where
+  towerThreadToThread thd =
+    case thd of
+      A.InitThread{}   -> injectInitThread
+      A.PeriodThread p -> injectPeriodicThread p
+      A.SignalThread s -> injectSignalThread s
+
+  iem  = filter isExternalMonitor (A.tower_monitors t)
+
+mkExternalActiveThreads :: A.Tower -> [(A.Monitor, HMap)]
+mkExternalActiveThreads t = map go ms
+  where
+  ms = filter (isFromExternalMon t) (A.tower_monitors t)
+
+  go :: A.Monitor -> (A.Monitor, HMap)
+  go m = (m, mp)
     where
-    handlers = A.monitor_handlers m
-    fromPer  = periodicChan t m
-    fromExt  = any (externalChan t) handlers
-    init     = any fromInit handlers
-    extMon   =
-      case A.monitor_external m of
-        A.MonitorExternal
-          -> True
-        _ -> False
-
-  pers = map injectPeriodicThread (periodThreads t)
-
-  fromInit :: A.Handler -> Bool
-  fromInit h =
-    case A.handler_chan h of
-      A.ChanInit{} -> True
-      _            -> False
+    mp = map A.handler_name (handlersFromExternalMon t m)
 
 ----------------------------------------
 
--- Computes whether a handler handles a message sent from an external monitor.
--- XXX expensive to recompute. Compute once?
-externalChan :: A.Tower -> A.Handler -> Bool
-externalChan t h =
+isFromExternalMon :: A.Tower -> A.Monitor -> Bool
+isFromExternalMon t m = not $ null $ handlersFromExternalMon t m
+
+handlersFromExternalMon :: A.Tower -> A.Monitor -> [A.Handler]
+handlersFromExternalMon t m =
+  filter (isFromExternalMonH t) (A.monitor_handlers m)
+
+-- Does the handler handle a message sent by a handler in an external monitor?
+isFromExternalMonH :: A.Tower -> A.Handler -> Bool
+isFromExternalMonH t h =
   isJust $ find (\h' -> A.handler_name h' == A.handler_name h) fromExts
   where
   ms       = A.tower_monitors t
-  extMs    = filter (\m -> A.monitor_external m == A.MonitorExternal) ms
+  extMs    = filter isExternalMonitor ms
   extHs    = concatMap A.monitor_handlers extMs
   fromExts = map snd $ concatMap (A.handlerOutboundHandlers t) extHs
 
--- Returns the thread that sends the periodic clock.
-periodicChan :: A.Tower -> A.Monitor -> Maybe A.Thread
-periodicChan t m =
-  case concatMap go chs of
-    []  -> Nothing
-    [t'] -> Just t'
-    _   -> error "Impossible lookup in periodicChan: tower-aadl"
+-- Is this an external monitor?
+isExternalMonitor :: A.Monitor -> Bool
+isExternalMonitor m = A.monitor_external m == A.MonitorExternal
 
-  where
-  go (t', mshs) =
-    case lookup m mshs of
-      Nothing -> []
-      Just{}  -> [t']
+------------------------------------------------------------
 
-  ts = periodThreads t
+handlersFromPerThread :: A.Monitor -> [A.Handler]
+handlersFromPerThread m =
+  filter isFromPerThreadH (A.monitor_handlers m)
 
-  chs :: [(A.Thread, [(A.Monitor, A.Handler)])]
-  chs = zip ts (map (G.towerChanHandlers t) (map A.threadChan ts))
+-- Does the handler handle a message sent by a handler in periodic thread?
+isFromPerThreadH :: A.Handler -> Bool
+isFromPerThreadH h =
+  case A.handler_chan h of
+    A.ChanPeriod{} -> True
+    _              -> False
 
-----------------------------------------
-
-periodThreads :: A.Tower -> [A.Thread]
-periodThreads t =
-  filter (\th -> case th of
-                 A.PeriodThread{} -> True
-                 _                -> False
-         ) (A.towerThreads t)

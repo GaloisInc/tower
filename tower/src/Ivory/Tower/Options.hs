@@ -30,7 +30,7 @@ towerGetOpts = getArgs >>= getOpts
 finalizeOpts :: TOpts -> IO ()
 finalizeOpts topts = case topts_args topts of
   [] -> case topts_help topts of
-    True -> topts_error topts "Usage:"
+    True  -> topts_error topts "Usage:"
     False -> return ()
   as -> topts_error topts ("Unrecognized arguments:\n" ++ unlines as)
 

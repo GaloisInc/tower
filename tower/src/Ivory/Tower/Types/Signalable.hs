@@ -1,4 +1,5 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Ivory.Tower.Types.Signalable
   ( Signalable(..)
@@ -14,3 +15,9 @@ class Signalable s where
   -- implementation emits no code.
   signalInit :: s -> Ivory eff ()
   signalInit _ = return ()
+
+  -- | On some platforms we need access to an underlying IRQ number for
+  -- signals that correspond to IRQs.
+  signalNumber  :: s -> Int
+  default signalNumber :: Enum s => s -> Int
+  signalNumber = fromEnum

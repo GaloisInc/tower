@@ -13,7 +13,6 @@ import Prelude hiding (id)
 import Tower.AADL.AST
 import Tower.AADL.AST.Common
 import Tower.AADL.Compile
-import Tower.AADL.Priorities(Priority(..))
 import Tower.AADL.Render.Common
 import Tower.AADL.Render.Types
 
@@ -125,6 +124,8 @@ renderThreadFeature f = case f of
     -> renderInput rx
   OutputFeature tx
     -> renderOutput tx
+  SignalFeature s
+    -> renderSignal s
 
 renderInput :: Input -> Doc
 renderInput rx = stmt
@@ -156,6 +157,27 @@ renderOutput tx = stmt
  <$$> chanSrc st
   where
   st = stmt $ fromSMACCM primSrc ==> dquotes (text (outputEmitter tx))
+
+renderSignal :: SignalInfo -> Doc
+renderSignal s = stmt
+    $ mkRxChan (signalInfoName s) <> colon
+  <+> text "in"
+  <+> edp
+  <+> renderTypeNS Other towerTime
+ <$$> chanSrc (vsep (entry : isrStmts ++ src ++ sndsEvents))
+  where
+  (fps, syms) = unzip $ signalInfoCallback s
+  entry       = renderEntryPoint syms
+  src         = if emptyStrs fps
+                  then []
+                  else [renderSrcText fps]
+  sndsEvents  = [renderSendsEventsTo (signalInfoSendsEvents s)]
+  emptyStrs   = all null
+  isrStmts    = [isISR
+                ,firstLevelHandler (signalInfoName s)
+                ,sigName $ "external_irq_" ++ show (signalInfoNumber s)
+                ,sigNum  (signalInfoNumber s)
+                ]
 
 edp :: Doc
 edp = hsep (map text ["event", "data", "port"])
@@ -189,7 +211,7 @@ renderThreadProperty p = case p of
    ==> prettyTime l <+> dot <> dot <+> prettyTime h
   StackSize sz
     -> stmt (text "Stack_Size" ==> integer sz <+> text "bytes")
-  Priority (P pri)
+  Priority pri
     -> stmt (text "Priority" ==> int pri)
   EntryPoint syms
     -> renderEntryPoint syms

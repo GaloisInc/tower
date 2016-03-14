@@ -5,4 +5,4 @@ test: default
 
 .PHONY: test-echronos
 test-echronos: default
-	stack exec -- test-echronos --src-dir=test_echronos_codegen
+	stack exec -- test-echronos --src-dir=test_echronos_codegen --lib-dir=""

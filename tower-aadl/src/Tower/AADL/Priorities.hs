@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 --
 -- Setting priorities for AADL threads.
 --
@@ -10,67 +11,115 @@ import           Data.List
 import qualified Data.Map as M
 
 import           Tower.AADL.Threads
+import qualified Ivory.Tower.AST as A
 
 ----------------------------------------
 
-data Priority = P Int
-  deriving (Show, Read, Eq, Ord)
+type Priority a = (Enum a, Bounded a, Ord a)
 
-instance Num Priority where
-  P a + P b = P (a+b)
-  P a * P b = P (a*b)
-  P a - P b = P (a-b)
-  negate (P a) = P (negate a)
-  abs (P a) = P (abs a)
-  signum (P a) = P (signum a)
-  fromInteger a = P (fromIntegral a)
+newtype SeL4Priority = SP Int
+  deriving (Read, Show, Eq, Ord)
 
--- Bounds for seL4 on ODROID
-instance Bounded Priority where
-  minBound = 120
-  maxBound = 140
+instance Bounded SeL4Priority where
+  minBound = SP 120
+  maxBound = SP 140
+
+mkSeL4Priority :: Int -> SeL4Priority
+mkSeL4Priority n =
+  let SP maxP = maxBound
+      SP minP = minBound
+  in SP (min (max minP n) maxP)
+
+instance Enum SeL4Priority where
+  toEnum          = mkSeL4Priority
+  fromEnum (SP n) = n
+  succ     (SP n) = mkSeL4Priority (n + 1)
+  pred     (SP n) = mkSeL4Priority (n - 1)
+
+newtype EChronosPriority = EP Int
+  deriving (Read, Show, Eq, Ord)
+
+instance Bounded EChronosPriority where
+  minBound = EP 1
+  maxBound = EP 255
+
+mkEChronosPriority :: Int -> EChronosPriority
+mkEChronosPriority n =
+  let EP maxP = maxBound
+      EP minP = minBound
+  in EP (min (max minP n) maxP)
+
+instance Enum EChronosPriority where
+  toEnum          = mkEChronosPriority
+  fromEnum (EP n) = n
+  succ     (EP n) = mkEChronosPriority (n + 1)
+  pred     (EP n) = mkEChronosPriority (n - 1)
+
+minPriority :: Bounded a => a
+minPriority = minBound
+
+maxPriority :: Bounded a => a
+maxPriority = maxBound
+
+incPriority :: Enum a => a -> a
+incPriority = succ
+
+decPriority :: Enum a => a -> a
+decPriority = pred
 
 ----------------------------------------
+
+minPer :: Priority a => a
+minPer = incPriority minPriority
+
+perPriorities :: Priority a => [a]
+perPriorities = iterate incPriority minPer
 
 -- | Map from monitor names to priorities
-type PriorityMap = M.Map String Priority
+type AbstractPriorityMap a = M.Map String a
+type PriorityMap           = AbstractPriorityMap Int
 
 emptyPriorityMap :: PriorityMap
 emptyPriorityMap = M.empty
 
-getPriority :: String -> PriorityMap -> Priority
+getPriority :: String -> PriorityMap -> Int
 getPriority nm mp =
-  case M.lookup nm mp of
-    Nothing -> error $ "Internal error: lookup of monitor "
-                     ++ nm ++ " in priority map."
-    Just p  -> p
+  M.findWithDefault (error $ "Internal error: lookup of monitor "
+                           ++ nm ++ " in priority map.")
+                    nm mp
+
+mkSeL4Priorities :: ActiveThreads -> PriorityMap
+mkSeL4Priorities thds =
+  fromEnum <$> (mkPriorities thds :: AbstractPriorityMap SeL4Priority)
+
+mkEChronosPriorities :: ActiveThreads -> PriorityMap
+mkEChronosPriorities thds =
+  fromEnum <$> (mkPriorities thds :: AbstractPriorityMap EChronosPriority)
 
 -- Initialization threads have the lowest priorties.
-mkPriorities :: Threads -> PriorityMap
-mkPriorities thds = M.unions [extPris, perPris, initPris, extPerPris]
+-- External threads have maximum bound.
+-- Periodic are rate monotonic starting from minimum priority.
+mkPriorities :: Priority a => ActiveThreads -> AbstractPriorityMap a
+mkPriorities thds =
+  M.unions [i, p, s, e, fp, fe]
   where
-  extPris  = M.fromList
-           $ map (\t -> (threadName t, maxBound)) (threadsFromExternal thds)
-  perPris  = M.fromList
-           $ zip (map threadName orderedPeriodic) perPriorities
-  initPris = M.fromList
-           $ map (\t -> (threadName t, minBound)) (threadsInit thds)
+  go f t = M.fromList (map f t)
 
-  extPerPris = M.fromList
-             $ map (\(th,t) -> (threadName t, pri th)) (threadsFromExtPer thds)
-    where
-    pri th = getPriority (threadName th) perPris
+  i  = case atThreadsInit thds of
+         NoInit  -> M.empty
+         HasInit -> M.fromList [(A.threadName (A.InitThread A.Init), minPriority)]
 
-  orderedPeriodic = reverse $ sort (threadsPeriodic thds)
+  p  = go (\(t,pri) -> (A.threadName (A.PeriodThread t), pri))
+          (zip orderedPeriodic perPriorities)
 
-  minPer :: Priority
-  minPer = minBound + fromInteger 1
+  s  = go (\t -> (A.threadName (A.SignalThread t), maxPriority)) (atThreadsSignal thds)
 
-  perPriorities = iterate (+1) minPer
+  e  = go (\t -> (A.monitorName t,  maxPriority)) (atThreadsExternal thds)
 
-  -- All periodic threads have priorities lower than topPer.
-  _topPer =
-    let m = minPer + fromIntegral (length (threadsPeriodic thds)) in
-    if m == maxBound
-      then error "Unscheduable: not enough priority slots."
-      else m
+  fp = go (\t -> (A.monitorName t, incPriority minPriority)) (atThreadsFromPeriodic thds)
+
+  fe = go (\(t,_) -> (A.monitorName t, maxPriority)) (atThreadsFromExternal thds)
+
+  orderedPeriodic = reverse (sort pts)
+
+  pts = atThreadsPeriodic thds

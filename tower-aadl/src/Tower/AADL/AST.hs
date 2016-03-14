@@ -9,8 +9,6 @@ module Tower.AADL.AST where
 import qualified Ivory.Language.Syntax.Type as I
 import qualified Ivory.Tower.AST.Comment    as C
 
-import           Tower.AADL.Priorities
-
 ----------------------------------------
 
 data System = System
@@ -40,13 +38,14 @@ data Thread = Thread
 data Feature =
     InputFeature  Input
   | OutputFeature Output
+  | SignalFeature SignalInfo
   deriving (Show, Eq, Ord)
 
 -- | Init Channel
-data Init = Init
-  { initCallback :: [SourcePath]
-  , initOutput   :: [(Output, Bound)]
-  } deriving (Show, Eq, Ord)
+-- data InitChan = InitChan
+--   { initChanCallback :: [SourcePath]
+--   , initChanOutput   :: [(Output, Bound)]
+--   } deriving (Show, Eq, Ord)
 
 -- | Input channels
 data Input = Input
@@ -71,7 +70,7 @@ data Output = Output
 type SourcePath = (FilePath, FuncSym)
 type SendsEvents = [(ChanLabel, Bound)]
 data SourceTexts = SourceTexts [FilePath]
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data ThreadProperty =
     DispatchProtocol DispatchProtocol
@@ -79,7 +78,7 @@ data ThreadProperty =
   | ExecTime (Integer, Integer)
   -- ^ Min bound, max bound.
   | StackSize Integer
-  | Priority Priority
+  | Priority Int
   | EntryPoint [FuncSym]
   | SourceText [FilePath]
   -- ^ Path to a .c file
@@ -96,12 +95,11 @@ data DispatchProtocol =
   deriving (Show, Eq)
 
 data SignalInfo = SignalInfo
-  { signalName     :: SignalName
-  , signalNumber   :: SignalNumber
-  , signalAddress  :: Address
-  , signalDeadline :: Integer
-  , signalInit     :: FuncSym
-  } deriving (Show, Eq)
+  { signalInfoName        :: SignalName
+  , signalInfoNumber      :: SignalNumber
+  , signalInfoCallback    :: [SourcePath]
+  , signalInfoSendsEvents :: SendsEvents
+  } deriving (Show, Eq, Ord)
 
 data ThreadType =
     Passive
@@ -115,7 +113,12 @@ type LocalId = String
 type Name = String
 
 -- Unique through the system.
-type ChanId = Integer
+data ChanId =
+    SynchChanId  Integer
+  | SignalChanId Integer
+  | PeriodChanId Integer
+  | InitChanId   String
+  deriving (Show, Read, Eq, Ord)
 
 type ChanLabel = String
 
@@ -129,4 +132,4 @@ type SignalName = String
 
 type Address = Integer
 
-type SignalNumber = Integer
+type SignalNumber = Int

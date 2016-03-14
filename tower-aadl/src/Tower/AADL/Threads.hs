@@ -89,9 +89,6 @@ injectExternalThread m = mempty { atThreadsExternal = [m] }
 injectFromExternal :: (A.Monitor, HMap) -> ActiveThreads
 injectFromExternal m = mempty { atThreadsFromExternal = [m] }
 
-injectFromPeriodic :: A.Monitor -> ActiveThreads
-injectFromPeriodic m = mempty { atThreadsFromPeriodic = [m] }
-
 injectPassiveThread :: A.Monitor -> PassiveThreads
 injectPassiveThread m = mempty { ptThreadsPassive = [m] }
 
@@ -163,17 +160,3 @@ isFromExternalMonH t h =
 -- Is this an external monitor?
 isExternalMonitor :: A.Monitor -> Bool
 isExternalMonitor m = A.monitor_external m == A.MonitorExternal
-
-------------------------------------------------------------
-
-handlersFromPerThread :: A.Monitor -> [A.Handler]
-handlersFromPerThread m =
-  filter isFromPerThreadH (A.monitor_handlers m)
-
--- Does the handler handle a message sent by a handler in periodic thread?
-isFromPerThreadH :: A.Handler -> Bool
-isFromPerThreadH h =
-  case A.handler_chan h of
-    A.ChanPeriod{} -> True
-    _              -> False
-

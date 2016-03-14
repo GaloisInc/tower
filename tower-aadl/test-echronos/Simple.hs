@@ -49,13 +49,13 @@ simpleTower = do
         call_ debug_println ""
 
 --------------------------------------------------------------------------------
-debug_println :: Def('[IString] :-> ())
+debug_println :: Def('[IString] ':-> ())
 debug_println = importProc "debug_println" "debug.h"
 
-debug_printhex8 :: Def('[Uint8] :-> ())
+debug_printhex8 :: Def('[Uint8] ':-> ())
 debug_printhex8 = importProc "debug_printhex8" "debug.h"
 
-debug_print :: Def('[IString] :-> ())
+debug_print :: Def('[IString] ':-> ())
 debug_print = importProc "debug_print" "debug.h"
 
 [ivory|

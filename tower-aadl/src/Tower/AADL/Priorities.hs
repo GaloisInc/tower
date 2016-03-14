@@ -7,6 +7,9 @@
 
 module Tower.AADL.Priorities where
 
+import           Prelude ()
+import           Prelude.Compat
+
 import           Data.List
 import qualified Data.Map as M
 

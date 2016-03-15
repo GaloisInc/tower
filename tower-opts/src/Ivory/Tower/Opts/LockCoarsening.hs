@@ -89,7 +89,7 @@ lockCoarseningMonitor list nbLocksPre cputimelim = do
     keepString::String->Int->[String]
     keepString s i =
       let ni = reverse $ head $ splitOn "__" (reverse s) in
-      if ((read ni) == i) then ([ni,take ((length s) - (2 + (length ni))) s, s]) else []
+      if ((read ni) == i) then ([take ((length s) - (2 + (length ni))) s]) else []
 
     allStates :: [String]
     allStates = nub $ concat $ list
@@ -122,7 +122,7 @@ lockCoarseningMonitor list nbLocksPre cputimelim = do
             then
               (show hardWeight)++(drop 4 str)
             else
-              (show 1) ++ (drop 4 str)
+              (show (1::Integer)) ++ (drop 4 str)
 
     nbVar :: Int
     nbVar = (length allStates)*nbLocks
@@ -150,7 +150,7 @@ lockCoarseningMonitor list nbLocksPre cputimelim = do
         pairs = allpairs clique
 
     createClause :: ([String],[String]) -> [String]
-    createClause ([],l2) = []
+    createClause ([],_) = []
     createClause ((x:xs),l2) = 
       (concat $ map (\str -> createLocks x str) l2) ++ (createClause (xs,l2))
       where

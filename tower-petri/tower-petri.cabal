@@ -30,6 +30,3 @@ library
   hs-source-dirs:       src
   default-language:     Haskell2010
   ghc-options:          -Wall -fno-warn-orphans
-
-  if impl(ghc >= 7.8)
-    build-depends:      ghc, hpc, ghc-srcspan-plugin >= 0.2

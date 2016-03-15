@@ -77,7 +77,7 @@ lockCoarseningMonitor list nbLocksPre cputimelim = do
   hPutStr tmpHandle (concat $ intersperse "\n" input)
   hFlush tmpHandle
   hClose tmpHandle
-  (_, out, _) <- readProcessWithExitCode "./open-wbo" ["-cpu-lim="++(show cputimelim), tmpName] ""
+  (_, out, _) <- readProcessWithExitCode "open-wbo" ["-cpu-lim="++(show cputimelim), tmpName] ""
   let outputLine = drop 2 $ (concat $ filter (\x -> compare "v" (take 1 x) == EQ) (lines out))
   let (list::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
   let sol = map (\x -> Set.elemAt (x-1) associationSet) list

@@ -1,0 +1,40 @@
+name:                tower-opts
+version:             0.9.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+                        -- Exports
+  exposed-modules:      Ivory.Tower.Opts,
+
+                        Ivory.Tower.Opts.LockCoarsening
+
+  build-depends:        base >= 4.6,
+                        base-compat >= 0.6,
+                        symbol,
+                        process,
+                        split,
+                        directory,
+                        maximal-cliques,
+                        monadLib,
+                        containers,
+                        ghc-prim,
+                        mainland-pretty,
+                        text,
+                        filepath,
+                        ivory,
+                        ivory-artifact,
+                        ivory-stdlib,
+                        ivory-backend-c,
+                        tower
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans
+
+  if impl(ghc >= 7.8)
+    build-depends:      ghc, hpc, ghc-srcspan-plugin >= 0.2

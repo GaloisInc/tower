@@ -8,6 +8,9 @@
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- This module will go through a Handler and will 
+-- return all the external ressources used by this Handler
+
 module Ivory.Tower.StaticAnalysis
   ( staticAnalysisHandler, fromSymToString ) where
 

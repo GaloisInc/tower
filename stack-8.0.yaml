@@ -10,6 +10,7 @@ packages:
 - tower-config/
 - tower-hal/
 - tower-petri/
+- tower-opts/
 - location: ../ivory
   extra-dep: true
   subdirs:
@@ -26,7 +27,11 @@ extra-deps:
   - ghc-srcspan-plugin-0.2.1.0
   - language-c-quote-0.11.4
   - mainland-pretty-0.4.1.2
-  - symbol-0.2.4
+  - symbol-0.2.4 
+  - process-1.2.3.0
+  - split-0.2.2
+  - directory-1.2.2.0
+  - maximal-cliques-0.1.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}

@@ -9,6 +9,7 @@ packages:
 - tower-aadl/
 - tower-config/
 - tower-hal/
+- tower-petri/
 - location: ../ivory
   extra-dep: true
   subdirs:

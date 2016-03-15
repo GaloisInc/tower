@@ -5,6 +5,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Monad.Handler
   ( Handler(..)
@@ -34,8 +36,9 @@ import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Monitor
+import Ivory.Tower.StaticAnalysis
 import qualified Ivory.Tower.AST as AST
-
+import qualified Ivory.Language.Monad as Mon
 import Ivory.Tower.SrcLoc.Location (SrcLoc(..), Position(..), Range(..))
 
 import Ivory.Language
@@ -75,7 +78,7 @@ instance MonadFix (Handler area e) where
 
 newtype Handler' backend (area :: Area *) e a = Handler'
   { unHandler' :: ReaderT Unique
-                  (WriterT (PartialHandler, [TowerBackendEmitter backend], [TowerBackendCallback backend area])
+                  (WriterT (PartialHandler, [TowerBackendEmitter backend], [TowerBackendCallback backend area], [Mon.CodeBlock])
                     (Monitor' backend e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
@@ -83,15 +86,18 @@ handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
 handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   u <- freshname n
-  (r, (part, emitters, callbacks)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
+  (r, (part, emitters, callbacks, callbis)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
 
   let handlerast = AST.Handler u chanast
-        (partialEmitters part) (partialCallbacks part) (partialComments part)
+        (partialEmitters part) (partialCallbacks part) (globalsList callbis) (partialComments part)
 
   backend <- monitorGetBackend
   monitorPutHandler handlerast chan $ handlerImpl backend handlerast emitters callbacks
 
   return r
+  where
+    globalsList :: [Mon.CodeBlock] -> [String]
+    globalsList cb = fromSymToString $ staticAnalysisHandler cb
 
 handlerName :: Handler a e Unique
 handlerName = Handler $ Handler' ask
@@ -103,7 +109,7 @@ handlerGetHandlers :: Chan b -> Handler' backend a e [TowerBackendHandler backen
 handlerGetHandlers chan = Handler' $ lift $ lift $ monitorGetHandlers chan
 
 handlerPutAST :: PartialHandler -> Handler' backend a e ()
-handlerPutAST part = Handler' $ put (part, mempty, mempty)
+handlerPutAST part = Handler' $ put (part, mempty, mempty, [])
 
 handlerPutASTEmitter :: AST.Emitter -> Handler' backend a e ()
 handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
@@ -111,13 +117,13 @@ handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
 handlerPutASTCallback :: Unique -> Handler' backend a e ()
 handlerPutASTCallback a = handlerPutAST $ mempty { partialCallbacks = [a] }
 
-handlerPutCodeCallback :: TowerBackendCallback backend a
+handlerPutCodeCallback :: (TowerBackendCallback backend a, [Mon.CodeBlock])
                        -> Handler' backend a e ()
-handlerPutCodeCallback ms = Handler' $ put (mempty, mempty, [ms])
+handlerPutCodeCallback (ms, bis) = Handler' $ put (mempty, mempty, [ms], bis)
 
 handlerPutCodeEmitter :: TowerBackendEmitter backend
                       -> Handler' backend a e ()
-handlerPutCodeEmitter ms = Handler' $ put (mempty, [ms], mempty)
+handlerPutCodeEmitter ms = Handler' $ put (mempty, [ms], mempty, [])
 
 instance BaseUtils (Handler' backend a) p where
   freshname n = Handler' $ lift $ lift $ freshname n

@@ -15,6 +15,7 @@ data Handler = Handler
   , handler_chan      :: Chan
   , handler_emitters  :: [Emitter]
   , handler_callbacks :: [Unique]
+  , handler_globals   :: [String]
   , handler_comments  :: [Comment]
   } deriving (Eq, Show, Ord)
 

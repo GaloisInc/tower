@@ -24,6 +24,9 @@ import Ivory.Tower.Monad.Base
 import qualified Ivory.Tower.AST as AST
 
 import Ivory.Language
+import Ivory.Language.Monad hiding (emit)
+import Ivory.Language.Proc
+import Ivory.Language.Type
 
 emitter :: (IvoryArea a, IvoryZero a)
         => ChanInput a -> Integer -> Handler b e (Emitter a)
@@ -46,7 +49,11 @@ callback b = handlerName >>= \ nm -> Handler $ do
   u <- freshname $ "callback_" ++ showUnique nm
   handlerPutASTCallback u
   backend <- handlerGetBackend
-  handlerPutCodeCallback $ callbackImpl backend u b
+  let codeblock = snd $ runIvory $ noReturn $ b arg
+  handlerPutCodeCallback $ (callbackImpl backend u b,[codeblock])
+  where
+    (var,_) = genVar initialClosure
+    arg        = wrapVar var
 
 callbackV :: (IvoryArea ('Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())

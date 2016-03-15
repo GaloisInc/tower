@@ -10,6 +10,7 @@ license:             BSD3
 library
                         -- Exports
   exposed-modules:      Ivory.Tower,
+                        Ivory.Tower.StaticAnalysis,
 
                         -- Surface syntax:
                         Ivory.Tower.Coroutine,

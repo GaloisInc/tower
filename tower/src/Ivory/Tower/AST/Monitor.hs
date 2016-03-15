@@ -7,6 +7,7 @@ import Ivory.Tower.AST.Handler
 data Monitor = Monitor
   { monitor_name     :: Unique
   , monitor_handlers :: [Handler]
+  , monitor_globals :: [[String]]
   , monitor_external  :: MonitorExternal
   } deriving (Eq, Show, Ord)
 

@@ -13,10 +13,8 @@ module Ivory.Tower.Opts.LockCoarsening
       ) where
 
 import Data.Algorithm.MaximalCliques
-import Debug.Trace
 import Data.List
 import Data.List.Split
-import Data.Bool
 import System.IO
 import System.Process
 import System.Directory
@@ -36,7 +34,7 @@ lockCoarsening nbLocksTotal cputimelim ast = do
 
   
 attributeLocksMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
-attributeLocksMonitors [] nbLocksTotal cputimelim = return (0,[])
+attributeLocksMonitors [] _ _ = return (0,[])
 attributeLocksMonitors list nbLocksTotal cputimelim = do
   let a = head list
   let b = tail list
@@ -79,8 +77,8 @@ lockCoarseningMonitor list nbLocksPre cputimelim = do
   hClose tmpHandle
   (_, out, _) <- readProcessWithExitCode "open-wbo" ["-cpu-lim="++(show cputimelim), tmpName] ""
   let outputLine = drop 2 $ (concat $ filter (\x -> compare "v" (take 1 x) == EQ) (lines out))
-  let (list::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
-  let sol = map (\x -> Set.elemAt (x-1) associationSet) list
+  let (list2::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
+  let sol = map (\x -> Set.elemAt (x-1) associationSet) list2
   let sortsol = filter (not.null) $ map (\i -> concat $ map (\s -> keepString s i) sol) [1..nbLocks]
   removeFile tmpName
   return sortsol

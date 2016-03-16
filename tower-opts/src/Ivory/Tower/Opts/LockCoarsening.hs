@@ -10,6 +10,7 @@
 
 module Ivory.Tower.Opts.LockCoarsening
       ( lockCoarsening
+      , lockCoarseningName
       ) where
 
 import Data.Algorithm.MaximalCliques
@@ -23,6 +24,9 @@ import qualified Data.Set as Set
 import qualified Ivory.Tower.AST as AST
 
 
+lockCoarseningName :: String
+lockCoarseningName = "lockCoarsening"
+
 lockCoarsening :: Int -> Int -> AST.Tower -> IO AST.Tower
 lockCoarsening nbLocksTotal cputimelim ast = do
   let nbMonitors = length $ AST.tower_monitors $ cleanAST ast
@@ -30,7 +34,7 @@ lockCoarsening nbLocksTotal cputimelim ast = do
     then error "insufficient locks given for lockCoarsening"
     else do
       (_,monitors) <- attributeLocksMonitors (AST.tower_monitors ast) nbLocksTotal cputimelim
-      return ast {AST.tower_transformers = (("lockCoarsening"):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
+      return ast {AST.tower_transformers = (lockCoarseningName:(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
 
   
 attributeLocksMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])

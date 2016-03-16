@@ -17,6 +17,7 @@ library
 
   build-depends:        base >= 4.6,
                         base-compat >= 0.6,
+                        split,
                         monadLib,
                         containers,
                         ghc-prim,

@@ -2,9 +2,20 @@ module Ivory.Tower.Petri.Dot where
 
 
 import Data.List
+import Data.List.Split (splitOn)
+
 
 import Ivory.Tower.Petri.Petri
 -- import Prelude
+
+lineLength :: Int
+lineLength = 40
+
+createNewlines :: String -> String
+createNewlines s = 
+  if length s < lineLength then s 
+    else 
+      (take lineLength s) ++ (head $ splitOn ", " (drop lineLength s)) ++ "\\n" ++ (createNewlines $ drop (lineLength + (length $ head $ splitOn ", " (drop lineLength s)) + (length "\\n")) s)
 
 
 renderDotPetri :: PetriNet -> String
@@ -58,13 +69,17 @@ makeSubgraph (nodes, trans, _) subgraph =
     nodesInSubgraph = map node_name  $ filter (\n -> compare (node_subgraph n)  subgraph == EQ) nodes
     transInSubgraph = map trans_name $ filter (\t -> compare (trans_subgraph t) subgraph == EQ) trans
 
+generateGroup :: String -> String
+generateGroup [] = []
+generateGroup s = ", group=" ++ s
+
 renderDotNodes :: [PetriNode] -> String
 renderDotNodes nodes = concat $ intersperse "\n\r\t" $ map renderDotNode nodes
 
 renderDotNode :: PetriNode -> String
 renderDotNode node = 
   node_name node ++ " [label=\""++ (node_name node) ++ "\\n" ++ (replicate (node_m0 node) '•') ++ "\\n" ++
-  (node_label node) ++ "\",shape=ellipse, style=\"filled\", color="++ (node_color node) ++"];"
+  (createNewlines $ node_label node) ++ "\",shape=ellipse, style=\"filled\", color="++ (node_color node) ++ (generateGroup $ node_group node) ++"];"
 
 
 
@@ -73,7 +88,7 @@ renderDotTransitions trans = concat $ intersperse "\n\r\t" $ map renderDotTransi
 
 renderDotTransition :: PetriTransition -> String
 renderDotTransition trans = 
-  trans_name trans ++ " [label=\""++ (trans_name trans) ++"\",shape=box, style=\"filled\", color="++ (trans_color trans) ++"];"
+  trans_name trans ++ " [label=\""++ (trans_name trans) ++"\",shape=box, style=\"filled\", color="++ (trans_color trans) ++ (generateGroup $ trans_group trans)  ++"];"
 
 
 renderDotEdges :: [PetriEdge] -> String

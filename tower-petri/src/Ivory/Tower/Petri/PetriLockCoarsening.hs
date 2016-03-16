@@ -30,6 +30,7 @@ initialPetri =
       , node_color    = "grey63"
       , node_k        = 1
       , node_subgraph = "__init"
+      , node_group    = ""
       , node_label    = "" 
       }
 
@@ -37,6 +38,7 @@ initialPetri =
       { trans_name     = makeInitName
       , trans_color    = "grey63"
       , trans_subgraph = "__init"
+      , trans_group    = ""
       }
     edgeInit = PetriEdge
       { edge_dep   = node_name nodeInit
@@ -45,8 +47,6 @@ initialPetri =
       , edge_color = "black"
       , edge_label = ""
       }
-
-
 
 
 
@@ -59,31 +59,36 @@ petriTowerLockCoarsening ast =
     (map petriSignal $ tower_signals ast) 
 
 
-
-
-
 makeMonitorName :: Monitor -> String
 makeMonitorName = showUnique . monitor_name
 
 makeSubgraphMonitorName :: Monitor -> String
 makeSubgraphMonitorName mon = "monitor_" ++ makeMonitorName mon
 
+makeLockName :: Monitor -> Int -> String
+makeLockName mon id = "lock_" ++ (show id) ++ "_" ++ (makeMonitorName mon)
+
 petriMonitor :: Monitor -> PetriNet
 petriMonitor mon = 
-  let monitorNet = ([nodeInit], [], []) in
+  let monitorNet = (map (makeLockNode) (zip [1..] $ monitor_globals mon), [], []) in
   foldr petriUnion monitorNet $ map (petriHandler $ mon) $ monitor_handlers mon
   where 
-    nodeInit = PetriNode
-      { node_name     = makeMonitorName mon
+    makeLockNode :: (Int,[String]) -> PetriNode
+    makeLockNode (id, list) = PetriNode
+      { node_name     = makeLockName mon id
       , node_m0       = 1
       , node_color    = "deeppink"
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
-      , node_label    = concat $ intersperse ", " $ nub $ concat $ monitor_globals mon 
+      , node_group    = ""
+      , node_label    = concat $ intersperse ", " $ list 
       }
 
 makeHandlerName :: Handler -> String
-makeHandlerName = showUnique . handler_name
+makeHandlerName h= "han_" ++ (showUnique $ handler_name h)
+
+makeGroupHandlerName :: Handler -> String
+makeGroupHandlerName h = "g" ++ (makeHandlerName h)
 
 makeListener :: Chan -> String
 
@@ -96,14 +101,18 @@ makeListener (ChanInit _) = makeInitName
 petriHandler :: Monitor -> Handler -> PetriNet
 petriHandler mon h =
   ([handlerReady, handlerComputing],[handlerLock, handlerRelease],
-    [subscribe, takeLockMon, takeLockHan, enterComputation, finishComputation, releaseLock] ++ emittersEdges)
+    [subscribe, takeLockHan, enterComputation, finishComputation] ++ emittersEdges ++ (map takeLockMon locksToTake) ++ (map releaseLock locksToTake))
   where
+    locksToTake :: [Int]
+    locksToTake = map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ monitor_globals mon) $ handler_globals h
+
     handlerReady      = PetriNode
       { node_name     = makeHandlerName h
       , node_m0       = 0
       , node_color    = "purple"
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
+      , node_group    = makeGroupHandlerName h
       , node_label    = concat $ intersperse ", " $ handler_globals h
       }
     handlerComputing = PetriNode
@@ -112,28 +121,24 @@ petriHandler mon h =
       , node_color    = "blue"
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
+      , node_group    = makeGroupHandlerName h
       , node_label    = "" 
       }
     handlerLock = PetriTransition
       { trans_name     = "lock_" ++ (makeHandlerName h)
       , trans_color    = "plum1"
       , trans_subgraph = makeSubgraphMonitorName mon
+      , trans_group    = makeGroupHandlerName h
       }
     handlerRelease = PetriTransition
       { trans_name     = "release_" ++ (makeHandlerName h)
       , trans_color    = "plum1"
       , trans_subgraph = makeSubgraphMonitorName mon
+      , trans_group    = makeGroupHandlerName h
       }
     subscribe = PetriEdge
       { edge_dep   = makeListener $ handler_chan h
       , edge_arr   = node_name handlerReady
-      , edge_w     = 1
-      , edge_color = "black"
-      , edge_label = ""
-      }
-    takeLockMon = PetriEdge
-      { edge_dep   = makeMonitorName mon
-      , edge_arr   = trans_name handlerLock
       , edge_w     = 1
       , edge_color = "black"
       , edge_label = ""
@@ -159,9 +164,19 @@ petriHandler mon h =
       , edge_color = "black"
       , edge_label = ""
       }
-    releaseLock = PetriEdge
+
+    takeLockMon :: Int -> PetriEdge
+    takeLockMon id = PetriEdge
+      { edge_dep   = makeLockName mon id
+      , edge_arr   = trans_name handlerLock
+      , edge_w     = 1
+      , edge_color = "black"
+      , edge_label = ""
+      }
+    releaseLock :: Int -> PetriEdge
+    releaseLock id = PetriEdge
       { edge_dep   = trans_name handlerRelease
-      , edge_arr   = makeMonitorName mon
+      , edge_arr   = makeLockName mon id
       , edge_w     = 1
       , edge_color = "black"
       , edge_label = ""
@@ -198,6 +213,7 @@ petriSyncChan chan =
       , node_color    = "cyan"
       , node_k        = queueSize
       , node_subgraph = makeSubgraphSyncChanName chan
+      , node_group    = ""
       , node_label    = "" 
       }
 
@@ -205,6 +221,7 @@ petriSyncChan chan =
       { trans_name     = "distribute_" ++ (makeSyncChanName chan)
       , trans_color    = "green"
       , trans_subgraph = makeSubgraphSyncChanName chan
+      , trans_group    = ""
       }
     edgeChanDist = PetriEdge
       { edge_dep   = node_name nodeChan
@@ -234,12 +251,14 @@ petriPeriod per =
       , node_color    = "orangered"
       , node_k        = 1
       , node_subgraph = makeSubgraphPeriodName per
+      , node_group    = ""
       , node_label    = "" 
       }
     transClk = PetriTransition
       { trans_name     = "loop_" ++ (makePeriodName per)
       , trans_color    = "orangered"
       , trans_subgraph = makeSubgraphPeriodName per
+      , trans_group    = ""
       }
     edgePerClk = PetriEdge
       { edge_dep   = node_name nodePer
@@ -275,12 +294,14 @@ petriSignal sig =
       , node_color    = "palegreen"
       , node_k        = 1
       , node_subgraph = makeSubgraphSignalName sig
+      , node_group    = ""
       , node_label    = "" 
       }
     transRearm = PetriTransition
       { trans_name     = "rearm_" ++ (makeSignalName sig)
       , trans_color    = "palegreen"
       , trans_subgraph = makeSubgraphSignalName sig
+      , trans_group    = ""
       }
     edgeSigRearm = PetriEdge
       { edge_dep   = node_name nodeSig

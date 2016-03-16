@@ -17,7 +17,7 @@ import Ivory.Tower.Opts
 petriTower :: Tower -> PetriNet
 petriTower ast =
   if (lockCoarseningName `elem` (tower_transformers ast))
-  	then 
-  	  petriTowerLockCoarsening ast
+    then 
+      petriTowerLockCoarsening ast
     else
       petriTowerRaw ast

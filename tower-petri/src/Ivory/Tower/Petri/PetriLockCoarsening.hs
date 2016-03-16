@@ -66,7 +66,7 @@ makeSubgraphMonitorName :: Monitor -> String
 makeSubgraphMonitorName mon = "monitor_" ++ makeMonitorName mon
 
 makeLockName :: Monitor -> Int -> String
-makeLockName mon id = "lock_" ++ (show id) ++ "_" ++ (makeMonitorName mon)
+makeLockName mon ide = "lock_" ++ (show ide) ++ "_" ++ (makeMonitorName mon)
 
 petriMonitor :: Monitor -> PetriNet
 petriMonitor mon = 
@@ -74,8 +74,8 @@ petriMonitor mon =
   foldr petriUnion monitorNet $ map (petriHandler $ mon) $ monitor_handlers mon
   where 
     makeLockNode :: (Int,[String]) -> PetriNode
-    makeLockNode (id, list) = PetriNode
-      { node_name     = makeLockName mon id
+    makeLockNode (ide, list) = PetriNode
+      { node_name     = makeLockName mon ide
       , node_m0       = 1
       , node_color    = "deeppink"
       , node_k        = 1
@@ -166,17 +166,17 @@ petriHandler mon h =
       }
 
     takeLockMon :: Int -> PetriEdge
-    takeLockMon id = PetriEdge
-      { edge_dep   = makeLockName mon id
+    takeLockMon ide = PetriEdge
+      { edge_dep   = makeLockName mon ide
       , edge_arr   = trans_name handlerLock
       , edge_w     = 1
       , edge_color = "black"
       , edge_label = ""
       }
     releaseLock :: Int -> PetriEdge
-    releaseLock id = PetriEdge
+    releaseLock ide = PetriEdge
       { edge_dep   = trans_name handlerRelease
-      , edge_arr   = makeLockName mon id
+      , edge_arr   = makeLockName mon ide
       , edge_w     = 1
       , edge_color = "black"
       , edge_label = ""

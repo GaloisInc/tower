@@ -79,7 +79,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   let (cfg',osspecific)       =  fromEnv env
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
-  let (ast, code, deps, sigs) =  runTower AADLBackend twr env
+  (ast, code, deps, sigs) <-  runTower AADLBackend twr env []
   let missingCallbacks = handlersMissingCallbacks ast
   when (not (null missingCallbacks)) $ do
     putStrLn "Error: The following handlers are missing callbacks:"

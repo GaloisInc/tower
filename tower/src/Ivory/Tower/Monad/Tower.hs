@@ -28,6 +28,7 @@ import Ivory.Tower.Types.Chan
 import qualified Ivory.Tower.Types.ChanMap as ChanMap
 import Ivory.Tower.Types.Dependencies
 import Ivory.Tower.Types.SignalCode
+import Data.Foldable (foldlM)
 
 import qualified Ivory.Tower.AST as AST
 
@@ -84,8 +85,11 @@ runTower :: TowerBackend backend
          => backend
          -> Tower e ()
          -> e
-         -> (AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
-runTower backend t e = (a, towerImpl backend a monitors, output_deps output, output_sigs output)
+         -> [AST.Tower -> IO AST.Tower]
+         -> IO (AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
+runTower backend t e optslist = do
+  a2 <- foldlM (\aaa f -> f aaa) a optslist
+  return (a2, towerImpl backend a2 monitors, output_deps output, output_sigs output)
   where
   a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of

@@ -56,7 +56,7 @@ monitor' :: AST.MonitorExternal -> String -> Monitor e () -> Tower e ()
 monitor' t n b = Tower $ do
   u <- freshname n
   ((), (hast, handlers, moddef)) <- runWriterT $ unMonitor' $ unMonitor b
-  let ast = AST.Monitor u hast (globalsListMonitor hast) t
+  let ast = AST.Monitor u hast (globalsListMonitor hast) t []
   backend <- towerGetBackend
   towerPutMonitor ast $ monitorImpl backend ast handlers moddef
   where

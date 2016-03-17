@@ -5,10 +5,11 @@ import Ivory.Tower.Types.Unique
 import Ivory.Tower.AST.Handler
 
 data Monitor = Monitor
-  { monitor_name     :: Unique
-  , monitor_handlers :: [Handler]
-  , monitor_globals :: [[String]]
-  , monitor_external  :: MonitorExternal
+  { monitor_name         :: Unique
+  , monitor_handlers     :: [Handler]
+  , monitor_globals      :: [[String]]
+  , monitor_external     :: MonitorExternal
+  , monitor_transformers :: [String]
   } deriving (Eq, Show, Ord)
 
 monitorName :: Monitor -> String

@@ -11,6 +11,7 @@
 module Ivory.Tower.Opts.LockCoarsening
       ( lockCoarsening
       , lockCoarseningName
+      , lockCoarseningMonitor
       ) where
 
 import Data.Algorithm.MaximalCliques
@@ -33,25 +34,32 @@ lockCoarsening nbLocksTotal cputimelim ast = do
   if nbMonitors > nbLocksTotal 
     then error "insufficient locks given for lockCoarsening"
     else do
-      (_,monitors) <- attributeLocksMonitors (AST.tower_monitors ast) nbLocksTotal cputimelim
+      (_,monitors) <- lockCoarseningMonitors (AST.tower_monitors ast) nbLocksTotal cputimelim
       return ast {AST.tower_transformers = (lockCoarseningName:(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
 
   
-attributeLocksMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
-attributeLocksMonitors [] _ _ = return (0,[])
-attributeLocksMonitors list nbLocksTotal cputimelim = do
+lockCoarseningMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
+lockCoarseningMonitors [] _ _ = return (0,[])
+lockCoarseningMonitors list nbLocksTotal cputimelim = do
   let a = head list
   let b = tail list
   if (null.AST.monitor_handlers $ cleanMonitor a) 
     then do
-      (locksUsed, monitors) <- attributeLocksMonitors b (nbLocksTotal) cputimelim
-      return (locksUsed, (a {AST.monitor_globals = []}):monitors)
+      (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal) cputimelim
+      return (locksUsed, (a {AST.monitor_globals = [], AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers a))}):monitors)
   else do
-    (locksUsed, monitors) <- attributeLocksMonitors b (nbLocksTotal-1) cputimelim
+    (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal-1) cputimelim
     let locksAvail = nbLocksTotal - locksUsed
-    locks <- lockCoarseningMonitor (AST.monitor_globals $ cleanMonitor a) locksAvail cputimelim
-    return (locksUsed + (length locks), (a {AST.monitor_globals = locks}):monitors)
+    locks <- attributeLocksMonitor (AST.monitor_globals $ cleanMonitor a) locksAvail cputimelim
+    return (locksUsed + (length locks), (a {AST.monitor_globals = locks, AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers a))}):monitors)
 
+lockCoarseningMonitor :: AST.Monitor -> Int -> Int -> IO (AST.Monitor)
+lockCoarseningMonitor mon nbLocks cputimelim =
+  if (null.AST.monitor_handlers $ cleanMonitor mon) 
+    then return (mon {AST.monitor_globals = [], AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers mon))})
+    else do
+      locks <- attributeLocksMonitor (AST.monitor_globals $ cleanMonitor mon) nbLocks cputimelim
+      return (mon {AST.monitor_globals = locks, AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers mon))})
 
 
 
@@ -73,8 +81,8 @@ allpairs [_] = []
 allpairs (x:xs) = concatMap (\y -> [(x,y)]) xs ++ allpairs xs
 
 
-lockCoarseningMonitor :: [[String]] -> Int -> Int -> IO [[String]]
-lockCoarseningMonitor list nbLocksPre cputimelim = do
+attributeLocksMonitor :: [[String]] -> Int -> Int -> IO [[String]]
+attributeLocksMonitor list nbLocksPre cputimelim = do
   (tmpName, tmpHandle) <- openTempFile "." "temp"
   hPutStr tmpHandle (concat $ intersperse "\n" input)
   hFlush tmpHandle

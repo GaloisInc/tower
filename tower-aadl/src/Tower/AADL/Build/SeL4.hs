@@ -122,8 +122,8 @@ makefileApp dir =
   where
   fromApps fl = "apps" </> dir </> fl
 
-camkesArtifacts :: String -> AADLConfig -> [Located Artifact]
-camkesArtifacts appname cfg = map Root ls
+camkesArtifacts :: String -> AADLConfig -> [String] -> [Located Artifact]
+camkesArtifacts appname cfg aadl_docs = map Root ls
   where
   ls :: [Artifact]
   ls = artifactString
@@ -144,6 +144,9 @@ camkesArtifacts appname cfg = map Root ls
        [ artifactString
            makefileName
            (renderMkStmts (makefileApp appname))
+       , artifactString
+           componentLibsName
+           (mkLib cfg aadl_docs)
        ] ++
        -- libs
        map (artifactPath l)

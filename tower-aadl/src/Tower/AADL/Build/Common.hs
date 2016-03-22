@@ -6,6 +6,7 @@
 module Tower.AADL.Build.Common where
 
 import Data.Char
+import Data.Maybe (maybeToList)
 import Text.PrettyPrint.Leijen hiding ((</>))
 
 import Ivory.Artifact
@@ -14,6 +15,7 @@ import Ivory.Tower
 import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import Tower.AADL.Config (AADLConfig(..))
+import Tower.AADL.Compile
 
 data Required
   = Req
@@ -115,6 +117,9 @@ mkLib c aadlFileNames =
 makefileName :: String
 makefileName = "Makefile"
 
+aadlDocNames :: CompiledDocs -> [String]
+aadlDocNames docs = map docName $
+  maybeToList (tyDoc docs) ++ thdDocs docs
 --------------------------------------------------------------------------------
 -- Helpers
 
@@ -128,7 +133,7 @@ shellVar = map toUpper
 data OSSpecific a e = OSSpecific
   { osSpecificName      :: String
   , osSpecificConfig    :: a
-  , osSpecificArtifacts :: String -> AADLConfig -> [Located Artifact]
+  , osSpecificArtifacts :: String -> AADLConfig -> [String] -> [Located Artifact]
   , osSpecificSrcDir    :: AADLConfig -> Located Artifact -> Located Artifact
   , osSpecificTower     :: Tower e ()
   , osSpecificOptsApps  :: AADLConfig -> O.Opts -> O.Opts

@@ -46,7 +46,8 @@ import           Tower.AADL.FromTower
 import qualified Tower.AADL.AST        as A
 import qualified Tower.AADL.AST.Common as A
 import           Tower.AADL.Build.Common ( aadlFilesMk
-                                         , OSSpecific(..) )
+                                         , OSSpecific(..)
+                                         , aadlDocNames )
 import qualified Tower.AADL.Build.SeL4     as SeL4 ( defaultCAmkESOS )
 import           Tower.AADL.CodeGen
 import           Tower.AADL.Compile
@@ -102,7 +103,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
         ++ [ Root deps_a
            , graphvizArtifact appname ast
            ]
-        ++ osSpecificArtifacts os appname cfg
+        ++ osSpecificArtifacts os appname cfg (aadlDocNames aadl_docs)
 
   unless (validCIdent appname) $ error $ "appname must be valid c identifier; '"
                                         ++ appname ++ "' is not"
@@ -160,10 +161,6 @@ buildAADL deps sys = (renderSystem sys) { tyDoc = typesDoc }
     if any defType types
       then Just (compiledTypesDoc tydefs)
       else Nothing
-
-aadlDocNames :: CompiledDocs -> [String]
-aadlDocNames docs = map docName $
-  maybeToList (tyDoc docs) ++ thdDocs docs
 
 aadlDepsArtifact :: [String] -> Artifact
 aadlDepsArtifact names = artifactString aadlFilesMk $ displayS pp ""

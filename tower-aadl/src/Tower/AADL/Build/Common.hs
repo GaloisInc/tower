@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 -- Create Ramses build script.
 --
 -- (c) 2015 Galois, Inc.
@@ -130,12 +131,12 @@ shellVar = map toUpper
 -- Support for OS Specific Code generation
 --------------------------------------------------------------------------------
 
-data OSSpecific a e = OSSpecific
+data OSSpecific a = OSSpecific
   { osSpecificName      :: String
   , osSpecificConfig    :: a
   , osSpecificArtifacts :: String -> AADLConfig -> [String] -> [Located Artifact]
   , osSpecificSrcDir    :: AADLConfig -> Located Artifact -> Located Artifact
-  , osSpecificTower     :: Tower e ()
+  , osSpecificTower     :: forall e. Tower e ()
   , osSpecificOptsApps  :: AADLConfig -> O.Opts -> O.Opts
   , osSpecificOptsLibs  :: AADLConfig -> O.Opts -> O.Opts
   }

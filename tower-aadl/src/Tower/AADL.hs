@@ -70,7 +70,7 @@ graphvizArtifact appname ast = Root $
 compileTowerAADL :: (e -> AADLConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
 compileTowerAADL fromEnv = compileTowerAADLForPlatform ((,SeL4.defaultCAmkESOS) . fromEnv)
 
-compileTowerAADLForPlatform :: (e -> (AADLConfig, OSSpecific a e))
+compileTowerAADLForPlatform :: (e -> (AADLConfig, OSSpecific a))
                             -> (TOpts -> IO e)
                             -> Tower e ()
                             -> IO ()
@@ -97,7 +97,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
 
   let appname                 = takeFileName (fromMaybe "tower" (O.outDir copts))
 
-  let as :: OSSpecific a e -> [Located Artifact]
+  let as :: OSSpecific a -> [Located Artifact]
       as os = doc_as
         ++ libAs
         ++ [ Root deps_a

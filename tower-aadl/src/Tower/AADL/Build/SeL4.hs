@@ -162,7 +162,7 @@ camkesArtifacts appname cfg aadl_docs = map Root ls
          ]
   l = lib cfg
 
-defaultCAmkESOS :: OSSpecific () e
+defaultCAmkESOS :: OSSpecific ()
 defaultCAmkESOS =
   let libSrcDir cfg = lib cfg </> "src"
       libHdrDir cfg = lib cfg </> "include"

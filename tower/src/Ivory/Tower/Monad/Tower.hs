@@ -91,7 +91,7 @@ runTower backend t e optslist = do
   a2 <- foldlM (\aaa f -> f aaa) a optslist
   return (a2, towerImpl backend a2 monitors, output_deps output, output_sigs output)
   where
-  a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
+  a = mappend (mempty { AST.tower_monitors = mast, AST.tower_transformers = [] }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
     AST.ChanSync c -> mempty { AST.tower_syncchans = [c] }
     AST.ChanSignal c -> mempty { AST.tower_signals = [c] }

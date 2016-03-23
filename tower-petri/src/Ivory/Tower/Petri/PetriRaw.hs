@@ -15,6 +15,7 @@ import Ivory.Tower.AST.Signal
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Petri.Petri
+import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 -- import Prelude
 
 
@@ -75,7 +76,7 @@ petriMonitor mon =
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
       , node_group    = ""
-      , node_label    = concat $ intersperse ", " $ nub $ concat $ monitor_globals mon 
+      , node_label    = concat $ intersperse ", " $ nub $ concat $ map fromSymToString $ staticAnalysisMonitor mon 
       }
 
 makeHandlerName :: Handler -> String
@@ -104,7 +105,7 @@ petriHandler mon h =
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
       , node_group    = makeGroupHandlerName h
-      , node_label    = concat $ intersperse ", " $ handler_globals h
+      , node_label    = concat $ intersperse ", " $ fromSymToString $ staticAnalysisHandler h
       }
     handlerComputing = PetriNode
       { node_name     = "comp_" ++ (makeHandlerName h)

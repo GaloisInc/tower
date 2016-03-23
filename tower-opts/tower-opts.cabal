@@ -11,7 +11,8 @@ library
                         -- Exports
   exposed-modules:      Ivory.Tower.Opts,
 
-                        Ivory.Tower.Opts.LockCoarsening
+                        Ivory.Tower.Opts.LockCoarsening,
+                        Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 
   build-depends:        base >= 4.6,
                         base-compat >= 0.6,

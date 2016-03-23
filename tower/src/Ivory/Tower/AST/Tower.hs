@@ -9,6 +9,7 @@ import Prelude.Compat
 
 import Data.List (find, union)
 import Ivory.Tower.Types.Unique
+import Ivory.Tower.Types.Opts
 import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal
 import Ivory.Tower.AST.Period
@@ -16,12 +17,13 @@ import Ivory.Tower.AST.Monitor
 import Ivory.Tower.AST.Thread
 import Ivory.Tower.AST.Init
 
+
 data Tower = Tower
   { tower_monitors     :: [Monitor]
   , tower_syncchans    :: [SyncChan]
   , tower_signals      :: [Signal]
   , tower_periods      :: [Period]
-  , tower_transformers :: [String]
+  , tower_transformers :: [Opt]
   } deriving (Eq, Show)
 
 instance Monoid Tower where

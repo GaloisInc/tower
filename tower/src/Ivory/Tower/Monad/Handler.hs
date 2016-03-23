@@ -36,12 +36,11 @@ import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Monitor
-import Ivory.Tower.StaticAnalysis
 import qualified Ivory.Tower.AST as AST
-import qualified Ivory.Language.Monad as Mon
 import Ivory.Tower.SrcLoc.Location (SrcLoc(..), Position(..), Range(..))
 
 import Ivory.Language
+import qualified Ivory.Language.Syntax.AST as IAST
 
 data PartialHandler = PartialHandler
   { partialEmitters :: [AST.Emitter]
@@ -78,7 +77,7 @@ instance MonadFix (Handler area e) where
 
 newtype Handler' backend (area :: Area *) e a = Handler'
   { unHandler' :: ReaderT Unique
-                  (WriterT (PartialHandler, [TowerBackendEmitter backend], [TowerBackendCallback backend area], [Mon.CodeBlock])
+                  (WriterT (PartialHandler, [TowerBackendEmitter backend], [IAST.Proc], [TowerBackendCallback backend area])
                     (Monitor' backend e)) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
@@ -86,18 +85,15 @@ handler :: (IvoryArea a, IvoryZero a)
         => ChanOutput a -> String -> Handler a e () -> Monitor e ()
 handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   u <- freshname n
-  (r, (part, emitters, callbacks, callbis)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
+  (r, (part, emitters, callast, callbacks)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
 
   let handlerast = AST.Handler u chanast
-        (partialEmitters part) (partialCallbacks part) (globalsList callbis) (partialComments part)
+        (partialEmitters part) (partialCallbacks part) (callast) (partialComments part) []
 
   backend <- monitorGetBackend
   monitorPutHandler handlerast chan $ handlerImpl backend handlerast emitters callbacks
 
   return r
-  where
-    globalsList :: [Mon.CodeBlock] -> [String]
-    globalsList cb = fromSymToString $ staticAnalysisHandler cb
 
 handlerName :: Handler a e Unique
 handlerName = Handler $ Handler' ask
@@ -117,9 +113,10 @@ handlerPutASTEmitter a = handlerPutAST $ mempty { partialEmitters = [a] }
 handlerPutASTCallback :: Unique -> Handler' backend a e ()
 handlerPutASTCallback a = handlerPutAST $ mempty { partialCallbacks = [a] }
 
-handlerPutCodeCallback :: (TowerBackendCallback backend a, [Mon.CodeBlock])
+handlerPutCodeCallback :: TowerBackendCallback backend a
+                       -> IAST.Proc
                        -> Handler' backend a e ()
-handlerPutCodeCallback (ms, bis) = Handler' $ put (mempty, mempty, [ms], bis)
+handlerPutCodeCallback ms bis = Handler' $ put (mempty, mempty, [bis], [ms])
 
 handlerPutCodeEmitter :: TowerBackendEmitter backend
                       -> Handler' backend a e ()

@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Handler
   ( emitter
@@ -22,10 +23,12 @@ import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Base
 
 import qualified Ivory.Tower.AST as AST
+import Ivory.Language.Syntax as IAST hiding (Area)
 
 import Ivory.Language
 import Ivory.Language.Monad hiding (emit)
 import Ivory.Language.Proc
+import Ivory.Language.Area
 import Ivory.Language.Type
 
 emitter :: (IvoryArea a, IvoryZero a)
@@ -42,7 +45,7 @@ emitter (ChanInput chan@(Chan chanast)) bound = handlerName >>= \ nm -> Handler 
   handlerPutCodeEmitter code
   return e
 
-callback :: (IvoryArea a, IvoryZero a)
+callback :: forall a e. (IvoryArea a, IvoryZero a)
          => (forall s s' . ConstRef s a -> Ivory (AllocEffects s') ())
          -> Handler a e ()
 callback b = handlerName >>= \ nm -> Handler $ do
@@ -50,10 +53,19 @@ callback b = handlerName >>= \ nm -> Handler $ do
   handlerPutASTCallback u
   backend <- handlerGetBackend
   let codeblock = snd $ runIvory $ noReturn $ b arg
-  handlerPutCodeCallback $ (callbackImpl backend u b,[codeblock])
+  handlerPutCodeCallback (callbackImpl backend u b) 
+    $ IAST.Proc { IAST.procSym      = showUnique u
+                , IAST.procRetTy    = IAST.TyVoid
+                , IAST.procArgs     = [IAST.Typed (IAST.TyConstRef (ivoryArea (Proxy :: AProxy a))) var]
+                , IAST.procBody     = blockStmts block
+                , IAST.procRequires = blockRequires block
+                , IAST.procEnsures  = blockEnsures block
+                }
   where
+    block = snd $ runIvory $ noReturn $ b arg
     (var,_) = genVar initialClosure
-    arg        = wrapVar var
+    arg     = wrapVar var
+    
 
 callbackV :: (IvoryArea ('Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())

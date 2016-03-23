@@ -12,11 +12,11 @@ import Ivory.Tower.Petri.PetriLockCoarsening
 import Ivory.Tower.Petri.Dot
 
 import Ivory.Tower.AST
-import Ivory.Tower.Opts
+import Ivory.Tower.Types.Opts
 
 petriTower :: Tower -> PetriNet
 petriTower ast =
-  if (lockCoarseningName `elem` (tower_transformers ast))
+  if (LockCoarsening OptVoid `elemOpt` (tower_transformers ast))
     then 
       petriTowerLockCoarsening ast
     else

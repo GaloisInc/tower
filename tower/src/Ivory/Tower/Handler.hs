@@ -52,7 +52,6 @@ callback b = handlerName >>= \ nm -> Handler $ do
   u <- freshname $ "callback_" ++ showUnique nm
   handlerPutASTCallback u
   backend <- handlerGetBackend
-  let codeblock = snd $ runIvory $ noReturn $ b arg
   handlerPutCodeCallback (callbackImpl backend u b) 
     $ IAST.Proc { IAST.procSym      = showUnique u
                 , IAST.procRetTy    = IAST.TyVoid

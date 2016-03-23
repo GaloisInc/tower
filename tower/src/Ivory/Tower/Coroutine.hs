@@ -38,7 +38,8 @@ coroutineHandler chanInit chan name block = do
 
   handler readyChan name $ do
     coro <- coroutine <$> fmap showUnique handlerName <*> block
-    liftMonitor $ monitorModuleDef $ coroutineDef coro
+    let modcor = coroutineDef coro
+    liftMonitor $ monitorModuleDef $ modcor
     callbackV $ \ shouldInit -> coroutineRun coro shouldInit $ constRef lastValue
 
   handler chanInit (name ++ "_init") $ do

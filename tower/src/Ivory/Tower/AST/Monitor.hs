@@ -3,13 +3,15 @@ module Ivory.Tower.AST.Monitor where
 
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.AST.Handler
+import Ivory.Tower.Types.Opts
+import Ivory.Language.Syntax
 
 data Monitor = Monitor
   { monitor_name         :: Unique
   , monitor_handlers     :: [Handler]
-  , monitor_globals      :: [[String]]
   , monitor_external     :: MonitorExternal
-  , monitor_transformers :: [String]
+  , monitor_module       :: Module
+  , monitor_transformers :: [Opt]
   } deriving (Eq, Show, Ord)
 
 monitorName :: Monitor -> String

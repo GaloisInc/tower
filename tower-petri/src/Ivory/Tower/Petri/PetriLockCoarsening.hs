@@ -14,6 +14,7 @@ import Ivory.Tower.AST.Signal
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Petri.Petri
+import Ivory.Tower.Types.Opts
 -- import Prelude
 
 
@@ -70,9 +71,11 @@ makeLockName mon ide = "lock_" ++ (show ide) ++ "_" ++ (makeMonitorName mon)
 
 petriMonitor :: Monitor -> PetriNet
 petriMonitor mon = 
-  let monitorNet = (map (makeLockNode) (zip [1..] $ monitor_globals mon), [], []) in
+  let monitorNet = (map (makeLockNode) (zip [1..] $ glob), [], []) in
   foldr petriUnion monitorNet $ map (petriHandler $ mon) $ monitor_handlers mon
   where 
+    (Just (LockCoarsening (OptMonitor glob))) = getOpt (LockCoarsening OptVoid) $ monitor_transformers mon
+    
     makeLockNode :: (Int,[String]) -> PetriNode
     makeLockNode (ide, list) = PetriNode
       { node_name     = makeLockName mon ide
@@ -103,8 +106,10 @@ petriHandler mon h =
   ([handlerReady, handlerComputing],[handlerLock, handlerRelease],
     [subscribe, takeLockHan, enterComputation, finishComputation] ++ emittersEdges ++ (map takeLockMon locksToTake) ++ (map releaseLock locksToTake))
   where
+    (Just (LockCoarsening (OptMonitor globmon))) = getOpt (LockCoarsening OptVoid) $ monitor_transformers mon
+    (Just (LockCoarsening (OptHandler globhan))) = getOpt (LockCoarsening OptVoid) $ handler_transformers h
     locksToTake :: [Int]
-    locksToTake = map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ monitor_globals mon) $ handler_globals h
+    locksToTake = map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ globmon) $ globhan
 
     handlerReady      = PetriNode
       { node_name     = makeHandlerName h
@@ -113,7 +118,7 @@ petriHandler mon h =
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
       , node_group    = makeGroupHandlerName h
-      , node_label    = concat $ intersperse ", " $ handler_globals h
+      , node_label    = concat $ intersperse ", " $ globhan
       }
     handlerComputing = PetriNode
       { node_name     = "comp_" ++ (makeHandlerName h)

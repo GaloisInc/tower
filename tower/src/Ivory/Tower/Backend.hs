@@ -8,40 +8,41 @@ module Ivory.Tower.Backend where
 import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Emitter
-import Ivory.Tower.Types.Unique
+import qualified Ivory.Language.Syntax.AST as IAST
 
-data SomeHandler backend = forall a. SomeHandler (TowerBackendHandler backend a)
+data SomeHandler backend = SomeHandler (TowerBackendHandler backend)
 
 class TowerBackend backend where
   -- XXX should probably be type families, not data families, and maybe at the
   -- top-level (without relying on the class).
 
   -- Type correponds to the channel type
-  data TowerBackendCallback  backend :: Area * -> *
+  data TowerBackendCallback  backend :: *
   data TowerBackendEmitter   backend :: *
   -- Type correponds to the channel type
-  data TowerBackendHandler   backend :: Area * -> *
+  data TowerBackendHandler   backend :: *
   data TowerBackendMonitor   backend :: *
   data TowerBackendOutput    backend :: *
 
-  callbackImpl :: IvoryArea a
-               => backend
+  callbackImpl :: backend
                -- Callback identifier, used to construct full callback name
-               -> Unique
+               -> String
                -- Implementation
-               -> (forall s s'. ConstRef s' a -> Ivory (AllocEffects s) ())
-               -> TowerBackendCallback backend a
-  emitterImpl :: (IvoryArea b, IvoryZero b)
-              => backend
+               -> IAST.Proc
+               -> TowerBackendCallback backend
+  emitterImplAST :: (IvoryArea b, IvoryZero b)
+                 => backend
+                 -> AST.Emitter
+                 -> Emitter b
+  emitterImpl :: backend
               -> AST.Emitter
-              -> [TowerBackendHandler backend b]
-              -> (Emitter b, TowerBackendEmitter backend)
-  handlerImpl :: (IvoryArea a, IvoryZero a)
-              => backend
+              -> [TowerBackendHandler backend]
+              -> TowerBackendEmitter backend
+  handlerImpl :: backend
               -> AST.Handler
               -> [TowerBackendEmitter backend]
-              -> [TowerBackendCallback backend a]
-              -> TowerBackendHandler backend a
+              -> [TowerBackendCallback backend]
+              -> TowerBackendHandler backend
   monitorImpl :: backend
               -> AST.Monitor
               -> [SomeHandler backend]

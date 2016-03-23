@@ -27,6 +27,7 @@ module Ivory.Tower.Tower
   , BaseUtils(..)
   , Unique
   , showUnique
+  , elemOpt
   ) where
 
 import Prelude ()
@@ -35,6 +36,7 @@ import Prelude.Compat
 import qualified Data.Map as Map
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Dependencies
+import Ivory.Tower.Types.Opts
 import Ivory.Tower.Types.SignalCode
 import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Time

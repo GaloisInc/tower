@@ -11,6 +11,7 @@
 module Ivory.Tower.Opts.LockCoarsening
       ( lockCoarsening
       , lockCoarseningName
+      , lockCoarseningMonitors
       , lockCoarseningMonitor
       ) where
 
@@ -23,6 +24,8 @@ import System.Directory
 import qualified Data.Set as Set
 
 import qualified Ivory.Tower.AST as AST
+import Ivory.Tower.Types.Opts
+import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 
 
 lockCoarseningName :: String
@@ -35,31 +38,26 @@ lockCoarsening nbLocksTotal cputimelim ast = do
     then error "insufficient locks given for lockCoarsening"
     else do
       (_,monitors) <- lockCoarseningMonitors (AST.tower_monitors ast) nbLocksTotal cputimelim
-      return ast {AST.tower_transformers = (lockCoarseningName:(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
+      return ast {AST.tower_transformers = ((LockCoarsening OptTower):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
 
   
 lockCoarseningMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
 lockCoarseningMonitors [] _ _ = return (0,[])
-lockCoarseningMonitors list nbLocksTotal cputimelim = do
-  let a = head list
-  let b = tail list
+lockCoarseningMonitors list@(a:b) nbLocksTotal cputimelim = do
   if (null.AST.monitor_handlers $ cleanMonitor a) 
     then do
       (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal) cputimelim
-      return (locksUsed, (a {AST.monitor_globals = [], AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers a))}):monitors)
+      return (locksUsed, (a {AST.monitor_transformers = ((LockCoarsening $ OptMonitor []):(AST.monitor_transformers a))}):monitors)
   else do
     (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal-1) cputimelim
     let locksAvail = nbLocksTotal - locksUsed
-    locks <- attributeLocksMonitor (AST.monitor_globals $ cleanMonitor a) locksAvail cputimelim
-    return (locksUsed + (length locks), (a {AST.monitor_globals = locks, AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers a))}):monitors)
+    locks <- attributeLocksMonitor (map fromSymToString $ staticAnalysisMonitor $ cleanMonitor a) locksAvail cputimelim
+    return (locksUsed + (length locks), (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)}):monitors)
 
 lockCoarseningMonitor :: AST.Monitor -> Int -> Int -> IO (AST.Monitor)
-lockCoarseningMonitor mon nbLocks cputimelim =
-  if (null.AST.monitor_handlers $ cleanMonitor mon) 
-    then return (mon {AST.monitor_globals = [], AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers mon))})
-    else do
-      locks <- attributeLocksMonitor (AST.monitor_globals $ cleanMonitor mon) nbLocks cputimelim
-      return (mon {AST.monitor_globals = locks, AST.monitor_transformers = (lockCoarseningName:(AST.monitor_transformers mon))})
+lockCoarseningMonitor mon nbLocks cputimelim = do
+  (_, val) <- lockCoarseningMonitors [mon] nbLocks cputimelim
+  return $ head val
 
 
 
@@ -68,8 +66,7 @@ cleanAST ast = ast {AST.tower_monitors = filter (not.null.AST.monitor_handlers) 
 
 cleanMonitor :: AST.Monitor -> AST.Monitor
 cleanMonitor mon = 
-    let mon2 = mon {AST.monitor_handlers = filter (not.null.AST.handler_globals) (AST.monitor_handlers mon)} in 
-    mon2 {AST.monitor_globals = map AST.handler_globals (AST.monitor_handlers mon2)}
+    mon {AST.monitor_handlers = filter (not.null.staticAnalysisHandler) (AST.monitor_handlers mon)}
 
 
 isEdge :: [String] -> [String] -> Bool

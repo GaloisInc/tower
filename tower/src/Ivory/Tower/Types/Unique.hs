@@ -3,6 +3,9 @@ module Ivory.Tower.Types.Unique
   , showUnique
   ) where
 
+import Data.List
+import Data.List.Split
+
 data Unique =
   Unique
     { unique_name  :: String
@@ -12,4 +15,3 @@ data Unique =
 showUnique :: Unique -> String
 showUnique (Unique n 1) = n
 showUnique u = unique_name u ++ "_" ++ show (unique_fresh u)
-

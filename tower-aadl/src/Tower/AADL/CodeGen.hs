@@ -52,21 +52,25 @@ instance TowerBackend AADLBackend where
   newtype TowerBackendOutput   AADLBackend
     = AADLOutput ([PackageName], [I.Module] -> [I.Module])
 
-  callbackImpl _be sym f =
+  callbackImpl _be name f =
         AADLCallback
-      $ I.incl
-      $ I.voidProc (T.showUnique sym)
-      $ \r -> I.body
-      $ I.noReturn
-      $ f r
+      $ put (mempty { IAST.modProcs   = visAcc Public f }
+  
+  emitterImplAST _be emitterAst = T.Emitter $ \ref -> I.call_ (procFromEmitter "") ref
+  where
+      sym = T.showUnique (A.emitter_name emitterAst)
+      procFromEmitter :: I.IvoryArea b
+                      => String
+                      -> I.Def('[I.ConstRef s b] 'I.:-> ())
+      procFromEmitter monName = I.importProc sym hdr
+        where hdr = smaccmPrefix $ monName ++ ".h"
 
   emitterImpl _be emitterAst _impl = emitterCode
     where
     emitterCode :: forall b. I.IvoryArea b
                 => (T.Emitter b, TowerBackendEmitter AADLBackend)
     emitterCode =
-      ( T.Emitter $ \ref -> I.call_ (procFromEmitter "") ref
-      , AADLEmitter
+      ( AADLEmitter
          (\monName -> I.incl (procFromEmitter monName
                               :: I.Def('[I.ConstRef s b] 'I.:-> ())
                              ))

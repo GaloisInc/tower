@@ -9,10 +9,9 @@ module Ivory.Tower.Monad.Monitor
   , Monitor'
   , monitor
   , externalMonitor
-  , monitorGetBackend
-  , monitorGetHandlers
   , monitorPutHandler
   , monitorModuleDef
+  , monitorGetBackend
   , liftTower -- XXX UNSAFE TO USE
   ) where
 
@@ -21,13 +20,16 @@ import Prelude.Compat
 
 import MonadLib
 import Control.Monad.Fix
-import Ivory.Tower.Backend
+import Data.Monoid (mconcat)
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
-import Ivory.Tower.Types.Chan
+import Ivory.Language.MemArea (MemArea(..))
 
-import Ivory.Language
+import Ivory.Language hiding (Area)
+import Ivory.Language.Module (ModuleDef)
+import Ivory.Language.Syntax (Module)
+import Ivory.Tower.Backend
 
 newtype Monitor e a = Monitor
   { unMonitor :: forall backend. TowerBackend backend => Monitor' backend e a
@@ -48,46 +50,39 @@ instance Applicative (Monitor e) where
 instance MonadFix (Monitor e) where
   mfix f = Monitor $ mfix (unMonitor . f)
 
-newtype Monitor' backend e a = Monitor'
-  { unMonitor' :: WriterT ([AST.Handler], [SomeHandler backend], ModuleDef) (Tower' backend e) a
+newtype Monitor' b e a = Monitor'
+  { unMonitor' :: WriterT ([AST.Handler], [Module]) (Tower' b e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
 monitor' :: AST.MonitorExternal -> String -> Monitor e () -> Tower e ()
 monitor' t n b = Tower $ do
   u <- freshname n
-  ((), (hast, handlers, moddef)) <- runWriterT $ unMonitor' $ unMonitor b
-  let ast = AST.Monitor u hast (globalsListMonitor hast) t []
-  backend <- towerGetBackend
-  towerPutMonitor ast $ monitorImpl backend ast handlers moddef
-  where
-    globalsListMonitor :: [AST.Handler] -> [[String]]
-    globalsListMonitor hast =
-      map AST.handler_globals hast
+  ((), (hast, modules)) <- runWriterT $ unMonitor' $ unMonitor b
+  let mod = mconcat modules
+  let ast = AST.Monitor u hast t mod []
+  towerPutMonitor ast
     
 monitor :: String -> Monitor e () -> Tower e ()
 monitor = monitor' AST.MonitorDefined
 
-externalMonitor :: String -> Monitor e () -> Tower e ()
-externalMonitor = monitor' AST.MonitorExternal
-
 monitorGetBackend :: Monitor' backend e backend
 monitorGetBackend = Monitor' $ lift towerGetBackend
 
-monitorGetHandlers :: Chan b -> Monitor' backend e [TowerBackendHandler backend b]
-monitorGetHandlers chan = Monitor' $ lift $ towerGetHandlers chan
+externalMonitor :: String -> Monitor e () -> Tower e ()
+externalMonitor = monitor' AST.MonitorExternal
 
-monitorPutHandler :: AST.Handler -> Chan a -> TowerBackendHandler backend a -> Monitor' backend e ()
-monitorPutHandler ast chan h = Monitor' $ do
-  put ([ast], [SomeHandler h], mempty)
-  lift $ towerPutHandler chan h
+monitorPutHandler :: AST.Handler -> Monitor' b e ()
+monitorPutHandler ast = Monitor' $ do
+  put ([ast], mempty)
 
 liftTower :: Tower e a -> Monitor e a
 liftTower a = Monitor $ Monitor' $ lift $ unTower a
 
 monitorModuleDef :: ModuleDef -> Monitor e ()
-monitorModuleDef m = Monitor $ Monitor' $ put (mempty, mempty, m)
+monitorModuleDef m = 
+  Monitor $ Monitor' $ put (mempty,[package "" m])
 
-instance BaseUtils (Monitor' backend) e where
+instance BaseUtils (Monitor' b) e where
   freshname n = Monitor' $ lift $ freshname n
   getEnv = Monitor' $ lift getEnv
 

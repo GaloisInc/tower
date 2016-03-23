@@ -43,7 +43,7 @@ lockCoarsening nbLocksTotal cputimelim ast = do
   
 lockCoarseningMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
 lockCoarseningMonitors [] _ _ = return (0,[])
-lockCoarseningMonitors list@(a:b) nbLocksTotal cputimelim = do
+lockCoarseningMonitors (a:b) nbLocksTotal cputimelim = do
   if (null.AST.monitor_handlers $ cleanMonitor a) 
     then do
       (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal) cputimelim

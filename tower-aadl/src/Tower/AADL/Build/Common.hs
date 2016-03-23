@@ -7,7 +7,8 @@
 module Tower.AADL.Build.Common where
 
 import Data.Char
-import Data.Maybe (maybeToList)
+import Data.Maybe (maybeToList, fromMaybe)
+import System.FilePath
 import Text.PrettyPrint.Leijen hiding ((</>))
 
 import Ivory.Artifact
@@ -141,3 +142,11 @@ data OSSpecific a = OSSpecific
   , osSpecificOptsLibs  :: AADLConfig -> O.Opts -> O.Opts
   }
 
+defaultOptsUpdate :: AADLConfig -> O.Opts -> O.Opts
+defaultOptsUpdate c copts =
+  copts { O.outDir    = Just (dir </> configSrcsDir c)
+        , O.outHdrDir = Just (dir </> configHdrDir  c)
+        , O.outArtDir = Just dir
+        }
+  where
+  dir = fromMaybe "." (O.outDir copts)

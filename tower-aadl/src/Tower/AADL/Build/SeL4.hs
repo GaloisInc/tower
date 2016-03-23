@@ -6,11 +6,8 @@
 module Tower.AADL.Build.SeL4 where
 
 import           System.FilePath ((</>))
-import           Data.Maybe (fromMaybe)
 
 import           Ivory.Artifact
-
-import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import           Tower.AADL.Config (AADLConfig(..), lib)
 import           Tower.AADL.Build.Common
@@ -177,16 +174,6 @@ defaultCAmkESOS =
           Incl a -> Root (artifactPath (libHdrDir cfg) a)
           _      -> l
     , osSpecificTower     = return ()
-    , osSpecificOptsApps  = \cfg copts ->
-        let dir = fromMaybe "." (O.outDir copts)
-        in copts { O.outDir    = Just (dir </> configSrcsDir cfg)
-                 , O.outHdrDir = Just (dir </> configHdrDir  cfg)
-                 , O.outArtDir = Just dir
-                 }
-    , osSpecificOptsLibs  = \cfg copts ->
-        let dir = fromMaybe "." (O.outDir copts)
-        in copts { O.outDir    = Just (dir </> libSrcDir cfg)
-                 , O.outHdrDir = Just (dir </> libHdrDir cfg)
-                 , O.outArtDir = Just dir
-                 }
+    , osSpecificOptsApps  = defaultOptsUpdate
+    , osSpecificOptsLibs  = defaultOptsUpdate
     }

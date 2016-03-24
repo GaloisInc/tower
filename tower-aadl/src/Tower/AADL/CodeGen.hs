@@ -22,6 +22,7 @@ import qualified Ivory.Artifact as I
 
 import qualified Ivory.Tower.AST                as A
 import           Ivory.Tower.Backend
+import           Ivory.Tower.Types.Backend
 import qualified Ivory.Tower.Types.Dependencies as T
 import qualified Ivory.Tower.Types.Emitter      as T
 import qualified Ivory.Tower.Types.SignalCode   as T
@@ -37,7 +38,7 @@ type PackageName = String
 
 data AADLBackend = AADLBackend
 
-instance TowerBackend AADLBackend where
+instance TowerBackendTypes AADLBackend where
   newtype TowerBackendCallback AADLBackend a
     = AADLCallback I.ModuleDef
     deriving Monoid
@@ -52,6 +53,8 @@ instance TowerBackend AADLBackend where
   newtype TowerBackendOutput   AADLBackend
     = AADLOutput ([PackageName], [I.Module] -> [I.Module])
 
+
+instance TowerBackend AADLBackend where
   callbackImpl _be sym f =
         AADLCallback
       $ I.incl

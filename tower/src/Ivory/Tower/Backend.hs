@@ -9,21 +9,9 @@ import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.Unique
+import Ivory.Tower.Types.Backend
 
-data SomeHandler backend = forall a. SomeHandler (TowerBackendHandler backend a)
-
-class TowerBackend backend where
-  -- XXX should probably be type families, not data families, and maybe at the
-  -- top-level (without relying on the class).
-
-  -- Type correponds to the channel type
-  data TowerBackendCallback  backend :: Area * -> *
-  data TowerBackendEmitter   backend :: *
-  -- Type correponds to the channel type
-  data TowerBackendHandler   backend :: Area * -> *
-  data TowerBackendMonitor   backend :: *
-  data TowerBackendOutput    backend :: *
-
+class (TowerBackendTypes backend) => TowerBackend backend where
   callbackImpl :: IvoryArea a
                => backend
                -- Callback identifier, used to construct full callback name

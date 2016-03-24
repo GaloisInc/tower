@@ -24,6 +24,7 @@ import MonadLib
 import Control.Monad.Fix
 import Ivory.Tower.Backend
 import Ivory.Tower.Monad.Base
+import Ivory.Tower.Types.Backend
 import Ivory.Tower.Types.Chan
 import qualified Ivory.Tower.Types.ChanMap as ChanMap
 import Ivory.Tower.Types.Dependencies

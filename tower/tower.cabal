@@ -45,6 +45,7 @@ library
                         Ivory.Tower.Monad.Tower,
 
                         -- Types
+                        Ivory.Tower.Types.Backend,
                         Ivory.Tower.Types.Chan,
                         Ivory.Tower.Types.Dependencies,
                         Ivory.Tower.Types.Emitter,

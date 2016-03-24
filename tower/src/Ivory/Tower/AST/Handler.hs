@@ -9,6 +9,7 @@ import Ivory.Tower.AST.Chan
 import Ivory.Tower.AST.Emitter
 import Ivory.Tower.AST.Comment
 import Ivory.Tower.Types.Opts
+import Ivory.Tower.Types.Backend
 
 import qualified Ivory.Language.Syntax.AST as AST
 

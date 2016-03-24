@@ -26,6 +26,7 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Chan
+import Ivory.Tower.Types.Backend
 
 import Ivory.Language
 

@@ -32,6 +32,7 @@ import Prelude.Compat
 import MonadLib
 import Control.Monad.Fix
 import Ivory.Tower.Backend
+import Ivory.Tower.Types.Backend
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Monad.Base

@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 -- Create Ramses build script.
 --
 -- (c) 2015 Galois, Inc.
@@ -6,6 +7,8 @@
 module Tower.AADL.Build.Common where
 
 import Data.Char
+import Data.Maybe (maybeToList, fromMaybe)
+import System.FilePath
 import Text.PrettyPrint.Leijen hiding ((</>))
 
 import Ivory.Artifact
@@ -14,6 +17,7 @@ import Ivory.Tower
 import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import Tower.AADL.Config (AADLConfig(..))
+import Tower.AADL.Compile
 
 data Required
   = Req
@@ -115,6 +119,9 @@ mkLib c aadlFileNames =
 makefileName :: String
 makefileName = "Makefile"
 
+aadlDocNames :: CompiledDocs -> [String]
+aadlDocNames docs = map docName $
+  maybeToList (tyDoc docs) ++ thdDocs docs
 --------------------------------------------------------------------------------
 -- Helpers
 
@@ -125,13 +132,21 @@ shellVar = map toUpper
 -- Support for OS Specific Code generation
 --------------------------------------------------------------------------------
 
-data OSSpecific a e = OSSpecific
+data OSSpecific a = OSSpecific
   { osSpecificName      :: String
   , osSpecificConfig    :: a
-  , osSpecificArtifacts :: String -> AADLConfig -> [Located Artifact]
+  , osSpecificArtifacts :: String -> AADLConfig -> [String] -> [Located Artifact]
   , osSpecificSrcDir    :: AADLConfig -> Located Artifact -> Located Artifact
-  , osSpecificTower     :: Tower e ()
+  , osSpecificTower     :: forall e. Tower e ()
   , osSpecificOptsApps  :: AADLConfig -> O.Opts -> O.Opts
   , osSpecificOptsLibs  :: AADLConfig -> O.Opts -> O.Opts
   }
 
+defaultOptsUpdate :: AADLConfig -> O.Opts -> O.Opts
+defaultOptsUpdate c copts =
+  copts { O.outDir    = Just (dir </> configSrcsDir c)
+        , O.outHdrDir = Just (dir </> configHdrDir  c)
+        , O.outArtDir = Just dir
+        }
+  where
+  dir = fromMaybe "." (O.outDir copts)

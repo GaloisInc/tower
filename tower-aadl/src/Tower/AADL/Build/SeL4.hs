@@ -6,11 +6,8 @@
 module Tower.AADL.Build.SeL4 where
 
 import           System.FilePath ((</>))
-import           Data.Maybe (fromMaybe)
 
 import           Ivory.Artifact
-
-import qualified Ivory.Compile.C.CmdlineFrontend as O
 
 import           Tower.AADL.Config (AADLConfig(..), lib)
 import           Tower.AADL.Build.Common
@@ -122,8 +119,8 @@ makefileApp dir =
   where
   fromApps fl = "apps" </> dir </> fl
 
-camkesArtifacts :: String -> AADLConfig -> [Located Artifact]
-camkesArtifacts appname cfg = map Root ls
+camkesArtifacts :: String -> AADLConfig -> [String] -> [Located Artifact]
+camkesArtifacts appname cfg aadl_docs = map Root ls
   where
   ls :: [Artifact]
   ls = artifactString
@@ -144,6 +141,9 @@ camkesArtifacts appname cfg = map Root ls
        [ artifactString
            makefileName
            (renderMkStmts (makefileApp appname))
+       , artifactString
+           componentLibsName
+           (mkLib cfg aadl_docs)
        ] ++
        -- libs
        map (artifactPath l)
@@ -159,7 +159,7 @@ camkesArtifacts appname cfg = map Root ls
          ]
   l = lib cfg
 
-defaultCAmkESOS :: OSSpecific () e
+defaultCAmkESOS :: OSSpecific ()
 defaultCAmkESOS =
   let libSrcDir cfg = lib cfg </> "src"
       libHdrDir cfg = lib cfg </> "include"
@@ -174,16 +174,6 @@ defaultCAmkESOS =
           Incl a -> Root (artifactPath (libHdrDir cfg) a)
           _      -> l
     , osSpecificTower     = return ()
-    , osSpecificOptsApps  = \cfg copts ->
-        let dir = fromMaybe "." (O.outDir copts)
-        in copts { O.outDir    = Just (dir </> configSrcsDir cfg)
-                 , O.outHdrDir = Just (dir </> configHdrDir  cfg)
-                 , O.outArtDir = Just dir
-                 }
-    , osSpecificOptsLibs  = \cfg copts ->
-        let dir = fromMaybe "." (O.outDir copts)
-        in copts { O.outDir    = Just (dir </> libSrcDir cfg)
-                 , O.outHdrDir = Just (dir </> libHdrDir cfg)
-                 , O.outArtDir = Just dir
-                 }
+    , osSpecificOptsApps  = defaultOptsUpdate
+    , osSpecificOptsLibs  = defaultOptsUpdate
     }

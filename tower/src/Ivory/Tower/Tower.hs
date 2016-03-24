@@ -36,7 +36,6 @@ import Prelude ()
 import Prelude.Compat
 
 import qualified Data.Map as Map
-import Ivory.Tower.Types.Backend
 import Ivory.Tower.Types.Chan
 import Ivory.Tower.Types.Dependencies
 import Ivory.Tower.Types.SignalCode

@@ -87,10 +87,10 @@ runTower :: TowerBackend backend
          -> Tower e ()
          -> e
          -> [AST.Tower -> IO AST.Tower]
-         -> IO (AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
+         -> IO (AST.Tower, [TowerBackendMonitor backend], Dependencies, SignalCode)
 runTower backend t e optslist = do
   a2 <- foldlM (\aaa f -> f aaa) a optslist
-  return (a2, towerImpl backend a2 monitors, output_deps output, output_sigs output)
+  return (a2, monitors, output_deps output, output_sigs output)
   where
   a = mappend (mempty { AST.tower_monitors = mast, AST.tower_transformers = [] }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of

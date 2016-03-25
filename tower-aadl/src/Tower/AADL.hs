@@ -34,6 +34,7 @@ import qualified Ivory.Compile.C.CmdlineFrontend as O
 import qualified Ivory.Compile.C.Types as O
 
 import           Ivory.Tower
+import           Ivory.Tower.Backend
 import qualified Ivory.Tower.AST as AST
 import           Ivory.Tower.AST.Graph (graphviz, messageGraph)
 import           Ivory.Tower.Options
@@ -80,7 +81,8 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   let (cfg',osspecific)       =  fromEnv env
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
-  (ast, code, deps, sigs) <-  runTower AADLBackend twr env []
+  (ast, monitors, deps, sigs) <-  runTower AADLBackend twr env []
+  let code = towerImpl AADLBackend ast monitors
   let missingCallbacks = handlersMissingCallbacks ast
   when (not (null missingCallbacks)) $ do
     putStrLn "Error: The following handlers are missing callbacks:"

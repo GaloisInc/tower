@@ -62,7 +62,7 @@ callback b = handlerName >>= \ nm -> Handler $ do
                 }
   where
     block = snd $ runIvory $ noReturn $ b arg
-    (var,_) = genVar initialClosure
+    (var,_) = genVar initialClosure -- initial closure is ok until we have one argument per function
     arg     = wrapVar var
     
 

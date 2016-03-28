@@ -40,10 +40,10 @@ lockCoarsening nbLocksTotal cputimelim ast = do
       (_,monitors) <- lockCoarseningMonitors (AST.tower_monitors ast) nbLocksTotal cputimelim
       return ast {AST.tower_transformers = ((LockCoarsening OptTower):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
 
-  
 lockCoarseningMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
 lockCoarseningMonitors [] _ _ = return (0,[])
-lockCoarseningMonitors (a:b) nbLocksTotal cputimelim = do
+lockCoarseningMonitors (mon:b) nbLocksTotal cputimelim = do
+  let a = mon {AST.monitor_handlers = map applyStaticAnalysisHandler $ AST.monitor_handlers mon}
   if (null.AST.monitor_handlers $ cleanMonitor a) 
     then do
       (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal) cputimelim
@@ -53,6 +53,10 @@ lockCoarseningMonitors (a:b) nbLocksTotal cputimelim = do
     let locksAvail = nbLocksTotal - locksUsed
     locks <- attributeLocksMonitor (map fromSymToString $ staticAnalysisMonitor $ cleanMonitor a) locksAvail cputimelim
     return (locksUsed + (length locks), (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)}):monitors)
+  where
+    applyStaticAnalysisHandler :: AST.Handler -> AST.Handler
+    applyStaticAnalysisHandler han =
+      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler han):(AST.handler_transformers han))}
 
 lockCoarseningMonitor :: AST.Monitor -> Int -> Int -> IO (AST.Monitor)
 lockCoarseningMonitor mon nbLocks cputimelim = do

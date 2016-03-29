@@ -89,12 +89,18 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
   hFlush tmpHandle
   hClose tmpHandle
   (_, out, _) <- readProcessWithExitCode "open-wbo" ["-cpu-lim="++(show cputimelim), tmpName] ""
-  let outputLine = drop 2 $ (concat $ filter (\x -> compare "v" (take 1 x) == EQ) (lines out))
-  let (list2::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
-  let sol = map (\x -> Set.elemAt (x-1) associationSet) list2
-  let sortsol = filter (not.null) $ map (\i -> concat $ map (\s -> keepString s i) sol) [1..nbLocks]
-  removeFile tmpName
-  return sortsol
+  let outputStatus = drop 2 $ (concat $ filter (\x -> compare "s" (take 1 x) == EQ) (lines out))
+  if compare "SATISFIABLE" (take 11 outputStatus) == EQ
+    then do
+    let outputLine = drop 2 $ (concat $ filter (\x -> compare "v" (take 1 x) == EQ) (lines out))
+    let (list2::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
+    let sol = map (\x -> Set.elemAt (x-1) associationSet) list2
+    let sortsol = filter (not.null) $ map (\i -> concat $ map (\s -> keepString s i) sol) [1..nbLocks]
+    removeFile tmpName
+    return sortsol
+  else do
+    removeFile tmpName
+    error $ "While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time."
 
   where
     keepString::String->Int->[String]

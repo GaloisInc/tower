@@ -90,7 +90,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
   hClose tmpHandle
   (_, out, _) <- readProcessWithExitCode "open-wbo" ["-cpu-lim="++(show cputimelim), tmpName] ""
   let outputStatus = drop 2 $ (concat $ filter (\x -> compare "s" (take 1 x) == EQ) (lines out))
-  if compare "SATISFIABLE" (take 11 outputStatus) == EQ
+  if compare "OPTIMUM FOUND" (take 13 outputStatus) == EQ || compare "SATISFIABLE" (take 11 outputStatus) == EQ
     then do
     let outputLine = drop 2 $ (concat $ filter (\x -> compare "v" (take 1 x) == EQ) (lines out))
     let (list2::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)

@@ -58,6 +58,7 @@ import           Tower.AADL.Render.Types
 import           Tower.AADL.Platform
 
 import qualified Ivory.Tower.AST as A
+import qualified Data.List.NonEmpty as NE
 
 --------------------------------------------------------------------------------
 
@@ -124,7 +125,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
     monitorHasEmptyHandler :: A.Monitor -> [A.Handler]
     monitorHasEmptyHandler = catMaybes . map handlerIsEmpty . A.monitor_handlers
     handlerIsEmpty :: A.Handler -> Maybe A.Handler
-    handlerIsEmpty h = if (null (A.handler_callbacks h))
+    handlerIsEmpty h = if (null (NE.toList $ A.handler_callbacks h))
                           then Just h
                           else Nothing
 

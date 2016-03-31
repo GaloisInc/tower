@@ -106,7 +106,7 @@ towerChanHandlers t c = do
 -- handle c.
 monitorChanHandlers :: Monitor -> Chan -> [Handler]
 monitorChanHandlers m c = filter p (monitor_handlers m)
-  where p h = handler_chan h == c
+  where p h = (handler_chan h) == c
 
 -- For a given handler, the list of all channels it emits on.
 handlerOutboundChans :: Handler -> [Chan]

@@ -26,6 +26,7 @@ import           Tower.AADL.Platform
 import           Tower.AADL.Priorities
 import           Tower.AADL.Names
 import           Tower.AADL.Threads
+import qualified Data.List.NonEmpty             as NonEmpty
 
 -- XXX
 --import Debug.Trace
@@ -330,7 +331,7 @@ mkCallbacksHandler c f h fileNm =
     WithFile -> map (mkCFile c fileNm,) nms
     NoFile   -> map ("",) nms
   where
-  nms = map U.showUnique (A.handler_callbacks h)
+  nms = map U.showUnique (NonEmpty.toList $ A.handler_callbacks h)
 
 fromInputChan :: AADLConfig
               -> Files

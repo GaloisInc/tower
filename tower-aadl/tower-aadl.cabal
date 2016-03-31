@@ -29,6 +29,7 @@ library
                , base-compat
                , containers
                , filepath
+               , semigroups
                , wl-pprint
                , ivory >= 0.1.0.2
                , ivory-artifact

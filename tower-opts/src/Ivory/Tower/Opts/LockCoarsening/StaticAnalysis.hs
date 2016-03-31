@@ -21,6 +21,7 @@ import Ivory.Language.Syntax.Names
 import Ivory.Language.Syntax
 import Ivory.Language.Syntax.AST
 import qualified Ivory.Tower.AST as AST
+import qualified Data.List.NonEmpty as NE
 --import Prelude
 
 fromSymToString :: [Sym] -> [String]
@@ -30,7 +31,7 @@ staticAnalysisMonitor :: AST.Monitor -> [[Sym]]
 staticAnalysisMonitor m = map staticAnalysisHandler $ AST.monitor_handlers m
 
 staticAnalysisHandler :: AST.Handler -> [Sym]
-staticAnalysisHandler h = nub $ concat $ map analyseProc (AST.handler_callbacksAST h)
+staticAnalysisHandler h = nub $ concat $ map analyseProc (NE.toList $ AST.handler_callbacksAST h)
 
 analyseProc :: Proc -> [Sym]
 analyseProc proc = 

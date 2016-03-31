@@ -30,6 +30,8 @@ import Prelude ()
 import Prelude.Compat
 
 import MonadLib
+import Data.List.NonEmpty
+import Data.List (null)
 import Control.Monad.Fix
 import Ivory.Tower.Backend
 import Ivory.Tower.Types.Backend
@@ -87,14 +89,14 @@ handler :: (IvoryArea a, IvoryZero a)
 handler (ChanOutput chan@(Chan chanast)) n b = Monitor $ do
   u <- freshname n
   (r, (part, emitters, callast, callbacks)) <- runWriterT $ runReaderT u $ unHandler' $ unHandler b
+  if (null callast) || (null $ partialCallbacks part) then error $ (showUnique u) ++ " is a handler with no callbacks inside.\n"
+  else do
+    let handlerast = AST.Handler u chanast
+          (partialEmitters part) (fromList $ partialCallbacks part) (fromList $ callast) (partialComments part) []
+    backend <- monitorGetBackend
+    monitorPutHandler handlerast chan $ handlerImpl backend handlerast emitters callbacks
 
-  let handlerast = AST.Handler u chanast
-        (partialEmitters part) (partialCallbacks part) (callast) (partialComments part) []
-
-  backend <- monitorGetBackend
-  monitorPutHandler handlerast chan $ handlerImpl backend handlerast emitters callbacks
-
-  return r
+    return r
 
 handlerName :: Handler a e Unique
 handlerName = Handler $ Handler' ask

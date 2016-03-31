@@ -24,6 +24,7 @@ library
                         monadLib,
                         containers,
                         ghc-prim,
+                        semigroups,
                         mainland-pretty,
                         text,
                         filepath,

@@ -27,7 +27,7 @@ module Ivory.Tower.Monad.Handler
   ) where
 
 import Prelude ()
-import Prelude.Compat
+import Prelude.Compat hiding (null)
 
 import MonadLib
 import Data.List.NonEmpty

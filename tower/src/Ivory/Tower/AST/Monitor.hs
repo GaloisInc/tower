@@ -12,10 +12,15 @@ data Monitor = Monitor
   , monitor_external     :: MonitorExternal
   , monitor_moduledef    :: I.Module
   , monitor_transformers :: [Opt]
-  } deriving (Eq, Show, Ord)
+  } deriving (Eq, Show)
 
 monitorName :: Monitor -> String
 monitorName = showUnique . monitor_name
+
+instance Ord Monitor where
+  compare a b = compare 
+    (monitor_name a, monitor_handlers a, monitor_external a, monitor_transformers a) 
+    (monitor_name b, monitor_handlers b, monitor_external b, monitor_transformers b) 
 
 data MonitorExternal =
     MonitorDefined

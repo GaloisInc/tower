@@ -21,7 +21,12 @@ data Handler = Handler
   , handler_callbacksAST :: [AST.Proc]
   , handler_comments     :: [Comment]
   , handler_transformers :: [Opt]
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Eq)
+
+instance Ord Handler where
+  compare a b = compare 
+    (handler_name a, handler_chan a, handler_emitters a, handler_callbacks a, handler_comments a, handler_transformers a) 
+    (handler_name b, handler_chan b, handler_emitters b, handler_callbacks b, handler_comments b, handler_transformers b) 
 
 handlerName :: Handler -> String
 handlerName = showUnique . handler_name

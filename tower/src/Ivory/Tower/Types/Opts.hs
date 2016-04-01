@@ -26,3 +26,14 @@ data OptLockCoarsening = OptVoid
                        | OptMonitor [[String]]
                        | OptHandler [String]
   deriving (Show, Read, Eq, Ord)
+
+data FastOpt = FastOpt {opt :: Opt}
+  deriving (Show, Read, Ord)
+
+instance Eq FastOpt where
+  (==) arg1 arg2 = 
+    let a = opt arg1 in
+    let b = opt arg2 in
+    (===) a b
+
+--TODO write an instance for FastOpt Ord

@@ -155,7 +155,7 @@ isFromExternalMonH t h =
   ms       = A.tower_monitors t
   extMs    = filter isExternalMonitor ms
   extHs    = concatMap A.monitor_handlers extMs
-  fromExts = map snd $ concatMap (A.handlerOutboundHandlers t) extHs
+  fromExts = map (A.handler.snd) $ concatMap (A.handlerOutboundHandlers t) extHs
 
 -- Is this an external monitor?
 isExternalMonitor :: A.Monitor -> Bool

@@ -12,18 +12,38 @@ data Monitor = Monitor
   , monitor_external     :: MonitorExternal
   , monitor_moduledef    :: I.Module
   , monitor_transformers :: [Opt]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
 monitorName :: Monitor -> String
 monitorName = showUnique . monitor_name
-
-instance Ord Monitor where
-  compare a b = compare 
-    (monitor_name a, monitor_handlers a, monitor_external a, monitor_transformers a) 
-    (monitor_name b, monitor_handlers b, monitor_external b, monitor_transformers b) 
 
 data MonitorExternal =
     MonitorDefined
   | MonitorExternal
   deriving (Show, Read, Eq, Ord)
  
+
+
+data MonitorFast = MonitorFast
+  { monitor :: Monitor }
+
+instance Ord MonitorFast where
+  compare arg1 arg2 = 
+    let a = monitor arg1 in
+    let b = monitor arg2 in
+    compare 
+      (monitor_name a, map FastOpt $ monitor_transformers a) 
+      (monitor_name b, map FastOpt $ monitor_transformers b) 
+
+instance Eq MonitorFast where
+  (==) arg1 arg2 =
+    let a = monitor arg1 in
+    let b = monitor arg2 in
+    (==) 
+      (monitor_name a, map FastOpt $ monitor_transformers a) 
+      (monitor_name b, map FastOpt $ monitor_transformers b) 
+
+instance Show MonitorFast where
+  show arg1 =
+    let a = monitor arg1 in
+    show (monitor_name a, map FastOpt $ monitor_transformers a) 

@@ -82,7 +82,7 @@ compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   let (cfg',osspecific)       =  fromEnv env
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
-  (ast, monitors, deps, sigs) <-  runTower AADLBackend twr env []
+  (ast, _monitors, deps, sigs) <-  runTower AADLBackend twr env []
   --let code = towerImpl AADLBackend ast monitors
   let code = towerImpl AADLBackend (ast) (map (monitorImplTD ast) $ AST.tower_monitors ast)
   let missingCallbacks = handlersMissingCallbacks ast

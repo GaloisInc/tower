@@ -28,11 +28,9 @@ import qualified Ivory.Tower.Types.Emitter      as T
 import qualified Ivory.Tower.Types.SignalCode   as T
 import qualified Ivory.Tower.Types.Unique       as T
 import qualified Ivory.Language.Syntax.AST as IAST
-import qualified Ivory.Language.Syntax.Names as IAST
 import qualified Ivory.Language.Syntax.Type as TIAST
 
 import qualified Ivory.Language.Module as Mod
-import qualified Ivory.Language.Monad as Mon
 
 import           Tower.AADL.Names
 

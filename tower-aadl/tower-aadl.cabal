@@ -28,6 +28,7 @@ library
   build-depends: base >= 4.6
                , base-compat
                , containers
+               , monadLib
                , filepath
                , semigroups
                , wl-pprint

@@ -20,17 +20,26 @@ import           Prelude.Compat
 import qualified Ivory.Language as I
 import qualified Ivory.Artifact as I
 
-import qualified Ivory.Tower.AST                as A
+import qualified Ivory.Tower.AST                as AST
 import           Ivory.Tower.Backend
 import           Ivory.Tower.Types.Backend
 import qualified Ivory.Tower.Types.Dependencies as T
 import qualified Ivory.Tower.Types.Emitter      as T
 import qualified Ivory.Tower.Types.SignalCode   as T
 import qualified Ivory.Tower.Types.Unique       as T
+import qualified Ivory.Language.Syntax.AST as IAST
+import qualified Ivory.Language.Syntax.Names as IAST
+import qualified Ivory.Language.Syntax.Type as TIAST
+
+import qualified Ivory.Language.Module as Mod
+import qualified Ivory.Language.Monad as Mon
 
 import           Tower.AADL.Names
 
 import qualified Data.Map.Strict as M
+import qualified Data.List.NonEmpty as NE
+import Ivory.Language.Proc (initialClosure, genVar)
+import MonadLib (put)
 
 --------------------------------------------------------------------------------
 
@@ -75,7 +84,7 @@ instance TowerBackend AADLBackend where
                              ))
       )
       where
-      sym = T.showUnique (A.emitter_name emitterAst)
+      sym = T.showUnique (AST.emitter_name emitterAst)
       procFromEmitter :: I.IvoryArea b
                       => String
                       -> I.Def('[I.ConstRef s b] 'I.:-> ())
@@ -98,7 +107,7 @@ instance TowerBackend AADLBackend where
     where
     nm = threadFile ast
     handlerModules :: SomeHandler AADLBackend -> I.ModuleDef
-    handlerModules (SomeHandler (AADLHandler h)) = h (A.monitorName ast)
+    handlerModules (SomeHandler (AADLHandler h)) = h (AST.monitorName ast)
 
   towerImpl _be ast ms =
     AADLOutput
@@ -110,26 +119,26 @@ instance TowerBackend AADLBackend where
     (actPkgs, actMods) = activeSrcs ast
     mkMod (nm, mMod) deps = I.package nm $ mapM_ I.depend deps >> mMod
 
-activeSrcs :: A.Tower -> ([PackageName], [I.Module])
-activeSrcs t = unzip $ map activeSrc (A.towerThreads t)
+activeSrcs :: AST.Tower -> ([PackageName], [I.Module])
+activeSrcs t = unzip $ map activeSrc (AST.towerThreads t)
 
-activeSrc :: A.Thread -> (PackageName, I.Module)
+activeSrc :: AST.Thread -> (PackageName, I.Module)
 activeSrc t =
   case t of
-    A.PeriodThread p
+    AST.PeriodThread p
       -> ( pkg
          , I.package pkg $ do
            I.incl $ mkPeriodCallback p
            I.incl $ mkPeriodEmitter  p
          )
       where pkg = periodicCallback p
-    A.InitThread{}
+    AST.InitThread{}
       -> ( initCallback
          , I.package initCallback $ do
            I.incl mkInitCallback
            I.incl mkInitEmitter
          )
-    A.SignalThread s
+    AST.SignalThread s
       -> ( pkg
          , I.package pkg $ do
            I.incl $ mkSignalCallback s
@@ -137,14 +146,14 @@ activeSrc t =
          )
       where pkg = signalCallback s
 
-mkPeriodCallback :: A.Period
+mkPeriodCallback :: AST.Period
                  -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
 mkPeriodCallback p =
   I.proc (periodicCallback p) $ \time -> I.body $
     I.call_ (mkPeriodEmitter p) time
 
-mkPeriodEmitter :: A.Period -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
-mkPeriodEmitter p = I.importProc (periodicEmitter p) (threadEmitterHeader $ A.PeriodThread p) -- XXX pass in higher up
+mkPeriodEmitter :: AST.Period -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkPeriodEmitter p = I.importProc (periodicEmitter p) (threadEmitterHeader $ AST.PeriodThread p) -- XXX pass in higher up
 
 mkInitCallback :: I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
 mkInitCallback =
@@ -152,16 +161,16 @@ mkInitCallback =
     I.call_ mkInitEmitter time
 
 mkInitEmitter :: I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
-mkInitEmitter = I.importProc initEmitter (threadEmitterHeader $ A.InitThread A.Init) -- XXX pass in higher up
+mkInitEmitter = I.importProc initEmitter (threadEmitterHeader $ AST.InitThread AST.Init) -- XXX pass in higher up
 
-mkSignalCallback :: A.Signal
+mkSignalCallback :: AST.Signal
                  -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
 mkSignalCallback s =
   I.proc (signalCallback s) $ \time -> I.body $
     I.call_ (mkSignalEmitter s) time
 
-mkSignalEmitter :: A.Signal -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
-mkSignalEmitter s = I.importProc (signalEmitter s) (threadEmitterHeader $ A.SignalThread s)
+mkSignalEmitter :: AST.Signal -> I.Def ('[I.ConstRef s ('I.Stored TowerTime)] 'I.:-> ())
+mkSignalEmitter s = I.importProc (signalEmitter s) (threadEmitterHeader $ AST.SignalThread s)
 
 genIvoryCode :: TowerBackendOutput AADLBackend
              -> T.Dependencies
@@ -189,3 +198,64 @@ mkSignalCode deps sigNm
   = I.package sigNm (mapM_ I.depend deps >> (s (return ())))
 
 type TowerTime = I.Sint64
+
+
+
+-------------------
+-- TOP DOWN ANALYSIS
+-------------------
+
+callbackImplTD :: T.Unique -> IAST.Proc -> (I.ModuleDef)
+callbackImplTD sym f = 
+  let p = f {IAST.procSym = (T.showUnique sym)} in
+  let inclp = put (mempty { IAST.modProcs   = Mod.visAcc Mod.Public p }) in
+  (inclp)
+
+emitterImplTD :: AST.Tower -> AST.Emitter -> String -> I.ModuleDef
+emitterImplTD tow ast monName = 
+  let inclprocFromEmitter = put (mempty { IAST.modImports   = [procFromEmitter]}) in
+  inclprocFromEmitter
+  where
+    emitter_type :: TIAST.Type
+    emitter_type =  TIAST.tType $ head $ IAST.procArgs $ NE.head $ AST.handler_callbacksAST $ head subscribedHandlers
+
+    subscribedHandlers = filter (\x -> isListening $ AST.handler_chan x) allHandlers
+    -- dont know why it works
+    allHandlers = concat $ map (AST.monitor_handlers) (AST.tower_monitors tow)
+    isListening (AST.ChanSync sc) = sc == (AST.emitter_chan ast)
+    isListening _ = False
+
+    sym = T.showUnique (AST.emitter_name ast)
+    procFromEmitter :: IAST.Import
+    procFromEmitter = IAST.Import
+                      { IAST.importSym      = sym
+                      , IAST.importFile     = hdr
+                      , IAST.importRetTy    = TIAST.TyVoid
+                      , IAST.importArgs     = [TIAST.Typed emitter_type var]
+                      , IAST.importRequires = []
+                      , IAST.importEnsures  = []
+                      }
+      where 
+        hdr = smaccmPrefix $ monName ++ ".h"
+        (var,_) = genVar initialClosure
+
+
+handlerImplTD :: AST.Tower -> AST.Handler -> String -> I.ModuleDef
+handlerImplTD tow ast = \ monName ->
+  let cbdefs::(NE.NonEmpty I.ModuleDef) = NE.map (\(x,y) -> callbackImplTD x y) (NE.zip (AST.handler_callbacks ast) (AST.handler_callbacksAST ast)) in
+  let emitters = map (emitterImplTD tow) $ AST.handler_emitters ast in
+  let ems = [ e monName | e <- emitters ]
+  in
+  (sequence_ cbdefs) >> (mconcat ems)
+
+monitorImplTD :: AST.Tower -> AST.Monitor -> TowerBackendMonitor AADLBackend
+monitorImplTD tow ast = 
+  let (moddef::I.ModuleDef) = put $ AST.monitor_moduledef ast in
+  let handlers = [ handlerImplTD tow hast (AST.monitorName ast) |hast <- reverse $ AST.monitor_handlers ast] in 
+  AADLMonitor $
+    ( nm
+    , do mconcat handlers
+         moddef
+    )
+  where
+    nm = threadFile ast

@@ -6,3 +6,4 @@ TAGS
 *.aadl
 *.swp
 .stack-work
+/tower-aadl/test_external_codegen

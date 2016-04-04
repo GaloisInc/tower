@@ -64,3 +64,16 @@ executable test-echronos
                , tower-aadl
   default-language: Haskell2010
   ghc-options:      -Wall
+
+executable test-external
+  hs-source-dirs:   test
+  main-is:          External.hs
+  build-depends: base >= 4.6
+               , base-compat
+               , ivory >= 0.1.0.1
+               , tower
+               , tower-config
+               , tower-aadl
+  default-language: Haskell2010
+  ghc-options:      -Wall
+

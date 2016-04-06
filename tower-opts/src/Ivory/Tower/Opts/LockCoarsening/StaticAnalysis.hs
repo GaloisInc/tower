@@ -24,6 +24,9 @@ import qualified Ivory.Tower.AST as AST
 import qualified Data.List.NonEmpty as NE
 --import Prelude
 
+import Ivory.HW (hw_moduledef)
+import Ivory.Language.Module (package)
+
 fromSymToString :: [Sym] -> [String]
 fromSymToString a = a;
 
@@ -89,7 +92,10 @@ analyseStmt stmt = case stmt of
   Assign _ _ e1 -> analyseExpr e1
     --  Simple assignment.
 
-  Call _ _ _ tel -> concat $ map (analyseExpr . tValue) tel
+  Call _ _ name tel -> (concat $ map (analyseExpr . tValue) tel) ++
+    case name of
+      NameSym sym -> if sym `elem` unsafeList then [registerSym] else []
+      NameVar var -> error "usage of function pointers, which is illegal"
     --  Function call.  The optional variable is where to store the result.  It
     -- is expected that the @Expr@ passed for the function symbol will have the
     -- same type as the combination of the types for the arguments, and the
@@ -120,6 +126,14 @@ analyseStmt stmt = case stmt of
 
   Comment _ -> []
     --  User comment, can be used to output a comment in the backend.
+  where
+    unsafeList :: [Sym]
+    unsafeList = map procSym $ (public proclist) ++ (private proclist)
+    proclist = modProcs $ package "" hw_moduledef
+
+    registerSym :: Sym
+    registerSym = "__TOWER_reg_usage"
+
 
 analyseExpr :: Expr -> [Sym]
 analyseExpr e = case e of

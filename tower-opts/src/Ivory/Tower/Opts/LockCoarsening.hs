@@ -158,7 +158,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
           " -" ++ (makeLock state j)) [(i,j) | i<-[1..(nbLocks-1)], j<-[(i+1)..nbLocks]]
 
     softClauses :: [String]
-    softClauses = concat $ map genClause maxCliques
+    softClauses = genClause list--concat $ map genClause maxCliques
 
     genClause :: [[String]] -> [String]
     genClause clique = 

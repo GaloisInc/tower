@@ -15,7 +15,6 @@ module Ivory.Tower.Opts.LockCoarsening
       , lockCoarseningMonitor
       ) where
 
-import Data.Algorithm.MaximalCliques
 import Data.List
 import Data.List.Split
 import System.IO
@@ -72,10 +71,6 @@ cleanMonitor :: AST.Monitor -> AST.Monitor
 cleanMonitor mon = 
     mon {AST.monitor_handlers = filter (not.null.staticAnalysisHandler) (AST.monitor_handlers mon)}
 
-
-isEdge :: [String] -> [String] -> Bool
-isEdge a b= null $ intersect a b
-
 allpairs :: [t] -> [(t,t)]
 allpairs [] = []
 allpairs [_] = []
@@ -117,10 +112,6 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     associationSet :: Set.Set String
     associationSet = Set.fromList (concat $ map (\s -> map (makeLockRaw s) [1..nbLocks]) allStates)
 
-    maxCliques :: [[[String]]]
-    maxCliques = getMaximalCliques isEdge list
-
-
     makeLockRaw :: String -> Int -> String
     makeLockRaw state lockid = state ++ "__" ++ (show lockid)
 
@@ -158,7 +149,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
           " -" ++ (makeLock state j)) [(i,j) | i<-[1..(nbLocks-1)], j<-[(i+1)..nbLocks]]
 
     softClauses :: [String]
-    softClauses = genClause list--concat $ map genClause maxCliques
+    softClauses = genClause list
 
     genClause :: [[String]] -> [String]
     genClause clique = 

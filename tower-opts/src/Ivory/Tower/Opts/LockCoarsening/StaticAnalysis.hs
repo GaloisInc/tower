@@ -95,7 +95,7 @@ analyseStmt stmt = case stmt of
   Call _ _ name tel -> (concat $ map (analyseExpr . tValue) tel) ++
     case name of
       NameSym sym -> if sym `elem` unsafeList then [registerSym] else []
-      NameVar var -> error "usage of function pointers, which is illegal"
+      NameVar _var -> error "usage of function pointers, which is illegal"
     --  Function call.  The optional variable is where to store the result.  It
     -- is expected that the @Expr@ passed for the function symbol will have the
     -- same type as the combination of the types for the arguments, and the

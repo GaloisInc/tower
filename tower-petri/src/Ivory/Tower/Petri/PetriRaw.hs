@@ -2,7 +2,6 @@ module Ivory.Tower.Petri.PetriRaw
   ( petriTowerRaw
   ) where
 
-import Data.List
 import Ivory.Tower.AST.Handler
 import Ivory.Tower.AST.Monitor
 import Ivory.Tower.AST.Tower
@@ -15,7 +14,6 @@ import Ivory.Tower.AST.Signal
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Petri.Petri
-import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 -- import Prelude
 
 

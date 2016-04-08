@@ -155,7 +155,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     genClause clique = 
       concat $ map createClause pairs
       where
-        pairs = allpairs clique
+        pairs = filter (\(x,y) -> null $ intersect x y) $ allpairs clique
 
     createClause :: ([String],[String]) -> [String]
     createClause ([],_) = []

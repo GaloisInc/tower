@@ -61,11 +61,11 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim = do
     return (locksUsed + (length locks), retMon:monitors)
   where
     applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler
-    applyStaticAnalysisHandler mon han =
-      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler (AST.monitor_moduledef mon) han):(AST.handler_transformers han))}
+    applyStaticAnalysisHandler moni han =
+      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler (AST.monitor_moduledef moni) han):(AST.handler_transformers han))}
     frequencies :: AST.Monitor -> [Integer]
-    frequencies mon = 
-      let han = AST.monitor_handlers mon in
+    frequencies moni = 
+      let han = AST.monitor_handlers moni in
       let threads = AST.towerThreads t in
       let thr = map (\h -> filter (\e -> (AST.handler_name h) `elem` (map (AST.handler_name . AST.handler.snd) (AST.threadHandlers (AST.messageGraph t) e))) threads) han in
       map frequency (map (\x -> filter allNonInit x) $ thr)
@@ -146,21 +146,16 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
         hardWeight :: Integer
         hardWeight = toInteger $ (maxBound::Int32) - 10
 
-        minValue :: Integer
-        minValue = 
-          let soft = filter (\x -> (compare "hard" (take 4 x) /= EQ ) ) logicformula in
-          let values = map (read . head . words) soft in toInteger $ minimum values
-
         maxValue :: Integer
         maxValue = 
           let soft = filter (\x -> (compare "hard" (take 4 x) /= EQ ) ) logicformula in
-          let values = map (read . head . words . (drop 4)) soft in toInteger $ maximum values
+          let (values::[Integer]) = map (read . head . words . (drop (4::Int))) soft in  maximum values
 
         replaceWeights :: String -> String
         replaceWeights str =
           if (compare "hard" (take 4 str) == EQ ) 
             then
-              (show hardWeight)++(drop 4 str)
+              (show hardWeight)++(drop (4::Int) str)
             else
               let value = read $ head $ words $ drop 4 str in
               let remaining = unwords $ tail $ words $ drop 4 str in

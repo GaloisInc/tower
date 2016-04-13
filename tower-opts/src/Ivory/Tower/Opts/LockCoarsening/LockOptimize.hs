@@ -22,16 +22,16 @@ getLocked lock mon =
   filter (\x -> let (Just (LockCoarsening (OptHandler y))) = getOpt (LockCoarsening OptVoid) (AST.handler_transformers x) in (not $ null $ intersect lock y)) han
 
 getBestToMerge :: AST.Monitor -> [String] -> [[String]] -> [[String]] -> ([[String]],[[String]])
-getBestToMerge mon elem acc [] = (reverse acc, [])
-getBestToMerge mon elem acc (test:liste) =
-  if (null $ elem \\ test)
+getBestToMerge _ _ acc [] = (reverse acc, [])
+getBestToMerge mon element acc (test:liste) =
+  if (null $ element \\ test)
     then (reverse acc, test:liste)
-    else getBestToMerge mon elem (test:acc) liste
+    else getBestToMerge mon element (test:acc) liste
 
 
 optimizeLocks :: AST.Monitor -> [[String]] -> [[String]] -> [[String]]
 optimizeLocks mon [] (a:b) = optimizeLocks mon [a] b
-optimizeLocks mon l [] = l
+optimizeLocks _ l [] = l
 optimizeLocks mon l (a:b) =
   let (deb,liste) = getBestToMerge mon a [] l in
   case liste of

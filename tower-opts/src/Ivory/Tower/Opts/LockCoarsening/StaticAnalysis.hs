@@ -12,9 +12,9 @@
 -- return all the external ressources used by this Handler
 
 module Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
-  ( staticAnalysisHandler, staticAnalysisMonitor, fromSymToString ) where
+  ( staticAnalysisHandler, staticAnalysisMonitor, fromSymToString , cleanAST, cleanMonitor) where
 
-import Data.List (nub)
+import Data.List (nub, intersect)
 
 import Ivory.Language()
 import Ivory.Language.Syntax.Names
@@ -27,23 +27,45 @@ import qualified Data.List.NonEmpty as NE
 import Ivory.HW (hw_moduledef)
 import Ivory.Language.Module (package)
 
+import Debug.Trace
+
+
+cleanAST :: AST.Tower -> AST.Tower
+cleanAST ast = ast {AST.tower_monitors = filter (not.null.AST.monitor_handlers) $ map cleanMonitor $ AST.tower_monitors ast}
+
+cleanMonitor :: AST.Monitor -> AST.Monitor
+cleanMonitor mon = 
+    mon {AST.monitor_handlers = filter (not.null.(staticAnalysisHandler $ AST.monitor_moduledef mon)) (AST.monitor_handlers mon)}
+
 fromSymToString :: [Sym] -> [String]
 fromSymToString a = a;
 
 staticAnalysisMonitor :: AST.Monitor -> [[Sym]]
-staticAnalysisMonitor m = map staticAnalysisHandler $ AST.monitor_handlers m
+staticAnalysisMonitor m = 
+  let res = map (staticAnalysisHandler $ AST.monitor_moduledef m) $ AST.monitor_handlers m in
+  let moduleproc = modProcs $ AST.monitor_moduledef m in
+  if (not $ null $ intersect (map (procSym) $ public moduleproc ++ private moduleproc) unsafeList) then
+    map (\x -> nub $ registerSym:x) res
+    else res
 
-staticAnalysisHandler :: AST.Handler -> [Sym]
-staticAnalysisHandler h = nub $ concat $ map analyseProc (NE.toList $ AST.handler_callbacksAST h)
+staticAnalysisHandler :: Module -> AST.Handler -> [Sym]
+staticAnalysisHandler modu h = nub $ concat $ map (analyseProc modu) (NE.toList $ AST.handler_callbacksAST h)
 
-analyseProc :: Proc -> [Sym]
-analyseProc proc = 
-  (analyseBlock $ procBody $ proc) ++ 
+
+unsafeList :: [Sym]
+unsafeList = (map importSym $ modImports $ package "" hw_moduledef)
+
+registerSym :: Sym
+registerSym = "__TOWER_reg_usage"
+
+analyseProc :: Module -> Proc -> [Sym]
+analyseProc modu proc = 
+  (analyseBlock modu $ procBody $ proc) ++ 
   (concat $ map analyseRequire $ procRequires proc) ++ 
   (concat $ map analyseEnsure $ procEnsures proc)
 
-analyseBlock :: Block -> [Sym]
-analyseBlock block = concat $ map analyseStmt block
+analyseBlock :: Module -> Block -> [Sym]
+analyseBlock modu block = concat $ map (analyseStmt modu) block
 
 analyseRequire :: Require -> [Sym]
 analyseRequire = analyseCond . getRequire
@@ -57,9 +79,9 @@ analyseCond c = case c of
   CondBool e1 -> analyseExpr e1
   CondDeref _ e1 _ c1 -> (analyseExpr e1) ++ (analyseCond c1)
 
-analyseStmt :: Stmt -> [Sym]
-analyseStmt stmt = case stmt of
-  IfTE e1 b1 b2 -> (analyseExpr e1) ++ (analyseBlock b1) ++ (analyseBlock b2)
+analyseStmt :: Module -> Stmt -> [Sym]
+analyseStmt modu stmt = case stmt of
+  IfTE e1 b1 b2 -> (analyseExpr e1) ++ (analyseBlock modu b1) ++ (analyseBlock modu b2)
     --  If-then-else statement.  The @Expr@ argument will be typed as an IBool
 
   Assert e1 -> analyseExpr e1
@@ -94,7 +116,16 @@ analyseStmt stmt = case stmt of
 
   Call _ _ name tel -> (concat $ map (analyseExpr . tValue) tel) ++
     case name of
-      NameSym sym -> if sym `elem` unsafeList then [registerSym] else []
+      NameSym sym -> 
+        if sym `elem` unsafeList 
+        then [registerSym] 
+        else
+          let defprocs = modProcs modu in 
+          let allprocs = public defprocs ++ private defprocs in
+          let callee = filter (\p -> procSym p == sym) allprocs in
+          if (null callee) then [] else nub $ (concat $ map (analyseProc modu) callee)
+
+
       NameVar _var -> error "usage of function pointers, which is illegal"
     --  Function call.  The optional variable is where to store the result.  It
     -- is expected that the @Expr@ passed for the function symbol will have the
@@ -113,12 +144,12 @@ analyseStmt stmt = case stmt of
     --  Reference allocation.  The type parameter is not a reference, but the
     -- referenced type.
 
-  Loop _ _ e1 loopincr b1 -> (analyseExpr e1) ++ (analyseLoopIncr loopincr) ++ (analyseBlock b1)
+  Loop _ _ e1 loopincr b1 -> (analyseExpr e1) ++ (analyseLoopIncr loopincr) ++ (analyseBlock modu b1)
     --  Looping: arguments are the maximum number of iterations of the loop,
     -- loop variable, start value, break condition (for increment or decrement),
     -- and block.
 
-  Forever b1 -> analyseBlock b1
+  Forever b1 -> analyseBlock modu b1
     --  Nonterminting loop
 
   Ivory.Language.Syntax.AST.Break -> []
@@ -126,14 +157,6 @@ analyseStmt stmt = case stmt of
 
   Comment _ -> []
     --  User comment, can be used to output a comment in the backend.
-  where
-    unsafeList :: [Sym]
-    unsafeList = map procSym $ (public proclist) ++ (private proclist)
-    proclist = modProcs $ package "" hw_moduledef
-
-    registerSym :: Sym
-    registerSym = "__TOWER_reg_usage"
-
 
 analyseExpr :: Expr -> [Sym]
 analyseExpr e = case e of

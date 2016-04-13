@@ -13,6 +13,7 @@ module Ivory.Tower.Opts.LockCoarsening
       , lockCoarseningName
       , lockCoarseningMonitors
       , lockCoarseningMonitor
+      , cleanAST
       ) where
 
 import Data.List
@@ -25,7 +26,9 @@ import qualified Data.Set as Set
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Opts
 import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
-
+import Ivory.Tower.Opts.LockCoarsening.LockOptimize
+import Ivory.Tower.Types.Time
+import Data.Int
 
 lockCoarseningName :: String
 lockCoarseningName = "lockCoarsening"
@@ -36,40 +39,59 @@ lockCoarsening nbLocksTotal cputimelim ast = do
   if nbMonitors > nbLocksTotal 
     then error "insufficient locks given for lockCoarsening"
     else do
-      (_,monitors) <- lockCoarseningMonitors (AST.tower_monitors ast) nbLocksTotal cputimelim
-      return ast {AST.tower_transformers = ((LockCoarsening OptTower):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
+      (_,monitors) <- lockCoarseningMonitors ast (AST.tower_monitors ast) nbLocksTotal cputimelim
+      let astOpt = ast {AST.tower_transformers = ((LockCoarsening OptTower):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
+      return $ astOpt
 
-lockCoarseningMonitors :: [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
-lockCoarseningMonitors [] _ _ = return (0,[])
-lockCoarseningMonitors (mon:b) nbLocksTotal cputimelim = do
-  let a = mon {AST.monitor_handlers = map applyStaticAnalysisHandler $ AST.monitor_handlers mon}
-  if (null.AST.monitor_handlers $ cleanMonitor a) 
+lockCoarseningMonitors :: AST.Tower -> [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
+lockCoarseningMonitors _ [] _ _ = return (0,[])
+lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim = do
+  let a = mon {AST.monitor_handlers = map (applyStaticAnalysisHandler mon) $ AST.monitor_handlers mon}
+  let cleanmon = cleanMonitor a
+  if (null $ AST.monitor_handlers cleanmon) 
     then do
-      (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal) cputimelim
+      (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal) cputimelim
       return (locksUsed, (a {AST.monitor_transformers = ((LockCoarsening $ OptMonitor []):(AST.monitor_transformers a))}):monitors)
   else do
-    (locksUsed, monitors) <- lockCoarseningMonitors b (nbLocksTotal-1) cputimelim
+    (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal-1) cputimelim
     let locksAvail = nbLocksTotal - locksUsed
-    locks <- attributeLocksMonitor (map fromSymToString $ staticAnalysisMonitor $ cleanMonitor a) locksAvail cputimelim
-    return (locksUsed + (length locks), (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)}):monitors)
+    locks <- attributeLocksMonitor (zip (map fromSymToString $ staticAnalysisMonitor $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
+    let optMon = (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)})
+    retMon <- lockOptimizeMonitor optMon
+    return (locksUsed + (length locks), retMon:monitors)
   where
-    applyStaticAnalysisHandler :: AST.Handler -> AST.Handler
-    applyStaticAnalysisHandler han =
-      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler han):(AST.handler_transformers han))}
+    applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler
+    applyStaticAnalysisHandler mon han =
+      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler (AST.monitor_moduledef mon) han):(AST.handler_transformers han))}
+    frequencies :: AST.Monitor -> [Integer]
+    frequencies mon = 
+      let han = AST.monitor_handlers mon in
+      let threads = AST.towerThreads t in
+      let thr = map (\h -> filter (\e -> (AST.handler_name h) `elem` (map (AST.handler_name . AST.handler.snd) (AST.threadHandlers (AST.messageGraph t) e))) threads) han in
+      map frequency (map (\x -> filter allNonInit x) $ thr)
+      where 
+        allNonInit (AST.InitThread _)= False 
+        allNonInit _ = True
+        extractSignal (AST.SignalThread th)= [th]
+        extractSignal _ = []
+        extractPeriod (AST.PeriodThread pe)= [pe]
+        extractPeriod _ = []
 
-lockCoarseningMonitor :: AST.Monitor -> Int -> Int -> IO (AST.Monitor)
-lockCoarseningMonitor mon nbLocks cputimelim = do
-  (_, val) <- lockCoarseningMonitors [mon] nbLocks cputimelim
+        frequency :: [AST.Thread] -> Integer
+        frequency [] = 0
+        frequency ll = 
+          let sig = map (AST.signal_deadline) $ concat $ map extractSignal ll in 
+          let per = map (AST.period_dt) $ concat $ map extractPeriod ll in 
+          if null sig 
+            then freqOf $ minimum per
+            else freqOf $ minimum (sig++per)
+          where
+            freqOf (Microseconds f) = quot 100000000 f
+
+lockCoarseningMonitor :: AST.Tower -> AST.Monitor -> Int -> Int -> IO (AST.Monitor)
+lockCoarseningMonitor tow mon nbLocks cputimelim = do
+  (_, val) <- lockCoarseningMonitors tow [mon] nbLocks cputimelim
   return $ head val
-
-
-
-cleanAST :: AST.Tower -> AST.Tower
-cleanAST ast = ast {AST.tower_monitors = filter (not.null.AST.monitor_handlers) $ map cleanMonitor $ AST.tower_monitors ast}
-
-cleanMonitor :: AST.Monitor -> AST.Monitor
-cleanMonitor mon = 
-    mon {AST.monitor_handlers = filter (not.null.staticAnalysisHandler) (AST.monitor_handlers mon)}
 
 allpairs :: [t] -> [(t,t)]
 allpairs [] = []
@@ -77,7 +99,7 @@ allpairs [_] = []
 allpairs (x:xs) = concatMap (\y -> [(x,y)]) xs ++ allpairs xs
 
 
-attributeLocksMonitor :: [[String]] -> Int -> Int -> IO [[String]]
+attributeLocksMonitor :: [([String],Integer)] -> Int -> Int -> IO [[String]]
 attributeLocksMonitor list nbLocksPre cputimelim = do
   (tmpName, tmpHandle) <- openTempFile "." "temp"
   hPutStr tmpHandle (concat $ intersperse "\n" input)
@@ -94,7 +116,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     removeFile tmpName
     return sortsol
   else do
-    removeFile tmpName
+    --removeFile tmpName
     error $ "While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time."
 
   where
@@ -104,7 +126,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
       if ((read ni) == i) then ([take ((length s) - (2 + (length ni))) s]) else []
 
     allStates :: [String]
-    allStates = nub $ concat $ list
+    allStates = nub $ concat $ map fst list
 
     nbLocks :: Int
     nbLocks = minimum [nbLocksPre, (length allStates)]
@@ -119,10 +141,20 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     makeLock state lockid = show ((Set.findIndex (makeLockRaw state lockid) associationSet) +1)
 
     input :: [String]
-    input = ["c comments Partial Max-SAT", "p wcnf "++(show nbVar)++" "++(show.length $ logicformula)++" "++(show hardWeight)] ++ (map replaceWeights logicformula)
+    input = ["c comments Partial Max-SAT", "c "++(show list), "p wcnf "++(show nbVar)++" "++(show.length $ logicformula)++" "++(show hardWeight)] ++ (filter (not.null) $ map replaceWeights logicformula)
       where
-        hardWeight :: Int
-        hardWeight = (length softClauses) + 10
+        hardWeight :: Integer
+        hardWeight = toInteger $ (maxBound::Int32) - 10
+
+        minValue :: Integer
+        minValue = 
+          let soft = filter (\x -> (compare "hard" (take 4 x) /= EQ ) ) logicformula in
+          let values = map (read . head . words) soft in toInteger $ minimum values
+
+        maxValue :: Integer
+        maxValue = 
+          let soft = filter (\x -> (compare "hard" (take 4 x) /= EQ ) ) logicformula in
+          let values = map (read . head . words . (drop 4)) soft in toInteger $ maximum values
 
         replaceWeights :: String -> String
         replaceWeights str =
@@ -130,7 +162,13 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
             then
               (show hardWeight)++(drop 4 str)
             else
-              (show (1::Integer)) ++ (drop 4 str)
+              let value = read $ head $ words $ drop 4 str in
+              let remaining = unwords $ tail $ words $ drop 4 str in
+              if (maxValue <= 60000) 
+                then (show value)++" "++remaining
+                else if (quot (value*60000) maxValue == 0) 
+                  then ""
+                  else (show (quot (value*60000) maxValue))++" "++remaining
 
     nbVar :: Int
     nbVar = (length allStates)*nbLocks
@@ -151,18 +189,20 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     softClauses :: [String]
     softClauses = genClause list
 
-    genClause :: [[String]] -> [String]
+    genClause :: [([String],Integer)] -> [String]
     genClause clique = 
       concat $ map createClause pairs
       where
-        pairs = filter (\(x,y) -> null $ intersect x y) $ allpairs clique
+        pairs = filter (\(x,y) -> null $ intersect (fst x) (fst y)) $ allpairs clique
 
-    createClause :: ([String],[String]) -> [String]
-    createClause ([],_) = []
-    createClause ((x:xs),l2) = 
-      (concat $ map (\str -> createLocks x str) l2) ++ (createClause (xs,l2))
+    createClause :: (([String],Integer),([String],Integer)) -> [String]
+    createClause (([],_),_) = []
+    createClause ((x:xs, f1),(l2,f2)) = 
+      if (f1*f2 > 0) 
+        then (concat $ map (\str -> createLocks x str) l2) ++ (createClause ((xs,f1),(l2,f2)))
+        else []
       where
         createLocks :: String -> String -> [String]
         createLocks s1 s2 = 
-          map (\i -> "soft "++(makeLock s1 i) ++ " " ++(makeLock s2 i)) [1..nbLocks] ++
-          map (\i -> "soft -"++(makeLock s1 i) ++ " -" ++(makeLock s2 i)) [1..nbLocks]
+          map (\i -> "soft"++ (show $ f1*f2) ++" "++(makeLock s1 i) ++ " " ++(makeLock s2 i)) [1..nbLocks] ++
+          map (\i -> "soft"++ (show $ f1*f2) ++" -"++(makeLock s1 i) ++ " -" ++(makeLock s2 i)) [1..nbLocks]

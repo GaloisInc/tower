@@ -11,6 +11,10 @@ elemOpt = any . (===)
 getOpt :: Opt -> [Opt] -> Maybe Opt
 getOpt needle stack = find ((===) needle) stack 
 
+replaceOpt :: Opt -> [Opt] -> [Opt]
+replaceOpt needle [] = []
+replaceOpt needle (a:b) = if (a === needle) then needle:b else a:(replaceOpt needle b)
+
 (===) :: Opt -> Opt -> Bool
 (===) (LockCoarsening _) (LockCoarsening _) = True
 -- (===) _ _ = False

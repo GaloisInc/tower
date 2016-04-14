@@ -14,7 +14,6 @@ module Ivory.Tower.Opts.LockCoarsening.LockOptimize
 
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Opts
-import Ivory.Tower.Types.Unique
 import Data.List
 import Data.Ord
 

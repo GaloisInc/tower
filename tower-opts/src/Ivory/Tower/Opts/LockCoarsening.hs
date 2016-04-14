@@ -58,6 +58,7 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim = do
     locks <- attributeLocksMonitor (zip (map fromSymToString $ staticAnalysisMonitor $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
     let optMon = (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)})
     retMon <- lockOptimizeMonitor optMon
+    --TODO correct length locks
     return (locksUsed + (length locks), retMon:monitors)
   where
     applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler

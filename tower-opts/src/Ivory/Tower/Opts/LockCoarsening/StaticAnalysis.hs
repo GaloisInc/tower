@@ -27,8 +27,6 @@ import qualified Data.List.NonEmpty as NE
 import Ivory.HW (hw_moduledef)
 import Ivory.Language.Module (package)
 
-import Debug.Trace
-
 
 cleanAST :: AST.Tower -> AST.Tower
 cleanAST ast = ast {AST.tower_monitors = filter (not.null.AST.monitor_handlers) $ map cleanMonitor $ AST.tower_monitors ast}

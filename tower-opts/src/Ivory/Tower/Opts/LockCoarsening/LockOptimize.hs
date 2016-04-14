@@ -14,17 +14,22 @@ module Ivory.Tower.Opts.LockCoarsening.LockOptimize
 
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Opts
+import Ivory.Tower.Types.Unique
 import Data.List
+import Data.Ord
 
-getLocked :: [String] -> AST.Monitor -> [AST.Handler]
+getLocked :: [String] -> AST.Monitor -> [AST.HandlerFast]
 getLocked lock mon = 
   let han = AST.monitor_handlers mon in
-  filter (\x -> let (Just (LockCoarsening (OptHandler y))) = getOpt (LockCoarsening OptVoid) (AST.handler_transformers x) in (not $ null $ intersect lock y)) han
+  let list = filter (\x -> let (Just (LockCoarsening (OptHandler y))) = getOpt (LockCoarsening OptVoid) (AST.handler_transformers x) in (not $ null $ intersect (sort lock) (sort y))) han in
+  map AST.HandlerFast list
 
 getBestToMerge :: AST.Monitor -> [String] -> [[String]] -> [[String]] -> ([[String]],[[String]])
 getBestToMerge _ _ acc [] = (reverse acc, [])
 getBestToMerge mon element acc (test:liste) =
-  if (null $ element \\ test)
+  let big = sort $ getLocked test mon in
+  let small = sort $ getLocked element mon in 
+  if ((intersect small big) == small)
     then (reverse acc, test:liste)
     else getBestToMerge mon element (test:acc) liste
 
@@ -39,12 +44,12 @@ optimizeLocks mon l (a:b) =
     this:fin -> optimizeLocks mon (deb++[nub $ this ++ a]++fin) b
 
 
-lockOptimizeMonitor :: AST.Monitor -> IO AST.Monitor
+lockOptimizeMonitor :: AST.Monitor -> IO (AST.Monitor,Int)
 lockOptimizeMonitor mon = do
   let (Just (LockCoarsening (OptMonitor locks))) = getOpt (LockCoarsening OptVoid) (AST.monitor_transformers mon)
-  let sortedLocks = sortBy (\x y-> compare (length $ getLocked x mon) (length $ getLocked y mon)) locks
+  let sortedLocks = sortBy (\x y-> compare (Down $ length $ getLocked x mon) (Down $ length $ getLocked y mon)) locks
   -- Opt concept : take two locks and merge them if one is included in the other
   let bestLocks = optimizeLocks mon [] sortedLocks
-  return mon {AST.monitor_transformers = replaceOpt (LockCoarsening $ OptMonitor bestLocks) (AST.monitor_transformers mon)}
+  return (mon {AST.monitor_transformers = replaceOpt (LockCoarsening $ OptMonitor bestLocks) (AST.monitor_transformers mon)},length bestLocks)
 
 

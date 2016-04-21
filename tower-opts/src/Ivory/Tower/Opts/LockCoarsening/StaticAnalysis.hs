@@ -208,3 +208,4 @@ analyseInit i = case i of
   InitExpr _ e1 -> analyseExpr e1
   InitStruct l1 -> concat $ map (analyseInit.snd) $ l1
   InitArray l1 -> concat $ map analyseInit l1
+  InitNewType -> []

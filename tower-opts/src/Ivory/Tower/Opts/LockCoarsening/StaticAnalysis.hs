@@ -25,6 +25,7 @@ import qualified Data.List.NonEmpty as NE
 --import Prelude
 
 import Ivory.HW (hw_moduledef)
+import Ivory.OS.Posix.Tower.Lib.WiringPi (uses_wiringPi)
 import Ivory.Language.Module (package)
 
 
@@ -51,7 +52,7 @@ staticAnalysisHandler modu h = nub $ concat $ map (analyseProc modu) (NE.toList 
 
 
 unsafeList :: [Sym]
-unsafeList = (map importSym $ modImports $ package "" hw_moduledef)
+unsafeList = (map importSym $ modImports $ package "" hw_moduledef) ++ (map importSym $ modImports $ package "" uses_wiringPi)
 
 registerSym :: Sym
 registerSym = "__TOWER_reg_usage"

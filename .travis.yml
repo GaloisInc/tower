@@ -32,7 +32,8 @@ install:
   #
   # Travis seems to have no problem with the multi-line if above,
   # but barfs when we format this one nicely.
-  - for repo in ivory ivory-tower-posix; do git clone https://github.com/galoisinc/$repo; (cd $repo; git checkout $TRAVIS_BRANCH) || true; export ${repo^^}_REPO=$PWD/$repo; done
+  - for repo in ivory; do git clone https://github.com/galoisinc/$repo; (cd $repo; git checkout $TRAVIS_BRANCH) || true; export ${repo^^}_REPO=$PWD/$repo; done
+  - for repo in ivory-tower-posix; do git clone https://github.com/galoisinc/$repo; (cd $repo; git checkout $TRAVIS_BRANCH) || true; export ${repo^^}_REPO=$PWD/$repo; done
   # tweak the relative paths in stack.yaml
   - export STACK_YAML=$PWD/$STACK_YAML
   - sed -i "s;\.\./;$PWD/;g" $STACK_YAML

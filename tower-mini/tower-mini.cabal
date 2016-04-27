@@ -1,0 +1,61 @@
+name:                tower-mini
+version:             0.0.1.0
+author:              Galois, Inc.
+maintainer:          leepike@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+  exposed-modules: Tower.Mini
+
+  build-depends: base >= 4.6
+               , base-compat
+               , containers
+               , filepath
+               , mainland-pretty
+               , ivory >= 0.1.0.2
+               , ivory-artifact
+               , ivory-backend-c
+               , tower
+               , tower-config
+               , pretty-show
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans
+
+test-suite simple
+  type: exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Simple.hs
+  build-depends: base >= 4.6
+               , base-compat
+               , containers
+               , filepath
+               , ivory
+               , ivory-artifact
+               , ivory-backend-c
+               , tower
+               , tower-config
+               , tower-mini
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite integrated
+  type: exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Integrated.hs
+  build-depends: base >= 4.6
+               , base-compat
+               , containers
+               , filepath
+               , ivory
+               , ivory-artifact
+               , ivory-backend-c
+               , tower
+               , tower-config
+               , tower-mini
+  default-language: Haskell2010
+  ghc-options:      -Wall

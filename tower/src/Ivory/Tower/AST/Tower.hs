@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Ivory.Tower.AST.Tower
   ( Tower(..)
   , towerThreads
@@ -8,6 +9,8 @@ import Prelude ()
 import Prelude.Compat
 
 import Data.List (find, union)
+import Text.PrettyPrint.Mainland
+
 import Ivory.Tower.Types.Unique
 import Ivory.Tower.AST.SyncChan
 import Ivory.Tower.AST.Signal
@@ -46,3 +49,10 @@ towerThreads t = map SignalThread (tower_signals t) ++
 towerFindMonitorByName :: Unique -> Tower -> Maybe Monitor
 towerFindMonitorByName n t = find p (tower_monitors t)
   where p m = monitor_name m == n
+
+instance Pretty Tower where
+  ppr t = hang 2 $ "Tower program:"
+      </> hang 2 ("Monitors:" </> stack (map ppr (tower_monitors t)))
+      </> hang 2 ("SyncChans:" <+/> pprList (tower_syncchans t))
+      </> hang 2 ("Signals:" <+/> pprList (tower_signals t))
+      </> hang 2 ("Periods:" <+/> pprList (tower_periods t))

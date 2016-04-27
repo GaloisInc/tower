@@ -25,6 +25,8 @@ module Ivory.Tower.Types.Time
   , prettyTime
   ) where
 
+import Text.PrettyPrint.Mainland
+
 import Ivory.Language
 
 class Time a where
@@ -81,3 +83,6 @@ prettyTime m = t
   t  = case us' `mod` 1000 of
     0 -> (show (us' `div` 1000)) ++ "ms"
     _ -> (show us') ++ "us"
+
+instance Pretty Microseconds where
+  ppr m = text (prettyTime m)

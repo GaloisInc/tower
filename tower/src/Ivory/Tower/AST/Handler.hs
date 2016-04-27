@@ -1,8 +1,11 @@
-
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Ivory.Tower.AST.Handler
   ( Handler(..)
   , handlerName
   ) where
+
+import Text.PrettyPrint.Mainland
 
 import Ivory.Tower.Types.Unique
 
@@ -20,3 +23,11 @@ data Handler = Handler
 
 handlerName :: Handler -> String
 handlerName = showUnique . handler_name
+
+instance Pretty Handler where
+  ppr h@(Handler{..}) = hang 2 $
+        text (handlerName h) <> colon
+    </> "Chan:" <+/> ppr handler_chan
+    </> "Emitters:" <+/> pprList handler_emitters
+    </> "Callbacks:" <+/> pprList (map showUnique handler_callbacks)
+    </> "Comments:" <+/> pprList handler_comments

@@ -8,13 +8,15 @@ cabal-version:       >= 1.10
 license:             BSD3
 
 library
-  exposed-modules: Tower.Mini
+  exposed-modules: Tower.Mini,
+                   Tower.Mini.Component
 
   build-depends: base >= 4.6
                , base-compat
                , containers
                , filepath
                , mainland-pretty
+               , monadLib
                , ivory >= 0.1.0.2
                , ivory-artifact
                , ivory-backend-c

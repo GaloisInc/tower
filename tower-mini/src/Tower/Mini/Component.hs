@@ -26,12 +26,14 @@ putComponentCode c = Component $ put (c, mempty)
 
 putRunCode :: (forall s . Ivory (ProcEffects s ()) ()) -> Component e ()
 putRunCode c = do
-  n <- freshname "run"
+  n <- freshname "run_aux"
   let fn = voidProc (showUnique n) $ body $ c *> retVoid
   Component $ put (incl fn, [fn])
 
 liftTower :: Tower e a -> Component e a
 liftTower c = Component $ lift c
+
+-- TODO: enforce that only one handler listens to the other end of this?
 
 inputPort :: forall e a .
              (IvoryArea a, IvoryZero a)
@@ -39,14 +41,14 @@ inputPort :: forall e a .
           -> String
           -> Component e (ChanOutput a)
 inputPort sym hdr = do
-  n <- freshname ("input_" ++ sym ++ takeWhile (/= '.') hdr)
+  let n = "input_" ++ sym ++ "_" ++ takeWhile (/= '.') hdr
   let ext_get_data :: Def('[Ref s a] ':-> IBool)
       ext_get_data = importProc sym hdr
       gen_mon_callback :: Def('[ConstRef s a] ':-> ())
-      gen_mon_callback = importProc ("callback_" ++ showUnique n) ""
+      gen_mon_callback = importProc ("callback_" ++ n ++ "_handler") ""
   putComponentCode $ do
     incl $ ext_get_data
-    dependByName (showUnique n ++ "_monitor")
+    dependByName (n ++ "_monitor")
   putRunCode $ do
     ext_data <- local izero
     ext_has_data <- call ext_get_data ext_data
@@ -56,23 +58,23 @@ inputPort sym hdr = do
   liftTower $ do
     (_, ext_chan_out) <- channel
     (chan_in, chan_out) <- channel
-    externalMonitor (showUnique n) $
-      handler (ext_chan_out :: ChanOutput a) (showUnique n) $ do
+    externalMonitor n $
+      handler (ext_chan_out :: ChanOutput a) (n ++ "_handler") $ do
         e <- emitter chan_in 1
         callback $ \msg -> emit e msg
     return chan_out
 
 outputPort :: forall e a . (IvoryArea a, IvoryZero a) => String -> String -> Component e (ChanInput a)
 outputPort sym hdr = do
-  n <- freshname ("output_" ++ sym ++ takeWhile (/= '.') hdr)
+  let n = "output_" ++ sym ++ takeWhile (/= '.') hdr
   let ext_put_data :: Def('[ConstRef s a] ':-> ())
       ext_put_data = importProc sym hdr
   putComponentCode $ do
     incl $ ext_put_data
   liftTower $ do
     (chan_in, chan_out) <- channel
-    externalMonitor (showUnique n) $
-      handler (chan_out :: ChanOutput a) (showUnique n) $
+    externalMonitor n $
+      handler (chan_out :: ChanOutput a) n $
         callback $ \msg -> call_ ext_put_data msg
     return chan_in
 

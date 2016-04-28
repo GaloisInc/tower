@@ -41,6 +41,17 @@ inputPort :: forall e a .
           -> String
           -> Component e (ChanOutput a)
 inputPort sym hdr = do
+  (chan_in, chan_out) <- liftTower channel
+  inputPort' chan_in sym hdr
+  return chan_out
+
+inputPort' :: forall e a .
+              (IvoryArea a, IvoryZero a)
+           => ChanInput a
+           -> String
+           -> String
+           -> Component e ()
+inputPort' chan_in sym hdr = do
   let n = "input_" ++ sym ++ "_" ++ takeWhile (/= '.') hdr
   let ext_get_data :: Def('[Ref s a] ':-> IBool)
       ext_get_data = importProc sym hdr
@@ -57,26 +68,37 @@ inputPort sym hdr = do
       (return ())
   liftTower $ do
     (_, ext_chan_out) <- channel
-    (chan_in, chan_out) <- channel
     externalMonitor n $
       handler (ext_chan_out :: ChanOutput a) (n ++ "_handler") $ do
         e <- emitter chan_in 1
         callback $ \msg -> emit e msg
-    return chan_out
 
-outputPort :: forall e a . (IvoryArea a, IvoryZero a) => String -> String -> Component e (ChanInput a)
+outputPort :: forall e a .
+              (IvoryArea a, IvoryZero a)
+           => String
+           -> String
+           -> Component e (ChanInput a)
 outputPort sym hdr = do
+  (chan_in, chan_out) <- liftTower channel
+  outputPort' chan_out sym hdr
+  return chan_in
+
+outputPort' :: forall e a .
+               (IvoryArea a, IvoryZero a)
+            => ChanOutput a
+            -> String
+            -> String
+            -> Component e ()
+outputPort' chan_out sym hdr = do
   let n = "output_" ++ sym ++ takeWhile (/= '.') hdr
   let ext_put_data :: Def('[ConstRef s a] ':-> ())
       ext_put_data = importProc sym hdr
   putComponentCode $ do
     incl $ ext_put_data
-  liftTower $ do
-    (chan_in, chan_out) <- channel
+  liftTower $
     externalMonitor n $
-      handler (chan_out :: ChanOutput a) n $
+      handler chan_out n $
         callback $ \msg -> call_ ext_put_data msg
-    return chan_in
 
 component :: String -> Component e () -> Tower e ()
 component nm c = do
@@ -87,7 +109,7 @@ component nm c = do
         retVoid
       compMod :: Module
       compMod = package nm $ do
-        modDefs
+        private modDefs
         incl run
   towerModule compMod
   towerDepends compMod

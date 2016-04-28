@@ -21,6 +21,10 @@ packages:
     - ivory-serialize
     - ivory-stdlib
     - ivory-hw
+- location: ../ivory-tower-posix
+  extra-dep: true
+  subdirs :
+    - .
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:

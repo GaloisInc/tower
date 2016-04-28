@@ -11,7 +11,7 @@ module Tower.Mini where
 import Control.Monad
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe
+--import Data.Maybe
 import System.FilePath
 --import System.Exit (exitFailure)
 import Text.PrettyPrint.Mainland (putDoc, ppr)
@@ -100,7 +100,7 @@ instance TowerBackend MiniBackend where
 --              ++ actMods
       )
     where
-    (actPkgs, actMods) = activeSrcs ast
+--    (actPkgs, actMods) = activeSrcs ast
     mkMod (nm, mkMMod) deps = I.package nm $ mapM_ I.depend deps >> (mkMMod ast)
 
 
@@ -172,10 +172,10 @@ defaultMiniConfig :: MiniConfig
 defaultMiniConfig = MiniConfig
 
 compileTowerMini :: (e -> MiniConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
-compileTowerMini fromEnv mkEnv twr' = do
+compileTowerMini _fromEnv mkEnv twr' = do
   (copts, topts)              <- towerGetOpts
   env                         <- mkEnv topts
-  let cfg'                    =  fromEnv env
+--  let cfg'                    =  fromEnv env
 --  cfg                         <- parseMiniOpts' cfg' topts
   let (ast, code, deps, sigs) =  runTower MiniBackend twr' env
   putDoc $ ppr ast
@@ -189,7 +189,7 @@ compileTowerMini fromEnv mkEnv twr' = do
 
   let libAs                   = map addPrefix genAs
 
-  let appname                 = takeFileName (fromMaybe "tower" (outDir copts))
+--  let appname                 = takeFileName (fromMaybe "tower" (outDir copts))
 
   -- let as :: OSSpecific a -> [Located Artifact]
   --     as os = doc_as

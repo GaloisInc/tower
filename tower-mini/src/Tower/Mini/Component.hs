@@ -27,7 +27,7 @@ putComponentCode c = ComponentM $ put (c, mempty)
 
 putRunCode :: (forall s . Ivory (ProcEffects s ()) ()) -> ComponentM e ()
 putRunCode c = do
-  n <- freshname "run_aux"
+  n <- freshname "component_entry_aux"
   let fn = voidProc (showUnique n) $ body $ c *> retVoid
   ComponentM $ put (incl fn, [fn])
 
@@ -66,7 +66,7 @@ inputPort' :: forall e a .
            -> String
            -> ComponentM e ()
 inputPort' chan_in sym hdr = do
-  let n = "input_" ++ sym ++ "_" ++ takeWhile (/= '.') hdr
+  let n = "input_" ++ sym
   let ext_get_data :: Def('[Ref s a] ':-> IBool)
       ext_get_data = importProc sym hdr
       gen_mon_callback :: Def('[ConstRef s a] ':-> ())
@@ -117,7 +117,7 @@ outputPort' :: forall e a .
             -> String
             -> ComponentM e ()
 outputPort' chan_out sym hdr = do
-  let n = "output_" ++ sym ++ takeWhile (/= '.') hdr
+  let n = "output_" ++ sym
   let ext_put_data :: Def('[ConstRef s a] ':-> ())
       ext_put_data = importProc sym hdr
   putComponentCode $ do

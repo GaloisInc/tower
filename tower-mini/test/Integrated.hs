@@ -128,6 +128,7 @@ driverModule' = package "driver" $ do
   incl intermon2_get_data
   incl printf_byte
   incl printf_bool
+  dependByName "foo"
   let ivoryMain :: Def('[] ':-> Sint32)
       ivoryMain = proc "main" $ body $ do
         upTo (0 :: Ix 11) 10 $ \ix -> do
@@ -135,7 +136,7 @@ driverModule' = package "driver" $ do
           byte <- deref byteRef
           call_ printf_byte "driver in: %u\n" byte
           call_ intermon1_put_data (constRef byteRef)
-          call_ (importProc "run" "foo.h" :: Def('[] ':-> ()))
+          call_ (importProc "component_entry" "foo.h" :: Def('[] ':-> ()))
           bRef <- local izero
           has_data <- call intermon2_get_data bRef
           ifte_ has_data
@@ -145,7 +146,7 @@ driverModule' = package "driver" $ do
   incl ivoryMain
 
 
-integratedTower' :: Tower e ()
+integratedTower' :: Component e
 integratedTower' = component "foo" $ do
   chanIn  <- inputPort  "intermon1_get_data" "intermon1.h"
   chanOut <- outputPort "intermon2_put_data" "intermon2.h"
@@ -153,8 +154,8 @@ integratedTower' = component "foo" $ do
     towerModule  towerDepModule
     towerDepends towerDepModule
 
-    towerModule  driverModule
-    towerDepends driverModule
+    towerModule  driverModule'
+    towerDepends driverModule'
 
     let cfile f = artifactFile f (pure $ "test" </> "cfiles" </> f)
     towerArtifact $ Incl $ cfile "intermon1.h"
@@ -182,7 +183,7 @@ integratedTower' = component "foo" $ do
           emitV e b'
 
 main :: IO ()
-main = compileTowerMini id p integratedTower'
+main = compileTowerMini id p [integratedTower']
   where
   p topts = getConfig topts $ miniConfigParser defaultMiniConfig
 

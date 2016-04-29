@@ -8,6 +8,7 @@ module Ivory.Tower.Monad.Tower
   ( Tower(..)
   , Tower'
   , runTower
+  , runTower_
   , towerGetBackend
   , towerGetHandlers
   , towerNewChannel
@@ -82,12 +83,12 @@ newtype Tower' backend e a = Tower'
 
 runTower :: TowerBackend backend
          => backend
-         -> Tower e ()
+         -> Tower e a
          -> e
-         -> (AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
-runTower backend t e = (a, towerImpl backend a monitors, output_deps output, output_sigs output)
+         -> (a, AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
+runTower backend t e = (a, ast, towerImpl backend ast monitors, output_deps output, output_sigs output)
   where
-  a = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
+  ast = mappend (mempty { AST.tower_monitors = mast }) $ mconcat $ flip map (ChanMap.keys sinks) $ \ key ->
     case key of
     AST.ChanSync c -> mempty { AST.tower_syncchans = [c] }
     AST.ChanSignal c -> mempty { AST.tower_signals = [c] }
@@ -95,13 +96,22 @@ runTower backend t e = (a, towerImpl backend a monitors, output_deps output, out
     AST.ChanInit _ -> mempty
   (mast, monitors) = unzip $ output_monitors output
   sinks = output_sinks output
-  ((), output) = runBase e
+  (a, output) = runBase e
     $ runWriterT
     $ fmap fst
     $ runStateT 1
     $ runReaderT (backend, sinks)
     $ unTower'
     $ unTower t
+
+runTower_ :: TowerBackend backend
+          => backend
+          -> Tower e ()
+          -> e
+          -> (AST.Tower, TowerBackendOutput backend, Dependencies, SignalCode)
+runTower_ b t e =
+  let ((), ast, out, deps, sig) = runTower b t e
+  in (ast, out, deps, sig)
 
 instance BaseUtils (Tower' backend) e where
   freshname n = Tower' $ lift $ lift $ lift $ freshname n

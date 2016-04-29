@@ -6,6 +6,7 @@
 module Ivory.Tower.Tower
   ( Tower()
   , runTower
+  , runTower_
   , ChanInput()
   , ChanOutput()
   , channel

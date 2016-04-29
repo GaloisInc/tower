@@ -5,16 +5,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Tower.Mini where
 
 import Control.Monad
 import Data.List
 import qualified Data.Map as M
---import Data.Maybe
+import MonadLib hiding (local)
 import System.FilePath
---import System.Exit (exitFailure)
-import Text.PrettyPrint.Mainland (putDoc, ppr)
+import System.Exit (exitFailure)
+import Text.PrettyPrint.Mainland ((<+>), putDoc, ppr, text)
 
 import Ivory.Artifact as I
 import Ivory.Language as I
@@ -35,23 +36,49 @@ import Ivory.Tower.Types.Emitter
 import Ivory.Tower.Types.SignalCode
 --import Ivory.Tower.Types.Unique
 
+import Tower.Mini.Component
+
 type PackageName = String
 type TowerTime = I.Sint64
+
+data HandlerType = Sync | Period | Init deriving (Show)
 
 data MiniBackend = MiniBackend
   deriving (Show)
 
 instance TowerBackend MiniBackend where
-  data TowerBackendCallback MiniBackend a = MiniCallback (String, ModuleDef)
-  data TowerBackendEmitter MiniBackend   = MiniEmitter (TAST.Tower -> ModuleDef)
-  newtype TowerBackendHandler MiniBackend a =
-    MiniHandler ([TowerBackendCallback MiniBackend a], (TAST.Tower -> ModuleDef))
-  data TowerBackendMonitor MiniBackend = MiniMonitor (String, (TAST.Tower -> ModuleDef))
-  newtype TowerBackendOutput MiniBackend =
-    MiniOutput ([PackageName], [Module] -> [Module])
+  data TowerBackendCallback MiniBackend a =
+    MiniCallback {
+        callbackName :: String
+      , callbackDef  :: ModuleDef
+      }
+  data TowerBackendEmitter MiniBackend   =
+    MiniEmitter {
+        emitterDef :: TAST.Tower -> ModuleDef
+      }
+  data TowerBackendHandler MiniBackend a =
+    MiniHandler {
+        handlerType :: HandlerType
+      , handlerCallbacks :: [TowerBackendCallback MiniBackend a]
+      , handlerDef :: TAST.Tower -> ModuleDef
+      }
+  data TowerBackendMonitor MiniBackend =
+    MiniMonitor {
+        monitorInitCallbacks :: [String]
+      , monitorPeriodCallbacks :: [String]
+      , monitorName :: String
+      , monitorDef :: (TAST.Tower -> ModuleDef)
+      }
+  data TowerBackendOutput MiniBackend =
+    MiniOutput {
+        outputInitCallbacks :: [(String, PackageName)]
+      , outputPeriodCallbacks :: [(String, PackageName)]
+      , outputPackageNames ::[PackageName]
+      , outputMkModules :: [Module] -> [Module]
+      }
 
   callbackImpl _be sym f =
-      MiniCallback (nm, cbdef)
+      MiniCallback nm cbdef
       where nm = (showUnique sym)
             cbdef = incl
                   $ voidProc (showUnique sym)
@@ -65,9 +92,9 @@ instance TowerBackend MiniBackend where
                 => (Emitter b, TowerBackendEmitter MiniBackend)
     emitterCode =
       ( Emitter $ \ref ->
-          forM_ targetHandlers $ \(MiniHandler (cbs, _)) ->
-            forM_ cbs $ \(MiniCallback (nm, _)) ->
-              call_ (importProc nm "" :: Def('[ConstRef s b] ':-> ())) ref
+          forM_ targetHandlers $ \(MiniHandler _ cbs _) ->
+            forM_ cbs $ \cb ->
+              call_ (importProc (callbackName cb) "" :: Def('[ConstRef s b] ':-> ())) ref
       , MiniEmitter (\tow -> mkDepends tow)
       )
       where
@@ -75,35 +102,55 @@ instance TowerBackend MiniBackend where
         where targets = map threadFile mons
               mons = map fst (TAST.towerChanHandlers tow (TAST.ChanSync (TAST.emitter_chan emitterAst)))
 
-  handlerImpl _be _ast emittersDefs callbacks =
-    MiniHandler (callbacks, \tow -> do
-      forM_ callbacks $ \(MiniCallback (_nm, cbdef)) -> cbdef
-      mconcat (edefs tow))
+  handlerImpl _be ast emittersDefs callbacks =
+    MiniHandler ty callbacks mkMod
     where
-    edefs tow = map (\(MiniEmitter edef) -> edef tow) emittersDefs
+      ty = case TAST.handler_chan ast of
+        TAST.ChanSync   _ -> Sync
+        TAST.ChanPeriod _ -> Period
+        TAST.ChanInit   _ -> Init
+        TAST.ChanSignal _ ->
+          error "Tower.Mini: Signal handling not supported directly; use component inputPort instead"
+      edefs tow = map (\e -> emitterDef e tow) emittersDefs
+      mkMod tow = do
+        mapM_ callbackDef callbacks
+        mconcat (edefs tow)
 
   monitorImpl _be ast handlers moddef =
-    MiniMonitor $
-      ( nm
-      , \tow -> do mconcat $ map (handlerModules tow) handlers
-                   moddef
-      )
+    MiniMonitor initCbs periodCbs nm genMod
     where
-    nm = threadFile ast
-    handlerModules :: TAST.Tower -> SomeHandler MiniBackend -> I.ModuleDef
-    handlerModules tow (SomeHandler (MiniHandler h)) = snd h tow
+      nm = threadFile ast
+      genMod tow = do
+        mconcat $ map (handlerModules tow) handlers
+        moddef
+      initCbs   = concat [ map callbackName cbs
+                         | SomeHandler (MiniHandler Init cbs _) <- handlers ]
+      periodCbs = concat [ map callbackName cbs
+                         | SomeHandler (MiniHandler Period cbs _) <- handlers ]
+      handlerModules :: TAST.Tower -> SomeHandler MiniBackend -> I.ModuleDef
+      handlerModules tow (SomeHandler (MiniHandler _ _ mkMod)) = mkMod tow
 
   towerImpl _be ast mons =
-    MiniOutput
-      ( map (\(MiniMonitor m) -> fst m) mons-- ++ actPkgs
-      , \deps -> [ mkMod m deps | MiniMonitor m <- mons ]
---              ++ actMods
-      )
+    MiniOutput initCbs periodCbs packageNames mkModules
     where
---    (actPkgs, actMods) = activeSrcs ast
-    mkMod (nm, mkMMod) deps = I.package nm $ mapM_ I.depend deps >> (mkMMod ast)
+      initCbs   = concat [ zip cbNames (repeat monName)
+                         | MiniMonitor cbNames _ monName _ <- mons]
+      periodCbs = concat [ zip cbNames (repeat monName)
+                         | MiniMonitor _ cbNames monName _ <- mons]
+      packageNames = map monitorName mons
+      mkModules deps = [ mkMod (monName, monDef) deps
+                       | MiniMonitor _ _ monName monDef <- mons ]
+      mkMod (nm, mkMMod) deps = I.package nm $ mapM_ I.depend deps >> (mkMMod ast)
 
-
+instance Monoid (TowerBackendOutput MiniBackend) where
+    mempty = MiniOutput [] [] [] (const [])
+    mappend mo1 mo2 =
+      MiniOutput
+        (outputInitCallbacks mo1   `mappend` outputInitCallbacks mo2)
+        (outputPeriodCallbacks mo1 `mappend` outputPeriodCallbacks mo2)
+        (outputPackageNames mo1    `mappend` outputPackageNames mo2)
+        (\deps -> outputMkModules mo1 deps `mappend` outputMkModules mo2 deps)
+      
 -- introduce component packages in this way?
 activeSrcs :: TAST.Tower -> ([PackageName], [I.Module])
 activeSrcs t = unzip $ map activeSrc (TAST.towerThreads t)
@@ -171,16 +218,16 @@ data MiniConfig = MiniConfig
 defaultMiniConfig :: MiniConfig
 defaultMiniConfig = MiniConfig
 
-compileTowerMini :: (e -> MiniConfig) -> (TOpts -> IO e) -> Tower e () -> IO ()
-compileTowerMini _fromEnv mkEnv twr' = do
+compileTowerMini :: (e -> MiniConfig) -> (TOpts -> IO e) -> [Component e] -> IO ()
+compileTowerMini _fromEnv mkEnv comps = do
   (copts, topts)              <- towerGetOpts
   env                         <- mkEnv topts
 --  let cfg'                    =  fromEnv env
 --  cfg                         <- parseMiniOpts' cfg' topts
-  let (ast, code, deps, sigs) =  runTower MiniBackend twr' env
+  (ast, packages, modsF, deps) <- mconcat `fmap` (mapM (buildComponent env) comps)
   putDoc $ ppr ast
 
-  let (pkgs, mods, genAs)     = genIvoryCode code deps sigs
+  let (pkgs, mods, genAs)     = genIvoryCode packages modsF deps
 
   let addPrefix l = case l of
         Src  a -> Root (artifactPath ("libmini" </> "src") a)
@@ -222,25 +269,60 @@ compileTowerMini _fromEnv mkEnv twr' = do
   --                         else Nothing
   return ()
 
-genIvoryCode :: TowerBackendOutput MiniBackend
+buildComponent :: e
+               -> Component e
+               -> IO (TAST.Tower,
+                      [PackageName],
+                      ([Module] -> [Module]),
+                      Dependencies)
+buildComponent env (Component nm comp) = do
+  let t = runWriterT (unComponentM comp)
+      (((), (modDefs, runFns)), ast, code, deps, sigs) = runTower MiniBackend t env
+  when (not (M.null (signalcode_signals sigs))) $ do
+    putDoc $ "[tower-mini] error: components cannot contain signal handlers:" <+> text nm
+    exitFailure
+  when (not (null (outputPeriodCallbacks code))) $ do
+    putDoc $ "[tower-mini] warning: component" <+> text nm <+> "contains periodic handlers;"
+      <+> "these handlers will be called at a frequency determined by non-Tower code"
+  let packages    = nm      : outputPackageNames code
+      modsF deps' = compMod : outputMkModules code deps'
+      compMod = package nm $ do
+        forM_ (outputInitCallbacks code) $ \(_, monName) ->
+          dependByName monName
+        forM_ (outputPeriodCallbacks code) $ \(_, monName) ->
+          dependByName monName
+        let entryProc :: Def('[] ':-> ())
+            entryProc = voidProc "component_entry" $ body $ do
+              forM_ runFns call_
+              zero <- constRef `fmap` local izero
+              forM_ (outputPeriodCallbacks code) $ \(cbName, _) -> do
+                call_ (importProc cbName "" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) zero
+              retVoid
+            initProc :: Def('[] ':-> ())
+            initProc = voidProc "component_init" $ body $ do
+              zero <- constRef `fmap` local izero              
+              forM_ (outputInitCallbacks code) $ \(cbName, _) ->
+                call_ (importProc cbName "" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) zero
+        private modDefs
+        incl entryProc
+        incl initProc
+  return (ast, packages, modsF, deps)
+  
+
+genIvoryCode :: [PackageName]
+             -> ([Module] -> [Module])
              -> Dependencies
-             -> SignalCode
-             -> ([String], [Module], [Located Artifact])
+             -> ([PackageName], [Module], [Located Artifact])
 genIvoryCode
-  (MiniOutput (packages, modsF))
+  packages
+  modsF
   Dependencies
   { dependencies_modules   = modDeps
   , dependencies_depends   = depends
   , dependencies_artifacts = artifacts
-  }
-  SignalCode
-  { signalcode_signals = signals
   } = (packages, modules, artifacts)
   where
-  modules = modDeps
-         ++ modsF depends
-         ++ go (mkSignalCode (modsF depends)) signals
-  go c cs = M.elems $ M.mapWithKey c cs
+  modules = modDeps ++ modsF depends
 
 mkSignalCode :: [Module] -> String -> GeneratedSignal -> Module
 mkSignalCode deps sigNm GeneratedSignal { unGeneratedSignal = s }

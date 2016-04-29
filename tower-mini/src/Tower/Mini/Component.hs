@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -13,25 +14,38 @@ import Control.Monad.Fix
 import Ivory.Language
 import Ivory.Tower
 
-newtype Component e a = Component {
-    unComponent :: WriterT (ModuleDef, [Def('[] ':-> ())]) (Tower e) a
+newtype ComponentM e a = ComponentM {
+    unComponentM :: WriterT (ModuleDef, [Def('[] ':-> ())]) (Tower e) a
   } deriving (Functor, Monad, Applicative, MonadFix)
 
-instance BaseUtils Component e where
-  freshname n = Component $ lift $ freshname n
-  getEnv = Component $ lift $ getEnv
+instance BaseUtils ComponentM e where
+  freshname n = ComponentM $ lift $ freshname n
+  getEnv = ComponentM $ lift $ getEnv
 
-putComponentCode :: ModuleDef -> Component e ()
-putComponentCode c = Component $ put (c, mempty)
+putComponentCode :: ModuleDef -> ComponentM e ()
+putComponentCode c = ComponentM $ put (c, mempty)
 
-putRunCode :: (forall s . Ivory (ProcEffects s ()) ()) -> Component e ()
+putRunCode :: (forall s . Ivory (ProcEffects s ()) ()) -> ComponentM e ()
 putRunCode c = do
   n <- freshname "run_aux"
   let fn = voidProc (showUnique n) $ body $ c *> retVoid
-  Component $ put (incl fn, [fn])
+  ComponentM $ put (incl fn, [fn])
 
-liftTower :: Tower e a -> Component e a
-liftTower c = Component $ lift c
+liftTower :: Tower e a -> ComponentM e a
+liftTower c = ComponentM $ lift c
+
+-- | An channel implemented by an external C module.
+data ExternalChan (a :: Area *) = ExternalChan {
+    extChanGetSym :: String
+    -- ^ Symbol @sym@ for a C function @bool sym(t *data)@ where
+    -- @data@ is an output parameter and the return value indicates
+    -- whether valid data has been written to @data@
+  , extChanPutSym :: String
+    -- ^ Symbol @sym@ for a C function @void sym(const t *data)@ where
+    -- @data@ is an input parameter to write to the channel
+  , extChanHeader :: String
+    -- ^ Header file from which to import the channel's symbols
+  } deriving (Show)
 
 -- TODO: enforce that only one handler listens to the other end of this?
 
@@ -39,7 +53,7 @@ inputPort :: forall e a .
              (IvoryArea a, IvoryZero a)
           => String
           -> String
-          -> Component e (ChanOutput a)
+          -> ComponentM e (ChanOutput a)
 inputPort sym hdr = do
   (chan_in, chan_out) <- liftTower channel
   inputPort' chan_in sym hdr
@@ -50,7 +64,7 @@ inputPort' :: forall e a .
            => ChanInput a
            -> String
            -> String
-           -> Component e ()
+           -> ComponentM e ()
 inputPort' chan_in sym hdr = do
   let n = "input_" ++ sym ++ "_" ++ takeWhile (/= '.') hdr
   let ext_get_data :: Def('[Ref s a] ':-> IBool)
@@ -73,11 +87,24 @@ inputPort' chan_in sym hdr = do
         e <- emitter chan_in 1
         callback $ \msg -> emit e msg
 
+inputPortChan :: (IvoryArea a, IvoryZero a)
+              => ExternalChan a
+              -> ComponentM e (ChanOutput a)
+inputPortChan ec =
+  inputPort (extChanGetSym ec) (extChanHeader ec)
+
+inputPortChan' :: (IvoryArea a, IvoryZero a)
+               => ChanInput a
+               -> ExternalChan a
+               -> ComponentM e ()
+inputPortChan' chan_in ec =
+  inputPort' chan_in (extChanGetSym ec) (extChanHeader ec)
+
 outputPort :: forall e a .
               (IvoryArea a, IvoryZero a)
            => String
            -> String
-           -> Component e (ChanInput a)
+           -> ComponentM e (ChanInput a)
 outputPort sym hdr = do
   (chan_in, chan_out) <- liftTower channel
   outputPort' chan_out sym hdr
@@ -88,7 +115,7 @@ outputPort' :: forall e a .
             => ChanOutput a
             -> String
             -> String
-            -> Component e ()
+            -> ComponentM e ()
 outputPort' chan_out sym hdr = do
   let n = "output_" ++ sym ++ takeWhile (/= '.') hdr
   let ext_put_data :: Def('[ConstRef s a] ':-> ())
@@ -100,16 +127,24 @@ outputPort' chan_out sym hdr = do
       handler chan_out n $
         callback $ \msg -> call_ ext_put_data msg
 
-component :: String -> Component e () -> Tower e ()
-component nm c = do
-  (_, (modDefs, runFns)) <- runWriterT (unComponent c)
-  let run :: Def('[] ':-> ())
-      run = voidProc "run" $ body $ do
-        forM_ runFns $ \f -> call_ f
-        retVoid
-      compMod :: Module
-      compMod = package nm $ do
-        private modDefs
-        incl run
-  towerModule compMod
-  towerDepends compMod
+outputPortChan :: (IvoryArea a, IvoryZero a)
+               => ExternalChan a
+               -> ComponentM e (ChanInput a)
+outputPortChan ec =
+  outputPort (extChanPutSym ec) (extChanHeader ec)
+
+outputPortChan' :: (IvoryArea a, IvoryZero a)
+                => ChanOutput a
+                -> ExternalChan a
+                -> ComponentM e ()
+outputPortChan' chan_out ec =
+  outputPort' chan_out (extChanPutSym ec) (extChanHeader ec)
+
+
+data Component e = Component {
+    componentName :: String
+  , unComponent   :: ComponentM e ()
+  }
+
+component :: String -> ComponentM e () -> Component e
+component nm c = Component nm c

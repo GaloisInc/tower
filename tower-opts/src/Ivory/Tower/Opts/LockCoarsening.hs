@@ -24,6 +24,7 @@ import System.Directory
 import qualified Data.Set as Set
 
 import qualified Ivory.Tower.AST as AST
+import Ivory.Language.Syntax.Names
 import Ivory.Tower.Types.Opts
 import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 import Ivory.Tower.Opts.LockCoarsening.LockOptimize
@@ -33,29 +34,29 @@ import Data.Int
 lockCoarseningName :: String
 lockCoarseningName = "lockCoarsening"
 
-lockCoarsening :: Int -> Int -> AST.Tower -> IO AST.Tower
-lockCoarsening nbLocksTotal cputimelim ast = do
-  let nbMonitors = length $ AST.tower_monitors $ cleanAST ast
+lockCoarsening :: Int -> Int -> [Sym] -> AST.Tower -> IO AST.Tower
+lockCoarsening nbLocksTotal cputimelim unsafeList ast = do
+  let nbMonitors = length $ AST.tower_monitors $ cleanAST unsafeList ast
   if nbMonitors > nbLocksTotal 
     then error "insufficient locks given for lockCoarsening"
     else do
-      (_,monitors) <- lockCoarseningMonitors ast (AST.tower_monitors ast) nbLocksTotal cputimelim
+      (_,monitors) <- lockCoarseningMonitors ast (AST.tower_monitors ast) nbLocksTotal cputimelim unsafeList
       let astOpt = ast {AST.tower_transformers = ((LockCoarsening OptTower):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
       return $ astOpt
 
-lockCoarseningMonitors :: AST.Tower -> [AST.Monitor] -> Int -> Int -> IO (Int,[AST.Monitor])
-lockCoarseningMonitors _ [] _ _ = return (0,[])
-lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim = do
+lockCoarseningMonitors :: AST.Tower -> [AST.Monitor] -> Int -> Int -> [Sym] -> IO (Int,[AST.Monitor])
+lockCoarseningMonitors _ [] _ _ _ = return (0,[])
+lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
   let a = mon {AST.monitor_handlers = map (applyStaticAnalysisHandler mon) $ AST.monitor_handlers mon}
-  let cleanmon = cleanMonitor a
+  let cleanmon = cleanMonitor unsafeList a
   if (null $ AST.monitor_handlers cleanmon) 
     then do
-      (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal) cputimelim
+      (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal) cputimelim unsafeList
       return (locksUsed, (a {AST.monitor_transformers = ((LockCoarsening $ OptMonitor []):(AST.monitor_transformers a))}):monitors)
   else do
-    (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal-1) cputimelim
+    (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal-1) cputimelim unsafeList
     let locksAvail = nbLocksTotal - locksUsed
-    locks <- attributeLocksMonitor (zip (map fromSymToString $ staticAnalysisMonitor $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
+    locks <- attributeLocksMonitor (zip (map fromSymToString $ staticAnalysisMonitor unsafeList $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
     let optMon = (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)})
     (retMon,numberAfterOpt) <- lockOptimizeMonitor optMon
     --TODO correct length locks
@@ -63,7 +64,7 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim = do
   where
     applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler
     applyStaticAnalysisHandler moni han =
-      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler (AST.monitor_moduledef moni) han):(AST.handler_transformers han))}
+      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler unsafeList (AST.monitor_moduledef moni) han):(AST.handler_transformers han))}
     frequencies :: AST.Monitor -> [Integer]
     frequencies moni = 
       let han = AST.monitor_handlers moni in
@@ -89,9 +90,9 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim = do
           where
             freqOf (Microseconds f) = quot 100000000 f
 
-lockCoarseningMonitor :: AST.Tower -> AST.Monitor -> Int -> Int -> IO (AST.Monitor)
-lockCoarseningMonitor tow mon nbLocks cputimelim = do
-  (_, val) <- lockCoarseningMonitors tow [mon] nbLocks cputimelim
+lockCoarseningMonitor :: AST.Tower -> AST.Monitor -> Int -> Int -> [Sym] -> IO (AST.Monitor)
+lockCoarseningMonitor tow mon nbLocks cputimelim unsafeList = do
+  (_, val) <- lockCoarseningMonitors tow [mon] nbLocks cputimelim unsafeList
   return $ head val
 
 allpairs :: [t] -> [(t,t)]

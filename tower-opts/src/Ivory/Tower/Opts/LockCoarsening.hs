@@ -31,8 +31,59 @@ import Ivory.Tower.Opts.LockCoarsening.LockOptimize
 import Ivory.Tower.Types.Time
 import Data.Int
 
+
+-- FOR STATS ONLY
+
+
+import Data.Algorithm.MaximalCliques
+import Debug.Trace
+import Ivory.Tower.Types.Unique
+
+
 lockCoarseningName :: String
 lockCoarseningName = "lockCoarsening"
+
+statisticsMonitors :: [AST.Monitor] -> IO ()
+statisticsMonitors [] = return ()
+statisticsMonitors (a:b) = do
+  statisticsMonitor a 
+  statisticsMonitors b
+
+statisticsMonitor :: AST.Monitor -> IO ()
+statisticsMonitor mon = do
+  trace (show (showUnique $ AST.monitor_name mon) ++ "," ++ (show $ concat $ intersperse "; " $ ressourceList) ++ ", " ++ (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
+    (show $ numberOfNodes handlerList) ++ ", " ++ (show $ numberOfEdges isEdgeBefore handlerList) ++ ", " ++
+    (show $ length ressourceList) ++ ", " ++ 
+    (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++ (show $ numberOfNodes handlerList) ++  ", " ++
+    (show $ numberOfEdges isEdgeAfter handlerList) ++ ", " ++ (show $ length lockList) ) (putStr "")
+  where
+    (Just (LockCoarsening (OptMonitor lockList))) = getOpt (LockCoarsening OptVoid) $ AST.monitor_transformers mon
+    ressourceList = nub $ concat lockList
+    handlerList = AST.monitor_handlers mon
+
+    isEdgeBefore h1 h2 = 
+      let (Just (LockCoarsening (OptHandler res1))) = getOpt (LockCoarsening OptVoid) $ AST.handler_transformers h1 in
+      let (Just (LockCoarsening (OptHandler res2))) = getOpt (LockCoarsening OptVoid) $ AST.handler_transformers h2 in
+      null $ intersect res1 res2
+
+    isEdgeAfter h1 h2 = 
+      let (Just (LockCoarsening (OptHandler res1))) = getOpt (LockCoarsening OptVoid) $ AST.handler_transformers h1 in
+      let (Just (LockCoarsening (OptHandler res2))) = getOpt (LockCoarsening OptVoid) $ AST.handler_transformers h2 in
+      let l1 = map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ lockList) $ res1 in
+      let l2 = map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ lockList) $ res2 in
+      null $ intersect l1 l2
+
+    maxCliques :: (a -> a -> Bool) -> [a] -> [[a]]
+    maxCliques isEdge list = getMaximalCliques isEdge list
+    maxCliqueSize isEdge list = foldl (\a clique -> max a $ length clique) 0 $ maxCliques isEdge list
+
+    numberOfEdges :: (a -> a -> Bool) -> [a] -> Int
+    numberOfEdges isEdge list = 
+      let hEdge = allpairs list in
+      length $ filter (\(a,b) -> isEdge a b) hEdge
+
+    numberOfNodes :: [a] -> Int
+    numberOfNodes list = length list
 
 lockCoarsening :: Int -> Int -> [Sym] -> AST.Tower -> IO AST.Tower
 lockCoarsening nbLocksTotal cputimelim unsafeList ast = do
@@ -42,6 +93,7 @@ lockCoarsening nbLocksTotal cputimelim unsafeList ast = do
     else do
       (_,monitors) <- lockCoarseningMonitors ast (AST.tower_monitors ast) nbLocksTotal cputimelim unsafeList
       let astOpt = ast {AST.tower_transformers = ((LockCoarsening OptTower):(AST.tower_transformers ast)) , AST.tower_monitors = monitors}
+      statisticsMonitors monitors
       return $ astOpt
 
 lockCoarseningMonitors :: AST.Tower -> [AST.Monitor] -> Int -> Int -> [Sym] -> IO (Int,[AST.Monitor])
@@ -59,7 +111,6 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
     locks <- attributeLocksMonitor (zip (map fromSymToString $ staticAnalysisMonitor unsafeList $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
     let optMon = (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)})
     (retMon,numberAfterOpt) <- lockOptimizeMonitor optMon
-    --TODO correct length locks
     return (locksUsed + numberAfterOpt, retMon:monitors)
   where
     applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler

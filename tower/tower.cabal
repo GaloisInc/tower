@@ -64,7 +64,7 @@ library
                         monadLib,
                         containers,
                         ghc-prim,
-                        mainland-pretty,
+                        mainland-pretty >= 0.4.0.0,
                         text,
                         filepath,
                         ivory,

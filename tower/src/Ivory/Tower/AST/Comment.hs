@@ -30,8 +30,8 @@ ppSrcLoc s = case s of
 ppRng :: Range -> Doc
 ppRng (Range (Position _ ln0 _) (Position _ ln1 _)) =
   if ln0 == ln1
-    then int ln0
-    else int ln0 <+> char '-' <+> int ln1
+    then text (show ln0)
+    else text (show ln0) <+> char '-' <+> text (show ln1)
 
 instance Pretty Comment where
   ppr (UserComment s) = enclose "/*" "*/" (text s)

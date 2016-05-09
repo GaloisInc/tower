@@ -15,7 +15,7 @@ library
                , base-compat
                , containers
                , filepath
-               , mainland-pretty
+               , mainland-pretty >= 0.4.0.0
                , monadLib
                , ivory >= 0.1.0.2
                , ivory-artifact

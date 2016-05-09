@@ -31,8 +31,8 @@ putRunCode c = do
   let fn = voidProc (showUnique n) $ body $ c *> retVoid
   ComponentM $ put (incl fn, [fn])
 
-liftTower :: Tower e a -> ComponentM e a
-liftTower c = ComponentM $ lift c
+tower :: Tower e a -> ComponentM e a
+tower c = ComponentM $ lift c
 
 -- | An channel implemented by an external C module.
 data ExternalChan (a :: Area *) = ExternalChan {
@@ -47,15 +47,24 @@ data ExternalChan (a :: Area *) = ExternalChan {
     -- ^ Header file from which to import the channel's symbols
   } deriving (Show)
 
--- TODO: enforce that only one handler listens to the other end of this?
+-- | @mkExternalChan getSym putSym hdr@ creates an 'ExternalChan'
+-- where symbol @getSym@ refers to a C function @bool getSym(t *data)@
+-- where @data@ is an output parameter and the return value indicates
+-- whether valid data has been written to @data@; symbol @putSym@
+-- refers to a C function @void putSym(const t *data)@ where @data@ is
+-- an input parameter to write to the channel; and @hdr@ is the name
+-- of a header file where these symbols are defined.
+mkExternalChan :: String -> String -> String -> ExternalChan a
+mkExternalChan = ExternalChan
 
+-- TODO: enforce that only one handler listens to the other end of this?
 inputPort :: forall e a .
              (IvoryArea a, IvoryZero a)
           => String
           -> String
           -> ComponentM e (ChanOutput a)
 inputPort sym hdr = do
-  (chan_in, chan_out) <- liftTower channel
+  (chan_in, chan_out) <- tower channel
   inputPort' chan_in sym hdr
   return chan_out
 
@@ -80,7 +89,7 @@ inputPort' chan_in sym hdr = do
     ifte_ ext_has_data
       (call_ gen_mon_callback (constRef ext_data))
       (return ())
-  liftTower $ do
+  tower $ do
     (_, ext_chan_out) <- channel
     externalMonitor n $
       handler (ext_chan_out :: ChanOutput a) (n ++ "_handler") $ do
@@ -106,7 +115,7 @@ outputPort :: forall e a .
            -> String
            -> ComponentM e (ChanInput a)
 outputPort sym hdr = do
-  (chan_in, chan_out) <- liftTower channel
+  (chan_in, chan_out) <- tower channel
   outputPort' chan_out sym hdr
   return chan_in
 
@@ -122,7 +131,7 @@ outputPort' chan_out sym hdr = do
       ext_put_data = importProc sym hdr
   putComponentCode $ do
     incl $ ext_put_data
-  liftTower $
+  tower $
     externalMonitor n $
       handler chan_out n $
         callback $ \msg -> call_ ext_put_data msg

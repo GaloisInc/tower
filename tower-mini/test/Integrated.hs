@@ -14,7 +14,6 @@ import Ivory.Tower
 import Ivory.Tower.Config
 
 import Tower.Mini
-import Tower.Mini.Component
 
 integratedTower :: Tower e ()
 integratedTower = do
@@ -150,7 +149,7 @@ integratedTower' :: Component e
 integratedTower' = component "foo" $ do
   chanIn  <- inputPort  "intermon1_get_data" "intermon1.h"
   chanOut <- outputPort "intermon2_put_data" "intermon2.h"
-  liftTower $ do
+  tower $ do
     towerModule  towerDepModule
     towerDepends towerDepModule
 

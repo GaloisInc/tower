@@ -8,8 +8,8 @@ cabal-version:       >= 1.10
 license:             BSD3
 
 library
-  exposed-modules: Tower.Mini,
-                   Tower.Mini.Component
+  exposed-modules: Tower.Mini
+  other-modules:   Tower.Mini.Component
 
   build-depends: base >= 4.6
                , base-compat

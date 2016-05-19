@@ -75,8 +75,14 @@ decPriority = pred
 minPer :: Priority a => a
 minPer = incPriority minPriority
 
+maxPer :: Priority a => a
+maxPer = maxPriority
+
 perPriorities :: Priority a => [a]
 perPriorities = iterate incPriority minPer
+
+sigPriorities :: Priority a => [a]
+sigPriorities = iterate decPriority maxPer
 
 -- | Map from monitor names to priorities
 type AbstractPriorityMap a = M.Map String a
@@ -115,7 +121,8 @@ mkPriorities thds =
   p  = go (\(t,pri) -> (A.threadName (A.PeriodThread t), pri))
           (zip orderedPeriodic perPriorities)
 
-  s  = go (\t -> (A.threadName (A.SignalThread t), maxPriority)) (atThreadsSignal thds)
+  s  = go (\(t,pri) -> (A.threadName (A.SignalThread t), pri))
+          (zip orderedSigs sigPriorities)
 
   e  = go (\t -> (A.monitorName t,  maxPriority)) (atThreadsExternal thds)
 
@@ -124,5 +131,6 @@ mkPriorities thds =
   fe = go (\(t,_) -> (A.monitorName t, maxPriority)) (atThreadsFromExternal thds)
 
   orderedPeriodic = reverse (sort pts)
+  orderedSigs = sort (atThreadsSignal thds)
 
   pts = atThreadsPeriodic thds

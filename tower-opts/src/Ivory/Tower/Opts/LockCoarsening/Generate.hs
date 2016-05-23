@@ -62,5 +62,5 @@ runTest (nbHandlers,nbRessources,nbLocks) = do
 runTests :: [(Int, Int, Int)] -> IO ()
 runTests params = do
   (testList::[String]) <- parallelInterleaved $ map runTest params
-  sequence $ map putStrLn $ filter (not.null) testList
+  _ <- sequence $ map putStrLn $ filter (not.null) testList
   stopGlobalPool

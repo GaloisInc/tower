@@ -28,7 +28,10 @@ ranks :: PetriNet -> String
 ranks (nodes, transitions, _) =
   rankNodesMonitor nodes ++ "\n\r" ++
   rankNodesHandlers nodes ++ "\n\r" ++
-  rankLocks transitions ++ "\n\r"
+  rankLocks transitions ++ "\n\r" ++
+  rankRelease transitions ++ "\n\r" ++
+  rankComp nodes ++ "\n\r"
+
 
 
 rankNodesMonitor :: [PetriNode] -> String
@@ -47,6 +50,18 @@ rankLocks :: [PetriTransition] -> String
 rankLocks transitions =
   "\t{rank=same; " ++ 
     (concat $ intersperse "; " $ map trans_name $ filter (\trans -> compare "lock_" (take 5 $ trans_name trans) == EQ ) transitions ) ++ 
+    "; };"
+
+rankRelease :: [PetriTransition] -> String
+rankRelease transitions =
+  "\t{rank=same; " ++ 
+    (concat $ intersperse "; " $ map trans_name $ filter (\trans -> compare "release_" (take 8 $ trans_name trans) == EQ ) transitions ) ++ 
+    "; };"
+
+rankComp :: [PetriNode] -> String
+rankComp nodes =
+  "\t{rank=same; " ++ 
+    (concat $ intersperse "; " $ map node_name $ filter (\node -> compare "comp_" (take 5 $ node_name node) == EQ ) nodes ) ++ 
     "; };"
 
 

@@ -1,3 +1,5 @@
+{-#LANGUAGE ScopedTypeVariables#-}
+
 module Ivory.Tower.Petri.PetriLockCoarsening 
   (petriTowerLockCoarsening) where
 
@@ -103,13 +105,14 @@ makeListener (ChanInit _) = makeInitName
 
 petriHandler :: Monitor -> Handler -> PetriNet
 petriHandler mon h =
-  ([handlerReady, handlerComputing],[handlerLock, handlerRelease],
-    [subscribe, takeLockHan, enterComputation, finishComputation] ++ emittersEdges ++ (map takeLockMon locksToTake) ++ (map releaseLock locksToTake))
+  ([handlerReady, handlerComputing]++(addFineLocks $ length locksToTake),[handlerLock, handlerRelease]++(addFineLocksT $ length locksToTake),
+    [subscribe, takeLockHan, enterComputation $ length locksToTake, finishComputation] ++ emittersEdges ++ 
+    (addFineLocksE $ length locksToTake) ++ (map takeLockMon $ zip [1..] locksToTake) ++ (map releaseLock locksToTake))
   where
     (Just (LockCoarsening (OptMonitor globmon))) = getOpt (LockCoarsening OptVoid) $ monitor_transformers mon
     (Just (LockCoarsening (OptHandler globhan))) = getOpt (LockCoarsening OptVoid) $ handler_transformers h
     locksToTake :: [Int]
-    locksToTake = map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ globmon) $ globhan
+    locksToTake = sort $ map succ $ nub $ concat $ map (\x -> findIndices (\list -> elem x list) $ globmon) $ globhan
 
     handlerReady      = PetriNode
       { node_name     = makeHandlerName h
@@ -155,13 +158,6 @@ petriHandler mon h =
       , edge_color = "black"
       , edge_label = ""
       }
-    enterComputation = PetriEdge
-      { edge_dep   = trans_name handlerLock
-      , edge_arr   = node_name handlerComputing
-      , edge_w     = 1
-      , edge_color = "black"
-      , edge_label = ""
-      }
     finishComputation = PetriEdge
       { edge_dep   = node_name handlerComputing
       , edge_arr   = trans_name handlerRelease
@@ -170,13 +166,87 @@ petriHandler mon h =
       , edge_label = ""
       }
 
-    takeLockMon :: Int -> PetriEdge
-    takeLockMon ide = PetriEdge
-      { edge_dep   = makeLockName mon ide
-      , edge_arr   = trans_name handlerLock
+    -- we create an edge from lock_name if <= 1 lock to take, and from lock_lastid_name if > 1.
+    enterComputation 0 = PetriEdge
+      { edge_dep   = trans_name handlerLock
+      , edge_arr   = node_name handlerComputing
       , edge_w     = 1
       , edge_color = "black"
       , edge_label = ""
+      }
+    enterComputation 1 = enterComputation 0
+    enterComputation n = PetriEdge
+      { edge_dep   = "lock" ++ (show n) ++ "_" ++ (makeHandlerName h)
+      , edge_arr   = node_name handlerComputing
+      , edge_w     = 1
+      , edge_color = "black"
+      , edge_label = ""
+      }
+
+    addFineLocks n = case n of
+      0 -> []
+      1 -> []
+      _ -> PetriNode
+        { node_name     = "locked" ++ (show $ n-1) ++ "_" ++ (makeHandlerName h)
+        , node_m0       = 0
+        , node_color    = "blue"
+        , node_k        = 1
+        , node_subgraph = makeSubgraphMonitorName mon
+        , node_group    = makeGroupHandlerName h
+        , node_label    = "" 
+        } : (addFineLocks $ n-1)
+
+    addFineLocksT n = case n of
+      0 -> []
+      1 -> []
+      _ -> PetriTransition
+        { trans_name     = "lock" ++ (show n) ++ "_" ++ (makeHandlerName h)
+        , trans_color    = "plum1"
+        , trans_subgraph = makeSubgraphMonitorName mon
+        , trans_group    = makeGroupHandlerName h
+        } : (addFineLocksT $ n-1)
+
+    addFineLocksE n = case n of
+      0 -> []
+      1 -> []
+      2 -> [ PetriEdge
+        { edge_dep   = "lock_" ++ (makeHandlerName h)
+        , edge_arr   = "locked1_" ++ (makeHandlerName h)
+        , edge_w     = 1
+        , edge_color = "black"
+        , edge_label = ""
+        } 
+        , PetriEdge
+        { edge_dep   = "locked1_" ++ (makeHandlerName h)
+        , edge_arr   = "lock2_" ++ (makeHandlerName h)
+        , edge_w     = 1
+        , edge_color = "black"
+        , edge_label = ""
+        }]
+      _ -> [ PetriEdge
+        { edge_dep   = "lock" ++ (show $ n-1) ++ "_" ++ (makeHandlerName h)
+        , edge_arr   = "locked" ++ (show $ n-1) ++ "_" ++ (makeHandlerName h)
+        , edge_w     = 1
+        , edge_color = "black"
+        , edge_label = ""
+        } 
+        , PetriEdge
+        { edge_dep   = "locked" ++ (show $ n-1) ++ "_" ++ (makeHandlerName h)
+        , edge_arr   = "lock" ++ (show $ n) ++ "_" ++ (makeHandlerName h)
+        , edge_w     = 1
+        , edge_color = "black"
+        , edge_label = ""
+        }] ++ (addFineLocksE $ n-1)
+
+    takeLockMon :: (Int, Int) -> PetriEdge
+    takeLockMon (idx,ide) = PetriEdge
+      { edge_dep   = makeLockName mon ide
+      , edge_arr   = case idx of 
+        1 -> "lock_" ++ (makeHandlerName h)
+        _ -> "lock" ++ (show $ idx) ++ "_" ++ (makeHandlerName h)
+      , edge_w     = 1
+      , edge_color = "black"
+      , edge_label = "\", constraint=\"false" -- add , constraint=false using the same technique as SQL injections
       }
     releaseLock :: Int -> PetriEdge
     releaseLock ide = PetriEdge

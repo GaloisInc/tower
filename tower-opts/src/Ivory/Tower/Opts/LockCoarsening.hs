@@ -14,6 +14,8 @@ module Ivory.Tower.Opts.LockCoarsening
       , lockCoarseningMonitors
       , lockCoarseningMonitor
       , cleanAST
+      , attributeLocksMonitor
+      , statisticsMonitor
       ) where
 
 import Data.List
@@ -36,7 +38,6 @@ import Data.Int
 
 
 import Data.Algorithm.MaximalCliques
-import Debug.Trace
 import Ivory.Tower.Types.Unique
 
 
@@ -46,16 +47,26 @@ lockCoarseningName = "lockCoarsening"
 statisticsMonitors :: [AST.Monitor] -> IO ()
 statisticsMonitors [] = return ()
 statisticsMonitors (a:b) = do
-  statisticsMonitor a 
+  s <- statisticsMonitor a 
+  writeFile "stats.tmp" s
   statisticsMonitors b
 
-statisticsMonitor :: AST.Monitor -> IO ()
+statisticsMonitor :: AST.Monitor -> IO String
 statisticsMonitor mon = do
-  trace (show (showUnique $ AST.monitor_name mon) ++ "," ++ (show $ concat $ intersperse "; " $ ressourceList) ++ ", " ++ (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
-    (show $ numberOfNodes handlerList) ++ ", " ++ (show $ numberOfEdges isEdgeBefore handlerList) ++ ", " ++
-    (show $ length ressourceList) ++ ", " ++ 
-    (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++ (show $ numberOfNodes handlerList) ++  ", " ++
-    (show $ numberOfEdges isEdgeAfter handlerList) ++ ", " ++ (show $ length lockList) ) (putStr "")
+  let monName = show (showUnique $ AST.monitor_name mon)
+  let resList = (show $ concat $ intersperse "; " $ ressourceList)
+  let nbNodesB = numberOfNodes handlerList
+  let nbEdgesB = numberOfEdges isEdgeBefore handlerList
+  let (densityB::Double) = 2*(fromIntegral nbEdgesB) / (fromIntegral $ nbNodesB*(nbNodesB-1))
+  let nbNodesA = nbNodesB
+  let nbEdgesA = numberOfEdges isEdgeAfter handlerList
+  let (densityA::Double) = 2*(fromIntegral nbEdgesA) / (fromIntegral $ nbNodesA*(nbNodesA-1))
+  let uncertainty = abs(densityA-densityB)/densityB
+  return (monName ++ "," ++ resList ++ ", " ++ (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
+    (show nbNodesB) ++ ", " ++ (show nbEdgesB) ++ ", " ++ 
+    (show $ length ressourceList) ++ ", " ++ (show densityB) ++ ", " ++
+    (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++ (show nbNodesA) ++  ", " ++
+    (show nbEdgesA) ++ ", " ++ (show $ length lockList) ++ ", " ++ (show densityA) ++ ", "++ (show uncertainty) )
   where
     (Just (LockCoarsening (OptMonitor lockList))) = getOpt (LockCoarsening OptVoid) $ AST.monitor_transformers mon
     ressourceList = nub $ concat lockList

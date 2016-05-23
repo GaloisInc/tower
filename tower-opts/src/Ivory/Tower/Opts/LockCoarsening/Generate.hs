@@ -16,7 +16,7 @@ module Ivory.Tower.Opts.LockCoarsening.Generate
 
 import Data.List (intersect)
 import Data.Random
-import Data.Monoid
+import Data.Monoid()
 import Control.Concurrent.ParallelIO.Global
 
 import Ivory.Language

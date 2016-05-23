@@ -14,15 +14,11 @@
 module Ivory.Tower.Opts.LockCoarsening.Generate
   where
 
-import Data.List (nub, intersect)
+import Data.List (intersect)
 import Data.Random
-import Data.Foldable
 import Control.Concurrent.ParallelIO.Global
 
 import Ivory.Language
-import Ivory.Language.Syntax.Names
-import Ivory.Language.Syntax
-import Ivory.Language.Syntax.AST
 import qualified Ivory.Tower.AST as AST
 import qualified Data.List.NonEmpty as NE
 import Ivory.Tower.Opts.LockCoarsening
@@ -60,7 +56,7 @@ runTest (nbHandlers,nbRessources,nbLocks) = do
     let list = zip ll $ map toInteger [1..nbHandlers]
     locks <- attributeLocksMonitor list nbLocks 60
     let optMon = (AST.Monitor (Unique (show (nbHandlers,nbRessources,nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
-    (retMon,numberAfterOpt) <- lockOptimizeMonitor optMon
+    (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
     statisticsMonitor retMon
 
 runTests :: [(Int, Int, Int)] -> IO ()

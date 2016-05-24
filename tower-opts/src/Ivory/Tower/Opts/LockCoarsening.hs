@@ -18,6 +18,7 @@ module Ivory.Tower.Opts.LockCoarsening
       , statisticsMonitor
       ) where
 
+import Debug.Trace
 import Data.List
 import Data.List.Split
 import System.IO
@@ -180,8 +181,9 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     removeFile tmpName
     return sortsol
   else do
-    --removeFile tmpName
-    error $ "While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time."
+    removeFile tmpName
+    trace ("While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time.") $ pure ()
+    return $ [nub $ concat $ map fst list]
 
   where
     keepString::String->Int->[String]

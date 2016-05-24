@@ -33,6 +33,7 @@ import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 import Ivory.Tower.Opts.LockCoarsening.LockOptimize
 import Ivory.Tower.Types.Time
 import Data.Int
+import Numeric
 
 
 -- FOR STATS ONLY
@@ -65,9 +66,9 @@ statisticsMonitor mon = do
   let uncertainty = abs(densityA-densityB)/densityB
   return (monName ++ "," ++ resList ++ ", " ++ (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
     (show nbNodesB) ++ ", " ++ (show nbEdgesB) ++ ", " ++ 
-    (show $ length ressourceList) ++ ", " ++ (show densityB) ++ ", " ++
+    (show $ length ressourceList) ++ ", " ++ (showFFloat (Just 6) densityB "") ++ ", " ++
     (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++ (show nbNodesA) ++  ", " ++
-    (show nbEdgesA) ++ ", " ++ (show $ length lockList) ++ ", " ++ (show densityA) ++ ", "++ (show uncertainty) )
+    (show nbEdgesA) ++ ", " ++ (show $ length lockList) ++ ", " ++ (showFFloat (Just 6) densityA "") ++ ", "++ (showFFloat (Just 6) uncertainty "") )
   where
     (Just (LockCoarsening (OptMonitor lockList))) = getOpt (LockCoarsening OptVoid) $ AST.monitor_transformers mon
     ressourceList = nub $ concat lockList

@@ -56,7 +56,7 @@ runTest (nbHandlers,nbRessources,nbLocks) = do
   else do
     let list = zip ll $ map toInteger [1..nbHandlers]
     locks <- attributeLocksMonitor list nbLocks 60
-    let optMon = (AST.Monitor (Unique (show (nbHandlers,nbRessources,nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
+    let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
     (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
     statisticsMonitor retMon
 

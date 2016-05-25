@@ -55,7 +55,7 @@ statisticsMonitors (a:b) = do
 
 statisticsMonitor :: AST.Monitor -> IO String
 statisticsMonitor mon = do
-  let monName = take 1 $ reverse $ take 1 $ reverse $ show (showUnique $ AST.monitor_name mon)
+  let monName = drop 1 $ reverse $ drop 1 $ reverse $ show (showUnique $ AST.monitor_name mon)
   let resList = (show $ concat $ intersperse "; " $ ressourceList)
   let nbNodesB = numberOfNodes handlerList
   let nbEdgesB = numberOfEdges isEdgeBefore handlerList

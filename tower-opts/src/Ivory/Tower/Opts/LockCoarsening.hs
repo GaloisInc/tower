@@ -64,7 +64,7 @@ statisticsMonitor mon = do
   let nbEdgesA = numberOfEdges isEdgeAfter handlerList
   let (densityA::Double) = 2*(fromIntegral nbEdgesA) / (fromIntegral $ nbNodesA*(nbNodesA-1))
   let uncertainty = abs(densityA-densityB)/densityB
-  return (monName ++ "," ++ resList ++ ", " ++ (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
+  return (monName ++ "," ++ {-resList ++ ", "-} ++ (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
     (show nbNodesB) ++ ", " ++ (show nbEdgesB) ++ ", " ++ 
     (show $ length ressourceList) ++ ", " ++ (showFFloat (Just 6) densityB "") ++ ", " ++
     (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++ (show nbNodesA) ++  ", " ++

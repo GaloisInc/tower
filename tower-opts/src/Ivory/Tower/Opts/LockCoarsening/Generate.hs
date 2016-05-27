@@ -31,6 +31,8 @@ import Ivory.Tower.Types.Unique
 import Ivory.Tower.Types.Opts
 --import Prelude
 
+import Debug.Trace
+
 
 allpairs :: [t] -> [(t,t)]
 allpairs [] = []
@@ -50,6 +52,7 @@ dummyHandler s n = AST.Handler (Unique (show n) 1) (AST.ChanPeriod (AST.Period (
 
 runTest :: (Int, Int, Int) -> IO String
 runTest (nbHandlers,nbRessources,nbLocks) = do
+  trace (show (nbHandlers,nbRessources,nbLocks)) $ pure ()
   ll <- (randomTest nbHandlers nbRessources)
   if (null $ filter (\(a,b) -> null $ intersect a b) (allpairs ll)) then
     return ""

@@ -171,7 +171,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
   hPutStr tmpHandle (concat $ intersperse "\n" input)
   hFlush tmpHandle
   hClose tmpHandle
-  (_, out, _) <- readProcessWithExitCode "timeout" [(show $ cputimelim +30) ++ "s" , "open-wbo" ,"-cpu-lim="++(show cputimelim), tmpName] ""
+  (_, out, _) <- readProcessWithExitCode "timeout" [(show $ cputimelim +5) ++ "s" , "open-wbo" ,"-cpu-lim="++(show cputimelim), tmpName] ""
   let outputStatus = drop 2 $ (concat $ filter (\x -> compare "s" (take 1 x) == EQ) (lines out))
   if compare "OPTIMUM FOUND" (take 13 outputStatus) == EQ || compare "SATISFIABLE" (take 11 outputStatus) == EQ
     then do

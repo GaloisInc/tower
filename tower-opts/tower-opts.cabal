@@ -22,6 +22,7 @@ library
                         random-fu,
                         parallel-io,
                         process,
+                        enclosed-exceptions,
                         split,
                         directory,
                         maximal-cliques,

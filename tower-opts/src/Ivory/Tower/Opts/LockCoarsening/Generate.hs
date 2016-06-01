@@ -32,6 +32,8 @@ import Ivory.Tower.Types.Opts
 --import Prelude
 
 import Debug.Trace
+import Data.Either (isLeft)
+import Control.Exception.Enclosed
 
 
 allpairs :: [t] -> [(t,t)]
@@ -58,11 +60,14 @@ runTest (nbHandlers, nbRessources, nbLocks, cputimelim) = do
   else do
 --    trace (show (nbHandlers,nbRessources,nbLocks)) $ pure ()
     let list = zip ll $ map toInteger [1..nbHandlers]
-    locks <- attributeLocksMonitor list nbLocks cputimelim
-    let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
-    (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
-    aa <- statisticsMonitor retMon
-    trace (aa) $ pure aa
+    lockst <- tryAnyDeep $ attributeLocksMonitor list nbLocks cputimelim
+    if (isLeft lockst) then return ""
+    else do
+      let (Right locks) = lockst
+      let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
+      (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
+      aa <- statisticsMonitor retMon
+      trace (aa) $ pure aa
 
 runTests :: [(Int, Int, Int, Int)] -> IO ()
 runTests params = do

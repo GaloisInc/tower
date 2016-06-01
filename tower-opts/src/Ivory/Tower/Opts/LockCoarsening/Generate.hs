@@ -52,11 +52,11 @@ dummyHandler s n = AST.Handler (Unique (show n) 1) (AST.ChanPeriod (AST.Period (
 
 runTest :: (Int, Int, Int) -> IO String
 runTest (nbHandlers,nbRessources,nbLocks) = do
-  trace (show (nbHandlers,nbRessources,nbLocks)) $ pure ()
   ll <- (randomTest nbHandlers nbRessources)
   if (null $ filter (\(a,b) -> null $ intersect a b) (allpairs ll)) then
     return ""
   else do
+    trace (show (nbHandlers,nbRessources,nbLocks)) $ pure ()
     let list = zip ll $ map toInteger [1..nbHandlers]
     locks <- attributeLocksMonitor list nbLocks 60
     let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])

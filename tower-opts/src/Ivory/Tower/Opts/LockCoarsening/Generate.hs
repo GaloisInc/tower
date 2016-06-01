@@ -50,21 +50,21 @@ dummyHandler :: [String] -> Integer -> AST.Handler
 dummyHandler s n = AST.Handler (Unique (show n) 1) (AST.ChanPeriod (AST.Period (us 0) perTy (us 0))) [] (NE.fromList []) (NE.fromList []) [] [(LockCoarsening $ OptHandler s)]
   where perTy = I.ivoryArea (Proxy :: I.AProxy ('Stored ITime))
 
-runTest :: (Int, Int, Int) -> IO String
-runTest (nbHandlers,nbRessources,nbLocks) = do
+runTest :: (Int, Int, Int, Int) -> IO String
+runTest (nbHandlers, nbRessources, nbLocks, cputimelim) = do
   ll <- (randomTest nbHandlers nbRessources)
   if (null $ filter (\(a,b) -> null $ intersect a b) (allpairs ll)) then
     return ""
   else do
 --    trace (show (nbHandlers,nbRessources,nbLocks)) $ pure ()
     let list = zip ll $ map toInteger [1..nbHandlers]
-    locks <- attributeLocksMonitor list nbLocks 60
+    locks <- attributeLocksMonitor list nbLocks cputimelim
     let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
     (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
     aa <- statisticsMonitor retMon
     trace (aa) $ pure aa
 
-runTests :: [(Int, Int, Int)] -> IO ()
+runTests :: [(Int, Int, Int, Int)] -> IO ()
 runTests params = do
   (testList::[String]) <- parallelInterleaved $ map runTest params
   _ <- sequence $ map putStrLn $ filter (not.null) testList

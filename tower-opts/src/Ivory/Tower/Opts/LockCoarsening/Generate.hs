@@ -62,7 +62,7 @@ runTest (nbHandlers,nbRessources,nbLocks) = do
     let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
     (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
     aa <- statisticsMonitor retMon
-    trace (show (nbHandlers,nbRessources,nbLocks) ++ "    \t" ++ aa) $ pure aa
+    trace (aa) $ pure aa
 
 runTests :: [(Int, Int, Int)] -> IO ()
 runTests params = do

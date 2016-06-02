@@ -6,6 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- This module will go through a Handler and will 
@@ -16,6 +17,7 @@ module Ivory.Tower.Opts.LockCoarsening.Generate
 
 import Data.List (intersect)
 import Data.Random
+import System.Random
 import Data.Monoid()
 import Control.Concurrent.ParallelIO.Global
 
@@ -35,30 +37,53 @@ import Debug.Trace
 import Data.Either (isLeft)
 import Control.Exception.Enclosed
 
+import Data.Random.Source
+import Data.Random.Internal.Source
+import Control.Monad.Loops
 
 allpairs :: [t] -> [(t,t)]
 allpairs [] = []
 allpairs [_] = []
 allpairs (x:xs) = concatMap (\y -> [(x,y)]) xs ++ allpairs xs
 
-randomTest :: Int -> Int -> IO [[String]]
-randomTest nbHandlers nbRessources = do
+
+instance RandomSource IO StdGen where
+    getRandomWord8From _ = getStdRandom random
+    getRandomWord16From _ = getStdRandom random
+    getRandomWord32From _ = getStdRandom random
+    getRandomWord64From _ = getStdRandom random
+    getRandomDoubleFrom _ = getStdRandom $ randomR (0,1)
+    getRandomNByteIntegerFrom _ n = getStdRandom $ randomR (0,256^n-1)
+
+randomTest :: Int -> Int -> StdGen -> IO [[String]]
+randomTest nbHandlers nbRessources rr = do
   let numberOfRessourcesPerHandler = [1..nbRessources]
-  sequence $ flip map [1..nbHandlers] $ \_n -> flip runRVarT StdRandom $ (do 
+  sequence $ flip map [1..nbHandlers] $ \_n -> flip runRVarT rr $ (do 
     (nbRessourcesH) <- (randomElement numberOfRessourcesPerHandler)
     (shuffleNofM nbRessourcesH nbRessources $ map show [1..nbRessources]))
+
+
 
 dummyHandler :: [String] -> Integer -> AST.Handler
 dummyHandler s n = AST.Handler (Unique (show n) 1) (AST.ChanPeriod (AST.Period (us 0) perTy (us 0))) [] (NE.fromList []) (NE.fromList []) [] [(LockCoarsening $ OptHandler s)]
   where perTy = I.ivoryArea (Proxy :: I.AProxy ('Stored ITime))
 
+selectTest :: (Int, Int, Int, Int) -> IO [[String]]
+selectTest (nbHandlers, nbRessources, nbLocks, cputimelim) = do
+  let rr = mkStdGen $ nbHandlers*150000+nbRessources*1000+nbLocks
+  setStdGen rr
+  iterateUntil (\x -> not.null $ filter (\(a,b) -> null $ intersect a b) (allpairs x)) $ do
+    stdGen <- getStdGen
+    setStdGen $ snd $ next $ stdGen
+    testCase <- randomTest nbHandlers nbRessources stdGen
+    pure testCase
+
 runTest :: (Int, Int, Int, Int) -> IO String
 runTest (nbHandlers, nbRessources, nbLocks, cputimelim) = do
-  ll <- (randomTest nbHandlers nbRessources)
+  ll <- selectTest (nbHandlers, nbRessources, nbLocks, cputimelim)
   if (null $ filter (\(a,b) -> null $ intersect a b) (allpairs ll)) then
     return ""
   else do
---    trace (show (nbHandlers,nbRessources,nbLocks)) $ pure ()
     let list = zip ll $ map toInteger [1..nbHandlers]
     lockst <- tryAnyDeep $ attributeLocksMonitor list nbLocks cputimelim
     if (isLeft lockst) then return ""

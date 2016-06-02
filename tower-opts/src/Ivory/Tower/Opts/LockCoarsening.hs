@@ -18,7 +18,6 @@ module Ivory.Tower.Opts.LockCoarsening
       , statisticsMonitor
       ) where
 
-import Debug.Trace
 import Data.List
 import Data.List.Split
 import System.IO
@@ -56,7 +55,7 @@ statisticsMonitors (a:b) = do
 statisticsMonitor :: AST.Monitor -> IO String
 statisticsMonitor mon = do
   let monName = drop 1 $ reverse $ drop 1 $ reverse $ show (showUnique $ AST.monitor_name mon)
-  let resList = (show $ concat $ intersperse "; " $ ressourceList)
+--  let resList = (show $ concat $ intersperse "; " $ ressourceList)
   let nbNodesB = numberOfNodes handlerList
   let nbEdgesB = numberOfEdges isEdgeBefore handlerList
   let (densityB::Double) = 2*(fromIntegral nbEdgesB) / (fromIntegral $ nbNodesB*(nbNodesB-1))
@@ -183,7 +182,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     return sortsol
   else do
     removeFile tmpName
-    trace ("While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time.") $ pure ()
+    _ <- error ("While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time.")
     return $ [nub $ concat $ map fst list]
 
   where

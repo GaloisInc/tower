@@ -8,6 +8,7 @@
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
 
 -- This module will go through a Handler and will 
 -- return all the external ressources used by this Handler
@@ -18,7 +19,6 @@ module Ivory.Tower.Opts.LockCoarsening.Generate
 import Data.List (intersect)
 import Data.Random
 import System.Random
-import Data.Monoid()
 import Control.Concurrent.ParallelIO.Global
 
 import Ivory.Language
@@ -40,7 +40,9 @@ import Control.Exception.Enclosed
 import Data.Random.Source
 import Control.Monad.Loops
 
-import Control.Applicative.Compat
+#if __GLASGOW_HASKELL__ <= 709
+import Data.Monoid
+#endif
 
 allpairs :: [t] -> [(t,t)]
 allpairs [] = []
@@ -77,7 +79,7 @@ selectTest (nbHandlers, nbRessources, nbLocks, _cputimelim) = do
     stdGen <- getStdGen
     setStdGen $ snd $ next $ stdGen
     testCase <- randomTest nbHandlers nbRessources stdGen
-    pure testCase
+    return testCase
 
 runTest :: (Int, Int, Int, Int) -> IO String
 runTest (nbHandlers, nbRessources, nbLocks, cputimelim) = do
@@ -93,7 +95,7 @@ runTest (nbHandlers, nbRessources, nbLocks, cputimelim) = do
       let optMon = (AST.Monitor (Unique (show nbHandlers ++ ", " ++ (show nbRessources) ++ ", " ++ (show nbLocks)) 1) (map (\(s, n) -> dummyHandler s n) list) AST.MonitorDefined mempty [(LockCoarsening $ OptMonitor locks)])
       (retMon,_numberAfterOpt) <- lockOptimizeMonitor optMon
       aa <- statisticsMonitor retMon
-      trace (aa) $ pure aa
+      trace (aa) $ return aa
 
 runTests :: [(Int, Int, Int, Int)] -> IO ()
 runTests params = do

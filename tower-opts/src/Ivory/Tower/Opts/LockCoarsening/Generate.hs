@@ -39,7 +39,8 @@ import Control.Exception.Enclosed
 
 import Data.Random.Source
 import Control.Monad.Loops
-import Control.Monad.Compat()
+
+import Control.Applicative.Compat
 
 allpairs :: [t] -> [(t,t)]
 allpairs [] = []

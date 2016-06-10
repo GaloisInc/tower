@@ -59,9 +59,9 @@ instance RandomSource IO StdGen where
     getRandomNByteIntegerFrom _ n = getStdRandom $ randomR (0,256^n-1)
 
 randomTest :: Int -> Int -> StdGen -> IO [[String]]
-randomTest nbHandlers nbRessources rr = do
+randomTest nbHandlers nbRessources _rr = do
   let numberOfRessourcesPerHandler = [1..nbRessources]
-  sequence $ flip map [1..nbHandlers] $ \_n -> flip runRVarT rr $ (do 
+  sequence $ flip map [1..nbHandlers] $ \_n -> flip runRVarT StdRandom $ (do 
     (nbRessourcesH) <- (randomElement numberOfRessourcesPerHandler)
     (shuffleNofM nbRessourcesH nbRessources $ map show [1..nbRessources]))
 
@@ -73,8 +73,8 @@ dummyHandler s n = AST.Handler (Unique (show n) 1) (AST.ChanPeriod (AST.Period (
 
 selectTest :: (Int, Int, Int, Int) -> IO [[String]]
 selectTest (nbHandlers, nbRessources, nbLocks, _cputimelim) = do
-  let rr = mkStdGen $ nbHandlers*150000+nbRessources*1000+nbLocks
-  setStdGen rr
+--  let rr = mkStdGen $ nbHandlers*150000+nbRessources*1000+nbLocks
+--  setStdGen rr
   iterateUntil (\x -> not.null $ filter (\(a,b) -> null $ intersect a b) (allpairs x)) $ do
     stdGen <- getStdGen
     setStdGen $ snd $ next $ stdGen

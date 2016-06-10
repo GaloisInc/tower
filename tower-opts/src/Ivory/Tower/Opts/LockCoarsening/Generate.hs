@@ -72,7 +72,7 @@ dummyHandler s n = AST.Handler (Unique (show n) 1) (AST.ChanPeriod (AST.Period (
   where perTy = I.ivoryArea (Proxy :: I.AProxy ('Stored ITime))
 
 selectTest :: (Int, Int, Int, Int) -> IO [[String]]
-selectTest (nbHandlers, nbRessources, nbLocks, _cputimelim) = do
+selectTest (nbHandlers, nbRessources, _nbLocks, _cputimelim) = do
 --  let rr = mkStdGen $ nbHandlers*150000+nbRessources*1000+nbLocks
 --  setStdGen rr
   iterateUntil (\x -> not.null $ filter (\(a,b) -> null $ intersect a b) (allpairs x)) $ do

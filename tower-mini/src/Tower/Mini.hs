@@ -280,28 +280,21 @@ buildComponent env (Component nm comp) = do
           dependByName monName
         forM_ (outputPeriodCallbacks code) $ \(_, monName) ->
           dependByName monName
-        let entryProc :: Def('[] ':-> ())
-            entryProc = voidProc "component_entry" $ body $ do
+        let entryProc :: Def('[ConstRef s ('Stored Sint64)] ':-> ())
+            entryProc = voidProc "component_entry" $ \i -> body $ do
               -- in the periodic loop, first call each of the
               -- functions generated for the input and output ports of
               -- the component
               forM_ runFns call_
-              -- now run each periodic handler with a dummy value;
-              -- note that in some implementations, this value is
-              -- currently a timestamp, but we do not believe any of
-              -- the smaccmpilot code depends on this value being
-              -- meaningful
-              zero <- constRef `fmap` local izero
+              -- pass along the value coming from the glue code to periodic callbacks
               forM_ (outputPeriodCallbacks code) $ \(cbName, _) -> do
-                call_ (importProc cbName "" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) zero
+                call_ (importProc cbName "" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) i
               retVoid
-            initProc :: Def('[] ':-> ())
-            initProc = voidProc "component_init" $ body $ do
-              -- run each system init handler with a dummy value like
-              -- the periodic handlers discussed above
-              zero <- constRef `fmap` local izero              
+            initProc :: Def('[ConstRef s ('Stored Sint64)] ':-> ())
+            initProc = voidProc "component_init" $ \i -> body $ do
+              -- pass along the value coming from the glue code to init callbacks
               forM_ (outputInitCallbacks code) $ \(cbName, _) ->
-                call_ (importProc cbName "" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) zero
+                call_ (importProc cbName "" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) i
         private modDefs
         incl entryProc
         incl initProc

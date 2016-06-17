@@ -135,7 +135,8 @@ driverModule' = package "driver" $ do
           byte <- deref byteRef
           call_ printf_byte "driver in: %u\n" byte
           call_ intermon1_put_data (constRef byteRef)
-          call_ (importProc "component_entry" "foo.h" :: Def('[] ':-> ()))
+          zero <- constRef `fmap` local izero
+          call_ (importProc "component_entry" "foo.h" :: Def('[ConstRef s ('Stored Sint64)] ':-> ())) zero
           bRef <- local izero
           has_data <- call intermon2_get_data bRef
           ifte_ has_data

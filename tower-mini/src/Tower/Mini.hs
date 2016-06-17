@@ -18,8 +18,14 @@ module Tower.Mini (
   , Comp.component
   , Comp.tower
     -- ** Ports and External Channels
+  , Comp.ExternalInput
+  , Comp.ExternalOutput
   , Comp.ExternalChan
+  , Comp.ExternalInputChan
+  , Comp.ExternalOutputChan
   , Comp.mkExternalChan
+  , Comp.mkExternalInputChan
+  , Comp.mkExternalOutputChan
   , Comp.inputPortChan
   , Comp.outputPortChan
   , Comp.inputPortChan'

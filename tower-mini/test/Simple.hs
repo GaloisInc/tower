@@ -20,8 +20,8 @@ import Ivory.Tower.Config
 
 import Tower.Mini
 
-simpleTower :: Tower e ()
-simpleTower = do
+simpleTower :: Component e
+simpleTower = component "simple" $ tower $ do
   towerModule  towerDepModule
   towerDepends towerDepModule
 
@@ -53,7 +53,7 @@ simpleTower = do
 --------------------------------------------------------------------------------
 
 main :: IO ()
-main = compileTowerMini id p simpleTower
+main = compileTowerMini id p [simpleTower]
   where
   p topts = getConfig topts $ miniConfigParser defaultMiniConfig
 

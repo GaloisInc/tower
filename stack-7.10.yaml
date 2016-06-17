@@ -1,7 +1,7 @@
 # For more information, see: http://docs.haskellstack.org/en/stable/yaml_configuration.html
 
 # Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
-resolver: nightly-2016-06-15
+resolver: lts-6.3
 
 # Local packages, usually specified by relative directory name
 packages:
@@ -9,6 +9,7 @@ packages:
 - tower-aadl/
 - tower-config/
 - tower-hal/
+- tower-mini/
 - location: ../ivory
   extra-dep: true
   subdirs:
@@ -34,9 +35,9 @@ flags: {}
 extra-package-dbs: []
 
 install-ghc: true
-system-ghc: true
-skip-ghc-check: true
-allow-newer: true
+
+# Control whether we use the GHC we find on the path
+# system-ghc: true
 
 # Require a specific version of stack, using version ranges
 # require-stack-version: -any # Default

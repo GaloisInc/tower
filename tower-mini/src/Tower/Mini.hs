@@ -1,11 +1,12 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Tower.Mini (
     -- * Compilation
@@ -43,7 +44,7 @@ import Data.List                 (partition)
 import MonadLib                  (forM_, runWriterT, when)
 import System.FilePath           ((</>))
 import System.Exit               (exitFailure)
-import Text.PrettyPrint.Mainland ((<+>), ppr, putDoc, text)
+import Text.PrettyPrint.Mainland ((<+>), putDoc, text)
 
 import qualified Data.Map as Map
 
@@ -231,23 +232,28 @@ compileTowerMini :: (e -> MiniConfig) -> (TOpts -> IO e) -> [Component e] -> IO 
 compileTowerMini _fromEnv mkEnv comps = do
   (copts, topts)               <- towerGetOpts
   env                          <- mkEnv topts
-  (ast, packages, modsF, deps) <- mconcat `fmap` (mapM (buildComponent env) comps)
-  putDoc $ ppr ast
+  outs <- mapM (\c -> (componentName c,) <$> buildComponent env c) comps
+  forM_ outs $ \(name, (_ast, packages, modsF, deps)) -> do
+    let mods = dependencies_modules deps ++ modsF (dependencies_depends deps)
+        libAs = map addPrefix (dependencies_artifacts deps)
+        addPrefix l = case l of
+          Src  a -> Root (artifactPath ("libminitower" </> "src") a)
+          Incl a -> Root (artifactPath ("libminitower" </> "include") a)
+          _      -> l
+        copts' =
+          case outDir copts of
+            Nothing -> copts -- stdout
+            Just f -> copts { outDir = Just (f </> name)
+                            , outHdrDir = Just (f </> "include")
+                            , outArtDir = Just f -- same artifact dir for everyone
+                            }
+    cmodules <- compileUnits mods copts'
 
-  let mods = dependencies_modules deps ++ modsF (dependencies_depends deps)
-      libAs = map addPrefix (dependencies_artifacts deps)
-      addPrefix l = case l of
-        Src  a -> Root (artifactPath ("libminitower" </> "src") a)
-        Incl a -> Root (artifactPath ("libminitower" </> "include") a)
-        _      -> l
+    let (appMods, libMods) =
+          partition (\m -> unitName m `elem` packages) cmodules
 
-  cmodules <- compileUnits mods copts
-
-  let (appMods, libMods) =
-        partition (\m -> unitName m `elem` packages) cmodules
-
-  outputCompiler appMods libAs copts
-  outputCompiler libMods []    copts
+    outputCompiler appMods libAs copts'
+    outputCompiler libMods []    copts'
 
 -- | Build an individual minitower component. This is where much of
 -- the action is, as we finally run the underlying 'Tower' program of

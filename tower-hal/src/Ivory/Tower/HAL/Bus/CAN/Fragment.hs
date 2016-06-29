@@ -89,7 +89,15 @@ fragmentSender (MessageType baseID ide bound rep) tx = do
                 else standardCANID (fromRep $ fromIntegral baseID + safeCast idx) (boolToBit false))
             , can_message_len .= ival (toIx len)
             ]
-          for (toIx len) $ \ i -> refCopy (msg ~> can_message_buf ! i) (buf ! toIx (safeCast idx * 8 + fromIx i))
+
+          -- Note: We can't just use `for` here because `len` is type `Ix 8` and
+          -- we need to index an 8 element array. Using `for` implicitly
+          -- subtracts 1, but it takes `len` modulo 8 first, so the result ends
+          -- up being a loop with -1 as the upper bound.
+          (toIx (0 :: Sint32)) `upTo` (toIx (len-1)) $
+              \i -> refCopy (msg ~> can_message_buf ! i)
+                            (buf ! toIx (safeCast idx * 8 + fromIx i))
+
           store sent (idx + 1)
           return msg
 

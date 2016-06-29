@@ -12,6 +12,7 @@
 module Tower.AADL
   ( compileTowerAADL
   , compileTowerAADLForPlatform
+  , compileTowerAADLForPlatformWithOpts
   -- configuration
   , AADLConfig(..)
   , defaultAADLConfig
@@ -76,13 +77,20 @@ compileTowerAADLForPlatform :: (e -> (AADLConfig, OSSpecific a))
                             -> (TOpts -> IO e)
                             -> Tower e ()
                             -> IO ()
-compileTowerAADLForPlatform fromEnv mkEnv twr' = do
+compileTowerAADLForPlatform fromEnv mkEnv twr' = compileTowerAADLForPlatformWithOpts fromEnv mkEnv twr' []
+
+compileTowerAADLForPlatformWithOpts :: (e -> (AADLConfig, OSSpecific a))
+                            -> (TOpts -> IO e)
+                            -> Tower e ()
+                            -> [AST.Tower -> IO AST.Tower]
+                            -> IO ()
+compileTowerAADLForPlatformWithOpts fromEnv mkEnv twr' optslist = do
   (copts, topts)              <- towerGetOpts
   env                         <- mkEnv topts
   let (cfg',osspecific)       =  fromEnv env
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
-  (ast, _monitors, deps, sigs) <-  runTower AADLBackend twr env []
+  (ast, _monitors, deps, sigs) <-  runTower AADLBackend twr env optslist
   --let code = towerImpl AADLBackend ast monitors
   let code = towerImpl AADLBackend (ast) (map (monitorImplTD ast) $ AST.tower_monitors ast)
   let missingCallbacks = handlersMissingCallbacks ast

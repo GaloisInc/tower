@@ -131,6 +131,8 @@ analyseStmt unsafeList modu stmt = case stmt of
     --  Ref copy.  Copy the second variable reference to the first (like
     -- memcopy).  The type is the dereferenced value of the variables.
 
+  RefZero _ e1 -> analyseExpr e1
+
   AllocRef _ _ _ -> []
     --  Reference allocation.  The type parameter is not a reference, but the
     -- referenced type.

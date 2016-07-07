@@ -58,9 +58,6 @@ import           Tower.AADL.Render
 import           Tower.AADL.Render.Types
 import           Tower.AADL.Platform
 
-import qualified Ivory.Tower.AST as A
-import qualified Data.List.NonEmpty as NE
-
 --------------------------------------------------------------------------------
 
 graphvizArtifact :: String -> AST.Tower -> Located Artifact
@@ -91,13 +88,7 @@ compileTowerAADLForPlatformWithOpts fromEnv mkEnv twr' optslist = do
   cfg                         <- parseAADLOpts' cfg' topts
   let twr                     =  twr' >> osSpecificTower osspecific
   (ast, _monitors, deps, sigs) <-  runTower AADLBackend twr env optslist
-  --let code = towerImpl AADLBackend ast monitors
-  let code = towerImpl AADLBackend (ast) (map (monitorImplTD ast) $ AST.tower_monitors ast)
-  let missingCallbacks = handlersMissingCallbacks ast
-  when (not (null missingCallbacks)) $ do
-    putStrLn "Error: The following handlers are missing callbacks:"
-    mapM_ putStrLn (map (showUnique . A.handler_name) missingCallbacks)
-    exitFailure
+  let code = towerImpl AADLBackend ast (map (monitorImplTD ast) $ AST.tower_monitors ast)
   let aadl_sys                =  fromTower cfg ast
   let aadl_docs               =  buildAADL deps aadl_sys
   let doc_as                  =  renderCompiledDocs aadl_docs
@@ -124,19 +115,7 @@ compileTowerAADLForPlatformWithOpts fromEnv mkEnv twr' optslist = do
         partition (\m -> O.unitName m `elem` pkgs) cmodules
   O.outputCompiler appMods (as osspecific) (osSpecificOptsApps osspecific cfg copts)
   O.outputCompiler libMods []              (osSpecificOptsLibs osspecific cfg copts)
-  where
 
-  -- | AADL assumes that our handlers will always have a callback define. So we
-  -- search the Tower AST looking for handlers that missing callbacks.
-  handlersMissingCallbacks :: A.Tower -> [A.Handler]
-  handlersMissingCallbacks = concatMap monitorHasEmptyHandler . A.tower_monitors
-    where
-    monitorHasEmptyHandler :: A.Monitor -> [A.Handler]
-    monitorHasEmptyHandler = catMaybes . map handlerIsEmpty . A.monitor_handlers
-    handlerIsEmpty :: A.Handler -> Maybe A.Handler
-    handlerIsEmpty h = if (null (NE.toList $ A.handler_callbacks h))
-                          then Just h
-                          else Nothing
 
 -- | parseAADLOpts' is a wrapper around parseAADLOpts that
 -- checks for errors and if '--help' was requested.

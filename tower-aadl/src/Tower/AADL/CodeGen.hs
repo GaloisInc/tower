@@ -215,9 +215,15 @@ emitterImplTD tow ast monName =
   inclprocFromEmitter
   where
     emitter_type :: TIAST.Type
-    emitter_type =  TIAST.tType $ head $ IAST.procArgs $ NE.head $ AST.handler_callbacksAST $ head subscribedHandlers
+    emitter_type =  case IAST.procArgs $ NE.head $ AST.handler_callbacksAST $ subscribedHandler of
+      [] -> err "callback without procedure arguments."
+      a:b -> TIAST.tType a
 
-    subscribedHandlers = filter (\x -> isListening $ AST.handler_chan x) allHandlers
+    subscribedHandler = 
+      case filter (\x -> isListening $ AST.handler_chan x) allHandlers of
+        [] -> err $ "no handler listening for the emitter " ++ sym
+        a:b -> a
+
 
     allHandlers = concat $ map (AST.monitor_handlers) (AST.tower_monitors tow)
     isListening (AST.ChanSync sc) = sc == (AST.emitter_chan ast)
@@ -257,3 +263,6 @@ monitorImplTD tow ast =
     )
   where
     nm = threadFile ast
+
+err :: String -> a
+err msg = error ("Tower.AADL.CodeGen: " ++ msg)

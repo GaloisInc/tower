@@ -11,15 +11,18 @@ import Data.Ord
 
 getLocked :: [String] -> AST.Monitor -> [AST.HandlerFast]
 getLocked lock mon = 
-  let han = AST.monitor_handlers mon in
-  let list = filter (\x -> let (Just (LockCoarsening (OptHandler y))) = getOpt (LockCoarsening OptVoid) (AST.handler_transformers x) in (not $ null $ intersect (sort lock) (sort y))) han in
+  let han = AST.monitor_handlers mon
+      predicate = \x ->
+        let (Just (LockCoarsening (OptHandler y))) = getOpt (LockCoarsening OptVoid) (AST.handler_transformers x) in
+        (not $ null $ intersect (sort lock) (sort y))
+      list = filter predicate han in
   map AST.HandlerFast list
 
 getBestToMerge :: AST.Monitor -> [String] -> [[String]] -> [[String]] -> ([[String]],[[String]])
 getBestToMerge _ _ acc [] = (reverse acc, [])
 getBestToMerge mon element acc (test:liste) =
-  let big = sort $ getLocked test mon in
-  let small = sort $ getLocked element mon in 
+  let big = sort $ getLocked test mon
+      small = sort $ getLocked element mon in
   if ((intersect small big) == small)
     then (reverse acc, test:liste)
     else getBestToMerge mon element (test:acc) liste

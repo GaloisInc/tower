@@ -200,16 +200,25 @@ type TowerTime = I.Sint64
 
 
 -------------------
--- TOP DOWN ANALYSIS
+-- * TOP DOWN ANALYSIS
 -------------------
 
-callbackImplTD :: T.Unique -> IAST.Proc -> I.ModuleDef
-callbackImplTD sym f = 
-  let p = f {IAST.procSym = (T.showUnique sym)} in
-  let inclp = put (mempty { IAST.modProcs   = Mod.visAcc Mod.Public p }) in
-  (inclp)
 
-emitterImplTD :: AST.Tower -> AST.Emitter -> String -> I.ModuleDef
+-- | Top-Down implementation of a callback. 
+callbackImplTD :: T.Unique    -- ^ The name of the callback
+               -> IAST.Proc   -- ^ The body of the callback (untyped ivory)
+               -> I.ModuleDef -- ^ The ivory module containing the callback.
+callbackImplTD sym f = 
+  let p = f {IAST.procSym = (T.showUnique sym)}
+      inclp = put (mempty { IAST.modProcs   = Mod.visAcc Mod.Public p }) in
+  inclp
+
+
+-- | Top-Down implementation of an emitter. 
+emitterImplTD :: AST.Tower    -- ^ The full tower AST (as returned by the 'runTower' function).
+              -> AST.Emitter  -- ^ The emitter AST to compile
+              -> String       -- ^ The name of the monitor in which the emitter is defined.
+              -> I.ModuleDef  -- ^ The untyped ivory implementation of the handler.
 emitterImplTD tow ast monName = 
   let inclprocFromEmitter = put (mempty { IAST.modImports   = [procFromEmitter]}) in
   inclprocFromEmitter
@@ -217,12 +226,12 @@ emitterImplTD tow ast monName =
     emitter_type :: TIAST.Type
     emitter_type =  case IAST.procArgs $ NE.head $ AST.handler_callbacksAST $ subscribedHandler of
       [] -> err "callback without procedure arguments."
-      a:b -> TIAST.tType a
+      a:_ -> TIAST.tType a
 
     subscribedHandler = 
       case filter (\x -> isListening $ AST.handler_chan x) allHandlers of
         [] -> err $ "no handler listening for the emitter " ++ sym
-        a:b -> a
+        a:_ -> a
 
 
     allHandlers = concat $ map (AST.monitor_handlers) (AST.tower_monitors tow)
@@ -244,7 +253,11 @@ emitterImplTD tow ast monName =
         (var,_) = genVar initialClosure
 
 
-handlerImplTD :: AST.Tower -> AST.Handler -> String -> I.ModuleDef
+-- | Top-Down implementation of a handler. 
+handlerImplTD :: AST.Tower    -- ^ The full tower AST (as returned by the 'runTower' function).
+              -> AST.Handler  -- ^ The handler AST to compile
+              -> String       -- ^ The name of the monitor in which the handler is defined.
+              -> I.ModuleDef  -- ^ The untyped ivory implemntation of the handler.
 handlerImplTD tow ast monName =
   let cbdefs::(NE.NonEmpty I.ModuleDef) = NE.map (\(x,y) -> callbackImplTD x y) (NE.zip (AST.handler_callbacks ast) (AST.handler_callbacksAST ast)) in
   let emitters = map (emitterImplTD tow) $ AST.handler_emitters ast in
@@ -252,7 +265,10 @@ handlerImplTD tow ast monName =
   in
   (sequence_ cbdefs) >> (mconcat ems)
 
-monitorImplTD :: AST.Tower -> AST.Monitor -> TowerBackendMonitor AADLBackend
+-- | Top-Down implementation of a monitor. 
+monitorImplTD :: AST.Tower                         -- ^ The full tower AST (as returned by the 'runTower' function).
+              -> AST.Monitor                       -- ^ The monitor AST to compile.
+              -> TowerBackendMonitor AADLBackend   -- ^ The name and untyped ivory implementation of the monitor.
 monitorImplTD tow ast = 
   let (moddef::I.ModuleDef) = put $ AST.monitor_moduledef ast in
   let handlers = [ handlerImplTD tow hast (AST.monitorName ast) |hast <- reverse $ AST.monitor_handlers ast] in 

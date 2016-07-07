@@ -203,7 +203,7 @@ type TowerTime = I.Sint64
 -- TOP DOWN ANALYSIS
 -------------------
 
-callbackImplTD :: T.Unique -> IAST.Proc -> (I.ModuleDef)
+callbackImplTD :: T.Unique -> IAST.Proc -> I.ModuleDef
 callbackImplTD sym f = 
   let p = f {IAST.procSym = (T.showUnique sym)} in
   let inclp = put (mempty { IAST.modProcs   = Mod.visAcc Mod.Public p }) in
@@ -218,7 +218,7 @@ emitterImplTD tow ast monName =
     emitter_type =  TIAST.tType $ head $ IAST.procArgs $ NE.head $ AST.handler_callbacksAST $ head subscribedHandlers
 
     subscribedHandlers = filter (\x -> isListening $ AST.handler_chan x) allHandlers
-    -- dont know why it works
+
     allHandlers = concat $ map (AST.monitor_handlers) (AST.tower_monitors tow)
     isListening (AST.ChanSync sc) = sc == (AST.emitter_chan ast)
     isListening _ = False
@@ -239,7 +239,7 @@ emitterImplTD tow ast monName =
 
 
 handlerImplTD :: AST.Tower -> AST.Handler -> String -> I.ModuleDef
-handlerImplTD tow ast = \ monName ->
+handlerImplTD tow ast monName =
   let cbdefs::(NE.NonEmpty I.ModuleDef) = NE.map (\(x,y) -> callbackImplTD x y) (NE.zip (AST.handler_callbacks ast) (AST.handler_callbacksAST ast)) in
   let emitters = map (emitterImplTD tow) $ AST.handler_emitters ast in
   let ems = [ e monName | e <- emitters ]

@@ -35,12 +35,12 @@ import Data.Int
 import Numeric
 
 
--- FOR STATS ONLY
-
+-- IMPORTS FOR COMPUTING THE STATISTICS
 
 import Data.Algorithm.MaximalCliques
 import Ivory.Tower.Types.Unique
 
+----------
 
 lockCoarseningName :: String
 lockCoarseningName = "lockCoarsening"
@@ -55,7 +55,6 @@ statisticsMonitors (a:b) = do
 statisticsMonitor :: AST.Monitor -> IO String
 statisticsMonitor mon = do
   let monName = drop 1 $ reverse $ drop 1 $ reverse $ show (showUnique $ AST.monitor_name mon)
---  let resList = (show $ concat $ intersperse "; " $ ressourceList)
   let nbNodesB = numberOfNodes handlerList
   let nbEdgesB = numberOfEdges isEdgeBefore handlerList
   let (densityB::Double) = 2*(fromIntegral nbEdgesB) / (fromIntegral $ nbNodesB*(nbNodesB-1))

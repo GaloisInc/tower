@@ -1,12 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE CPP #-}
 

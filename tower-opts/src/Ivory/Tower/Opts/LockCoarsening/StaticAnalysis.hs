@@ -18,34 +18,36 @@ import qualified Data.List.NonEmpty as NE
 
 
 cleanAST :: [Sym] -> AST.Tower -> AST.Tower
-cleanAST unsafeList ast = ast {AST.tower_monitors = filter (not.null.AST.monitor_handlers) $ map (cleanMonitor unsafeList) $ AST.tower_monitors ast}
+cleanAST registerSyms ast = ast {AST.tower_monitors = filter (not.null.AST.monitor_handlers) $ map (cleanMonitor registerSyms) $ AST.tower_monitors ast}
 
 cleanMonitor :: [Sym] -> AST.Monitor -> AST.Monitor
-cleanMonitor unsafeList mon = 
-    mon {AST.monitor_handlers = filter (not.null.(staticAnalysisHandler unsafeList $ AST.monitor_moduledef mon)) (AST.monitor_handlers mon)}
+cleanMonitor registerSyms mon = 
+    mon {AST.monitor_handlers = filter (not.null.(staticAnalysisHandler registerSyms $ AST.monitor_moduledef mon)) (AST.monitor_handlers mon)}
 
 staticAnalysisMonitor :: [Sym] -> AST.Monitor -> [[Sym]]
-staticAnalysisMonitor unsafeList m = 
-  let res = map (staticAnalysisHandler unsafeList $ AST.monitor_moduledef m) $ AST.monitor_handlers m in
-  let moduleproc = modProcs $ AST.monitor_moduledef m in
-  if (not $ null $ intersect (map (procSym) $ public moduleproc ++ private moduleproc) unsafeList) then
+staticAnalysisMonitor registerSyms m = 
+  let res = map (staticAnalysisHandler registerSyms $ AST.monitor_moduledef m) $ AST.monitor_handlers m 
+      moduleproc = modProcs $ AST.monitor_moduledef m
+      visibleSymsToModule = map procSym $ public moduleproc ++ private moduleproc in
+  --testing if any of the functions included in the module is from the registerSyms
+  if (not $ null $ intersect visibleSymsToModule registerSyms) then
     map (\x -> nub $ registerSym:x) res
     else res
 
 staticAnalysisHandler :: [Sym] -> Module -> AST.Handler -> [Sym]
-staticAnalysisHandler unsafeList modu h = nub $ concat $ map (analyseProc unsafeList modu) (NE.toList $ AST.handler_callbacksAST h)
+staticAnalysisHandler registerSyms modu h = nub $ concat $ map (analyseProc registerSyms modu) (NE.toList $ AST.handler_callbacksAST h)
 
 registerSym :: Sym
 registerSym = "__TOWER_reg_usage"
 
 analyseProc :: [Sym] -> Module -> Proc -> [Sym]
-analyseProc unsafeList modu proc = 
-  (analyseBlock unsafeList modu $ procBody $ proc) ++ 
+analyseProc registerSyms modu proc = 
+  (analyseBlock registerSyms modu $ procBody $ proc) ++ 
   (concat $ map analyseRequire $ procRequires proc) ++ 
   (concat $ map analyseEnsure $ procEnsures proc)
 
 analyseBlock :: [Sym] -> Module -> Block -> [Sym]
-analyseBlock unsafeList modu block = concat $ map (analyseStmt unsafeList modu) block
+analyseBlock registerSyms modu block = concat $ map (analyseStmt registerSyms modu) block
 
 analyseRequire :: Require -> [Sym]
 analyseRequire = analyseCond . getRequire
@@ -60,8 +62,8 @@ analyseCond c = case c of
   CondDeref _ e1 _ c1 -> (analyseExpr e1) ++ (analyseCond c1)
 
 analyseStmt :: [Sym] -> Module -> Stmt -> [Sym]
-analyseStmt unsafeList modu stmt = case stmt of
-  IfTE e1 b1 b2 -> (analyseExpr e1) ++ (analyseBlock unsafeList modu b1) ++ (analyseBlock unsafeList modu b2)
+analyseStmt registerSyms modu stmt = case stmt of
+  IfTE e1 b1 b2 -> (analyseExpr e1) ++ (analyseBlock registerSyms modu b1) ++ (analyseBlock registerSyms modu b2)
     --  If-then-else statement.  The @Expr@ argument will be typed as an IBool
 
   Assert e1 -> analyseExpr e1
@@ -97,13 +99,13 @@ analyseStmt unsafeList modu stmt = case stmt of
   Call _ _ name tel -> (concat $ map (analyseExpr . tValue) tel) ++
     case name of
       NameSym sym -> 
-        if sym `elem` unsafeList 
+        if sym `elem` registerSyms 
         then [registerSym] 
         else
           let defprocs = modProcs modu in 
           let allprocs = public defprocs ++ private defprocs in
           let callee = filter (\p -> procSym p == sym) allprocs in
-          if (null callee) then [] else nub $ (concat $ map (analyseProc unsafeList modu) callee)
+          if (null callee) then [] else nub $ (concat $ map (analyseProc registerSyms modu) callee)
 
 
       NameVar _var -> error "usage of function pointers, which is illegal"
@@ -126,12 +128,12 @@ analyseStmt unsafeList modu stmt = case stmt of
     --  Reference allocation.  The type parameter is not a reference, but the
     -- referenced type.
 
-  Loop _ _ e1 loopincr b1 -> (analyseExpr e1) ++ (analyseLoopIncr loopincr) ++ (analyseBlock unsafeList modu b1)
+  Loop _ _ e1 loopincr b1 -> (analyseExpr e1) ++ (analyseLoopIncr loopincr) ++ (analyseBlock registerSyms modu b1)
     --  Looping: arguments are the maximum number of iterations of the loop,
     -- loop variable, start value, break condition (for increment or decrement),
     -- and block.
 
-  Forever b1 -> analyseBlock unsafeList modu b1
+  Forever b1 -> analyseBlock registerSyms modu b1
     --  Nonterminting loop
 
   Ivory.Language.Syntax.AST.Break -> []

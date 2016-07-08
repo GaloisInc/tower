@@ -1,5 +1,3 @@
-{-#LANGUAGE ScopedTypeVariables#-}
-
 module Ivory.Tower.Petri.PetriLockCoarsening 
   (petriTowerLockCoarsening) where
 

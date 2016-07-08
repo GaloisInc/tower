@@ -119,14 +119,14 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
   else do
     (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal-1) cputimelim unsafeList
     let locksAvail = nbLocksTotal - locksUsed
-    locks <- attributeLocksMonitor (zip (map fromSymToString $ staticAnalysisMonitor unsafeList $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
+    locks <- attributeLocksMonitor (zip (staticAnalysisMonitor unsafeList $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
     let optMon = (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)})
     (retMon,numberAfterOpt) <- lockOptimizeMonitor optMon
     return (locksUsed + numberAfterOpt, retMon:monitors)
   where
     applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler
     applyStaticAnalysisHandler moni han =
-      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ fromSymToString $ staticAnalysisHandler unsafeList (AST.monitor_moduledef moni) han):(AST.handler_transformers han))}
+      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ staticAnalysisHandler unsafeList (AST.monitor_moduledef moni) han):(AST.handler_transformers han))}
     frequencies :: AST.Monitor -> [Integer]
     frequencies moni = 
       let han = AST.monitor_handlers moni in

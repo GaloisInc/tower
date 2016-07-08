@@ -74,7 +74,7 @@ petriMonitor mon =
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
       , node_group    = ""
-      , node_label    = "" --concat $ intersperse ", " $ nub $ concat $ map fromSymToString $ staticAnalysisMonitor mon 
+      , node_label    = "" --concat $ intersperse ", " $ nub $ concat $ staticAnalysisMonitor mon 
       }
 
 makeHandlerName :: Handler -> String
@@ -103,7 +103,7 @@ petriHandler mon h =
       , node_k        = 1
       , node_subgraph = makeSubgraphMonitorName mon
       , node_group    = makeGroupHandlerName h
-      , node_label    = "" --concat $ intersperse ", " $ fromSymToString $ staticAnalysisHandler h
+      , node_label    = "" --concat $ intersperse ", " $ staticAnalysisHandler h
       }
     handlerComputing = PetriNode
       { node_name     = "comp_" ++ (makeHandlerName h)

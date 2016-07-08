@@ -4,7 +4,7 @@
 -- return all the external ressources used by this Handler
 
 module Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
-  ( staticAnalysisHandler, staticAnalysisMonitor, fromSymToString , cleanAST, cleanMonitor) where
+  ( staticAnalysisHandler, staticAnalysisMonitor, cleanAST, cleanMonitor) where
 
 import Data.List (nub, intersect)
 
@@ -23,9 +23,6 @@ cleanAST unsafeList ast = ast {AST.tower_monitors = filter (not.null.AST.monitor
 cleanMonitor :: [Sym] -> AST.Monitor -> AST.Monitor
 cleanMonitor unsafeList mon = 
     mon {AST.monitor_handlers = filter (not.null.(staticAnalysisHandler unsafeList $ AST.monitor_moduledef mon)) (AST.monitor_handlers mon)}
-
-fromSymToString :: [Sym] -> [String]
-fromSymToString a = a;
 
 staticAnalysisMonitor :: [Sym] -> AST.Monitor -> [[Sym]]
 staticAnalysisMonitor unsafeList m = 

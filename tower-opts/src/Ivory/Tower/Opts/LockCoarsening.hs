@@ -111,7 +111,10 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
   else do
     (locksUsed, monitors) <- lockCoarseningMonitors t b (nbLocksTotal-1) cputimelim unsafeList
     let locksAvail = nbLocksTotal - locksUsed
-    locks <- attributeLocksMonitor (zip (staticAnalysisMonitor unsafeList $ cleanmon) (frequencies cleanmon)) locksAvail cputimelim
+    locks <- attributeLocksMonitor (AST.monitor_name a)
+                                   (zip (staticAnalysisMonitor unsafeList $ cleanmon) (frequencies cleanmon)) 
+                                   locksAvail 
+                                   cputimelim
     let optMon = (a {AST.monitor_transformers = (LockCoarsening $ OptMonitor locks):(AST.monitor_transformers a)})
     (retMon,numberAfterOpt) <- lockOptimizeMonitor optMon
     return (locksUsed + numberAfterOpt, retMon:monitors)
@@ -155,8 +158,8 @@ allpairs [_] = []
 allpairs (x:xs) = concatMap (\y -> [(x,y)]) xs ++ allpairs xs
 
 
-attributeLocksMonitor :: [([String],Integer)] -> Int -> Int -> IO [[String]]
-attributeLocksMonitor list nbLocksPre cputimelim = do
+attributeLocksMonitor :: Unique -> [([String],Integer)] -> Int -> Int -> IO [[String]]
+attributeLocksMonitor mname list nbLocksPre cputimelim = do
   (tmpName, tmpHandle) <- openTempFile "." "temp"
   hPutStr tmpHandle (renderPWMS input)
   hFlush tmpHandle
@@ -169,10 +172,10 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     let (list2::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
     let sol = map (\x -> Set.elemAt (x-1) associationSet) list2
     let sortsol = filter (not.null) $ map (\i -> concat $ map (\s -> keepString s i) sol) [1..nbLocks]
-    removeFile tmpName
+    --removeFile tmpName
     return sortsol
   else do
-    removeFile tmpName
+    --removeFile tmpName
     _ <- error ("While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time.")
     return $ [nub $ concat $ map fst list]
 
@@ -202,7 +205,7 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
 
     input :: PWMS
     input = PWMS
-      { comments     = ["comments Partial Max-SAT", (show list)]
+      { comments     = ["comments Partial Max-SAT", showUnique mname, (show list)]
       , hard_clauses = sanity
       , soft_clauses = softClauses
       }

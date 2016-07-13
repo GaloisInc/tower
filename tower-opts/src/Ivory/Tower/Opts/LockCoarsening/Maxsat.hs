@@ -73,11 +73,12 @@ renderSoftClauses softs =
 
 renderPWMS :: PWMS -> String
 renderPWMS (pwms@(PWMS com hards softs)) = 
-  commentsPWMS ++ header ++ hardClauses ++ softClauses
+  concat $ intersperse "\n" $ 
+    (commentsPWMS ++ [header] ++ hardClauses ++ softClauses)
   where 
-    commentsPWMS = concat $ intersperse "\n" $ renderComments com
+    commentsPWMS = renderComments com
     header = "p wcnf "++(show $ nbVar pwms)++" "++
              (show $ (length hards) + (length softs))++" "++
              (show hardWeight)
-    hardClauses = concat $ intersperse "\n" $ renderHardClauses hards
-    softClauses = concat $ intersperse "\n" $ renderSoftClauses softs
+    hardClauses = renderHardClauses hards
+    softClauses = renderSoftClauses softs

@@ -1,12 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Ivory.Tower.Opts.LockCoarsening
       ( lockCoarsening
@@ -31,9 +23,9 @@ import Ivory.Tower.Types.Opts
 import Ivory.Tower.Opts.LockCoarsening.StaticAnalysis
 import Ivory.Tower.Opts.LockCoarsening.LockOptimize
 import Ivory.Tower.Types.Time
-import Data.Int
 import Numeric
 
+import Ivory.Tower.Opts.LockCoarsening.Maxsat
 
 -- IMPORTS FOR COMPUTING THE STATISTICS
 
@@ -49,7 +41,7 @@ statisticsMonitors :: [AST.Monitor] -> IO ()
 statisticsMonitors [] = return ()
 statisticsMonitors (a:b) = do
   s <- statisticsMonitor a 
-  writeFile "stats.tmp" s
+  writeFile "lockCoarsening.out" s
   statisticsMonitors b
 
 statisticsMonitor :: AST.Monitor -> IO String
@@ -166,7 +158,7 @@ allpairs (x:xs) = concatMap (\y -> [(x,y)]) xs ++ allpairs xs
 attributeLocksMonitor :: [([String],Integer)] -> Int -> Int -> IO [[String]]
 attributeLocksMonitor list nbLocksPre cputimelim = do
   (tmpName, tmpHandle) <- openTempFile "." "temp"
-  hPutStr tmpHandle (concat $ intersperse "\n" input)
+  hPutStr tmpHandle (renderPWMS input)
   hFlush tmpHandle
   hClose tmpHandle
   (_, out, _) <- readProcessWithExitCode "open-wbo" ["-cpu-lim="++(show cputimelim), tmpName] ""
@@ -196,73 +188,52 @@ attributeLocksMonitor list nbLocksPre cputimelim = do
     nbLocks :: Int
     nbLocks = minimum [nbLocksPre, (length allStates)]
 
-    associationSet :: Set.Set String
-    associationSet = Set.fromList (concat $ map (\s -> map (makeLockRaw s) [1..nbLocks]) allStates)
+    nbLocksI :: Integer
+    nbLocksI = toInteger nbLocks
 
-    makeLockRaw :: String -> Int -> String
+    associationSet :: Set.Set String
+    associationSet = Set.fromList (concat $ map (\s -> map (makeLockRaw s) [1..nbLocksI]) allStates)
+
+    makeLockRaw :: String -> Integer -> String
     makeLockRaw state lockid = state ++ "__" ++ (show lockid)
 
-    makeLock :: String -> Int -> String
-    makeLock state lockid = show ((Set.findIndex (makeLockRaw state lockid) associationSet) +1)
+    makeLock :: String -> Integer -> Integer
+    makeLock state lockid = toInteger $ ((Set.findIndex (makeLockRaw state lockid) associationSet) +1)
 
-    input :: [String]
-    input = ["c comments Partial Max-SAT", "c "++(show list), "p wcnf "++(show nbVar)++" "++(show.length $ logicformula)++" "++(show hardWeight)] ++ (filter (not.null) $ map replaceWeights logicformula)
-      where
-        hardWeight :: Integer
-        hardWeight = toInteger $ (maxBound::Int32) - 10
+    input :: PWMS
+    input = PWMS
+      { comments     = ["comments Partial Max-SAT", (show list)]
+      , hard_clauses = sanity
+      , soft_clauses = softClauses
+      }
 
-        maxValue :: Integer
-        maxValue = 
-          let soft = filter (\x -> (compare "hard" (take 4 x) /= EQ ) ) logicformula in
-          let (values::[Integer]) = map (read . head . words . (drop (4::Int))) soft in  maximum values
-
-        replaceWeights :: String -> String
-        replaceWeights str =
-          if (compare "hard" (take 4 str) == EQ ) 
-            then
-              (show hardWeight)++(drop (4::Int) str)
-            else
-              let value = read $ head $ words $ drop 4 str in
-              let remaining = unwords $ tail $ words $ drop 4 str in
-              if (maxValue <= 60000) 
-                then (show value)++" "++remaining
-                else if (quot (value*60000+maxValue-1) maxValue == 0) 
-                  then ""
-                  else (show (quot (value*60000+maxValue-1) maxValue))++" "++remaining
-
-    nbVar :: Int
-    nbVar = (length allStates)*nbLocks
-
-    logicformula :: [String]
-    logicformula = map (\x -> x ++ " 0") (sanity ++ softClauses)
-
-    sanity :: [String]
+    sanity :: [HardClause]
     sanity = (map oneIsTrue allStates) ++ (concat $ map couplesFalse allStates)
       where 
-        oneIsTrue :: String -> String
-        oneIsTrue state = "hard " ++ (concat $ intersperse " " $ map (makeLock state) [1..nbLocks])
+        oneIsTrue :: String -> HardClause
+        oneIsTrue state = map (makeLock state) [1..nbLocksI]
 
-        couplesFalse :: String -> [String]
-        couplesFalse state = map (\ (i,j) -> "hard -"++(makeLock state i) ++ 
-          " -" ++ (makeLock state j)) [(i,j) | i<-[1..(nbLocks-1)], j<-[(i+1)..nbLocks]]
+        couplesFalse :: String -> [HardClause]
+        couplesFalse state = map (\ (i,j) -> [(negate $ makeLock state i), 
+          (negate $ makeLock state j)]) [(i,j) | i<-[1..(nbLocksI-1)], j<-[(i+1)..nbLocksI]]
 
-    softClauses :: [String]
+    softClauses :: [SoftClause]
     softClauses = genClause list
 
-    genClause :: [([String],Integer)] -> [String]
+    genClause :: [([String],Integer)] -> [SoftClause]
     genClause clique = 
       concat $ map createClause pairs
       where
         pairs = filter (\(x,y) -> null $ intersect (fst x) (fst y)) $ allpairs clique
 
-    createClause :: (([String],Integer),([String],Integer)) -> [String]
+    createClause :: (([String],Integer),([String],Integer)) -> [SoftClause]
     createClause (([],_),_) = []
     createClause ((x:xs, f1),(l2,f2)) = 
       if (f1*f2 > 0) 
         then (concat $ map (\str -> createLocks x str) l2) ++ (createClause ((xs,f1),(l2,f2)))
         else []
       where
-        createLocks :: String -> String -> [String]
+        createLocks :: String -> String -> [SoftClause]
         createLocks s1 s2 = 
-          map (\i -> "soft"++ (show $ f1*f2) ++" "++(makeLock s1 i) ++ " " ++(makeLock s2 i)) [1..nbLocks] ++
-          map (\i -> "soft"++ (show $ f1*f2) ++" -"++(makeLock s1 i) ++ " -" ++(makeLock s2 i)) [1..nbLocks]
+          map (\i -> (f1*f2, [makeLock s1 i, makeLock s2 i])) [1..nbLocksI] ++
+          map (\i -> (f1*f2, [negate $ makeLock s1 i, negate $ makeLock s2 i])) [1..nbLocksI]

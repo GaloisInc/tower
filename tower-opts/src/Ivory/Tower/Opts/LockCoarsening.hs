@@ -172,10 +172,10 @@ attributeLocksMonitor mname list nbLocksPre cputimelim = do
     let (list2::[Int]) = filter (\x -> x>=0) $ map read (words outputLine)
     let sol = map (\x -> Set.elemAt (x-1) associationSet) list2
     let sortsol = filter (not.null) $ map (\i -> concat $ map (\s -> keepString s i) sol) [1..nbLocks]
-    --removeFile tmpName
+    removeFile tmpName
     return sortsol
   else do
-    --removeFile tmpName
+    removeFile tmpName
     _ <- error ("While lockCoarsening : " ++ show outputStatus ++ " . Try adding more cpu-time.")
     return $ [nub $ concat $ map fst list]
 

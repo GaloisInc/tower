@@ -34,9 +34,12 @@ import Ivory.Tower.Types.Unique
 
 ----------
 
+-- | The name of the lockCoarsening function. 
 lockCoarseningName :: String
 lockCoarseningName = "lockCoarsening"
 
+-- | Generates statistics for a list of monitors and outputs 
+-- them to a file named lockCoarsening.out
 statisticsMonitors :: [AST.Monitor] -> IO ()
 statisticsMonitors [] = return ()
 statisticsMonitors (a:b) = do
@@ -46,13 +49,14 @@ statisticsMonitors (a:b) = do
 
 -- | This functions takes a monitor and returns some useful statistics
 -- about the lock coarsening execution on it. The statistics computed are
--- * Number of handlers, locks, and resources
--- * Number of pairs of handlers that can execute in parallel in theory
--- (ie. the pair of handlers does not access to a common shared resource)
--- * Number of pairs of handlers that will execute in parral in practice
--- (ie. the pair of handlers does not take the same lock)
--- * Graph densities of the two previously defined graphs.
--- * Relative uncertainty between the two densities.
+--   
+--   * Number of handlers, locks, and resources
+--   * Number of pairs of handlers that can execute in parallel in theory
+--   (ie. the pair of handlers does not access to a common shared resource)
+--   * Number of pairs of handlers that will execute in parral in practice
+--   (ie. the pair of handlers does not take the same lock)
+--   * Graph densities of the two previously defined graphs.
+--   * Relative uncertainty between the two densities.
 statisticsMonitor :: AST.Monitor -> IO String
 statisticsMonitor mon = do
   let monName = show (showUnique $ AST.monitor_name mon)
@@ -109,7 +113,12 @@ statisticsMonitor mon = do
     numberOfNodes :: [a] -> Int
     numberOfNodes list = length list
 
-lockCoarsening :: Int -> Int -> [Sym] -> AST.Tower -> IO AST.Tower
+-- | The main lockCoarsening function
+lockCoarsening :: Int           -- ^ the upper bound on the number of locks that the solution should return.
+               -> Int           -- ^ the cputime limit given to the PWMS solver.
+               -> [Sym]         -- ^ the list of functions (given as function symbols) that access to ressources escaping the monitor scope.
+               -> AST.Tower     -- ^ the Tower ast.
+               -> IO AST.Tower  -- ^ the Tower ast annotated with lock coarsening indications.
 lockCoarsening nbLocksTotal cputimelim unsafeList ast = do
   let nbMonitors = length $ AST.tower_monitors $ cleanAST unsafeList ast
   if nbMonitors > nbLocksTotal 

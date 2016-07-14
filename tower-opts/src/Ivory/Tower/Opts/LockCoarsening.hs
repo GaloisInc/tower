@@ -44,21 +44,39 @@ statisticsMonitors (a:b) = do
   writeFile "lockCoarsening.out" s
   statisticsMonitors b
 
+-- | This functions takes a monitor and returns some useful statistics
+-- about the lock coarsening execution on it. The statistics computed are
+-- * Number of handlers, locks, and resources
+-- * Number of pairs of handlers that can execute in parallel in theory
+-- (ie. the pair of handlers does not access to a common shared resource)
+-- * Number of pairs of handlers that will execute in parral in practice
+-- (ie. the pair of handlers does not take the same lock)
+-- * Graph densities of the two previously defined graphs.
+-- * Relative uncertainty between the two densities.
 statisticsMonitor :: AST.Monitor -> IO String
 statisticsMonitor mon = do
-  let monName = drop 1 $ reverse $ drop 1 $ reverse $ show (showUnique $ AST.monitor_name mon)
+  let monName = show (showUnique $ AST.monitor_name mon)
+  let monNameUnquot = drop 1 $ reverse $ drop 1 $ reverse $ monName
   let nbNodesB = numberOfNodes handlerList
-  let nbEdgesB = numberOfEdges isEdgeBefore handlerList
-  let (densityB::Double) = 2*(fromIntegral nbEdgesB) / (fromIntegral $ nbNodesB*(nbNodesB-1))
+  let nbEdgesB = fromIntegral $ numberOfEdges isEdgeBefore handlerList
+  let (densityB::Double) = 2*nbEdgesB / (fromIntegral $ nbNodesB*(nbNodesB-1))
   let nbNodesA = nbNodesB
-  let nbEdgesA = numberOfEdges isEdgeAfter handlerList
-  let (densityA::Double) = 2*(fromIntegral nbEdgesA) / (fromIntegral $ nbNodesA*(nbNodesA-1))
+  let nbEdgesA = fromIntegral $ numberOfEdges isEdgeAfter handlerList
+  let (densityA::Double) = 2*nbEdgesA / (fromIntegral $ nbNodesA*(nbNodesA-1))
   let uncertainty = abs(densityA-densityB)/densityB
-  return (monName ++ ", " ++ {-resList ++ ", " ++-} (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++
-    (show nbNodesB) ++ ", " ++ (show nbEdgesB) ++ ", " ++ 
-    (show $ length ressourceList) ++ ", " ++ (showFFloat (Just 6) densityB "") ++ ", " ++
-    (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++ (show nbNodesA) ++  ", " ++
-    (show nbEdgesA) ++ ", " ++ (show $ length lockList) ++ ", " ++ (showFFloat (Just 6) densityA "") ++ ", "++ (showFFloat (Just 6) uncertainty "") )
+  return (monNameUnquot ++ ", " ++                               -- monitor name
+    {-resList ++ ", " ++-}                                       -- list of shared resources
+    (show $ maxCliqueSize isEdgeBefore handlerList) ++ ", " ++   -- size of the biggest clique in the theoretical graph
+    (show nbNodesB) ++ ", " ++                                   -- number of nodes in the theoretical graph (= nb of handlers)
+    (show nbEdgesB) ++ ", " ++                                   -- number of edges in the theoretical graph (= nb of pairs of handlers that can execute in parallel)
+    (show $ length ressourceList) ++ ", " ++                     -- number of shared resources
+    (showFFloat (Just 6) densityB "") ++ ", " ++                 -- graph density of the theoretical graph
+    (show $ maxCliqueSize isEdgeAfter handlerList) ++  ", " ++   -- size of the biggest clique in the practical graph
+    (show nbNodesA) ++ ", " ++                                   -- number of nodes in the practical graph (= nb of handlers)
+    (show nbEdgesA) ++ ", " ++                                   -- number of edges in the practical graph (= nb of pairs of handlers that will execute in parallel)
+    (show $ length lockList) ++ ", " ++                          -- number of locks
+    (showFFloat (Just 6) densityA "") ++ ", "++                  -- graph density of the practical graph
+    (showFFloat (Just 6) uncertainty "") )                       -- relative uncertainty between the theoretical and the practical.
   where
     (Just (LockCoarsening (OptMonitor lockList))) = getOpt (LockCoarsening OptVoid) $ AST.monitor_transformers mon
     ressourceList = nub $ concat lockList
@@ -78,7 +96,10 @@ statisticsMonitor mon = do
 
     maxCliques :: (a -> a -> Bool) -> [a] -> [[a]]
     maxCliques isEdge list = getMaximalCliques isEdge list
-    maxCliqueSize isEdge list = foldl (\a clique -> max a $ length clique) 0 $ maxCliques isEdge list
+
+    maxCliqueSize :: (a -> a -> Bool) -> [a] -> Int
+    maxCliqueSize isEdge list = 
+      foldl (\a clique -> max a $ length clique) 0 $ maxCliques isEdge list
 
     numberOfEdges :: (a -> a -> Bool) -> [a] -> Int
     numberOfEdges isEdge list = 

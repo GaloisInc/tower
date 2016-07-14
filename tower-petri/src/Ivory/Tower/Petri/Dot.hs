@@ -15,7 +15,8 @@ createNewlines :: String -> String
 createNewlines s = 
   if length s < lineLength then s 
     else 
-      (take lineLength s) ++ (head $ splitOn ", " (drop lineLength s)) ++ "\\n" ++ (createNewlines $ drop (lineLength + (length $ head $ splitOn ", " (drop lineLength s)) + (length "\\n")) s)
+      (take lineLength s) ++ (head $ splitOn ", " (drop lineLength s)) ++ "\\n" ++ 
+      (createNewlines $ drop (lineLength + (length $ head $ splitOn ", " (drop lineLength s)) + (length "\\n")) s)
 
 
 renderDotPetri :: PetriNet -> String

@@ -115,7 +115,7 @@ statisticsMonitor mon = do
 
 -- | The main lockCoarsening function
 lockCoarsening :: Int           -- ^ the upper bound on the number of locks that the solution should return.
-               -> Int           -- ^ the cputime limit given to the PWMS solver.
+               -> Int           -- ^ the cputime limit given to the PWMS solver. 
                -> [Sym]         -- ^ the list of functions (given as function symbols) that access to ressources escaping the monitor scope.
                -> AST.Tower     -- ^ the Tower ast.
                -> IO AST.Tower  -- ^ the Tower ast annotated with lock coarsening indications.
@@ -129,7 +129,13 @@ lockCoarsening nbLocksTotal cputimelim unsafeList ast = do
       statisticsMonitors monitors
       return $ astOpt
 
-lockCoarseningMonitors :: AST.Tower -> [AST.Monitor] -> Int -> Int -> [Sym] -> IO (Int,[AST.Monitor])
+-- | Does the lock coarsening to a list of monitors.
+lockCoarseningMonitors :: AST.Tower              -- ^ the full tower ast.
+                       -> [AST.Monitor]          -- ^ the list of monitors.
+                       -> Int                    -- ^ the total number of locks available (upper bound of the number of locks).
+                       -> Int                    -- ^ the cputime limit given to the PWMS solver. 
+                       -> [Sym]                  -- ^ the list of functions (given as function symbols) that access to ressources escaping the monitor scope.
+                       -> IO (Int,[AST.Monitor]) -- ^ Returns the number of locks used and the monitors annotated with lock coarsening indications.
 lockCoarseningMonitors _ [] _ _ _ = return (0,[])
 lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
   let a = mon {AST.monitor_handlers = map (applyStaticAnalysisHandler mon) $ AST.monitor_handlers mon}
@@ -177,6 +183,7 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
           where
             freqOf (Microseconds f) = quot 100000000 f
 
+-- | Wrapper to apply the lock coarsening on only one monitor.
 lockCoarseningMonitor :: AST.Tower -> AST.Monitor -> Int -> Int -> [Sym] -> IO (AST.Monitor)
 lockCoarseningMonitor tow mon nbLocks cputimelim unsafeList = do
   (_, val) <- lockCoarseningMonitors tow [mon] nbLocks cputimelim unsafeList
@@ -187,8 +194,12 @@ allpairs [] = []
 allpairs [_] = []
 allpairs (x:xs) = concatMap (\y -> [(x,y)]) xs ++ allpairs xs
 
-
-attributeLocksMonitor :: Unique -> [([String],Integer)] -> Int -> Int -> IO [[String]]
+-- | internal function that calls the PWMS solver.
+attributeLocksMonitor :: Unique                -- ^ the name of the monitor
+                      -> [([String],Integer)]  -- ^ A list of handlers with : (list of resources, execution frequency)
+                      -> Int                   -- ^ the upper bound on the number of locks for this instance.
+                      -> Int                   -- ^ the cputime limit given to the PWMS solver. 
+                      -> IO [[String]]         -- ^ an attribution of locks
 attributeLocksMonitor mname list nbLocksPre cputimelim = do
   (tmpName, tmpHandle) <- openTempFile "." "temp"
   hPutStr tmpHandle (renderPWMS input)

@@ -157,7 +157,8 @@ lockCoarseningMonitors t (mon:b) nbLocksTotal cputimelim unsafeList = do
   where
     applyStaticAnalysisHandler :: AST.Monitor -> AST.Handler -> AST.Handler
     applyStaticAnalysisHandler moni han =
-      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ staticAnalysisHandler unsafeList (AST.monitor_moduledef moni) han):(AST.handler_transformers han))}
+      let resList = staticAnalysisHandler unsafeList (AST.monitor_moduledef moni) han in
+      han {AST.handler_transformers = ((LockCoarsening $ OptHandler $ resList):(AST.handler_transformers han))}
     frequencies :: AST.Monitor -> [Integer]
     frequencies moni = 
       let han = AST.monitor_handlers moni in

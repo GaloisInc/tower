@@ -26,6 +26,7 @@ import Ivory.Tower.Monad.Base
 import Ivory.Tower.Monad.Tower
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Chan
+import Ivory.Tower.Types.Backend
 
 import Ivory.Language
 
@@ -56,10 +57,10 @@ monitor' :: AST.MonitorExternal -> String -> Monitor e () -> Tower e ()
 monitor' t n b = Tower $ do
   u <- freshname n
   ((), (hast, handlers, moddef)) <- runWriterT $ unMonitor' $ unMonitor b
-  let ast = AST.Monitor u hast t
+  let ast = AST.Monitor u hast t (package "" moddef) []
   backend <- towerGetBackend
   towerPutMonitor ast $ monitorImpl backend ast handlers moddef
-
+    
 monitor :: String -> Monitor e () -> Tower e ()
 monitor = monitor' AST.MonitorDefined
 

@@ -6,3 +6,4 @@ TAGS
 *.aadl
 *.swp
 .stack-work
+.DS_Store

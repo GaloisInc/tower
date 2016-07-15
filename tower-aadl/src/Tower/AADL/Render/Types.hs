@@ -36,6 +36,7 @@ baseType ty = case ty of
   I.TyDouble            -> True
   I.TyRef t             -> baseType t
   I.TyIndex _           -> True
+  I.TyNewType _         -> True
   _                     -> False
 
 -- | A defined (compound) type?
@@ -86,6 +87,7 @@ renderType ty = case ty of
   I.TyCArray _t         -> tyError ty
   I.TyProc _retT _argTs -> tyError ty
   I.TyOpaque            -> tyError ty
+  I.TyNewType s         -> text ("Custom " ++ s)
   where
   intSize :: I.IntSize -> String
   intSize I.Int8  = "Integer_8"
@@ -108,10 +110,10 @@ defineTypes tys strs = vcat $ map go tys'
   where
   go ty =
     case ty of
-      I.TyRef t    -> go t
-      I.TyStruct n -> renderStruct (structImpl strs n)
-      I.TyArr sz t -> renderArray sz t
-      _            -> empty
+      I.TyRef t       -> go t
+      I.TyStruct n    -> renderStruct (structImpl strs n)
+      I.TyArr sz t    -> renderArray sz t
+      _               -> empty
 
   -- These are all the types, recursively expanded, in the dependency order.
   tys' :: [I.Type]

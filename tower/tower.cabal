@@ -45,9 +45,11 @@ library
                         Ivory.Tower.Monad.Tower,
 
                         -- Types
+                        Ivory.Tower.Types.Backend,
                         Ivory.Tower.Types.Chan,
                         Ivory.Tower.Types.Dependencies,
                         Ivory.Tower.Types.Emitter,
+                        Ivory.Tower.Types.Opts,
                         Ivory.Tower.Types.SignalCode,
                         Ivory.Tower.Types.Signalable,
                         Ivory.Tower.Types.ThreadCode,
@@ -62,6 +64,7 @@ library
   build-depends:        base >= 4.6,
                         base-compat >= 0.6,
                         monadLib,
+                        semigroups,
                         containers,
                         ghc-prim,
                         mainland-pretty,

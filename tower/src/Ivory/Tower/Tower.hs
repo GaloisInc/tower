@@ -27,6 +27,9 @@ module Ivory.Tower.Tower
   , BaseUtils(..)
   , Unique
   , showUnique
+  , elemOpt
+  , getOpt
+  , Opt
   ) where
 
 import Prelude ()
@@ -39,6 +42,7 @@ import Ivory.Tower.Types.SignalCode
 import Ivory.Tower.Types.Signalable
 import Ivory.Tower.Types.Time
 import Ivory.Tower.Types.Unique
+import Ivory.Tower.Types.Opts
 
 import qualified Ivory.Tower.AST as AST
 

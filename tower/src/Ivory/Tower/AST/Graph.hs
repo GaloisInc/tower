@@ -16,10 +16,10 @@ import Ivory.Tower.Types.Unique
 import Text.PrettyPrint.Mainland
 
 data MessageSource = ThreadMessage Thread
-                   | HandlerMessage Monitor Handler
+                   | HandlerMessage MonitorFast HandlerFast
                    deriving (Eq, Show, Ord)
 
-handlerMessageSource :: (Monitor, Handler) -> MessageSource
+handlerMessageSource :: (MonitorFast, HandlerFast) -> MessageSource
 handlerMessageSource = uncurry HandlerMessage
 
 type MessageVertex = (MessageSource, MessageSource, [MessageSource])
@@ -36,16 +36,16 @@ messageGraph t = graphFromEdges (handleredges ++ threadedges)
   handleredges = do
     m <- tower_monitors t
     h <- monitor_handlers m
-    let ms = HandlerMessage m h
+    let ms = HandlerMessage (MonitorFast m) (HandlerFast h)
     return (ms, ms, map handlerMessageSource (handlerOutboundHandlers t h))
 
 handlerThreads :: Tower -> Handler -> [Thread]
 handlerThreads t h = do
   th <- towerThreads t
-  guard $ h `elem` map snd (threadHandlers (messageGraph t) th)
+  guard $ h `elem` map (handler.snd) (threadHandlers (messageGraph t) th)
   return th
 
-threadHandlers :: MessageGraph -> Thread -> [(Monitor, Handler)]
+threadHandlers :: MessageGraph -> Thread -> [(MonitorFast, HandlerFast)]
 threadHandlers (g, unv, tov) t
   = map mh
   $ filter (/= (ThreadMessage t))
@@ -81,13 +81,13 @@ graphviz (g, unvertex, _) = pretty 80 $ stack $
     , indent 4 $ text "label =" <+> dquotes (text "monitor" <+> mname) <> semi
     , text "}"
     ]
-    where mname = text (showUnique (monitor_name m))
+    where mname = text (showUnique (monitor_name $ monitor m))
   ppSubgraph ([((ThreadMessage t),_,_)]) =
     tname <+> text "[style=filled]" <> semi
     where tname = text (threadName t)
 
   ppSubgraph _ = empty -- should be impossible.
-  ppHandlerNode ((HandlerMessage _ h),_,_) = text (showUnique (handler_name h))
+  ppHandlerNode ((HandlerMessage _ h),_,_) = text (showUnique (handler_name $ handler h))
   ppHandlerNode ((ThreadMessage t),_,_) = text (threadName t)
   ppEdge :: Edge -> Doc
   ppEdge (v1,v2) = ppHandlerNode (unvertex v1)
@@ -96,24 +96,24 @@ graphviz (g, unvertex, _) = pretty 80 $ stack $
 
 -- For a given channel c, the list of all handlers (and their monitors) that
 -- handle c.
-towerChanHandlers :: Tower -> Chan -> [(Monitor, Handler)]
+towerChanHandlers :: Tower -> Chan -> [(MonitorFast, HandlerFast)]
 towerChanHandlers t c = do
   m <- tower_monitors t
   h <- monitorChanHandlers m c
-  return (m, h)
+  return (MonitorFast m, HandlerFast h)
 
 -- For a given monitor and channel c, the list of handlers in the monitor that
 -- handle c.
 monitorChanHandlers :: Monitor -> Chan -> [Handler]
 monitorChanHandlers m c = filter p (monitor_handlers m)
-  where p h = handler_chan h == c
+  where p h = (handler_chan h) == c
 
 -- For a given handler, the list of all channels it emits on.
 handlerOutboundChans :: Handler -> [Chan]
 handlerOutboundChans h = map (ChanSync . emitter_chan) (handler_emitters h)
 
 -- For a given handler h, a list of all handlers (and their monitors) that handle messages emited by h.
-handlerOutboundHandlers :: Tower -> Handler -> [(Monitor, Handler)]
+handlerOutboundHandlers :: Tower -> Handler -> [(MonitorFast, HandlerFast)]
 handlerOutboundHandlers t h = do
   c <- handlerOutboundChans h
   towerChanHandlers t c

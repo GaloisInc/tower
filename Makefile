@@ -1,6 +1,6 @@
 include stack.mk
 
-SUBDIRS = tower tower-config tower-aadl tower-hal
+SUBDIRS = tower tower-config tower-aadl tower-hal tower-opts tower-petri
 
 default: $(SUBDIRS)
 

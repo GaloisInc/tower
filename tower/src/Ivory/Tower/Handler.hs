@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ivory.Tower.Handler
   ( emitter
@@ -22,8 +23,13 @@ import Ivory.Tower.Monad.Handler
 import Ivory.Tower.Monad.Base
 
 import qualified Ivory.Tower.AST as AST
+import Ivory.Language.Syntax as IAST hiding (Area)
 
 import Ivory.Language
+import Ivory.Language.Monad hiding (emit)
+import Ivory.Language.Proc
+import Ivory.Language.Area
+import Ivory.Language.Type
 
 emitter :: (IvoryArea a, IvoryZero a)
         => ChanInput a -> Integer -> Handler b e (Emitter a)
@@ -39,14 +45,26 @@ emitter (ChanInput chan@(Chan chanast)) bound = handlerName >>= \ nm -> Handler 
   handlerPutCodeEmitter code
   return e
 
-callback :: (IvoryArea a, IvoryZero a)
+callback :: forall a e. (IvoryArea a, IvoryZero a)
          => (forall s s' . ConstRef s a -> Ivory (AllocEffects s') ())
          -> Handler a e ()
 callback b = handlerName >>= \ nm -> Handler $ do
   u <- freshname $ "callback_" ++ showUnique nm
   handlerPutASTCallback u
   backend <- handlerGetBackend
-  handlerPutCodeCallback $ callbackImpl backend u b
+  handlerPutCodeCallback (callbackImpl backend u b) 
+    $ IAST.Proc { IAST.procSym      = showUnique u
+                , IAST.procRetTy    = IAST.TyVoid
+                , IAST.procArgs     = [IAST.Typed (IAST.TyConstRef (ivoryArea (Proxy :: AProxy a))) var]
+                , IAST.procBody     = blockStmts block
+                , IAST.procRequires = blockRequires block
+                , IAST.procEnsures  = blockEnsures block
+                }
+  where
+    block = snd $ runIvory $ noReturn $ b arg
+    (var,_) = genVar initialClosure -- initial closure is ok until we have one argument per function
+    arg     = wrapVar var
+    
 
 callbackV :: (IvoryArea ('Stored a), IvoryStore a, IvoryZeroVal a)
           => (forall s' . a -> Ivory (AllocEffects s') ())

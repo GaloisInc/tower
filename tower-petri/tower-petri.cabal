@@ -1,0 +1,36 @@
+name:                tower-petri
+version:             0.9.0.0
+author:              Galois, Inc.
+maintainer:          pat@galois.com
+category:            Language
+build-type:          Simple
+cabal-version:       >= 1.10
+license:             BSD3
+
+library
+                        -- Exports
+  exposed-modules:      Ivory.Tower.Petri,
+                        Ivory.Tower.Petri.Petri,
+                        Ivory.Tower.Petri.PetriRaw,
+                        Ivory.Tower.Petri.PetriLockCoarsening,
+                        Ivory.Tower.Petri.Dot
+
+  build-depends:        base >= 4.6,
+                        base-compat >= 0.6,
+                        split,
+                        monadLib,
+                        containers,
+                        ghc-prim,
+                        mainland-pretty,
+                        text,
+                        filepath,
+                        ivory,
+                        ivory-artifact,
+                        ivory-stdlib,
+                        ivory-backend-c,
+                        tower,
+                        tower-opts
+
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-orphans

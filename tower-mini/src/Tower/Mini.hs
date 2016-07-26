@@ -236,16 +236,17 @@ compileTowerMini _fromEnv mkEnv comps = do
   forM_ outs $ \(name, (_ast, packages, modsF, deps)) -> do
     let mods = dependencies_modules deps ++ modsF (dependencies_depends deps)
         libAs = map addPrefix (dependencies_artifacts deps)
-        addPrefix l = case l of
-          Src  a -> Root (artifactPath ("libminitower" </> "src") a)
-          Incl a -> Root (artifactPath ("libminitower" </> "include") a)
-          _      -> l
+        addPrefix = id
+        -- addPrefix l = case l of
+        --   Src  a -> Root (artifactPath ("libminitower" </> "src") a)
+        --   Incl a -> Root (artifactPath ("libminitower" </> "include") a)
+        --   _      -> l
         copts' =
           case outDir copts of
             Nothing -> copts -- stdout
-            Just f -> copts { outDir = Just (f </> name)
-                            , outHdrDir = Just (f </> "include")
-                            , outArtDir = Just f -- same artifact dir for everyone
+            Just f -> copts { outDir = Just (f </> name </> "src")
+                            , outHdrDir = Just (f </> name </> "include")
+                            , outArtDir = Just (f </> name)
                             }
     cmodules <- compileUnits mods copts'
 

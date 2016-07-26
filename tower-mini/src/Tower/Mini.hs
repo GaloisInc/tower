@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
+{-# OPTIONS_GHC -fno-warn-unused-binds #-}
 module Tower.Mini (
     -- * Compilation
     compileTowerMini
@@ -48,7 +49,6 @@ import Text.PrettyPrint.Mainland ((<+>), putDoc, text)
 
 import qualified Data.Map as Map
 
-import Ivory.Artifact as I
 import Ivory.Language as I
 
 import Ivory.Compile.C.CmdlineFrontend as C
@@ -235,12 +235,6 @@ compileTowerMini _fromEnv mkEnv comps = do
   outs <- mapM (\c -> (componentName c,) <$> buildComponent env c) comps
   forM_ outs $ \(name, (_ast, packages, modsF, deps)) -> do
     let mods = dependencies_modules deps ++ modsF (dependencies_depends deps)
-        libAs = map addPrefix (dependencies_artifacts deps)
-        addPrefix = id
-        -- addPrefix l = case l of
-        --   Src  a -> Root (artifactPath ("libminitower" </> "src") a)
-        --   Incl a -> Root (artifactPath ("libminitower" </> "include") a)
-        --   _      -> l
         copts' =
           case outDir copts of
             Nothing -> copts -- stdout
@@ -252,6 +246,7 @@ compileTowerMini _fromEnv mkEnv comps = do
 
     let (appMods, libMods) =
           partition (\m -> unitName m `elem` packages) cmodules
+        libAs = dependencies_artifacts deps
 
     outputCompiler appMods libAs copts'
     outputCompiler libMods []    copts'

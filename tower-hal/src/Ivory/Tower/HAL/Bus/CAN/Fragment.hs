@@ -62,12 +62,18 @@ serializeDeps = do
   towerModule serializeModule
   mapM_ towerArtifact serializeArtifacts
 
+canMessageDeps :: Tower e ()
+canMessageDeps = do
+  towerDepends canDriverTypes
+  towerModule canDriverTypes
+
 fragmentSender :: (IvoryArea a, IvoryZero a)
                => MessageType a
                -> AbortableTransmit ('Struct "can_message") ('Stored IBool)
                -> Tower e (ChanInput a, ChanInput ('Stored IBool), ChanOutput ('Stored IBool))
 fragmentSender (MessageType baseID ide bound rep) tx = do
   serializeDeps
+  canMessageDeps
 
   (reqChan, reqSrc) <- channel
   (abortChan, abortSrc) <- channel
@@ -87,7 +93,7 @@ fragmentSender (MessageType baseID ide bound rep) tx = do
             [ can_message_id .= ival (if ide
                 then extendedCANID (fromRep $ fromIntegral baseID + safeCast idx) (boolToBit false)
                 else standardCANID (fromRep $ fromIntegral baseID + safeCast idx) (boolToBit false))
-            , can_message_len .= ival (toIx len)
+            , can_message_len .= ival len
             ]
 
           -- Note: We can't just use `for` here because `len` is type `Ix 8` and
@@ -200,6 +206,7 @@ fragmentReceiver :: ChanOutput ('Struct "can_message")
                  -> Tower e ()
 fragmentReceiver src handlers = do
   serializeDeps
+  canMessageDeps
 
   monitor "fragment_reassembly" $ do
     emitters <- forM handlers $ \ (FragmentReceiveHandler chan (MessageType baseID ide bound rep)) -> do
@@ -219,7 +226,7 @@ fragmentReceiver src handlers = do
               let is_retransmit = idx + 1 ==? expected_idx
               let is_not_mine = idx >? last_fragment_idx
               unless (is_retransmit .|| is_not_mine) $ do
-                len <- fmap fromIx $ deref $ msg ~> can_message_len
+                len <- deref (msg ~> can_message_len)
                 let is_new_fragment = idx ==? 0
                 let is_expected_fragment = idx ==? expected_idx
                 let has_bad_idx = iNot (is_new_fragment .|| is_expected_fragment)
@@ -227,7 +234,7 @@ fragmentReceiver src handlers = do
                 let has_bad_length = len /=? expected_length
                 let discard = store next_idx 0
                 ifte_ (has_bad_idx .|| has_bad_length) discard $ do
-                  arrayCopy buf (msg ~> can_message_buf) (safeCast idx * 8) len
+                  arrayCopy buf (msg ~> can_message_buf) (safeCast idx * 8) (safeCast len)
                   ifte_ (idx <? last_fragment_idx) (store next_idx $ idx + 1) $ do
                     assembled <- local izero
                     unpackFrom' rep (constRef buf) 0 assembled

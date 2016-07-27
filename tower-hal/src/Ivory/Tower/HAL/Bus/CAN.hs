@@ -33,7 +33,7 @@ bitdata CANArbitrationField :: Bits 32 = can_arbitration_field
 
 struct can_message
   { can_message_id  :: Stored CANArbitrationField
-  ; can_message_len :: Stored (Ix 9)
+  ; can_message_len :: Stored Uint8
   ; can_message_buf :: Array 8 (Stored Uint8)
   }
 |]

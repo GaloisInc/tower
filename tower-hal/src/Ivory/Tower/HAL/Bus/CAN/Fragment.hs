@@ -93,7 +93,7 @@ fragmentSender (MessageType baseID ide bound rep) tx = do
             [ can_message_id .= ival (if ide
                 then extendedCANID (fromRep $ fromIntegral baseID + safeCast idx) (boolToBit false)
                 else standardCANID (fromRep $ fromIntegral baseID + safeCast idx) (boolToBit false))
-            , can_message_len .= ival len
+            , can_message_len .= ival (toIx len)
             ]
 
           -- Note: We can't just use `for` here because `len` is type `Ix 8` and
@@ -226,7 +226,7 @@ fragmentReceiver src handlers = do
               let is_retransmit = idx + 1 ==? expected_idx
               let is_not_mine = idx >? last_fragment_idx
               unless (is_retransmit .|| is_not_mine) $ do
-                len <- deref (msg ~> can_message_len)
+                len <- fmap fromIx $ deref $ msg ~> can_message_len
                 let is_new_fragment = idx ==? 0
                 let is_expected_fragment = idx ==? expected_idx
                 let has_bad_idx = iNot (is_new_fragment .|| is_expected_fragment)
@@ -234,7 +234,7 @@ fragmentReceiver src handlers = do
                 let has_bad_length = len /=? expected_length
                 let discard = store next_idx 0
                 ifte_ (has_bad_idx .|| has_bad_length) discard $ do
-                  arrayCopy buf (msg ~> can_message_buf) (safeCast idx * 8) (safeCast len)
+                  arrayCopy buf (msg ~> can_message_buf) (safeCast idx * 8) len
                   ifte_ (idx <? last_fragment_idx) (store next_idx $ idx + 1) $ do
                     assembled <- local izero
                     unpackFrom' rep (constRef buf) 0 assembled

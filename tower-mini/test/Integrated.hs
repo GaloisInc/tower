@@ -26,7 +26,7 @@ integratedTower = do
   towerModule  driverModule
   towerDepends driverModule
 
-  let cfile f = artifactFile f (pure $ "test" </> "cfiles" </> f)
+  let cfile f = artifactFile f (return $ "test" </> "cfiles" </> f)
   towerArtifact $ Incl $ cfile "intermon1.h"
   towerArtifact $ Src  $ cfile "intermon1.c"
   towerArtifact $ Incl $ cfile "intermon2.h"
@@ -157,7 +157,7 @@ integratedTower' = component "foo" $ do
     towerModule  driverModule'
     towerDepends driverModule'
 
-    let cfile f = artifactFile f (pure $ "test" </> "cfiles" </> f)
+    let cfile f = artifactFile f (return $ "test" </> "cfiles" </> f)
     towerArtifact $ Incl $ cfile "intermon1.h"
     towerArtifact $ Src  $ cfile "intermon1.c"
     towerArtifact $ Incl $ cfile "intermon2.h"

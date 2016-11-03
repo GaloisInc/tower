@@ -53,8 +53,9 @@ fromTower c t =
          , systemProperties = sps
          }
   where
-  sps = [ SystemOS $ showOS $ configSystemOS c
-        , SystemHW $ show   $ configSystemHW c ]
+  sps = [ SystemOS   $ showOS $ configSystemOS   c
+        , SystemHW   $ show   $ configSystemHW   c
+        , SystemAddr          $ configSystemAddr c ]
   sc = mkProcess c t
 
 -- The Haskell identifier for eChronos must have initial caps.

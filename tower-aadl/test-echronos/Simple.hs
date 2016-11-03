@@ -93,6 +93,7 @@ main = compileTowerAADL id p simpleTower
   p topts = fmap fst $
             getConfig' topts $ aadlConfigParser (defaultAADLConfig
               { configSystemOS        = EChronos
+              , configSystemAddr      = Nothing
               , configSystemHW        = PIXHAWK })
 
 [ivory|

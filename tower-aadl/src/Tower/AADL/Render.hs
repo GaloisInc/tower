@@ -18,6 +18,8 @@ import Tower.AADL.Render.Types
 
 import Text.PrettyPrint.Leijen
 
+import Numeric ( showHex )
+
 --------------------------------------------------------------------------------
 
 -- | Render a system
@@ -55,6 +57,10 @@ renderSystemProperty p = case p of
     -> stmt (fromSMACCM (text "OS") ==> text os)
   SystemHW hw
     -> stmt (fromSMACCM (text "HW") ==> text hw)
+  SystemAddr (Just addr)
+    -> stmt (fromSMACCM (text "eChronos_Flash_Load_Address")
+    ==> dquotes (text ("0x" ++ (showHex addr ""))))
+  SystemAddr Nothing -> empty
 
 renderProcess :: Process -> Doc
 renderProcess p =

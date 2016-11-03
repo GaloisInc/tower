@@ -32,6 +32,8 @@ data AADLConfig = AADLConfig
   -- ^ Operating system name.
   , configSystemHW       :: HW
   -- ^ HW name.
+  , configSystemAddr     :: Maybe Integer
+  -- ^ Flash load address
   , configPriorities     :: PriorityMap
   -- ^ Priorities for threads.
   , configCustomMakefile :: Bool
@@ -49,6 +51,7 @@ defaultAADLConfig = AADLConfig
   , configSystemName      = "sys"
   , configSystemOS        = CAmkES
   , configSystemHW        = QEMU
+  , configSystemAddr      = Nothing
   , configPriorities      = emptyPriorityMap
   , configCustomMakefile  = False
   , configCustomKConfig   = False
@@ -61,9 +64,10 @@ aadlConfigParser :: AADLConfig -> ConfigParser AADLConfig
 aadlConfigParser dflt = subsection "aadl" p `withDefault` dflt
   where
   p = do
-    os <- (subsection "os" osParser) `withDefault` (configSystemOS dflt)
-    hw <- (subsection "os" hwParser) `withDefault` (configSystemHW dflt)
-    return dflt { configSystemOS = os, configSystemHW = hw }
+    os   <- (subsection "os" osParser)   `withDefault` (configSystemOS   dflt)
+    hw   <- (subsection "os" hwParser)   `withDefault` (configSystemHW   dflt)
+    addr <- (subsection "os" addrParser) `withDefault` (configSystemAddr dflt)
+    return dflt { configSystemOS = os, configSystemHW = hw, configSystemAddr = addr }
   osParser = string >>= \s ->
     case map toUpper s of
       "CAMKES"   -> return CAmkES
@@ -75,6 +79,7 @@ aadlConfigParser dflt = subsection "aadl" p `withDefault` dflt
       "ODROID"  -> return ODROID
       "PIXHAWK" -> return PIXHAWK
       _ -> fail ("expected AADL HW Platform, got " ++ s)
+  addrParser = integer >>= \i -> return (Just i)
 
 ----------------------------------------
 -- Additional command line opts

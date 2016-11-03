@@ -26,6 +26,7 @@ data Process = Process
 data SystemProperty =
     SystemOS !String
   | SystemHW !String
+  | SystemAddr (Maybe Integer)
   deriving (Show, Eq)
 
 data Thread = Thread

@@ -9,6 +9,8 @@ module Ivory.Tower.HAL.RingBuffer
   ( RingBuffer(..)
   , ringBuffer
   , monitorRingBuffer
+  , bufferChan
+  , bufferChans
   ) where
 
 import GHC.TypeLits
@@ -99,3 +101,40 @@ ringBuffer s = RingBuffer
       refCopy v (buf ! r)
       incr remove >>= store remove
       ret true
+
+-- | Wrapper to add a ringbuffer to a Tower chan. Periodically pops
+-- from the buffer at the given rate.
+bufferChan :: forall a t n e
+             . (IvoryArea a, IvoryZero a, Time t, ANat n)
+            => ChanOutput a
+            -> t
+            -> Proxy n
+            -> Tower e (ChanOutput a)
+bufferChan input pop_period _buf_size = do
+  out <- channel
+  bufferChans input pop_period _buf_size (fst out)
+  return (snd out)
+
+-- | Wrapper to add a ringbuffer between two Tower chans. Periodically
+-- pops from the buffer at the given rate.
+bufferChans :: forall a t n e
+             . (IvoryArea a, IvoryZero a, Time t, ANat n)
+            => ChanOutput a
+            -> t
+            -> Proxy n
+            -> ChanInput a
+            -> Tower e ()
+bufferChans input pop_period _buf_size out = do
+  p <- period pop_period
+  monitor "frameBuffer" $ do
+    (rb :: RingBuffer n a) <- monitorRingBuffer "frameBuffer"
+    handler input "push" $ do
+      callback $ \v -> do
+        _ <- ringbuffer_push rb v
+        return ()
+    handler p "periodic_pop" $ do
+      e <- emitter out 1
+      callback $ const $ do
+        v <- local izero
+        got <- ringbuffer_pop rb v
+        ifte_ got (emit e (constRef v)) (return ())

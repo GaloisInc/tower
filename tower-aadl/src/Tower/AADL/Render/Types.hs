@@ -83,6 +83,7 @@ renderType ty = case ty of
 
   I.TyConstRef _t       -> tyError ty
   I.TyPtr _t            -> tyError ty
+  I.TyConstPtr _t       -> tyError ty
   I.TyCArray _t         -> tyError ty
   I.TyProc _retT _argTs -> tyError ty
   I.TyOpaque            -> tyError ty
@@ -207,4 +208,4 @@ renderDataRep t =
   $ fromDataModel (text "Data_Representation") ==> (text t)
 
 tyError :: I.Type -> a
-tyError ty = error $ "cannot translate TyConstRef" ++ show ty
+tyError ty = error $ "cannot translate type" ++ show ty

@@ -40,6 +40,8 @@ data AADLConfig = AADLConfig
   -- ^ If True, user provides custom Makefile.
   , configCustomKConfig  :: Bool
   -- ^ If True, user provides custom Kconfig, Kbuild.
+  , configBuildRoot      :: Maybe FilePath
+  -- ^ Location of top of the build system. Necessary for the echronos backend.
   }
   deriving (Show)
 
@@ -55,6 +57,7 @@ defaultAADLConfig = AADLConfig
   , configPriorities      = emptyPriorityMap
   , configCustomMakefile  = False
   , configCustomKConfig   = False
+  , configBuildRoot       = Nothing
   }
 
 lib :: AADLConfig -> String

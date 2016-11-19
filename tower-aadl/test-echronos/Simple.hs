@@ -92,9 +92,10 @@ main = compileTowerAADL id p simpleTower
   where
   p topts = fmap fst $
             getConfig' topts $ aadlConfigParser (defaultAADLConfig
-              { configSystemOS        = EChronos
-              , configSystemAddr      = Nothing
-              , configSystemHW        = PIXHAWK })
+              { configSystemOS   = EChronos
+              , configSystemAddr = Nothing
+              , configBuildRoot  = Just "../../../"
+              , configSystemHW   = PIXHAWK })
 
 [ivory|
 import (stdio.h, printf) void printf(string x, uint8_t y)

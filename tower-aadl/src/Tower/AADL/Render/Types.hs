@@ -12,15 +12,15 @@ module Tower.AADL.Render.Types
   , defineTypes
   ) where
 
-import Data.List
+import           Data.List
 
-import Text.PrettyPrint.Leijen
+import           Text.PrettyPrint.Leijen
 
-import qualified Ivory.Language.Syntax.Type as I
-import qualified Ivory.Language.Syntax.AST  as I
 import qualified Ivory.Language.Array       as I
+import qualified Ivory.Language.Syntax.AST  as I
+import qualified Ivory.Language.Syntax.Type as I
 
-import Tower.AADL.Render.Common
+import           Tower.AADL.Render.Common
 
 --------------------------------------------------------------------------------
 

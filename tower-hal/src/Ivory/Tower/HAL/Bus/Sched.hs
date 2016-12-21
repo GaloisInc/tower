@@ -43,12 +43,14 @@ data TaskState req res = TaskState
 -- component will choose the highest-priority task first. Earlier tasks
 -- in the list given to 'schedule' are given higher priority.
 schedule :: (IvoryArea req, IvoryZero req, IvoryArea res, IvoryZero res, IvoryArea ready, IvoryZero ready)
-         => [Task req res]
+         => String
+         -> [Task req res]
          -> ChanOutput ready
          -> BackpressureTransmit req res
          -> Tower e ()
-schedule tasks ready (BackpressureTransmit reqChan resChan) = do
-  monitor "scheduler" $ do
+schedule name tasks ready (BackpressureTransmit reqChan resChan) = do
+  let named nm = name ++ "_scheduler_" ++ nm
+  monitor (name ++ "_scheduler") $ do
     -- Task IDs are either an index into the list of tasks, or one of
     -- two special values: 'no_task' or 'not_ready_task'.
     let no_task = 0
@@ -56,12 +58,12 @@ schedule tasks ready (BackpressureTransmit reqChan resChan) = do
     let max_task = length tasks
     let not_ready_task = maxBound
 
-    response_task <- stateInit "response_task" $ ival not_ready_task
+    response_task <- stateInit (named "response_task") $ ival not_ready_task
 
     -- Queue up to 1 request per task, which can arrive in any order.
     states <- forM (zip (map fromIntegral [min_task..max_task]) tasks) $ \ (taskId, taskBase@Task { .. }) -> do
-      taskPending <- state $ taskName ++ "_pending"
-      taskLastReq <- state $ taskName ++ "_last_req"
+      taskPending <- state $ (named $ taskName ++ "_pending")
+      taskLastReq <- state $ (named $ taskName ++ "_last_req")
 
       handler taskReq taskName $ do
         sendReq <- emitter reqChan 1
@@ -86,11 +88,11 @@ schedule tasks ready (BackpressureTransmit reqChan resChan) = do
               store response_task taskId
           cond_ (conds ++ [true ==> store response_task no_task])
 
-    handler ready "ready" $ do
+    handler ready (named "ready") $ do
       sendReq <- emitter reqChan 1
       callback $ const $ do_schedule sendReq
 
-    handler resChan "response" $ do
+    handler resChan (named "response") $ do
       sendReq <- emitter reqChan 1
       emitters <- forM states $ \ st -> do
         e <- emitter (taskRes $ taskBase st) 1

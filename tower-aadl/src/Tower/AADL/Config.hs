@@ -13,6 +13,7 @@ import           Data.Char (toUpper)
 import           Ivory.Tower.Options (TOpts(..))
 import           Ivory.Tower.Config
 import qualified System.Console.GetOpt as O
+import qualified System.Directory as D
 
 import           Tower.AADL.Platform (OS(..), HW(..))
 import           Tower.AADL.Priorities (PriorityMap, emptyPriorityMap)
@@ -40,8 +41,10 @@ data AADLConfig = AADLConfig
   -- ^ If True, user provides custom Makefile.
   , configCustomKConfig  :: Bool
   -- ^ If True, user provides custom Kconfig, Kbuild.
-  , configBuildRoot      :: Maybe FilePath
-  -- ^ Location of top of the build system. Necessary for the echronos backend.
+  , configRamsesPath     :: Maybe FilePath
+  -- ^ Location of Ramses jar executable. Nothing means it's in the path.
+  , configEchronosPath   :: Maybe FilePath
+  -- ^ Location of eChronos.
   }
   deriving (Show)
 
@@ -57,7 +60,8 @@ defaultAADLConfig = AADLConfig
   , configPriorities      = emptyPriorityMap
   , configCustomMakefile  = False
   , configCustomKConfig   = False
-  , configBuildRoot       = Nothing
+  , configRamsesPath      = Nothing
+  , configEchronosPath    = Nothing
   }
 
 lib :: AADLConfig -> String
@@ -99,3 +103,21 @@ parseAADLOpts c topts = (foldl' go c flags, nonOpts, errs)
   where
   (flags, nonOpts, errs) = O.getOpt O.Permute options (topts_args topts)
   go c' (LibDir dir) = c' { configLibDir = dir }
+
+-- Turn relative paths into absolute paths.
+makeAbsPaths :: AADLConfig -> IO AADLConfig
+makeAbsPaths cfg = do
+  rp  <- mkAbsFP (configRamsesPath cfg)
+  cep <- mkAbsFP (configEchronosPath cfg)
+  return cfg { configRamsesPath   = rp
+             , configEchronosPath = cep
+             }
+
+mkAbsFP :: Maybe FilePath -> IO (Maybe FilePath)
+mkAbsFP mfp =
+  case mfp of
+    Nothing -> return Nothing
+    Just fp -> Just `fmap` D.makeAbsolute fp
+
+maybeFP :: Maybe FilePath -> String
+maybeFP = maybe "" id

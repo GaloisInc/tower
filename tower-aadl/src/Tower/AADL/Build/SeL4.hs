@@ -12,7 +12,7 @@ import           Ivory.Artifact
 
 import qualified Ivory.Compile.C.CmdlineFrontend as O
 
-import           Tower.AADL.Config (AADLConfig(..), lib)
+import           Tower.AADL.Config (AADLConfig(..), lib, maybeFP)
 import           Tower.AADL.Build.Common
 
 --------------------------------------------------------------------------------
@@ -22,8 +22,7 @@ import           Tower.AADL.Build.Common
 ramsesMakefile :: AADLConfig -> [MkStmt]
 ramsesMakefile c =
   [ include    aadlFilesMk
-  , includeOpt "../RAMSES_PATH.mk"
-  , "RAMSES_PATH" ?= "./"
+  , "RAMSES_PATH" ?= maybeFP (configRamsesPath c)
   , "SMACCM_PATH" ?= "./"
   , export $"RAMSES_DIR" === "$(RAMSES_PATH)/ramses_resource"
   , export $"AADL2RTOS_CONFIG_DIR" === "$(RAMSES_PATH)/aadl2rtos_resource"

@@ -28,6 +28,7 @@ library
   build-depends: base >= 4.6
                , base-compat
                , containers
+               , directory
                , filepath
                , wl-pprint
                , ivory >= 0.1.0.2

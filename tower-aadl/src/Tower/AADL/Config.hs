@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
 
 --
 -- Map the Tower AST into the AADL AST.
@@ -117,7 +118,11 @@ mkAbsFP :: Maybe FilePath -> IO (Maybe FilePath)
 mkAbsFP mfp =
   case mfp of
     Nothing -> return Nothing
+#if __GLASGOW_HASKELL__ <= 784
+    Just fp -> Just `fmap` D.canonicalizePath fp
+#else
     Just fp -> Just `fmap` D.makeAbsolute fp
+#endif
 
 maybeFP :: Maybe FilePath -> String
 maybeFP = maybe "" id

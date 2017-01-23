@@ -1,7 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Ivory.Tower.HAL.Bus.Sched (
+-- | This module works like 'Ivory.Tower.HAL.Bus.Sched', but
+-- reschedules tasks periodically, rather than as soon as the previous
+-- response returns. This can be useful for breaking cycles in the
+-- handler graph when requests immediately trigger responses.
+module Ivory.Tower.HAL.Bus.SchedAsync (
   Task, task, schedule
 ) where
 
@@ -21,23 +25,29 @@ import Ivory.Tower.HAL.Bus.Sched.Internal
 -- If multiple tasks have outstanding requests simultaneously, then this
 -- component will choose the highest-priority task first. Earlier tasks
 -- in the list given to 'schedule' are given higher priority.
-schedule :: (IvoryArea req, IvoryZero req, IvoryArea res, IvoryZero res, IvoryArea ready, IvoryZero ready)
+schedule :: (IvoryArea req, IvoryZero req, IvoryArea res, IvoryZero res, IvoryArea ready, IvoryZero ready, Time p)
          => String
          -> [Task req res]
          -> ChanOutput ready
          -> BackpressureTransmit req res
+         -> p
          -> Tower e ()
-schedule name tasks ready (BackpressureTransmit reqChan resChan) = do
-  let named nm = name ++ "_scheduler_" ++ nm
-  monitor (name ++ "_scheduler") $ do
+schedule name tasks ready (BackpressureTransmit reqChan resChan) reschedule_period = do
+  let named nm = name ++ "_schedulerasync_" ++ nm
+  reschedule <- period reschedule_period
+  monitor (name ++ "_schedulerasync") $ do
     -- Task IDs are either an index into the list of tasks, or one of
-    -- two special values: 'no_task' or 'not_ready_task'.
+    -- three special values: 'no_task', 'not_ready_task', or
+    -- 'reschedule_task'.
     let no_task = 0
     let min_task = 1
     let max_task = length tasks
     let not_ready_task = maxBound
+    let reschedule_task = maxBound - 1
 
     response_task <- stateInit (named "response_task") $ ival not_ready_task
+    has_pending_response <- stateInit (named "has_pending_response") $ ival false
+    pending_response <- state (named "pending_response")
 
     -- Queue up to 1 request per task, which can arrive in any order.
     states <- forM (zip (map fromIntegral [min_task..max_task]) tasks) $ \ (taskId, taskBase@Task { .. }) -> do
@@ -68,23 +78,31 @@ schedule name tasks ready (BackpressureTransmit reqChan resChan) = do
           cond_ (conds ++ [true ==> store response_task no_task])
 
     handler ready (named "ready") $ do
-      sendReq <- emitter reqChan 1
-      callback $ const $ do_schedule sendReq
+      callback $ const $ store response_task reschedule_task
 
     handler resChan (named "response") $ do
+      callback $ \res -> do
+        store has_pending_response true
+        refCopy pending_response res
+
+    handler reschedule (named "reschedule") $ do
       sendReq <- emitter reqChan 1
       emitters <- forM states $ \ st -> do
         e <- emitter (taskRes $ taskBase st) 1
         return (st, e)
-      callback $ \ res -> do
+      callback $ \ _ -> do
         current_task <- deref response_task
-        assert $ current_task >=? fromIntegral min_task
-        assert $ current_task <=? fromIntegral max_task
-        cond_ $ do
-          (TaskState { .. }, e) <- emitters
-          return $ (current_task ==? taskId ==>) $ do
-            was_pending <- deref taskPending
-            assert was_pending
-            store taskPending false
-            emit e res
-        do_schedule sendReq
+        has_resp <- deref has_pending_response
+        when has_resp $ do
+          store has_pending_response false
+          assert $ current_task >=? fromIntegral min_task
+          assert $ current_task <=? fromIntegral max_task
+          cond_ $ do
+            (TaskState { .. }, e) <- emitters
+            return $ (current_task ==? taskId ==>) $ do
+              was_pending <- deref taskPending
+              assert was_pending
+              store taskPending false
+              emit e (constRef pending_response)
+          store response_task reschedule_task
+        when (current_task ==? reschedule_task) $ do_schedule sendReq

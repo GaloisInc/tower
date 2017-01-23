@@ -94,7 +94,6 @@ main = compileTowerAADL id p simpleTower
             getConfig' topts $ aadlConfigParser (defaultAADLConfig
               { configSystemOS   = EChronos
               , configSystemAddr = Nothing
-              , configBuildRoot  = Just "../../../"
               , configSystemHW   = PIXHAWK })
 
 [ivory|

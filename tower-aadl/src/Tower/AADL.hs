@@ -77,8 +77,9 @@ compileTowerAADLForPlatform :: (e -> (AADLConfig, OSSpecific a))
 compileTowerAADLForPlatform fromEnv mkEnv twr' = do
   (copts, topts)              <- towerGetOpts
   env                         <- mkEnv topts
-  let (cfg',osspecific)       =  fromEnv env
-  cfg                         <- parseAADLOpts' cfg' topts
+  let (cfg0,osspecific)       =  fromEnv env
+  cfg1                        <- parseAADLOpts' cfg0 topts
+  cfg                         <- makeAbsPaths cfg1
   let twr                     =  twr' >> osSpecificTower osspecific
   let (ast, code, deps, sigs) =  runTower_ AADLBackend twr env
   let missingCallbacks = handlersMissingCallbacks ast

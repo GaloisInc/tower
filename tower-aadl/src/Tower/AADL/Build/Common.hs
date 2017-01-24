@@ -40,6 +40,7 @@ data MkStmt
   = Include Required FilePath
   | Var Export String Assign String
   | Target String [String] [String]
+  | IfNDef String [MkStmt] [MkStmt]
   | Comment String
   deriving (Read, Show, Eq)
 
@@ -90,6 +91,12 @@ renderMkStmt (Target name deps actions) =
      text name <> text ":" <+> hsep (map text deps)
   <> foldr (\str acc -> linebreak <> char '\t' <> text str <> acc) empty actions
   <> linebreak
+renderMkStmt (IfNDef var t e) =
+       text "ifndef" <+> text var
+  <$$> vsep (map renderMkStmt t)
+  <$$> text "else"
+  <$$> vsep (map renderMkStmt e)
+  <$$> text "endif"
 renderMkStmt (Comment msg) = char '#' <+> text msg
 
 renderMkStmts :: [MkStmt] -> String

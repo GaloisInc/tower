@@ -92,15 +92,6 @@ injectFromExternal m = mempty { atThreadsFromExternal = [m] }
 injectPassiveThread :: A.Monitor -> PassiveThreads
 injectPassiveThread m = mempty { ptThreadsPassive = [m] }
 
-class ThreadName a where
-  threadName :: a -> String
-
-instance ThreadName A.Monitor where
-  threadName = A.monitorName
-
-instance ThreadName A.Thread where
-  threadName = A.threadName
-
 ----------------------------------------
 
 -- All monitors except monitors that are labeled as external. For each passive

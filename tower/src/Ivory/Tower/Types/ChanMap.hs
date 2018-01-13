@@ -11,7 +11,7 @@ module Ivory.Tower.Types.ChanMap
   ) where
 
 import qualified Data.Map as Map
-import GHC.Prim (Any)
+import GHC.Base (Any)
 import Ivory.Language
 import qualified Ivory.Tower.AST as AST
 import Ivory.Tower.Types.Chan

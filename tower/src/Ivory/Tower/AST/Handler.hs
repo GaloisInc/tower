@@ -6,6 +6,7 @@ module Ivory.Tower.AST.Handler
   , handlerName
   ) where
 
+import Data.Monoid ((<>))
 #if MIN_VERSION_mainland_pretty(0,6,0)
 import           Text.PrettyPrint.Mainland.Class
 #endif

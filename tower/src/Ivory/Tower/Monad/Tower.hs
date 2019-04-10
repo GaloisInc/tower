@@ -23,6 +23,7 @@ import Prelude.Compat
 
 import MonadLib
 import Control.Monad.Fix
+import Data.Semigroup
 import Ivory.Tower.Backend
 import Ivory.Tower.Monad.Base
 import Ivory.Tower.Types.Chan
@@ -52,7 +53,7 @@ instance MonadFix (Tower e) where
   mfix f = Tower $ mfix (unTower . f)
 
 newtype SinkList backend a = SinkList { unSinkList :: [TowerBackendHandler backend a] }
-  deriving Monoid
+  deriving (Semigroup, Monoid)
 
 type Sinks backend = ChanMap.ChanMap (SinkList backend)
 
@@ -63,18 +64,20 @@ data TowerOutput backend = TowerOutput
   , output_sigs :: SignalCode
   }
 
+instance Semigroup (TowerOutput backend) where
+  (<>) a b = TowerOutput
+    { output_sinks = ChanMap.unionWith mappend (output_sinks a) (output_sinks b)
+    , output_monitors = output_monitors a `mappend` output_monitors b
+    , output_deps = output_deps a `mappend` output_deps b
+    , output_sigs = output_sigs a `mappend` output_sigs b
+    }
+
 instance Monoid (TowerOutput backend) where
   mempty = TowerOutput
     { output_sinks = ChanMap.empty
     , output_monitors = mempty
     , output_deps = mempty
     , output_sigs = mempty
-    }
-  mappend a b = TowerOutput
-    { output_sinks = ChanMap.unionWith mappend (output_sinks a) (output_sinks b)
-    , output_monitors = output_monitors a `mappend` output_monitors b
-    , output_deps = output_deps a `mappend` output_deps b
-    , output_sigs = output_sigs a `mappend` output_sigs b
     }
 
 newtype Tower' backend e a = Tower'

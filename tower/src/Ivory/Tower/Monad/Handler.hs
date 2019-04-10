@@ -46,13 +46,15 @@ data PartialHandler = PartialHandler
   , partialComments :: [AST.Comment]
   }
 
-instance Monoid PartialHandler where
-  mempty = PartialHandler mempty mempty mempty
-  mappend a b = PartialHandler
+instance Semigroup PartialHandler where
+  (<>) a b = PartialHandler
     { partialEmitters = partialEmitters a `mappend` partialEmitters b
     , partialCallbacks = partialCallbacks a `mappend` partialCallbacks b
     , partialComments = partialComments a `mappend` partialComments b
     }
+
+instance Monoid PartialHandler where
+  mempty = PartialHandler mempty mempty mempty
 
 newtype Handler area e a = Handler
   { unHandler :: forall backend. TowerBackend backend => Handler' backend area e a

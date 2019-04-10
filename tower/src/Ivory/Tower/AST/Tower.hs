@@ -9,6 +9,7 @@ module Ivory.Tower.AST.Tower
 import Prelude ()
 import Prelude.Compat
 
+import Data.Semigroup
 import Data.List (find, union)
 #if MIN_VERSION_mainland_pretty(0,6,0)
 import           Text.PrettyPrint.Mainland.Class
@@ -30,19 +31,21 @@ data Tower = Tower
   , tower_periods     :: [Period]
   } deriving (Eq, Show)
 
+instance Semigroup Tower where
+  (<>) a b = Tower
+    { tower_monitors    = tower_monitors    a `mappend` tower_monitors    b
+    , tower_syncchans   = tower_syncchans   a `mappend` tower_syncchans   b
+    , tower_signals     = tower_signals     a `mappend` tower_signals     b
+    -- Periods are a set
+    , tower_periods     = tower_periods     a `union`   tower_periods     b
+    }
+
 instance Monoid Tower where
   mempty = Tower
     { tower_monitors    = []
     , tower_syncchans   = []
     , tower_signals     = []
     , tower_periods     = []
-    }
-  mappend a b = Tower
-    { tower_monitors    = tower_monitors    a `mappend` tower_monitors    b
-    , tower_syncchans   = tower_syncchans   a `mappend` tower_syncchans   b
-    , tower_signals     = tower_signals     a `mappend` tower_signals     b
-    -- Periods are a set
-    , tower_periods     = tower_periods     a `union`   tower_periods     b
     }
 
 towerThreads :: Tower -> [Thread]

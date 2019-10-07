@@ -71,6 +71,8 @@ library
                         ivory-artifact,
                         ivory-stdlib,
                         ivory-backend-c
+  if impl(ghc < 8)
+    build-depends:      semigroups
 
   hs-source-dirs:       src
   default-language:     Haskell2010

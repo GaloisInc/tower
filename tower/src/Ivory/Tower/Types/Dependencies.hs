@@ -4,6 +4,7 @@ import Prelude ()
 import Prelude.Compat
 
 import Data.List (nub, nubBy)
+import Data.Semigroup
 import Ivory.Artifact
 import Ivory.Language
 
@@ -13,13 +14,8 @@ data Dependencies = Dependencies
   , dependencies_artifacts :: [Located Artifact]
   }
 
-instance Monoid Dependencies where
-  mempty = Dependencies
-    { dependencies_modules = mempty
-    , dependencies_depends = mempty
-    , dependencies_artifacts = mempty
-    }
-  mappend a b = Dependencies
+instance Semigroup Dependencies where
+  (<>) a b = Dependencies
     { dependencies_modules = nub $
           dependencies_modules a `mappend` dependencies_modules b
     , dependencies_depends = nub $
@@ -28,3 +24,9 @@ instance Monoid Dependencies where
           dependencies_artifacts a `mappend` dependencies_artifacts b
     }
 
+instance Monoid Dependencies where
+  mempty = Dependencies
+    { dependencies_modules = mempty
+    , dependencies_depends = mempty
+    , dependencies_artifacts = mempty
+    }
